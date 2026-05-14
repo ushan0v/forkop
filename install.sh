@@ -252,7 +252,7 @@ pkg_install_files() {
     if [ "$PKG_IS_APK" -eq 1 ]; then
         apk add --allow-untrusted "$@" </dev/null
     else
-        opkg install --force-overwrite "$@" </dev/null
+        opkg install --force-overwrite --force-downgrade "$@" </dev/null
     fi
 }
 
