@@ -41,6 +41,7 @@ PODKOP_RUNTIME_STATUS_FILE="$PODKOP_RUNTIME_STATE_DIR/status"
 PODKOP_SYSTEM_INFO_CACHE_FILE="$PODKOP_RUNTIME_STATE_DIR/system-info.json"
 PODKOP_RELOAD_STATE_FILE="$PODKOP_RUNTIME_STATE_DIR/reload-state"
 PODKOP_PENDING_RELOAD_FILE="$PODKOP_RUNTIME_STATE_DIR/reload.pending"
+PODKOP_RESTART_INTENT_FILE="$PODKOP_RUNTIME_STATE_DIR/restart.intent"
 PODKOP_LIST_UPDATE_STATE_FILE="$PODKOP_RUNTIME_STATE_DIR/list-update.timestamp"
 PODKOP_SUBSCRIPTION_UPDATE_STATE_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-update"
 PODKOP_SUBSCRIPTION_LINKS_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-links"
@@ -436,6 +437,22 @@ runtime_status_write() {
     local now tmpfile
 
     ensure_runtime_dirs
+    if restart_intent_is_active; then
+        case "$action" in
+        start | stop | restart)
+            action="restart"
+            ;;
+        esac
+
+        case "$state" in
+        starting | stopping | restarting)
+            state="restarting"
+            ;;
+        stopped)
+            [ "$action" = "restart" ] && state="restarting"
+            ;;
+        esac
+    fi
 
     now="$(date +%s 2>/dev/null)"
     case "$now" in
@@ -539,6 +556,33 @@ runtime_status_transition_is_active() {
     esac
 
     kill -0 "$pid" 2>/dev/null
+}
+
+restart_intent_is_active() {
+    local now updated_at age
+
+    [ -f "$PODKOP_RESTART_INTENT_FILE" ] || return 1
+
+    updated_at="$(awk -F= '$1 == "updated_at" { print $2; exit }' "$PODKOP_RESTART_INTENT_FILE" 2>/dev/null)"
+    case "$updated_at" in
+    '' | *[!0-9]*)
+        rm -f "$PODKOP_RESTART_INTENT_FILE" 2>/dev/null
+        return 1
+        ;;
+    esac
+
+    now="$(date +%s 2>/dev/null)"
+    case "$now" in
+    '' | *[!0-9]*) return 0 ;;
+    esac
+
+    age=$((now - updated_at))
+    if [ "$age" -lt 0 ] || [ "$age" -gt "$PODKOP_RUNTIME_TRANSITION_MAX_AGE" ]; then
+        rm -f "$PODKOP_RESTART_INTENT_FILE" 2>/dev/null
+        return 1
+    fi
+
+    return 0
 }
 
 clear_reload_state() {

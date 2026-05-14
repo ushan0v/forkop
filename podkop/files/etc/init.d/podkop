@@ -12,6 +12,7 @@ PODKOP_SERVICE_INIT="/etc/init.d/podkop-plus"
 PODKOP_RELOAD_LOCK_DIR="/var/run/podkop-plus.reload.lock"
 PODKOP_RUNTIME_STATE_DIR="/var/run/podkop-plus"
 PODKOP_PENDING_RELOAD_FILE="$PODKOP_RUNTIME_STATE_DIR/reload.pending"
+PODKOP_RESTART_INTENT_FILE="$PODKOP_RUNTIME_STATE_DIR/restart.intent"
 PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD="/var/run/podkop-plus.internal-config-change"
 PODKOP_CONFIG_CHANGE_REASON="on_config_change"
 config_load "$CONFIG_NAME"
@@ -66,6 +67,27 @@ consume_pending_reload() {
 run_pending_reload_if_requested() {
     consume_pending_reload || return 0
     "$PODKOP_SERVICE_INIT" reload pending >/dev/null 2>&1 &
+}
+
+begin_restart_intent() {
+    local now
+
+    mkdir -p "$PODKOP_RUNTIME_STATE_DIR"
+    now="$(date +%s 2>/dev/null)"
+    case "$now" in
+        '' | *[!0-9]*)
+            now=0
+            ;;
+    esac
+
+    {
+        printf 'updated_at=%s\n' "$now"
+        printf 'pid=%s\n' "$$"
+    } > "$PODKOP_RESTART_INTENT_FILE"
+}
+
+end_restart_intent() {
+    rm -f "$PODKOP_RESTART_INTENT_FILE" 2>/dev/null
 }
 
 sync_service_triggers() {
@@ -148,6 +170,28 @@ start_service() {
 
 stop_service() {
     "$PODKOP_BIN" stop
+}
+
+restart() {
+    local status
+
+    begin_restart_intent
+    trap 'end_restart_intent' EXIT INT TERM
+
+    trap '' TERM
+    stop "$@"
+    status="$?"
+    trap - TERM
+
+    if [ "$status" -eq 0 ]; then
+        start "$@"
+        status="$?"
+    fi
+
+    trap - EXIT INT TERM
+    end_restart_intent
+
+    return "$status"
 }
 
 reload_service() {
