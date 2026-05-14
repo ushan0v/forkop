@@ -1,5 +1,6 @@
 import {
   getClashWsUrl,
+  isCopyableProxyLink,
   onMount,
   preserveScrollForPage,
 } from '../../../helpers';
@@ -184,8 +185,10 @@ async function handleCopyOutbound(
   section: Podkop.OutboundGroup,
   outbound: Podkop.Outbound,
 ) {
-  if (outbound.link) {
-    copyToClipboard(outbound.link);
+  const link = outbound.link;
+
+  if (link && isCopyableProxyLink(link)) {
+    copyToClipboard(link);
     return;
   }
 
@@ -194,7 +197,7 @@ async function handleCopyOutbound(
     outbound.code,
   );
 
-  if (response.success && response.data.link) {
+  if (response.success && isCopyableProxyLink(response.data.link)) {
     copyToClipboard(response.data.link);
     return;
   }
@@ -215,6 +218,7 @@ async function renderSectionsWidget() {
       failed: sectionsWidget.failed,
       section: {
         code: '',
+        sectionName: '',
         displayName: '',
         outbounds: [],
         withTagSelect: false,

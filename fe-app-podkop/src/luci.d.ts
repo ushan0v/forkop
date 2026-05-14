@@ -3,9 +3,11 @@ type HtmlTag = keyof HTMLElementTagNameMap;
 type HtmlElement<T extends HtmlTag> = HTMLElementTagNameMap[T];
 
 type HtmlAttributes<T extends HtmlTag = 'div'> = Partial<
-  Omit<HtmlElement<T>, 'style' | 'children'> & {
+  Omit<HtmlElement<T>, 'style' | 'children' | 'click'> & {
     style?: string | Partial<CSSStyleDeclaration>;
     class?: string;
+    'aria-label'?: string;
+    click?: (event: MouseEvent) => void;
     onclick?: (event: MouseEvent) => void;
   }
 >;

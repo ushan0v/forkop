@@ -1,4 +1,5 @@
 import { renderCopyIcon24 } from '../../../../icons';
+import { isCopyableProxyLink } from '../../../../helpers';
 import { Podkop } from '../../../types';
 
 interface IRenderSectionsProps {
@@ -68,8 +69,7 @@ export function renderDefaultState({
     }
 
     const canCopyLink =
-      outbound.type?.toLowerCase() !== 'urltest' &&
-      Boolean(outbound.code || outbound.link);
+      Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
 
     return E(
       'div',

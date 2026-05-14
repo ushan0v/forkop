@@ -869,6 +869,40 @@ function getSectionProxyConfigType(section) {
   }
   return void 0;
 }
+var SUBSCRIPTION_LINK_CACHE_TTL_MS = 60 * 1e3;
+var subscriptionLinkCache = /* @__PURE__ */ new Map();
+async function getSubscriptionOutboundCopyState(sectionName, outbound) {
+  if (!outbound.code || !isCopyableProxyOutboundType(outbound.type)) {
+    return false;
+  }
+  const cacheKey = `${sectionName}:${outbound.code}`;
+  const cached = subscriptionLinkCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return cached.canCopyLink;
+  }
+  const response = await PodkopShellMethods.getOutboundLink(
+    sectionName,
+    outbound.code
+  );
+  const canCopyLink = response.success && isCopyableProxyLink(response.data.link);
+  subscriptionLinkCache.set(cacheKey, {
+    canCopyLink,
+    expiresAt: now + SUBSCRIPTION_LINK_CACHE_TTL_MS
+  });
+  return canCopyLink;
+}
+async function markSubscriptionCopyableOutbounds(sectionName, outbounds) {
+  return Promise.all(
+    outbounds.map(async (outbound) => ({
+      ...outbound,
+      canCopyLink: await getSubscriptionOutboundCopyState(
+        sectionName,
+        outbound
+      )
+    }))
+  );
+}
 async function getDashboardSections() {
   const configSections = await getConfigSections();
   const clashProxies = await PodkopShellMethods.getClashApiProxies();
@@ -884,181 +918,136 @@ async function getDashboardSections() {
       value
     })
   );
-  const data = configSections.filter(
-    (section) => section.enabled !== "0" && ["proxy", "vpn"].includes(getSectionAction(section))
-  ).map((section) => {
-    const displayName = getDisplayName(section);
-    const sectionAction = getSectionAction(section);
-    const proxyConfigType = getSectionProxyConfigType(section);
-    if (sectionAction === "vpn") {
-      const outbound = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-out`
-      );
-      return {
-        withTagSelect: false,
-        code: outbound?.code || section[".name"],
-        sectionName: section[".name"],
-        displayName,
-        outbounds: [
-          {
-            code: outbound?.code || section[".name"],
-            displayName: section.interface || outbound?.value?.name || "",
-            latency: outbound?.value?.history?.[0]?.delay || 0,
-            type: outbound?.value?.type || "",
-            selected: true
-          }
-        ]
-      };
-    }
-    if (proxyConfigType === "url") {
-      const outbound = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-out`
-      );
-      const activeConfigs = splitProxyString(section.proxy_string || "");
-      const proxyDisplayName = getProxyUrlName(activeConfigs?.[0]) || outbound?.value?.name || "";
-      return {
-        withTagSelect: false,
-        code: outbound?.code || section[".name"],
-        sectionName: section[".name"],
-        displayName,
-        outbounds: [
-          {
-            code: outbound?.code || section[".name"],
-            displayName: proxyDisplayName,
-            latency: outbound?.value?.history?.[0]?.delay || 0,
-            type: outbound?.value?.type || "",
-            selected: true,
-            link: activeConfigs?.[0] || ""
-          }
-        ]
-      };
-    }
-    if (proxyConfigType === "outbound") {
-      const outbound = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-out`
-      );
-      let parsedTag = "";
-      try {
-        const parsedOutbound = JSON.parse(section.outbound_json || "{}");
-        parsedTag = parsedOutbound?.tag ? decodeURIComponent(parsedOutbound.tag) : "";
-      } catch (_error) {
-        parsedTag = "";
-      }
-      return {
-        withTagSelect: false,
-        code: outbound?.code || section[".name"],
-        sectionName: section[".name"],
-        displayName,
-        outbounds: [
-          {
-            code: outbound?.code || section[".name"],
-            displayName: parsedTag || outbound?.value?.name || "",
-            latency: outbound?.value?.history?.[0]?.delay || 0,
-            type: outbound?.value?.type || "",
-            selected: true
-          }
-        ]
-      };
-    }
-    if (proxyConfigType === "selector") {
-      const selector = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-out`
-      );
-      const links = section.selector_proxy_links ?? [];
-      const outbounds = links.map((link, index) => ({
-        link,
-        outbound: proxies.find(
-          (item) => item.code === `${section[".name"]}-${index + 1}-out`
-        )
-      })).map((item) => ({
-        code: item?.outbound?.code || "",
-        displayName: getProxyUrlName(item.link) || item?.outbound?.value?.name || "",
-        latency: item?.outbound?.value?.history?.[0]?.delay || 0,
-        type: item?.outbound?.value?.type || "",
-        selected: selector?.value?.now === item?.outbound?.code,
-        link: item.link
-      }));
-      return {
-        withTagSelect: true,
-        code: selector?.code || section[".name"],
-        sectionName: section[".name"],
-        displayName,
-        outbounds
-      };
-    }
-    if (proxyConfigType === "urltest") {
-      const selector = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-out`
-      );
-      const outbound = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-urltest-out`
-      );
-      const outbounds = (outbound?.value?.all ?? []).map((code) => proxies.find((item) => item.code === code)).map((item, index) => ({
-        code: item?.code || "",
-        displayName: getProxyUrlName(section.urltest_proxy_links?.[index] || "") || item?.value?.name || "",
-        latency: item?.value?.history?.[0]?.delay || 0,
-        type: item?.value?.type || "",
-        selected: selector?.value?.now === item?.code,
-        link: section.urltest_proxy_links?.[index] || ""
-      }));
-      return {
-        withTagSelect: true,
-        code: selector?.code || section[".name"],
-        sectionName: section[".name"],
-        displayName,
-        outbounds: [
-          {
-            code: outbound?.code || "",
-            displayName: _("Fastest"),
-            latency: outbound?.value?.history?.[0]?.delay || 0,
-            type: outbound?.value?.type || "",
-            selected: selector?.value?.now === outbound?.code
-          },
-          ...outbounds
-        ]
-      };
-    }
-    if (proxyConfigType === "subscription") {
-      const selector = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-out`
-      );
-      const fallbackUrltest = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-urltest-out`
-      );
-      const selectorOutbounds = (selector?.value?.all ?? []).flatMap(
-        (code) => {
-          const item = proxies.find((proxy) => proxy.code === code);
-          if (!item) {
-            return [];
-          }
-          const isDefaultFastest = item.code === `${section[".name"]}-urltest-out`;
-          return [
+  const data = await Promise.all(
+    configSections.filter(
+      (section) => section.enabled !== "0" && ["proxy", "vpn"].includes(getSectionAction(section))
+    ).map(async (section) => {
+      const displayName = getDisplayName(section);
+      const sectionAction = getSectionAction(section);
+      const proxyConfigType = getSectionProxyConfigType(section);
+      if (sectionAction === "vpn") {
+        const outbound = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-out`
+        );
+        return {
+          withTagSelect: false,
+          code: outbound?.code || section[".name"],
+          sectionName: section[".name"],
+          displayName,
+          outbounds: [
             {
-              code: item.code,
-              displayName: isDefaultFastest ? _("Fastest") : item?.value?.name || "",
-              latency: item?.value?.history?.[0]?.delay || 0,
-              type: item?.value?.type || "",
-              selected: selector?.value?.now === item.code
+              code: outbound?.code || section[".name"],
+              displayName: section.interface || outbound?.value?.name || "",
+              latency: outbound?.value?.history?.[0]?.delay || 0,
+              type: outbound?.value?.type || "",
+              selected: true,
+              canCopyLink: false
             }
-          ];
+          ]
+        };
+      }
+      if (proxyConfigType === "url") {
+        const outbound = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-out`
+        );
+        const activeConfigs = splitProxyString(section.proxy_string || "");
+        const link = activeConfigs?.[0] || "";
+        const proxyDisplayName = getProxyUrlName(link) || outbound?.value?.name || "";
+        return {
+          withTagSelect: false,
+          code: outbound?.code || section[".name"],
+          sectionName: section[".name"],
+          displayName,
+          outbounds: [
+            {
+              code: outbound?.code || section[".name"],
+              displayName: proxyDisplayName,
+              latency: outbound?.value?.history?.[0]?.delay || 0,
+              type: outbound?.value?.type || "",
+              selected: true,
+              link,
+              canCopyLink: isCopyableProxyLink(link)
+            }
+          ]
+        };
+      }
+      if (proxyConfigType === "outbound") {
+        const outbound = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-out`
+        );
+        let parsedTag = "";
+        try {
+          const parsedOutbound = JSON.parse(section.outbound_json || "{}");
+          parsedTag = parsedOutbound?.tag ? decodeURIComponent(parsedOutbound.tag) : "";
+        } catch (_error) {
+          parsedTag = "";
         }
-      );
-      const outbounds = [
-        ...selectorOutbounds.filter(
-          (item) => item.type?.toLowerCase() === "urltest"
-        ),
-        ...selectorOutbounds.filter(
-          (item) => item.type?.toLowerCase() !== "urltest"
-        )
-      ];
-      if (outbounds.length === 0 && fallbackUrltest) {
-        const fallbackOutbounds = (fallbackUrltest?.value?.all ?? []).map((code) => proxies.find((item) => item.code === code)).map((item) => ({
-          code: item?.code || "",
-          displayName: item?.value?.name || "",
-          latency: item?.value?.history?.[0]?.delay || 0,
-          type: item?.value?.type || "",
-          selected: selector?.value?.now === item?.code
-        }));
+        return {
+          withTagSelect: false,
+          code: outbound?.code || section[".name"],
+          sectionName: section[".name"],
+          displayName,
+          outbounds: [
+            {
+              code: outbound?.code || section[".name"],
+              displayName: parsedTag || outbound?.value?.name || "",
+              latency: outbound?.value?.history?.[0]?.delay || 0,
+              type: outbound?.value?.type || "",
+              selected: true,
+              canCopyLink: false
+            }
+          ]
+        };
+      }
+      if (proxyConfigType === "selector") {
+        const selector = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-out`
+        );
+        const links = section.selector_proxy_links ?? [];
+        const outbounds = links.map((link, index) => ({
+          link,
+          outbound: proxies.find(
+            (item) => item.code === `${section[".name"]}-${index + 1}-out`
+          )
+        })).map((item) => {
+          const link = item.link;
+          return {
+            code: item?.outbound?.code || "",
+            displayName: getProxyUrlName(link) || item?.outbound?.value?.name || "",
+            latency: item?.outbound?.value?.history?.[0]?.delay || 0,
+            type: item?.outbound?.value?.type || "",
+            selected: selector?.value?.now === item?.outbound?.code,
+            link,
+            canCopyLink: isCopyableProxyLink(link)
+          };
+        });
+        return {
+          withTagSelect: true,
+          code: selector?.code || section[".name"],
+          sectionName: section[".name"],
+          displayName,
+          outbounds
+        };
+      }
+      if (proxyConfigType === "urltest") {
+        const selector = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-out`
+        );
+        const outbound = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-urltest-out`
+        );
+        const outbounds = (outbound?.value?.all ?? []).map((code) => proxies.find((item) => item.code === code)).map((item, index) => {
+          const link = section.urltest_proxy_links?.[index] || "";
+          return {
+            code: item?.code || "",
+            displayName: getProxyUrlName(link) || item?.value?.name || "",
+            latency: item?.value?.history?.[0]?.delay || 0,
+            type: item?.value?.type || "",
+            selected: selector?.value?.now === item?.code,
+            link,
+            canCopyLink: isCopyableProxyLink(link)
+          };
+        });
         return {
           withTagSelect: true,
           code: selector?.code || section[".name"],
@@ -1066,32 +1055,101 @@ async function getDashboardSections() {
           displayName,
           outbounds: [
             {
-              code: fallbackUrltest?.code || "",
+              code: outbound?.code || "",
               displayName: _("Fastest"),
-              latency: fallbackUrltest?.value?.history?.[0]?.delay || 0,
-              type: fallbackUrltest?.value?.type || "",
-              selected: selector?.value?.now === fallbackUrltest?.code
+              latency: outbound?.value?.history?.[0]?.delay || 0,
+              type: outbound?.value?.type || "",
+              selected: selector?.value?.now === outbound?.code,
+              canCopyLink: false
             },
-            ...fallbackOutbounds
+            ...outbounds
           ]
         };
       }
+      if (proxyConfigType === "subscription") {
+        const selector = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-out`
+        );
+        const fallbackUrltest = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-urltest-out`
+        );
+        const selectorOutbounds = (selector?.value?.all ?? []).flatMap(
+          (code) => {
+            const item = proxies.find((proxy) => proxy.code === code);
+            if (!item) {
+              return [];
+            }
+            const isDefaultFastest = item.code === `${section[".name"]}-urltest-out`;
+            return [
+              {
+                code: item.code,
+                displayName: isDefaultFastest ? _("Fastest") : item?.value?.name || "",
+                latency: item?.value?.history?.[0]?.delay || 0,
+                type: item?.value?.type || "",
+                selected: selector?.value?.now === item.code,
+                canCopyLink: false
+              }
+            ];
+          }
+        );
+        const outbounds = [
+          ...selectorOutbounds.filter(
+            (item) => item.type?.toLowerCase() === "urltest"
+          ),
+          ...selectorOutbounds.filter(
+            (item) => item.type?.toLowerCase() !== "urltest"
+          )
+        ];
+        if (outbounds.length === 0 && fallbackUrltest) {
+          const fallbackOutbounds = (fallbackUrltest?.value?.all ?? []).map((code) => proxies.find((item) => item.code === code)).map((item) => ({
+            code: item?.code || "",
+            displayName: item?.value?.name || "",
+            latency: item?.value?.history?.[0]?.delay || 0,
+            type: item?.value?.type || "",
+            selected: selector?.value?.now === item?.code,
+            canCopyLink: false
+          }));
+          return {
+            withTagSelect: true,
+            code: selector?.code || section[".name"],
+            sectionName: section[".name"],
+            displayName,
+            outbounds: [
+              {
+                code: fallbackUrltest?.code || "",
+                displayName: _("Fastest"),
+                latency: fallbackUrltest?.value?.history?.[0]?.delay || 0,
+                type: fallbackUrltest?.value?.type || "",
+                selected: selector?.value?.now === fallbackUrltest?.code,
+                canCopyLink: false
+              },
+              ...await markSubscriptionCopyableOutbounds(
+                section[".name"],
+                fallbackOutbounds
+              )
+            ]
+          };
+        }
+        return {
+          withTagSelect: true,
+          code: selector?.code || section[".name"],
+          sectionName: section[".name"],
+          displayName,
+          outbounds: await markSubscriptionCopyableOutbounds(
+            section[".name"],
+            outbounds
+          )
+        };
+      }
       return {
-        withTagSelect: true,
-        code: selector?.code || section[".name"],
+        withTagSelect: false,
+        code: section[".name"],
         sectionName: section[".name"],
         displayName,
-        outbounds
+        outbounds: []
       };
-    }
-    return {
-      withTagSelect: false,
-      code: section[".name"],
-      sectionName: section[".name"],
-      displayName,
-      outbounds: []
-    };
-  });
+    })
+  );
   return {
     success: true,
     data
@@ -2520,7 +2578,7 @@ function renderDefaultState({
       }
       return "pdk_dashboard-page__outbound-grid__item__latency--red";
     }
-    const canCopyLink = outbound.type?.toLowerCase() !== "urltest" && Boolean(outbound.code || outbound.link);
+    const canCopyLink = Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
     return E(
       "div",
       {
@@ -2701,6 +2759,7 @@ function render() {
           failed: false,
           section: {
             code: "",
+            sectionName: "",
             displayName: "",
             outbounds: [],
             withTagSelect: false
@@ -2708,6 +2767,8 @@ function render() {
           onTestLatency: () => {
           },
           onChooseOutbound: () => {
+          },
+          onCopyOutbound: () => {
           },
           latencyFetching: false
         })
@@ -2979,15 +3040,16 @@ async function handleTestProxyLatency(tag) {
   });
 }
 async function handleCopyOutbound(section, outbound) {
-  if (outbound.link) {
-    copyToClipboard(outbound.link);
+  const link = outbound.link;
+  if (link && isCopyableProxyLink(link)) {
+    copyToClipboard(link);
     return;
   }
   const response = await PodkopShellMethods.getOutboundLink(
     section.sectionName,
     outbound.code
   );
-  if (response.success && response.data.link) {
+  if (response.success && isCopyableProxyLink(response.data.link)) {
     copyToClipboard(response.data.link);
     return;
   }
@@ -3003,6 +3065,7 @@ async function renderSectionsWidget() {
       failed: sectionsWidget.failed,
       section: {
         code: "",
+        sectionName: "",
         displayName: "",
         outbounds: [],
         withTagSelect: false
@@ -5720,6 +5783,31 @@ function insertIfObj(condition, object) {
   return condition ? object : {};
 }
 
+// src/helpers/isCopyableProxyLink.ts
+var COPYABLE_PROXY_URI_RE = /^(vless|vmess|trojan|ss|ssr|hysteria2|hy2|tuic|socks4|socks4a|socks5):\/\//i;
+var COPYABLE_PROXY_OUTBOUND_TYPES = /* @__PURE__ */ new Set([
+  "vless",
+  "vmess",
+  "trojan",
+  "shadowsocks",
+  "ss",
+  "shadowsocksr",
+  "ssr",
+  "hysteria2",
+  "hy2",
+  "tuic",
+  "socks",
+  "socks4",
+  "socks4a",
+  "socks5"
+]);
+function isCopyableProxyLink(link) {
+  return COPYABLE_PROXY_URI_RE.test((link || "").trim());
+}
+function isCopyableProxyOutboundType(type) {
+  return COPYABLE_PROXY_OUTBOUND_TYPES.has((type || "").trim().toLowerCase());
+}
+
 // src/main.ts
 if (typeof structuredClone !== "function")
   globalThis.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
@@ -5764,6 +5852,8 @@ return baseclass.extend({
   injectGlobalStyles,
   insertIf,
   insertIfObj,
+  isCopyableProxyLink,
+  isCopyableProxyOutboundType,
   logger,
   maskIP,
   onMount,

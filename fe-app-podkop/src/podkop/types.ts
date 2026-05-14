@@ -87,6 +87,7 @@ export namespace Podkop {
     type: string;
     selected: boolean;
     link?: string;
+    canCopyLink?: boolean;
   }
 
   export interface OutboundGroup {
