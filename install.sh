@@ -983,7 +983,7 @@ post_install() {
     fi
 
     if [ "$PODKOP_WAS_RUNNING" -eq 1 ] && [ -x /etc/init.d/podkop-plus ]; then
-        /etc/init.d/podkop-plus restart >/dev/null 2>&1 || /etc/init.d/podkop-plus start >/dev/null 2>&1 || warn "Failed to restart Podkop Plus after upgrade."
+        /etc/init.d/podkop-plus start >/dev/null 2>&1 || /etc/init.d/podkop-plus restart >/dev/null 2>&1 || warn "Failed to start Podkop Plus after upgrade."
     fi
 
     if [ -n "$ZAPRET_PACKAGE_FILE" ]; then

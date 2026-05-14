@@ -155,6 +155,9 @@ restart() {
     local status="$?"
     trap - EXIT INT TERM
     release_reload_lock
+    if [ "$status" -eq 0 ]; then
+        refresh_service_triggers
+    fi
     run_pending_reload_if_requested
 
     return "$status"
