@@ -379,13 +379,14 @@ export async function getDashboardSections(
                 type: item?.value?.type || '',
                 selected: selector?.value?.now === item?.code,
                 canCopyLink: false,
-              }));
+            }));
 
             return {
               withTagSelect: true,
               code: selector?.code || section['.name'],
               sectionName: section['.name'],
               displayName,
+              proxyConfigType,
               subscriptionMetadata,
               outbounds: [
                 {
@@ -411,6 +412,7 @@ export async function getDashboardSections(
             code: selector?.code || section['.name'],
             sectionName: section['.name'],
             displayName,
+            proxyConfigType,
             subscriptionMetadata,
             outbounds: includeSubscriptionCopyState
               ? await markSubscriptionCopyableOutbounds(

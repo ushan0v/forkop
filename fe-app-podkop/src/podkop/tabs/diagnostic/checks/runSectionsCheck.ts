@@ -5,6 +5,25 @@ import { getMeta } from '../helpers/getMeta';
 import { getDashboardSections } from '../../../methods/custom/getDashboardSections';
 import { IDiagnosticsChecksItem } from '../../../services';
 
+type SectionCheckState = IDiagnosticsChecksItem['state'];
+
+function getSubscriptionLatencyState(
+  latencyValues: unknown[],
+): SectionCheckState {
+  const hasAvailableLatency = latencyValues.some((item) => Boolean(item));
+  const hasUnavailableLatency = latencyValues.some((item) => !item);
+
+  if (!hasAvailableLatency) {
+    return 'error';
+  }
+
+  if (hasUnavailableLatency) {
+    return 'warning';
+  }
+
+  return 'success';
+}
+
 export async function runSectionsCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS;
 
@@ -37,7 +56,10 @@ export async function runSectionsCheck() {
   const items: Array<IDiagnosticsChecksItem> = [];
 
   for (const section of sections.data) {
-    async function getLatency() {
+    async function getLatency(): Promise<{
+      state: SectionCheckState;
+      latency: string;
+    }> {
       if (section.withTagSelect) {
         const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
           section.code,
@@ -51,17 +73,23 @@ export async function runSectionsCheck() {
           section.outbounds[0];
 
         const isUrlTest = selectedOutbound?.type?.toLowerCase() === 'urltest';
+        const isSubscription = section.proxyConfigType === 'subscription';
 
         const success = latencyGroup.success && !latencyGroup.data.message;
 
         if (success) {
+          const latencyValues = Object.values(latencyGroup.data);
+          const sectionState = isSubscription
+            ? getSubscriptionLatencyState(latencyValues)
+            : 'success';
+
           if (isUrlTest) {
-            const latency = Object.values(latencyGroup.data)
+            const latency = latencyValues
               .map((item) => (item ? `${item}ms` : 'n/a'))
               .join(' / ');
 
             return {
-              success: true,
+              state: sectionState,
               latency: `[${_('Fastest')}] ${latency}`,
             };
           }
@@ -71,19 +99,19 @@ export async function runSectionsCheck() {
 
           if (selectedProxyDelay) {
             return {
-              success: true,
+              state: sectionState,
               latency: `[${selectedOutbound?.displayName ?? ''}] ${selectedProxyDelay}ms`,
             };
           }
 
           return {
-            success: false,
+            state: 'error',
             latency: `[${selectedOutbound?.displayName ?? ''}] ${_('Not responding')}`,
           };
         }
 
         return {
-          success: false,
+          state: 'error',
           latency: _('Not responding'),
         };
       }
@@ -96,21 +124,21 @@ export async function runSectionsCheck() {
 
       if (success) {
         return {
-          success: true,
+          state: 'success',
           latency: `${latencyProxy.data.delay} ms`,
         };
       }
 
       return {
-        success: false,
+        state: 'error',
         latency: _('Not responding'),
       };
     }
 
-    const { latency, success } = await getLatency();
+    const { latency, state } = await getLatency();
 
     items.push({
-      state: success ? 'success' : 'error',
+      state,
       key: section.displayName,
       value: latency,
     });
@@ -118,7 +146,7 @@ export async function runSectionsCheck() {
 
   const allGood = items.every((item) => item.state === 'success');
 
-  const atLeastOneGood = items.some((item) => item.state === 'success');
+  const atLeastOneGood = items.some((item) => item.state !== 'error');
 
   const { state, description } = getMeta({ atLeastOneGood, allGood });
 

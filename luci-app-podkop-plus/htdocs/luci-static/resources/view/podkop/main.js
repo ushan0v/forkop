@@ -1130,6 +1130,7 @@ async function getDashboardSections(options = {}) {
             code: selector?.code || section[".name"],
             sectionName: section[".name"],
             displayName,
+            proxyConfigType,
             subscriptionMetadata,
             outbounds: [
               {
@@ -1152,6 +1153,7 @@ async function getDashboardSections(options = {}) {
           code: selector?.code || section[".name"],
           sectionName: section[".name"],
           displayName,
+          proxyConfigType,
           subscriptionMetadata,
           outbounds: includeSubscriptionCopyState ? await markSubscriptionCopyableOutbounds(
             section[".name"],
@@ -4847,6 +4849,17 @@ function renderWikiDisclaimer(kind) {
 }
 
 // src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts
+function getSubscriptionLatencyState(latencyValues) {
+  const hasAvailableLatency = latencyValues.some((item) => Boolean(item));
+  const hasUnavailableLatency = latencyValues.some((item) => !item);
+  if (!hasAvailableLatency) {
+    return "error";
+  }
+  if (hasUnavailableLatency) {
+    return "warning";
+  }
+  return "success";
+}
 async function runSectionsCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS;
   updateCheckStore({
@@ -4882,56 +4895,59 @@ async function runSectionsCheck() {
           (item) => item.type?.toLowerCase() === "urltest"
         ) ?? section.outbounds[0];
         const isUrlTest = selectedOutbound?.type?.toLowerCase() === "urltest";
-        const success3 = latencyGroup.success && !latencyGroup.data.message;
-        if (success3) {
+        const isSubscription = section.proxyConfigType === "subscription";
+        const success2 = latencyGroup.success && !latencyGroup.data.message;
+        if (success2) {
+          const latencyValues = Object.values(latencyGroup.data);
+          const sectionState = isSubscription ? getSubscriptionLatencyState(latencyValues) : "success";
           if (isUrlTest) {
-            const latency2 = Object.values(latencyGroup.data).map((item) => item ? `${item}ms` : "n/a").join(" / ");
+            const latency2 = latencyValues.map((item) => item ? `${item}ms` : "n/a").join(" / ");
             return {
-              success: true,
+              state: sectionState,
               latency: `[${_("Fastest")}] ${latency2}`
             };
           }
           const selectedProxyDelay = latencyGroup.data?.[selectedOutbound?.code ?? ""];
           if (selectedProxyDelay) {
             return {
-              success: true,
+              state: sectionState,
               latency: `[${selectedOutbound?.displayName ?? ""}] ${selectedProxyDelay}ms`
             };
           }
           return {
-            success: false,
+            state: "error",
             latency: `[${selectedOutbound?.displayName ?? ""}] ${_("Not responding")}`
           };
         }
         return {
-          success: false,
+          state: "error",
           latency: _("Not responding")
         };
       }
       const latencyProxy = await PodkopShellMethods.getClashApiProxyLatency(
         section.code
       );
-      const success2 = latencyProxy.success && !latencyProxy.data.message;
-      if (success2) {
+      const success = latencyProxy.success && !latencyProxy.data.message;
+      if (success) {
         return {
-          success: true,
+          state: "success",
           latency: `${latencyProxy.data.delay} ms`
         };
       }
       return {
-        success: false,
+        state: "error",
         latency: _("Not responding")
       };
     }
-    const { latency, success } = await getLatency();
+    const { latency, state: state2 } = await getLatency();
     items.push({
-      state: success ? "success" : "error",
+      state: state2,
       key: section.displayName,
       value: latency
     });
   }
   const allGood = items.every((item) => item.state === "success");
-  const atLeastOneGood = items.some((item) => item.state === "success");
+  const atLeastOneGood = items.some((item) => item.state !== "error");
   const { state, description } = getMeta({ atLeastOneGood, allGood });
   updateCheckStore({
     order,
