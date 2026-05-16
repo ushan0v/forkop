@@ -71,8 +71,9 @@ export function validateVlessUrl(url: string): ValidationResult {
       'kcp',
     ];
     const validSecurities = ['tls', 'reality', 'none'];
+    const transportType = params.type || 'tcp';
 
-    if (!params.type || !validTypes.includes(params.type))
+    if (!validTypes.includes(transportType))
       return {
         valid: false,
         message: 'Invalid VLESS URL: unsupported or missing type',

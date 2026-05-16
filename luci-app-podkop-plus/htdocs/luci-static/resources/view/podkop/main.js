@@ -290,7 +290,8 @@ function validateVlessUrl(url) {
       "kcp"
     ];
     const validSecurities = ["tls", "reality", "none"];
-    if (!params.type || !validTypes.includes(params.type))
+    const transportType = params.type || "tcp";
+    if (!validTypes.includes(transportType))
       return {
         valid: false,
         message: "Invalid VLESS URL: unsupported or missing type"

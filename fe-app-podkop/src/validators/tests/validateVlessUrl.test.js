@@ -12,6 +12,10 @@ const validUrls = [
     'vless://e95163dc-905e-480a-afe5-20b146288679@127.0.0.1:16399?type=tcp&encryption=none&security=reality&pbk=tqhSkeDR6jsqC-BYCnZWBrdL33g705ba8tV5-ZboWTM&fp=chrome&sni=google.com&sid=f6&spx=%2F#vless-tcp-reality',
   ],
   [
+    'tcp implied + Amnezia reality',
+    'vless://2b173dc1-e7e7-4824-aadc-d072dcefeaca@127.0.0.1:443?encryption=none&security=reality&flow=xtls-rprx-vision&sni=www.googletagmanager.com&fp=chrome&pbk=R3BKE4AvPMYy_JPKB2mB1cLEL8jX-qXR1hYE3Iarsmk&sid=92ca63541ff03a57#AmneziaVPN',
+  ],
+  [
     'tcp + tls',
     'vless://2e9e8288-060e-4da2-8b9f-a1c81826feb7@127.0.0.1:19316?type=tcp&encryption=none&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&sni=google.com#vless-tcp-tls',
   ],
@@ -60,7 +64,7 @@ const invalidUrls = [
   ['No host', 'vless://uuid@:443?type=tcp&security=tls'],
   ['No port', 'vless://uuid@127.0.0.1?type=tcp&security=tls'],
   ['Invalid port', 'vless://uuid@127.0.0.1:abc?type=tcp&security=tls'],
-  ['Missing type', 'vless://uuid@127.0.0.1:443?security=tls'],
+  ['Unsupported type', 'vless://uuid@127.0.0.1:443?type=quic&security=tls'],
   ['Missing security', 'vless://uuid@127.0.0.1:443?type=tcp'],
   [
     'reality without pbk',

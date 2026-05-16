@@ -243,7 +243,7 @@ _add_outbound_transport() {
     local transport
     transport=$(url_get_query_param "$url" "type")
     case "$transport" in
-    tcp | raw) ;;
+    "" | tcp | raw) ;;
     http | h2)
         local http_path http_hosts
         http_path=$(url_get_query_param "$url" "path")

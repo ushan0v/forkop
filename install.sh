@@ -23,6 +23,21 @@ BYEDPI_ALREADY_PRESENT=0
 BYEDPI_REQUESTED=0
 BYEDPI_SKIPPED_REASON=""
 BYEDPI_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_BYEDPI:-${INSTALL_BYEDPI:-}}"
+AWG_ALREADY_PRESENT=0
+AWG_REQUESTED=0
+AWG_SKIPPED_REASON=""
+AWG_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_AWG:-${INSTALL_AWG:-}}"
+AWG_OPENWRT_VERSION=""
+AWG_TARGET=""
+AWG_SUBTARGET=""
+AWG_ARCH=""
+AWG_VERSION=""
+AWG_RELEASE_TAG_RESOLVED=""
+AWG_BASE_URL=""
+AWG_PACKAGE_EXT=""
+AWG_LUCI_PACKAGE_NAME=""
+AWG_PACKAGE_FILES=""
+AWG_PACKAGE_VERSION=""
 SING_BOX_INSTALL_CHOICE="${PODKOP_PLUS_SING_BOX:-${SING_BOX_FLAVOR:-}}"
 SING_BOX_ACTION="keep"
 SING_BOX_CURRENT_VERSION=""
@@ -81,13 +96,15 @@ fail() {
 
 usage() {
     cat <<EOF
-Usage: $0 [--with-zapret|--without-zapret] [--with-byedpi|--without-byedpi] [--sing-box=stock|extended|keep]
+Usage: $0 [--with-zapret|--without-zapret] [--with-byedpi|--without-byedpi] [--with-awg|--without-awg] [--sing-box=stock|extended|keep]
 
 Options:
   --with-zapret       Install the optional external zapret provider package.
   --without-zapret    Install Podkop Plus without the zapret provider.
   --with-byedpi       Install the optional external ByeDPI provider package.
   --without-byedpi    Install Podkop Plus without the ByeDPI provider.
+  --with-awg          Install optional AmneziaWG OpenWrt packages.
+  --without-awg       Install Podkop Plus without AmneziaWG packages.
   --sing-box=stock    Use the regular stable sing-box package from OpenWrt.
   --sing-box=extended Install or refresh sing-box-extended for XHTTP support.
   --sing-box=keep     Keep the current sing-box flavor.
@@ -108,6 +125,12 @@ parse_args() {
                 ;;
             --without-byedpi)
                 BYEDPI_INSTALL_CHOICE=0
+                ;;
+            --with-awg)
+                AWG_INSTALL_CHOICE=1
+                ;;
+            --without-awg)
+                AWG_INSTALL_CHOICE=0
                 ;;
             --with-sing-box-extended)
                 SING_BOX_INSTALL_CHOICE="extended"
@@ -154,6 +177,20 @@ clear_byedpi_download_state() {
     BYEDPI_PACKAGE_FILE=""
     BYEDPI_PACKAGE_VERSION=""
     BYEDPI_ARCH=""
+}
+
+clear_awg_download_state() {
+    AWG_OPENWRT_VERSION=""
+    AWG_TARGET=""
+    AWG_SUBTARGET=""
+    AWG_ARCH=""
+    AWG_VERSION=""
+    AWG_RELEASE_TAG_RESOLVED=""
+    AWG_BASE_URL=""
+    AWG_PACKAGE_EXT=""
+    AWG_LUCI_PACKAGE_NAME=""
+    AWG_PACKAGE_FILES=""
+    AWG_PACKAGE_VERSION=""
 }
 
 read_openwrt_release_value() {
@@ -266,6 +303,16 @@ is_byedpi_present() {
     pkg_is_installed "byedpi" || [ -x /usr/bin/ciadpi ] || [ -x /etc/init.d/byedpi ]
 }
 
+is_awg_present() {
+    pkg_is_installed "kmod-amneziawg" ||
+        pkg_is_installed "amneziawg-tools" ||
+        pkg_is_installed "luci-proto-amneziawg" ||
+        pkg_is_installed "luci-app-amneziawg" ||
+        command_exists awg ||
+        command_exists awg-quick ||
+        [ -d /sys/module/amneziawg ]
+}
+
 warn_zapret_unavailable() {
     reason="$1"
 
@@ -283,6 +330,16 @@ warn_byedpi_unavailable() {
         warn "$reason Keeping the existing ByeDPI provider."
     else
         warn "$reason Continuing without ByeDPI provider."
+    fi
+}
+
+warn_awg_unavailable() {
+    reason="$1"
+
+    if [ "$AWG_ALREADY_PRESENT" -eq 1 ]; then
+        warn "$reason Keeping the existing AmneziaWG installation."
+    else
+        warn "$reason Continuing without AmneziaWG packages."
     fi
 }
 
@@ -1305,6 +1362,133 @@ resolve_byedpi_release() {
     BYEDPI_PACKAGE_VERSION="$(extract_package_version "$BYEDPI_PACKAGE_NAME")"
 }
 
+detect_awg_release_context() {
+    system_board_json=""
+    release_target=""
+
+    clear_awg_download_state
+
+    if command_exists ubus && command_exists jsonfilter; then
+        system_board_json="$(ubus call system board 2>/dev/null || true)"
+        if [ -n "$system_board_json" ]; then
+            AWG_OPENWRT_VERSION="$(printf '%s' "$system_board_json" | jsonfilter -e '@.release.version' 2>/dev/null | head -n 1)"
+            release_target="$(printf '%s' "$system_board_json" | jsonfilter -e '@.release.target' 2>/dev/null | head -n 1)"
+            AWG_ARCH="$(printf '%s' "$system_board_json" | jsonfilter -e '@.release.arch' 2>/dev/null | head -n 1)"
+        fi
+    fi
+
+    [ -n "$AWG_OPENWRT_VERSION" ] || AWG_OPENWRT_VERSION="$(read_openwrt_release_value "DISTRIB_RELEASE")"
+    [ -n "$release_target" ] || release_target="$(read_openwrt_release_value "DISTRIB_TARGET")"
+    [ -n "$AWG_ARCH" ] || AWG_ARCH="$(read_openwrt_release_value "DISTRIB_ARCH")"
+    [ -n "$AWG_ARCH" ] || AWG_ARCH="$TARGET_ARCH"
+
+    if [ -z "$AWG_OPENWRT_VERSION" ] || [ -z "$release_target" ] || [ -z "$AWG_ARCH" ]; then
+        warn_awg_unavailable "Failed to detect OpenWrt release, target or package architecture for AmneziaWG."
+        AWG_SKIPPED_REASON="OpenWrt release context unavailable"
+        clear_awg_download_state
+        return 1
+    fi
+
+    case "$release_target" in
+        */*)
+            AWG_TARGET="${release_target%%/*}"
+            AWG_SUBTARGET="${release_target#*/}"
+            ;;
+        *)
+            warn_awg_unavailable "Unsupported OpenWrt target format for AmneziaWG: $release_target."
+            AWG_SKIPPED_REASON="unsupported OpenWrt target format"
+            clear_awg_download_state
+            return 1
+            ;;
+    esac
+
+    AWG_VERSION="1.0"
+    AWG_LUCI_PACKAGE_NAME="luci-app-amneziawg"
+    if version_ge "$AWG_OPENWRT_VERSION" "24.10.3"; then
+        AWG_VERSION="2.0"
+        AWG_LUCI_PACKAGE_NAME="luci-proto-amneziawg"
+    fi
+
+    if [ "$PKG_IS_APK" -eq 1 ]; then
+        AWG_PACKAGE_EXT="apk"
+    else
+        AWG_PACKAGE_EXT="ipk"
+    fi
+
+    AWG_RELEASE_TAG_RESOLVED="v$AWG_OPENWRT_VERSION"
+    AWG_BASE_URL="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/${AWG_RELEASE_TAG_RESOLVED}"
+    return 0
+}
+
+append_awg_package_file() {
+    package_file="$1"
+
+    if [ -n "$AWG_PACKAGE_FILES" ]; then
+        AWG_PACKAGE_FILES="$AWG_PACKAGE_FILES $package_file"
+    else
+        AWG_PACKAGE_FILES="$package_file"
+    fi
+}
+
+download_awg_package() {
+    package_name="$1"
+    package_ext="$AWG_PACKAGE_EXT"
+    fallback_ext="ipk"
+    candidate_name=""
+    candidate_file=""
+
+    [ "$package_ext" = "ipk" ] && fallback_ext="apk"
+
+    for ext in "$package_ext" "$fallback_ext"; do
+        candidate_name="${package_name}_v${AWG_OPENWRT_VERSION}_${AWG_ARCH}_${AWG_TARGET}_${AWG_SUBTARGET}.${ext}"
+        candidate_file="$TMP_DIR/$candidate_name"
+
+        if download_with_retry "$AWG_BASE_URL/$candidate_name" "$candidate_file" "$candidate_name"; then
+            append_awg_package_file "$candidate_file"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+download_awg_packages() {
+    [ "$AWG_REQUESTED" -eq 1 ] || return 0
+
+    detect_awg_release_context || return 0
+
+    msg "Resolving AmneziaWG $AWG_VERSION packages from Slava-Shchipunov/awg-openwrt@$AWG_RELEASE_TAG_RESOLVED"
+
+    if ! download_awg_package "kmod-amneziawg"; then
+        warn_awg_unavailable "Failed to download kmod-amneziawg for OpenWrt $AWG_OPENWRT_VERSION ($AWG_ARCH, $AWG_TARGET/$AWG_SUBTARGET)."
+        AWG_SKIPPED_REASON="kmod-amneziawg package unavailable"
+        clear_awg_download_state
+        return 0
+    fi
+
+    if ! download_awg_package "amneziawg-tools"; then
+        warn_awg_unavailable "Failed to download amneziawg-tools for OpenWrt $AWG_OPENWRT_VERSION ($AWG_ARCH, $AWG_TARGET/$AWG_SUBTARGET)."
+        AWG_SKIPPED_REASON="amneziawg-tools package unavailable"
+        clear_awg_download_state
+        return 0
+    fi
+
+    if ! download_awg_package "$AWG_LUCI_PACKAGE_NAME"; then
+        warn_awg_unavailable "Failed to download $AWG_LUCI_PACKAGE_NAME for OpenWrt $AWG_OPENWRT_VERSION ($AWG_ARCH, $AWG_TARGET/$AWG_SUBTARGET)."
+        AWG_SKIPPED_REASON="$AWG_LUCI_PACKAGE_NAME package unavailable"
+        clear_awg_download_state
+        return 0
+    fi
+
+    if [ "$AWG_VERSION" = "2.0" ] && [ "$PODKOP_PLUS_I18N_REQUESTED" -eq 1 ]; then
+        if ! download_awg_package "luci-i18n-amneziawg-ru"; then
+            warn "Russian LuCI translation for AmneziaWG was not downloaded; continuing with core AmneziaWG packages."
+        fi
+    fi
+
+    AWG_PACKAGE_VERSION="$AWG_OPENWRT_VERSION"
+}
+
 decide_zapret_installation() {
     case "$ZAPRET_INSTALL_CHOICE" in
         0|no|NO|false|FALSE|n|N)
@@ -1391,6 +1575,53 @@ decide_byedpi_installation() {
 
     BYEDPI_SKIPPED_REASON="installation declined by user"
     warn "Continuing without ByeDPI provider."
+}
+
+decide_awg_installation() {
+    case "$AWG_INSTALL_CHOICE" in
+        0|no|NO|false|FALSE|n|N)
+            if is_awg_present; then
+                AWG_ALREADY_PRESENT=1
+                AWG_SKIPPED_REASON="package update disabled by installer option"
+                warn "Detected an existing AmneziaWG installation, but AmneziaWG update is disabled by installer option."
+            else
+                AWG_SKIPPED_REASON="installation disabled by installer option"
+                warn "Continuing without AmneziaWG packages."
+            fi
+            return 0
+            ;;
+    esac
+
+    case "$AWG_INSTALL_CHOICE" in
+        1|yes|YES|true|TRUE|y|Y)
+            if is_awg_present; then
+                AWG_ALREADY_PRESENT=1
+                msg "Detected an existing AmneziaWG installation. Refreshing packages by installer option."
+            fi
+            AWG_REQUESTED=1
+            return 0
+            ;;
+    esac
+
+    if is_awg_present; then
+        AWG_ALREADY_PRESENT=1
+        msg "Detected an existing AmneziaWG installation. Keeping it unchanged."
+        return 0
+    fi
+
+    if [ ! -t 0 ]; then
+        AWG_SKIPPED_REASON="not requested; rerun with --with-awg to install AmneziaWG OpenWrt packages"
+        warn "Continuing without AmneziaWG packages."
+        return 0
+    fi
+
+    if confirm_prompt "Install optional AmneziaWG OpenWrt packages for action=vpn interfaces?"; then
+        AWG_REQUESTED=1
+        return 0
+    fi
+
+    AWG_SKIPPED_REASON="installation declined by user"
+    warn "Continuing without AmneziaWG packages."
 }
 
 decide_i18n_installation() {
@@ -1501,6 +1732,16 @@ install_packages() {
         disable_installed_byedpi_service
     fi
 
+    if [ -n "$AWG_PACKAGE_FILES" ]; then
+        if [ "$AWG_LUCI_PACKAGE_NAME" = "luci-proto-amneziawg" ]; then
+            pkg_remove_if_installed "luci-app-amneziawg"
+        else
+            pkg_remove_if_installed "luci-proto-amneziawg"
+        fi
+        # shellcheck disable=SC2086
+        pkg_install_files $AWG_PACKAGE_FILES || fail "AmneziaWG package installation failed"
+    fi
+
     pkg_install_files "$PODKOP_PLUS_BACKEND_FILE" || fail "podkop-plus installation failed"
     pkg_install_files "$PODKOP_PLUS_APP_FILE" || fail "luci-app-podkop-plus installation failed"
 
@@ -1569,6 +1810,12 @@ post_install() {
         warn "Podkop Plus manages only its own ciadpi processes for action=byedpi."
         msg "Standalone /etc/init.d/byedpi service and autostart were disabled after provider installation."
     fi
+
+    if [ -n "$AWG_PACKAGE_FILES" ]; then
+        warn "AmneziaWG was installed as regular OpenWrt VPN interface support."
+        warn "Import or create the AWG interface in LuCI, keep Route Allowed IPs disabled, then use it in Podkop Plus with action=vpn."
+        warn "The installer does not rewrite /etc/config/network or /etc/config/podkop-plus."
+    fi
 }
 
 main() {
@@ -1583,6 +1830,7 @@ main() {
 
     decide_zapret_installation
     decide_byedpi_installation
+    decide_awg_installation
     decide_sing_box_installation
     decide_i18n_installation
 
@@ -1600,7 +1848,7 @@ main() {
     remove_conflicting_dns_proxy
     remove_old_sing_box_if_needed
 
-    if [ "$ZAPRET_REQUESTED" -eq 1 ] || [ "$BYEDPI_REQUESTED" -eq 1 ]; then
+    if [ "$ZAPRET_REQUESTED" -eq 1 ] || [ "$BYEDPI_REQUESTED" -eq 1 ] || [ "$AWG_REQUESTED" -eq 1 ]; then
         resolve_arch_candidates
     fi
 
@@ -1610,6 +1858,10 @@ main() {
 
     if [ "$BYEDPI_REQUESTED" -eq 1 ]; then
         resolve_byedpi_release
+    fi
+
+    if [ "$AWG_REQUESTED" -eq 1 ]; then
+        download_awg_packages
     fi
 
     cleanup_legacy_installation
@@ -1640,6 +1892,15 @@ main() {
         msg "Using the existing ByeDPI installation"
     elif [ -n "$BYEDPI_SKIPPED_REASON" ]; then
         warn "ByeDPI was not installed: $BYEDPI_SKIPPED_REASON"
+    fi
+
+    if [ -n "$AWG_PACKAGE_VERSION" ]; then
+        msg "AmneziaWG packages installed for OpenWrt $AWG_PACKAGE_VERSION ($AWG_ARCH, $AWG_TARGET/$AWG_SUBTARGET)"
+        msg "AmneziaWG source: Slava-Shchipunov/awg-openwrt@${AWG_RELEASE_TAG_RESOLVED}"
+    elif [ "$AWG_ALREADY_PRESENT" -eq 1 ]; then
+        msg "Using the existing AmneziaWG installation"
+    elif [ -n "$AWG_SKIPPED_REASON" ]; then
+        warn "AmneziaWG was not installed: $AWG_SKIPPED_REASON"
     fi
 
     warn "Open LuCI and review your rules before enabling Podkop Plus"
