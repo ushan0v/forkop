@@ -16,17 +16,22 @@ ZAPRET_ARCH=""
 ZAPRET_ARCH_CANDIDATES=""
 ZAPRET_ALREADY_PRESENT=0
 ZAPRET_INSTALLED=0
+ZAPRET_UP_TO_DATE=0
+ZAPRET_INSTALLED_VERSION=""
 ZAPRET_REQUESTED=0
 ZAPRET_SKIPPED_REASON=""
 ZAPRET_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_ZAPRET:-${INSTALL_ZAPRET:-}}"
 BYEDPI_ARCH=""
 BYEDPI_ALREADY_PRESENT=0
 BYEDPI_INSTALLED=0
+BYEDPI_UP_TO_DATE=0
+BYEDPI_INSTALLED_VERSION=""
 BYEDPI_REQUESTED=0
 BYEDPI_SKIPPED_REASON=""
 BYEDPI_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_BYEDPI:-${INSTALL_BYEDPI:-}}"
 AWG_ALREADY_PRESENT=0
 AWG_INSTALLED=0
+AWG_UP_TO_DATE=0
 AWG_REQUESTED=0
 AWG_SKIPPED_REASON=""
 AWG_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_AWG:-${INSTALL_AWG:-}}"
@@ -81,6 +86,8 @@ BYEDPI_PACKAGE_URL=""
 BYEDPI_PACKAGE_NAME=""
 BYEDPI_PACKAGE_FILE=""
 BYEDPI_PACKAGE_VERSION=""
+
+OPTIONAL_INSTALLED_VERSION=""
 
 command -v apk >/dev/null 2>&1 && PKG_IS_APK=1
 
@@ -171,6 +178,8 @@ clear_zapret_download_state() {
     ZAPRET_PACKAGE_VERSION=""
     ZAPRET_ARCH=""
     ZAPRET_INSTALLED=0
+    ZAPRET_UP_TO_DATE=0
+    ZAPRET_INSTALLED_VERSION=""
 }
 
 clear_byedpi_download_state() {
@@ -182,6 +191,8 @@ clear_byedpi_download_state() {
     BYEDPI_PACKAGE_VERSION=""
     BYEDPI_ARCH=""
     BYEDPI_INSTALLED=0
+    BYEDPI_UP_TO_DATE=0
+    BYEDPI_INSTALLED_VERSION=""
 }
 
 clear_awg_download_state() {
@@ -197,6 +208,7 @@ clear_awg_download_state() {
     AWG_PACKAGE_FILES=""
     AWG_PACKAGE_VERSION=""
     AWG_INSTALLED=0
+    AWG_UP_TO_DATE=0
 }
 
 read_openwrt_release_value() {
@@ -299,6 +311,66 @@ pkg_is_installed() {
     else
         opkg list-installed 2>/dev/null | grep -Eq "^${pkg_name}([[:space:]-]|$)"
     fi
+}
+
+get_installed_package_version() {
+    pkg_name="$1"
+
+    if [ "$PKG_IS_APK" -eq 1 ]; then
+        apk info -e "$pkg_name" >/dev/null 2>&1 || return 0
+        apk info -v "$pkg_name" 2>/dev/null | sed "s/^${pkg_name}-//" | sed -n '1p'
+    else
+        opkg list-installed 2>/dev/null | awk -v pkg="$pkg_name" '$1 == pkg && $2 == "-" {print $3; exit}'
+    fi
+}
+
+package_version_newer() {
+    candidate_version="$1"
+    installed_version="$2"
+    apk_compare_result=""
+
+    [ -n "$candidate_version" ] || return 1
+    [ -n "$installed_version" ] || return 1
+    [ "$candidate_version" != "$installed_version" ] || return 1
+
+    if [ "$PKG_IS_APK" -eq 1 ] && command_exists apk; then
+        apk_compare_result="$(apk version -t "$candidate_version" "$installed_version" 2>/dev/null || true)"
+        [ "$apk_compare_result" = ">" ]
+        return $?
+    fi
+
+    if command_exists opkg; then
+        opkg compare-versions "$candidate_version" ">" "$installed_version" >/dev/null 2>&1
+        return $?
+    fi
+
+    version_ge "$candidate_version" "$installed_version"
+}
+
+optional_package_update_needed() {
+    provider_label="$1"
+    package_name="$2"
+    candidate_version="$3"
+
+    if [ -z "$candidate_version" ]; then
+        warn "$provider_label release was found, but the package version could not be parsed."
+        return 2
+    fi
+
+    OPTIONAL_INSTALLED_VERSION="$(get_installed_package_version "$package_name")"
+
+    if [ -z "$OPTIONAL_INSTALLED_VERSION" ]; then
+        warn "$provider_label is already present, but the installed package version could not be detected."
+        return 2
+    fi
+
+    if package_version_newer "$candidate_version" "$OPTIONAL_INSTALLED_VERSION"; then
+        msg "Found $provider_label update: $OPTIONAL_INSTALLED_VERSION -> $candidate_version"
+        return 0
+    fi
+
+    msg "$provider_label is already up to date ($OPTIONAL_INSTALLED_VERSION)"
+    return 1
 }
 
 is_zapret_present() {
@@ -584,6 +656,42 @@ extract_package_version() {
             printf '%s\n' "$package_name"
             ;;
     esac
+}
+
+extract_arch_package_version() {
+    package_name="$1"
+    package_arch="$2"
+    version=""
+
+    version="$(printf '%s\n' "$package_name" | sed 's/\.ipk$//;s/\.apk$//')"
+
+    case "$version" in
+        zapret_*)
+            version="${version#zapret_}"
+            ;;
+        zapret-*)
+            version="${version#zapret-}"
+            ;;
+        byedpi_*)
+            version="${version#byedpi_}"
+            ;;
+        byedpi-*)
+            version="${version#byedpi-}"
+            ;;
+    esac
+
+    if [ -n "$package_arch" ]; then
+        case "$version" in
+            *_$package_arch)
+                version="${version%_$package_arch}"
+                ;;
+            *-$package_arch)
+                version="${version%-$package_arch}"
+                ;;
+        esac
+    fi
+
+    printf '%s\n' "$version"
 }
 
 fetch_github_release_json() {
@@ -1365,7 +1473,31 @@ resolve_byedpi_release() {
         return 0
     fi
 
-    BYEDPI_PACKAGE_VERSION="$(extract_package_version "$BYEDPI_PACKAGE_NAME")"
+    BYEDPI_PACKAGE_VERSION="$(extract_arch_package_version "$BYEDPI_PACKAGE_NAME" "$BYEDPI_ARCH")"
+
+    if [ "$BYEDPI_ALREADY_PRESENT" -eq 1 ]; then
+        optional_package_update_needed "ByeDPI" "byedpi" "$BYEDPI_PACKAGE_VERSION"
+        update_status=$?
+        BYEDPI_INSTALLED_VERSION="$OPTIONAL_INSTALLED_VERSION"
+
+        case "$update_status" in
+            0)
+                return 0
+                ;;
+            1)
+                BYEDPI_UP_TO_DATE=1
+                BYEDPI_PACKAGE_URL=""
+                BYEDPI_PACKAGE_NAME=""
+                BYEDPI_PACKAGE_VERSION=""
+                return 0
+                ;;
+            *)
+                BYEDPI_SKIPPED_REASON="installed version unavailable"
+                clear_byedpi_download_state
+                return 0
+                ;;
+        esac
+    fi
 }
 
 detect_awg_release_context() {
@@ -1484,6 +1616,65 @@ extract_ipk_control_field() {
     printf '%s\n' "$value"
 }
 
+extract_apk_control_field() {
+    package_file="$1"
+    field_name="$2"
+    metadata_key=""
+
+    case "$field_name" in
+        Package)
+            metadata_key="name"
+            ;;
+        Version)
+            metadata_key="version"
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    command_exists apk || return 0
+    apk adbdump "$package_file" 2>/dev/null | sed -n "s/^  ${metadata_key}:[[:space:]]*//p" | sed -n '1p'
+}
+
+extract_package_control_field() {
+    package_file="$1"
+    field_name="$2"
+
+    case "$package_file" in
+        *.ipk)
+            extract_ipk_control_field "$package_file" "$field_name"
+            ;;
+        *.apk)
+            extract_apk_control_field "$package_file" "$field_name"
+            ;;
+    esac
+}
+
+extract_downloaded_package_name() {
+    package_file="$1"
+    package_name=""
+
+    package_name="$(extract_package_control_field "$package_file" "Package")"
+    if [ -z "$package_name" ]; then
+        package_name="$(basename "$package_file" | sed 's/[._-]v\?[0-9].*$//')"
+    fi
+
+    printf '%s\n' "$package_name"
+}
+
+extract_downloaded_package_version() {
+    package_file="$1"
+    package_version=""
+
+    package_version="$(extract_package_control_field "$package_file" "Version")"
+    if [ -z "$package_version" ]; then
+        package_version="$(extract_package_version "$(basename "$package_file")")"
+    fi
+
+    printf '%s\n' "$package_version"
+}
+
 get_installed_kernel_package_version() {
     if [ "$PKG_IS_APK" -eq 1 ]; then
         apk info -v kernel 2>/dev/null | sed 's/^kernel-//' | sed -n '1p'
@@ -1528,6 +1719,65 @@ validate_awg_kmod_package() {
     return 0
 }
 
+validate_awg_update_needed() {
+    update_needed=0
+    comparable_packages=0
+    package_name=""
+    candidate_version=""
+    installed_version=""
+
+    [ "$AWG_ALREADY_PRESENT" -eq 1 ] || return 0
+
+    for package_file in $AWG_PACKAGE_FILES; do
+        package_name="$(extract_downloaded_package_name "$package_file")"
+        candidate_version="$(extract_downloaded_package_version "$package_file")"
+
+        if [ -z "$package_name" ] || [ -z "$candidate_version" ]; then
+            warn_awg_unavailable "Failed to parse downloaded AmneziaWG package metadata."
+            AWG_SKIPPED_REASON="package metadata unavailable"
+            clear_awg_download_state
+            return 2
+        fi
+
+        case "$package_name" in
+            luci-i18n-amneziawg-*)
+                [ "$PODKOP_PLUS_I18N_REQUESTED" -eq 1 ] || continue
+                ;;
+        esac
+
+        comparable_packages=$((comparable_packages + 1))
+        installed_version="$(get_installed_package_version "$package_name")"
+
+        if [ -z "$installed_version" ]; then
+            msg "AmneziaWG package $package_name is missing; installing $candidate_version."
+            update_needed=1
+            continue
+        fi
+
+        if package_version_newer "$candidate_version" "$installed_version"; then
+            msg "Found AmneziaWG package update for $package_name: $installed_version -> $candidate_version"
+            update_needed=1
+        fi
+    done
+
+    if [ "$comparable_packages" -eq 0 ]; then
+        warn_awg_unavailable "Failed to parse downloaded AmneziaWG package metadata."
+        AWG_SKIPPED_REASON="package metadata unavailable"
+        clear_awg_download_state
+        return 2
+    fi
+
+    if [ "$update_needed" -eq 1 ]; then
+        return 0
+    fi
+
+    msg "AmneziaWG packages are already up to date."
+    AWG_UP_TO_DATE=1
+    clear_awg_download_state
+    AWG_UP_TO_DATE=1
+    return 1
+}
+
 download_awg_packages() {
     [ "$AWG_REQUESTED" -eq 1 ] || return 0
 
@@ -1563,6 +1813,7 @@ download_awg_packages() {
     fi
 
     validate_awg_kmod_package || return 0
+    validate_awg_update_needed || return 0
     AWG_PACKAGE_VERSION="$AWG_OPENWRT_VERSION"
 }
 
@@ -1682,7 +1933,8 @@ decide_awg_installation() {
 
     if is_awg_present; then
         AWG_ALREADY_PRESENT=1
-        msg "Detected an existing AmneziaWG installation. Keeping it unchanged."
+        AWG_REQUESTED=1
+        msg "Detected an existing AmneziaWG installation. Checking for updated packages."
         return 0
     fi
 
@@ -1760,7 +2012,6 @@ download_and_extract_zapret_package() {
 
     ZAPRET_PACKAGE_NAME="$(basename "$inner_package_path")"
     ZAPRET_PACKAGE_FILE="$TMP_DIR/$ZAPRET_PACKAGE_NAME"
-    ZAPRET_PACKAGE_VERSION="$(extract_package_version "$ZAPRET_PACKAGE_NAME")"
 
     if ! unzip -p "$bundle_file" "$inner_package_path" > "$ZAPRET_PACKAGE_FILE"; then
         warn_zapret_unavailable "Failed to extract $ZAPRET_PACKAGE_NAME."
@@ -1774,6 +2025,34 @@ download_and_extract_zapret_package() {
         ZAPRET_SKIPPED_REASON="empty package archive"
         clear_zapret_download_state
         return 0
+    fi
+
+    ZAPRET_PACKAGE_VERSION="$(extract_package_control_field "$ZAPRET_PACKAGE_FILE" "Version")"
+    [ -n "$ZAPRET_PACKAGE_VERSION" ] || ZAPRET_PACKAGE_VERSION="$(extract_arch_package_version "$ZAPRET_PACKAGE_NAME" "$ZAPRET_ARCH")"
+
+    if [ "$ZAPRET_ALREADY_PRESENT" -eq 1 ]; then
+        optional_package_update_needed "zapret" "zapret" "$ZAPRET_PACKAGE_VERSION"
+        update_status=$?
+        ZAPRET_INSTALLED_VERSION="$OPTIONAL_INSTALLED_VERSION"
+
+        case "$update_status" in
+            0)
+                return 0
+                ;;
+            1)
+                ZAPRET_UP_TO_DATE=1
+                rm -f "$ZAPRET_PACKAGE_FILE"
+                ZAPRET_PACKAGE_FILE=""
+                ZAPRET_PACKAGE_NAME=""
+                ZAPRET_PACKAGE_VERSION=""
+                return 0
+                ;;
+            *)
+                ZAPRET_SKIPPED_REASON="installed version unavailable"
+                clear_zapret_download_state
+                return 0
+                ;;
+        esac
     fi
 }
 
@@ -1972,6 +2251,8 @@ main() {
     if [ "$ZAPRET_INSTALLED" -eq 1 ]; then
         msg "zapret $ZAPRET_PACKAGE_VERSION installed for architecture $ZAPRET_ARCH"
         msg "zapret source: remittor/zapret-openwrt@${ZAPRET_RELEASE_TAG_RESOLVED}"
+    elif [ "$ZAPRET_UP_TO_DATE" -eq 1 ]; then
+        msg "zapret is already up to date ($ZAPRET_INSTALLED_VERSION)"
     elif [ -n "$ZAPRET_SKIPPED_REASON" ]; then
         warn "zapret was not installed or updated: $ZAPRET_SKIPPED_REASON"
     elif [ "$ZAPRET_ALREADY_PRESENT" -eq 1 ]; then
@@ -1981,6 +2262,8 @@ main() {
     if [ "$BYEDPI_INSTALLED" -eq 1 ]; then
         msg "ByeDPI $BYEDPI_PACKAGE_VERSION installed for architecture $BYEDPI_ARCH"
         msg "ByeDPI source: DPITrickster/ByeDPI-OpenWrt@${BYEDPI_RELEASE_TAG_RESOLVED}"
+    elif [ "$BYEDPI_UP_TO_DATE" -eq 1 ]; then
+        msg "ByeDPI is already up to date ($BYEDPI_INSTALLED_VERSION)"
     elif [ -n "$BYEDPI_SKIPPED_REASON" ]; then
         warn "ByeDPI was not installed or updated: $BYEDPI_SKIPPED_REASON"
     elif [ "$BYEDPI_ALREADY_PRESENT" -eq 1 ]; then
@@ -1990,6 +2273,8 @@ main() {
     if [ "$AWG_INSTALLED" -eq 1 ]; then
         msg "AmneziaWG packages installed for OpenWrt $AWG_PACKAGE_VERSION ($AWG_ARCH, $AWG_TARGET/$AWG_SUBTARGET)"
         msg "AmneziaWG source: Slava-Shchipunov/awg-openwrt@${AWG_RELEASE_TAG_RESOLVED}"
+    elif [ "$AWG_UP_TO_DATE" -eq 1 ]; then
+        msg "AmneziaWG packages are already up to date"
     elif [ -n "$AWG_SKIPPED_REASON" ]; then
         warn "AmneziaWG was not installed or updated: $AWG_SKIPPED_REASON"
     elif [ "$AWG_ALREADY_PRESENT" -eq 1 ]; then
