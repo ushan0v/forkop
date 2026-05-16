@@ -9,8 +9,6 @@
 [![sing-box-extended](https://img.shields.io/badge/sing--box--extended-shtorm--7-blue)](https://github.com/shtorm-7/sing-box-extended/releases)
 [![awg-openwrt](https://img.shields.io/badge/awg--openwrt-Slava--Shchipunov-blue)](https://github.com/Slava-Shchipunov/awg-openwrt/releases)
 
-Podkop Plus расширяет возможности оригинального [Podkop](https://github.com/itdoginfo/podkop): обновленный LuCI-интерфейс, гибкое управление секциями, поддержка подписок, расширенные условия правил, интеграция Zapret.
-
 <table>
   <tr>
     <td>
