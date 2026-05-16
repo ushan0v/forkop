@@ -2497,8 +2497,6 @@ function createSectionContent(section) {
       "Specify local IP addresses or subnets whose traffic will always be routed through the configured route",
     ),
   });
-  o.depends("action", "proxy");
-  o.depends("action", "vpn");
 
   const builtInRulesetOption = section.taboption(
     "conditions",

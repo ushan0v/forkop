@@ -4765,15 +4765,16 @@ include_source_ips_in_routing_handler() {
 
     local action fully_routed_ips rule_tag
     action="$(get_rule_action "$section")"
-    [ "$action" = "proxy" ] || [ "$action" = "vpn" ] || return 0
+    [ -n "$action" ] || return 0
+
+    if [ "$action" = "zapret" ] && ! is_zapret_installed; then
+        return 0
+    fi
 
     config_get fully_routed_ips "$section" "fully_routed_ips"
     if [ -n "$fully_routed_ips" ]; then
         rule_tag="$(gen_id)"
-        config=$(
-            sing_box_cm_add_route_rule \
-                "$config" "$rule_tag" "$SB_TPROXY_INBOUND_TAG" "$(get_outbound_tag_by_section "$section")"
-        )
+        create_route_rule_for_action "$section" "$action" "$rule_tag"
         config_list_foreach "$section" "fully_routed_ips" include_source_ip_in_routing_handler "$rule_tag"
     fi
 }
