@@ -407,21 +407,6 @@ async function renderServicesInfoWidget() {
             : 'pdk_dashboard-page__widgets-section__item__row--error',
         },
       },
-      {
-        key: 'Zapret',
-        value: !servicesInfoWidget.data.zapretInstalled
-          ? _('✘ Not installed')
-          : servicesInfoWidget.data.zapret
-            ? _('✔ Running')
-            : _('✘ Stopped'),
-        attributes: {
-          class:
-            servicesInfoWidget.data.zapretInstalled &&
-            servicesInfoWidget.data.zapret
-              ? 'pdk_dashboard-page__widgets-section__item__row--success'
-              : 'pdk_dashboard-page__widgets-section__item__row--error',
-        },
-      },
     ],
   });
 

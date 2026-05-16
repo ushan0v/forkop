@@ -167,8 +167,6 @@ export interface StoreType {
       podkopLifecycleState: string;
       podkopLifecycleAction: string;
       podkopLifecycleBusy: number;
-      zapret: number;
-      zapretInstalled: number;
     };
   };
   sectionsWidget: {
@@ -199,6 +197,8 @@ export interface StoreType {
     sing_box_version: string;
     zapret_version: string;
     zapret_installed: number;
+    byedpi_version: string;
+    byedpi_installed: number;
     openwrt_version: string;
     device_model: string;
   };
@@ -235,8 +235,6 @@ const initialStore: StoreType = {
       podkopLifecycleState: 'unknown',
       podkopLifecycleAction: 'none',
       podkopLifecycleBusy: 0,
-      zapret: 0,
-      zapretInstalled: 0,
     },
   },
   sectionsWidget: {

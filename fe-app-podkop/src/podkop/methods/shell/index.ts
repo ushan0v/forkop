@@ -18,6 +18,10 @@ export const PodkopShellMethods = {
     callBaseMethod<Podkop.ZapretCheckResult>(
       Podkop.AvailableMethods.CHECK_ZAPRET_RUNTIME,
     ),
+  checkByedpiRuntime: async () =>
+    callBaseMethod<Podkop.ByedpiCheckResult>(
+      Podkop.AvailableMethods.CHECK_BYEDPI_RUNTIME,
+    ),
   getStatus: async () =>
     callBaseMethod<Podkop.GetStatus>(Podkop.AvailableMethods.GET_STATUS),
   getOutboundLink: async (section: string, tag: string) =>
@@ -41,6 +45,10 @@ export const PodkopShellMethods = {
   getZapretStatus: async () =>
     callBaseMethod<Podkop.GetZapretStatus>(
       Podkop.AvailableMethods.GET_ZAPRET_STATUS,
+    ),
+  getByedpiStatus: async () =>
+    callBaseMethod<Podkop.GetByedpiStatus>(
+      Podkop.AvailableMethods.GET_BYEDPI_STATUS,
     ),
   getClashApiProxies: async () =>
     callBaseMethod<ClashAPI.Proxies>(Podkop.AvailableMethods.CLASH_API, [

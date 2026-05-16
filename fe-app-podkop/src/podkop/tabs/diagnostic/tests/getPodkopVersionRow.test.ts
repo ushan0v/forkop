@@ -13,6 +13,8 @@ function makeDiagnosticsSystemInfo(
     sing_box_version: '1.12.0',
     zapret_version: 'not installed',
     zapret_installed: 0,
+    byedpi_version: 'not installed',
+    byedpi_installed: 0,
     openwrt_version: 'OpenWrt 25.12',
     device_model: 'Test Router',
     ...patch,

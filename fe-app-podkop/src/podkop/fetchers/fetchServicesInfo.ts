@@ -24,10 +24,9 @@ function getSettledMethodResponse<T>(
 export async function fetchServicesInfo() {
   const requestId = ++latestServicesInfoRequestId;
 
-  const [podkopResult, singboxResult, zapretResult] = await Promise.allSettled([
+  const [podkopResult, singboxResult] = await Promise.allSettled([
     PodkopShellMethods.getStatus(),
     PodkopShellMethods.getSingBoxStatus(),
-    PodkopShellMethods.getZapretStatus(),
   ]);
 
   if (requestId !== latestServicesInfoRequestId) {
@@ -36,12 +35,11 @@ export async function fetchServicesInfo() {
 
   const podkop = getSettledMethodResponse('getStatus', podkopResult);
   const singbox = getSettledMethodResponse('getSingBoxStatus', singboxResult);
-  const zapret = getSettledMethodResponse('getZapretStatus', zapretResult);
 
   store.set({
     servicesInfoWidget: {
       loading: false,
-      failed: !podkop.success || !singbox.success || !zapret.success,
+      failed: !podkop.success || !singbox.success,
       data: {
         singbox: singbox.success ? singbox.data.running : 0,
         podkopRunning: podkop.success ? podkop.data.running : 0,
@@ -56,8 +54,6 @@ export async function fetchServicesInfo() {
         podkopLifecycleBusy: podkop.success
           ? podkop.data.lifecycle_busy || 0
           : 0,
-        zapret: zapret.success ? zapret.data.ready : 0,
-        zapretInstalled: zapret.success ? zapret.data.installed : 0,
       },
     },
   });

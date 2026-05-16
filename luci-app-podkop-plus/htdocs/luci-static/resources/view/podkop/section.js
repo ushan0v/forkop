@@ -61,11 +61,86 @@ const ZAPRET_LEGACY_DEFAULT_NFQWS_OPT =
 const ZAPRET_DEFAULT_NFQWS_OPT =
   "--filter-tcp=80 --dpi-desync=fake,fakedsplit --dpi-desync-autottl=2 --dpi-desync-fooling=badsum --new --filter-tcp=443 --dpi-desync=fake,multidisorder --dpi-desync-split-pos=1,midsld --dpi-desync-repeats=11 --dpi-desync-fooling=badsum --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new --filter-udp=443 --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=/opt/zapret/files/fake/quic_initial_www_google_com.bin";
 
+const BYEDPI_DEFAULT_CMD_OPTS = "-o 2 --auto=t,r,a,s -d 2";
 const ANNOTATED_TEXTAREA_STYLE_ID = "pdk-annotated-textarea-styles";
 const NFQWS_REMOTE_VALIDATION_DEBOUNCE_MS = 500;
 const NFQWS_VALIDATION_COMMAND = "/usr/bin/podkop-plus";
 const nfqwsRemoteValidationCache = new Map();
 const nfqwsRemoteValidationInflight = new Map();
+const byedpiRemoteValidationCache = new Map();
+const byedpiRemoteValidationInflight = new Map();
+const BYEDPI_LONG_VALUE_OPTIONS = new Set([
+  "--max-conn",
+  "--conn-ip",
+  "--buf-size",
+  "--debug",
+  "--def-ttl",
+  "--auto",
+  "--auto-mode",
+  "--cache-ttl",
+  "--cache-dump",
+  "--timeout",
+  "--proto",
+  "--hosts",
+  "--ipset",
+  "--pf",
+  "--round",
+  "--split",
+  "--disorder",
+  "--oob",
+  "--disoob",
+  "--fake",
+  "--fake-sni",
+  "--ttl",
+  "--fake-offset",
+  "--fake-data",
+  "--fake-tls-mod",
+  "--oob-data",
+  "--mod-http",
+  "--tlsrec",
+  "--tlsminor",
+  "--udp-fake",
+]);
+const BYEDPI_LONG_FLAG_OPTIONS = new Set([
+  "--md5sig",
+  "--tfo",
+  "--drop-sack",
+  "--no-domain",
+  "--no-udp",
+]);
+const BYEDPI_SHORT_VALUE_OPTIONS = new Set([
+  "-c",
+  "-I",
+  "-b",
+  "-x",
+  "-g",
+  "-A",
+  "-L",
+  "-u",
+  "-y",
+  "-T",
+  "-K",
+  "-H",
+  "-j",
+  "-V",
+  "-R",
+  "-s",
+  "-d",
+  "-o",
+  "-q",
+  "-f",
+  "-n",
+  "-t",
+  "-O",
+  "-l",
+  "-Q",
+  "-e",
+  "-M",
+  "-r",
+  "-m",
+  "-a",
+]);
+const BYEDPI_SHORT_FLAG_OPTIONS = new Set(["-N", "-U", "-F", "-S", "-Y"]);
 const NFQWS_OPTIONAL_ARG_OPTIONS = new Set([
   "--comment",
   "--ctrack-disable",
@@ -182,43 +257,64 @@ const NFQWS_REQUIRED_ARG_OPTIONS = new Set([
   "--wssize-cutoff",
   "--wssize-forced-cutoff",
 ]);
-const zapretAvailabilityState = {
+const actionProvidersAvailabilityState = {
   loaded: false,
-  installed: true,
+  zapretInstalled: false,
+  byedpiInstalled: false,
 };
-let zapretAvailabilityPromise = null;
+let actionProvidersAvailabilityPromise = null;
 
-function ensureZapretAvailabilityLoaded() {
-  if (zapretAvailabilityState.loaded) {
-    return Promise.resolve(zapretAvailabilityState);
+function ensureActionProvidersAvailabilityLoaded() {
+  if (actionProvidersAvailabilityState.loaded) {
+    return Promise.resolve(actionProvidersAvailabilityState);
   }
 
-  if (zapretAvailabilityPromise) {
-    return zapretAvailabilityPromise;
+  if (actionProvidersAvailabilityPromise) {
+    return actionProvidersAvailabilityPromise;
   }
 
-  zapretAvailabilityPromise = main.PodkopShellMethods.getZapretStatus()
-    .then((result) => {
-      zapretAvailabilityState.loaded = true;
-      zapretAvailabilityState.installed = Boolean(
-        result && result.success && result.data && result.data.installed,
+  actionProvidersAvailabilityPromise = Promise.allSettled([
+    main.PodkopShellMethods.getZapretStatus(),
+    main.PodkopShellMethods.getByedpiStatus(),
+  ])
+    .then(([zapretResult, byedpiResult]) => {
+      const zapret =
+        zapretResult && zapretResult.status === "fulfilled"
+          ? zapretResult.value
+          : null;
+      const byedpi =
+        byedpiResult && byedpiResult.status === "fulfilled"
+          ? byedpiResult.value
+          : null;
+
+      actionProvidersAvailabilityState.loaded = true;
+      actionProvidersAvailabilityState.zapretInstalled = Boolean(
+        zapret && zapret.success && zapret.data && zapret.data.installed,
       );
-      return zapretAvailabilityState;
+      actionProvidersAvailabilityState.byedpiInstalled = Boolean(
+        byedpi && byedpi.success && byedpi.data && byedpi.data.installed,
+      );
+      return actionProvidersAvailabilityState;
     })
     .catch(() => {
-      zapretAvailabilityState.loaded = true;
-      zapretAvailabilityState.installed = true;
-      return zapretAvailabilityState;
+      actionProvidersAvailabilityState.loaded = true;
+      actionProvidersAvailabilityState.zapretInstalled = false;
+      actionProvidersAvailabilityState.byedpiInstalled = false;
+      return actionProvidersAvailabilityState;
     })
     .finally(() => {
-      zapretAvailabilityPromise = null;
+      actionProvidersAvailabilityPromise = null;
     });
 
-  return zapretAvailabilityPromise;
+  return actionProvidersAvailabilityPromise;
 }
 
 function isZapretInstalledForUi() {
-  return zapretAvailabilityState.installed;
+  return actionProvidersAvailabilityState.zapretInstalled;
+}
+
+function isByedpiInstalledForUi() {
+  return actionProvidersAvailabilityState.byedpiInstalled;
 }
 
 function getRuleResolvedAction(section_id) {
@@ -260,9 +356,9 @@ function getActionOptionLabel(action) {
     case "vpn":
       return "VPN";
     case "zapret":
-      return isZapretInstalledForUi()
-        ? "Zapret"
-        : _("Zapret (provider not available)");
+      return "Zapret";
+    case "byedpi":
+      return "ByeDPI";
     case "proxy":
     default:
       return "Proxy";
@@ -274,6 +370,10 @@ function getRuleActionDisplayValue(section_id) {
 
   if (action === "zapret") {
     return "Zapret";
+  }
+
+  if (action === "byedpi") {
+    return "ByeDPI";
   }
 
   return getActionOptionLabel(action);
@@ -291,28 +391,26 @@ function populateActionOptionValues(option) {
   option.value("vpn", "VPN");
   option.value("direct", "Direct");
   option.value("block", "Block");
-  option.value("zapret", getActionOptionLabel("zapret"));
+  if (isZapretInstalledForUi()) {
+    option.value("zapret", getActionOptionLabel("zapret"));
+  }
+  if (isByedpiInstalledForUi()) {
+    option.value("byedpi", getActionOptionLabel("byedpi"));
+  }
 }
 
-function disableUnavailableZapretOption(node) {
-  if (!node || isZapretInstalledForUi()) {
+function setFlagOptionWidgetValue(section_id, optionName, enabled) {
+  const frame = document.getElementById(
+    `cbid.${UCI_PACKAGE}.${section_id}.${optionName}`,
+  );
+  const checkbox = frame ? frame.querySelector('input[type="checkbox"]') : null;
+
+  if (!checkbox || checkbox.checked === Boolean(enabled)) {
     return;
   }
 
-  const select =
-    typeof node.querySelector === "function"
-      ? node.querySelector("select")
-      : null;
-  if (!select || !select.options) {
-    return;
-  }
-
-  Array.from(select.options).forEach((option) => {
-    if (option.value === "zapret") {
-      option.disabled = true;
-      option.textContent = _("Zapret (provider not available)");
-    }
-  });
+  checkbox.checked = Boolean(enabled);
+  checkbox.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 function getConfigListValues(section_id, key) {
@@ -1664,6 +1762,402 @@ function analyzeNfqwsStrategy(value) {
   };
 }
 
+function normalizeByedpiStrategyWhitespace(value) {
+  return value ? `${value}`.replace(/\s+/g, " ").trim() : "";
+}
+
+function normalizeByedpiStrategyValue(value) {
+  const normalized = normalizeByedpiStrategyWhitespace(value);
+  return normalized.length ? normalized : BYEDPI_DEFAULT_CMD_OPTS;
+}
+
+function getCachedByedpiRemoteValidation(value) {
+  const normalized = normalizeByedpiStrategyValue(value);
+  return normalized.length
+    ? byedpiRemoteValidationCache.get(normalized) || null
+    : null;
+}
+
+function cacheByedpiRemoteValidation(value, result) {
+  const normalized = normalizeByedpiStrategyValue(value);
+  if (!normalized.length) {
+    return result;
+  }
+
+  const cached = {
+    valid: result && result.valid === true,
+    message: result && result.message ? `${result.message}` : "",
+    needle: result && result.needle ? `${result.needle}` : "",
+    needles:
+      result && Array.isArray(result.needles)
+        ? result.needles.filter(Boolean).map((item) => `${item}`)
+        : result && result.needle
+          ? [`${result.needle}`]
+          : [],
+  };
+
+  byedpiRemoteValidationCache.set(normalized, cached);
+  return cached;
+}
+
+function buildByedpiRemoteValidationFallback(error) {
+  const message =
+    error && error.message
+      ? `${error.message}`
+      : _("Unable to validate the ByeDPI strategy through the backend parser.");
+
+  return {
+    valid: false,
+    message: _("Backend validation failed: %s").format(message),
+    needle: "",
+    needles: [],
+  };
+}
+
+function validateByedpiStrategyRemotely(value) {
+  const normalized = normalizeByedpiStrategyValue(value);
+
+  if (!normalized.length) {
+    return Promise.resolve({
+      valid: true,
+      message: "",
+      needle: "",
+      needles: [],
+    });
+  }
+
+  if (byedpiRemoteValidationCache.has(normalized)) {
+    return Promise.resolve(byedpiRemoteValidationCache.get(normalized));
+  }
+
+  if (byedpiRemoteValidationInflight.has(normalized)) {
+    return byedpiRemoteValidationInflight.get(normalized);
+  }
+
+  const validationTask = fs
+    .exec(NFQWS_VALIDATION_COMMAND, [
+      "validate_byedpi_strategy_json",
+      normalized,
+    ])
+    .then((result) => {
+      const payload = JSON.parse(
+        (result && result.stdout ? result.stdout : "{}").trim() || "{}",
+      );
+      return cacheByedpiRemoteValidation(normalized, {
+        valid: payload.valid === true,
+        message: payload.message || "",
+        needle: payload.needle || "",
+        needles: Array.isArray(payload.needles)
+          ? payload.needles.filter(Boolean)
+          : payload.needle
+            ? [payload.needle]
+            : [],
+      });
+    })
+    .catch((error) =>
+      cacheByedpiRemoteValidation(
+        normalized,
+        buildByedpiRemoteValidationFallback(error),
+      ),
+    )
+    .finally(() => {
+      byedpiRemoteValidationInflight.delete(normalized);
+    });
+
+  byedpiRemoteValidationInflight.set(normalized, validationTask);
+  return validationTask;
+}
+
+function getByedpiShortOptionName(token) {
+  return token.length > 2 ? token.slice(0, 2) : token;
+}
+
+function byedpiTokenLooksLikeOption(token) {
+  return /^--.+/.test(token) || /^-[A-Za-z].*/.test(token);
+}
+
+function getByedpiControlledTokenInfo(token) {
+  const listenMessage = _(
+    "ByeDPI listen address and port are assigned by Podkop Plus and must not be set in the strategy.",
+  );
+  const transparentMessage = _(
+    "Transparent proxy mode is incompatible with action=byedpi because Podkop Plus connects to ciadpi through SOCKS.",
+  );
+  const daemonMessage = _(
+    "Podkop Plus manages the ciadpi process lifecycle itself, so daemon mode is not allowed here.",
+  );
+  const pidfileMessage = _(
+    "Podkop Plus manages ciadpi pid files itself, so pidfile options are not allowed here.",
+  );
+  const exitMessage = _(
+    "This field must start a working ciadpi strategy; help/version options exit immediately and are not allowed here.",
+  );
+
+  if (
+    token === "--ip" ||
+    token.startsWith("--ip=") ||
+    token === "-i" ||
+    /^-i.+/.test(token) ||
+    token === "--port" ||
+    token.startsWith("--port=") ||
+    token === "-p" ||
+    /^-p.+/.test(token)
+  ) {
+    return {
+      reason: listenMessage,
+      captureNextValue:
+        token === "--ip" ||
+        token === "-i" ||
+        token === "--port" ||
+        token === "-p",
+    };
+  }
+
+  if (token === "--transparent" || token === "-E" || /^-E.+/.test(token)) {
+    return {
+      reason: transparentMessage,
+      captureNextValue: false,
+    };
+  }
+
+  if (token === "--daemon" || token === "-D" || /^-D.+/.test(token)) {
+    return {
+      reason: daemonMessage,
+      captureNextValue: false,
+    };
+  }
+
+  if (
+    token === "--pidfile" ||
+    token.startsWith("--pidfile=") ||
+    token === "-w" ||
+    /^-w.+/.test(token)
+  ) {
+    return {
+      reason: pidfileMessage,
+      captureNextValue: token === "--pidfile" || token === "-w",
+    };
+  }
+
+  if (
+    token === "--help" ||
+    token === "-h" ||
+    /^-h.+/.test(token) ||
+    token === "--version" ||
+    token === "-v" ||
+    /^-v.+/.test(token)
+  ) {
+    return {
+      reason: exitMessage,
+      captureNextValue: false,
+    };
+  }
+
+  return null;
+}
+
+function validateByedpiStrategyToken(token, nextToken) {
+  const controlled = getByedpiControlledTokenInfo(token);
+  if (controlled) {
+    return {
+      valid: false,
+      reason: controlled.reason,
+      captureNextValue: controlled.captureNextValue,
+    };
+  }
+
+  if (/^--[^=]+=/.test(token)) {
+    const base = token.split("=", 1)[0];
+    const value = token.slice(base.length + 1);
+
+    if (BYEDPI_LONG_VALUE_OPTIONS.has(base)) {
+      return value.length
+        ? { valid: true, consumeNext: false }
+        : {
+            valid: false,
+            reason: _("ByeDPI option requires a value: %s").format(base),
+            captureNextValue: false,
+          };
+    }
+
+    if (BYEDPI_LONG_FLAG_OPTIONS.has(base)) {
+      return {
+        valid: false,
+        reason: _("ByeDPI option does not accept a value: %s").format(base),
+        captureNextValue: false,
+      };
+    }
+
+    return {
+      valid: false,
+      reason: _("Unknown ByeDPI option: %s").format(base),
+      captureNextValue: false,
+    };
+  }
+
+  if (/^--.+/.test(token)) {
+    if (BYEDPI_LONG_VALUE_OPTIONS.has(token)) {
+      return nextToken && !byedpiTokenLooksLikeOption(nextToken)
+        ? { valid: true, consumeNext: true }
+        : {
+            valid: false,
+            reason: _("ByeDPI option requires a value: %s").format(token),
+            captureNextValue: false,
+          };
+    }
+
+    if (BYEDPI_LONG_FLAG_OPTIONS.has(token)) {
+      return { valid: true, consumeNext: false };
+    }
+
+    return {
+      valid: false,
+      reason: _("Unknown ByeDPI option: %s").format(token),
+      captureNextValue: false,
+    };
+  }
+
+  if (/^-./.test(token)) {
+    if (token === "-") {
+      return {
+        valid: false,
+        reason: _("Unexpected ByeDPI strategy argument: %s").format(token),
+        captureNextValue: false,
+      };
+    }
+
+    const short = getByedpiShortOptionName(token);
+    const compactValue = token.slice(short.length);
+
+    if (BYEDPI_SHORT_VALUE_OPTIONS.has(short)) {
+      if (token === short) {
+        return nextToken && !byedpiTokenLooksLikeOption(nextToken)
+          ? { valid: true, consumeNext: true }
+          : {
+              valid: false,
+              reason: _("ByeDPI option requires a value: %s").format(short),
+              captureNextValue: false,
+            };
+      }
+
+      return compactValue.length
+        ? { valid: true, consumeNext: false }
+        : {
+            valid: false,
+            reason: _("ByeDPI option requires a value: %s").format(short),
+            captureNextValue: false,
+          };
+    }
+
+    if (BYEDPI_SHORT_FLAG_OPTIONS.has(short)) {
+      return token === short
+        ? { valid: true, consumeNext: false }
+        : {
+            valid: false,
+            reason: _("ByeDPI option does not accept a compact value: %s").format(
+              short,
+            ),
+            captureNextValue: false,
+          };
+    }
+
+    return {
+      valid: false,
+      reason: _("Unknown ByeDPI option: %s").format(short),
+      captureNextValue: false,
+    };
+  }
+
+  return {
+    valid: false,
+    reason: _("Unexpected ByeDPI strategy argument: %s").format(token),
+    captureNextValue: false,
+  };
+}
+
+function buildByedpiLocalAnalysis(value) {
+  const text = value ? `${value}` : "";
+  if (!text.trim().length) {
+    return {
+      valid: false,
+      message: _("ByeDPI strategy cannot be empty"),
+      annotations: [],
+    };
+  }
+
+  const tokens = parseNfqwsRuntimeTokens(text);
+  const annotationMap = new Map();
+  const errors = [];
+
+  for (let index = 0; index < tokens.length; ) {
+    const token = tokens[index];
+    const nextToken = tokens[index + 1] || null;
+    const tokenValidation = validateByedpiStrategyToken(
+      token.value,
+      nextToken ? nextToken.value : null,
+    );
+
+    if (tokenValidation.valid) {
+      index += tokenValidation.consumeNext ? 2 : 1;
+      continue;
+    }
+
+    addAnnotationIssue(annotationMap, token, tokenValidation.reason);
+    let displayToken = token.value;
+
+    if (
+      tokenValidation.captureNextValue &&
+      nextToken &&
+      !nextToken.value.startsWith("-")
+    ) {
+      addAnnotationIssue(annotationMap, nextToken, tokenValidation.reason);
+      displayToken = `${displayToken} ${nextToken.value}`;
+      index += 2;
+    } else {
+      index += 1;
+    }
+
+    errors.push(`${displayToken}: ${tokenValidation.reason}`);
+  }
+
+  if (!errors.length) {
+    return { valid: true, message: "", annotations: [] };
+  }
+
+  return {
+    valid: false,
+    message: [getValidationHeaderText(), ...errors].join("\n"),
+    annotations: finalizeAnnotations(annotationMap),
+  };
+}
+
+function analyzeByedpiStrategy(value) {
+  const localAnalysis = buildByedpiLocalAnalysis(value);
+  if (!localAnalysis.valid) {
+    return localAnalysis;
+  }
+
+  const remoteValidation = getCachedByedpiRemoteValidation(value);
+  if (!remoteValidation || remoteValidation.valid) {
+    return localAnalysis;
+  }
+
+  const text = value ? `${value}` : "";
+  const tokens = parseNfqwsRuntimeTokens(text);
+  const annotationMap = new Map();
+
+  localAnalysis.annotations.forEach((annotation) =>
+    addAnnotationIssue(annotationMap, annotation, annotation.message),
+  );
+  addNfqwsRemoteValidationAnnotations(annotationMap, tokens, remoteValidation);
+
+  return {
+    valid: false,
+    message: [getValidationHeaderText(), remoteValidation.message].join("\n"),
+    annotations: finalizeAnnotations(annotationMap),
+  };
+}
+
 function configureTextareaOption(option, analyzer) {
   const originalRenderWidget = option.renderWidget;
 
@@ -1921,7 +2415,7 @@ function createSectionContent(section) {
   o.modalonly = false;
   o.rawhtml = true;
   o.load = function () {
-    return ensureZapretAvailabilityLoaded();
+    return ensureActionProvidersAvailabilityLoaded();
   };
   o.cfgvalue = function (section_id) {
     return getRuleActionDisplayMarkup(section_id);
@@ -1959,24 +2453,16 @@ function createSectionContent(section) {
     return getRuleResolvedAction(section_id);
   };
   o.load = function (section_id) {
-    return ensureZapretAvailabilityLoaded().then(() => {
+    return ensureActionProvidersAvailabilityLoaded().then(() => {
       populateActionOptionValues(this);
       return this.cfgvalue(section_id);
     });
   };
-  {
-    const originalRenderWidget = o.renderWidget;
-    o.renderWidget = function (section_id, option_index, cfgvalue) {
-      const node = originalRenderWidget.call(
-        this,
-        section_id,
-        option_index,
-        cfgvalue,
-      );
-      disableUnavailableZapretOption(node);
-      return node;
-    };
-  }
+  o.onchange = function (_ev, section_id, value) {
+    if (value === "byedpi") {
+      setFlagOptionWidgetValue(section_id, "resolve_real_ip_for_routing", true);
+    }
+  };
 
   o = section.taboption(
     "settings",
@@ -2011,6 +2497,47 @@ function createSectionContent(section) {
     return analysis.valid ? true : analysis.message;
   };
   configureTextareaOption(o, analyzeNfqwsStrategy);
+
+  o = section.taboption(
+    "settings",
+    form.TextValue,
+    "byedpi_cmd_opts",
+    _("ByeDPI Strategy"),
+    _("ciadpi command options. Podkop Plus manages the listen address and port."),
+  );
+  o.depends("action", "byedpi");
+  o.rows = 5;
+  o.wrap = "soft";
+  o.textarea = true;
+  o.modalonly = true;
+  o.load = function (section_id) {
+    return (
+      uci.get(UCI_PACKAGE, section_id, "byedpi_cmd_opts") ||
+      uci.get(UCI_PACKAGE, section_id, "cmd_opts") ||
+      BYEDPI_DEFAULT_CMD_OPTS
+    );
+  };
+  o.write = function (section_id, value) {
+    const normalized = normalizeByedpiStrategyValue(value);
+
+    return validateByedpiStrategyRemotely(normalized).then((result) => {
+      if (!result || result.valid !== true) {
+        throw new TypeError(
+          result && result.message
+            ? result.message
+            : _("Invalid ByeDPI strategy"),
+        );
+      }
+
+      uci.set(UCI_PACKAGE, section_id, "byedpi_cmd_opts", normalized);
+      uci.unset(UCI_PACKAGE, section_id, "cmd_opts");
+    });
+  };
+  o.validate = function (_section_id, value) {
+    const analysis = analyzeByedpiStrategy(value);
+    return analysis.valid ? true : analysis.message;
+  };
+  configureTextareaOption(o, analyzeByedpiStrategy);
 
   o = section.taboption(
     "settings",
@@ -2403,6 +2930,7 @@ function createSectionContent(section) {
   o.rmempty = false;
   o.depends("action", "proxy");
   o.depends("action", "vpn");
+  o.depends("action", "byedpi");
   o.modalonly = true;
 
   o = section.taboption(
@@ -2415,6 +2943,7 @@ function createSectionContent(section) {
   o.rmempty = false;
   o.depends({ action: "proxy", mixed_proxy_enabled: "1" });
   o.depends({ action: "vpn", mixed_proxy_enabled: "1" });
+  o.depends({ action: "byedpi", mixed_proxy_enabled: "1" });
   o.modalonly = true;
   o.validate = function (_section_id, value) {
     if (!value || value.length === 0) {
@@ -2440,7 +2969,16 @@ function createSectionContent(section) {
   o.rmempty = false;
   o.depends("action", "proxy");
   o.depends("action", "vpn");
+  o.depends("action", "byedpi");
   o.modalonly = true;
+  o.cfgvalue = function (section_id) {
+    const value = uci.get(UCI_PACKAGE, section_id, "resolve_real_ip_for_routing");
+    if (value !== null && value !== undefined && value !== "") {
+      return value;
+    }
+
+    return getRuleResolvedAction(section_id) === "byedpi" ? "1" : "0";
+  };
 
   addTextConditionField(section, {
     key: "domain_suffix",

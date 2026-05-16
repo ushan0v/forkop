@@ -4,7 +4,12 @@ import { runSingBoxCheck } from './checks/runSingBoxCheck';
 import { runNftCheck } from './checks/runNftCheck';
 import { runFakeIPCheck } from './checks/runFakeIPCheck';
 import { runZapretCheck } from './checks/runZapretCheck';
-import { loadingDiagnosticsChecksStore } from './diagnostic.store';
+import { runByedpiCheck } from './checks/runByedpiCheck';
+import {
+  DiagnosticsProviderOptions,
+  getDiagnosticsChecks,
+  getLoadingDiagnosticsChecks,
+} from './diagnostic.store';
 import { logger, store, StoreType } from '../../services';
 import {
   renderAvailableActions,
@@ -29,6 +34,8 @@ const UNKNOWN_DIAGNOSTICS_SYSTEM_INFO = {
   sing_box_version: _('unknown'),
   zapret_version: _('unknown'),
   zapret_installed: 0,
+  byedpi_version: _('unknown'),
+  byedpi_installed: 0,
   openwrt_version: _('unknown'),
   device_model: _('unknown'),
 };
@@ -45,6 +52,28 @@ let restartStartStopSnapshot: 'start' | 'stop' | null = null;
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function getDiagnosticsProviderOptions(
+  systemInfo: Pick<
+    StoreType['diagnosticsSystemInfo'],
+    'zapret_installed' | 'byedpi_installed'
+  > = store.get().diagnosticsSystemInfo,
+): DiagnosticsProviderOptions {
+  return {
+    includeZapret: Boolean(systemInfo.zapret_installed),
+    includeByedpi: Boolean(systemInfo.byedpi_installed),
+  };
+}
+
+function getNotRunningDiagnosticsChecks() {
+  return getDiagnosticsChecks(_('Not running'), getDiagnosticsProviderOptions());
+}
+
+function resetDiagnosticsChecks() {
+  store.set({
+    diagnosticsChecks: getNotRunningDiagnosticsChecks(),
+  });
 }
 
 function setDiagnosticActionLoading(
@@ -113,6 +142,10 @@ async function fetchSystemInfo() {
           loading: false,
           ...systemInfo.data,
         },
+        diagnosticsChecks: getDiagnosticsChecks(
+          _('Not running'),
+          getDiagnosticsProviderOptions(systemInfo.data),
+        ),
       });
       return;
     }
@@ -132,9 +165,9 @@ async function fetchSystemInfo() {
 
 function renderDiagnosticsChecks() {
   logger.debug('[DIAGNOSTIC]', 'renderDiagnosticsChecks');
-  const diagnosticsChecks = store
-    .get()
-    .diagnosticsChecks.sort((a, b) => a.order - b.order);
+  const diagnosticsChecks = [...store.get().diagnosticsChecks].sort(
+    (a, b) => a.order - b.order,
+  );
   const container = document.getElementById('pdk_diagnostic-page-checks');
 
   const renderedDiagnosticsChecks = diagnosticsChecks.map((check) =>
@@ -176,7 +209,7 @@ async function handleRestart() {
   } finally {
     restartStartStopSnapshot = null;
     setDiagnosticActionLoading('restart', false);
-    store.reset(['diagnosticsChecks']);
+    resetDiagnosticsChecks();
   }
 }
 
@@ -190,7 +223,7 @@ async function handleStop() {
     logger.error('[DIAGNOSTIC]', 'handleStop - e', e);
   } finally {
     setDiagnosticActionLoading('stop', false);
-    store.reset(['diagnosticsChecks']);
+    resetDiagnosticsChecks();
   }
 }
 
@@ -204,7 +237,7 @@ async function handleStart() {
     logger.error('[DIAGNOSTIC]', 'handleStart - e', e);
   } finally {
     setDiagnosticActionLoading('start', false);
-    store.reset(['diagnosticsChecks']);
+    resetDiagnosticsChecks();
   }
 }
 
@@ -457,34 +490,45 @@ function renderDiagnosticSystemInfoWidget() {
 
   const container = document.getElementById('pdk_diagnostic-page-system-info');
 
+  const items = [
+    getPodkopVersionRow(diagnosticsSystemInfo),
+    {
+      key: 'Luci App',
+      value: normalizeCompiledVersion(PODKOP_LUCI_APP_VERSION),
+    },
+    {
+      key: 'Sing-box',
+      value: diagnosticsSystemInfo.sing_box_version,
+    },
+  ];
+
+  if (diagnosticsSystemInfo.zapret_installed) {
+    items.push({
+      key: 'Zapret',
+      value: diagnosticsSystemInfo.zapret_version,
+    });
+  }
+
+  if (diagnosticsSystemInfo.byedpi_installed) {
+    items.push({
+      key: 'ByeDPI',
+      value: diagnosticsSystemInfo.byedpi_version,
+    });
+  }
+
+  items.push(
+    {
+      key: 'OS',
+      value: diagnosticsSystemInfo.openwrt_version,
+    },
+    {
+      key: 'Device',
+      value: diagnosticsSystemInfo.device_model,
+    },
+  );
+
   const renderedSystemInfo = renderSystemInfo({
-    items: [
-      getPodkopVersionRow(diagnosticsSystemInfo),
-      {
-        key: 'Luci App',
-        value: normalizeCompiledVersion(PODKOP_LUCI_APP_VERSION),
-      },
-      {
-        key: 'Sing-box',
-        value: diagnosticsSystemInfo.sing_box_version,
-      },
-      {
-        key: 'Zapret',
-        value: diagnosticsSystemInfo.loading
-          ? 'loading'
-          : diagnosticsSystemInfo.zapret_installed
-            ? diagnosticsSystemInfo.zapret_version
-            : _('not installed'),
-      },
-      {
-        key: 'OS',
-        value: diagnosticsSystemInfo.openwrt_version,
-      },
-      {
-        key: 'Device',
-        value: diagnosticsSystemInfo.device_model,
-      },
-    ],
+    items,
   });
 
   return preserveScrollForPage(() => {
@@ -516,19 +560,26 @@ async function onStoreUpdate(
 }
 
 async function runChecks() {
-  const runners = [
-    runDnsCheck,
-    runSingBoxCheck,
-    runNftCheck,
-    runZapretCheck,
-    runSectionsCheck,
-    runFakeIPCheck,
-  ];
-
   try {
+    if (store.get().diagnosticsSystemInfo.loading) {
+      await fetchSystemInfo();
+    }
+
+    const providerOptions = getDiagnosticsProviderOptions();
+    const runners = [
+      runDnsCheck,
+      runSingBoxCheck,
+      runNftCheck,
+      ...(providerOptions.includeZapret ? [runZapretCheck] : []),
+      ...(providerOptions.includeByedpi ? [runByedpiCheck] : []),
+      runSectionsCheck,
+      runFakeIPCheck,
+    ];
+
     store.set({
       diagnosticsRunAction: { loading: true },
-      diagnosticsChecks: loadingDiagnosticsChecksStore.diagnosticsChecks,
+      diagnosticsChecks: getLoadingDiagnosticsChecks(providerOptions)
+        .diagnosticsChecks,
     });
 
     for (const runner of runners) {
@@ -550,8 +601,7 @@ async function loadInitialDiagnosticData() {
 
   if (
     diagnosticStatus?.isConnected &&
-    diagnosticStatus.offsetParent !== null &&
-    store.get().diagnosticsSystemInfo.loading
+    diagnosticStatus.offsetParent !== null
   ) {
     await fetchSystemInfo();
   }
@@ -607,11 +657,8 @@ function onPageUnmount() {
   stopDiagnosticStatusPolling();
 
   // Clear store
-  store.reset([
-    'diagnosticsActions',
-    'diagnosticsChecks',
-    'diagnosticsRunAction',
-  ]);
+  store.reset(['diagnosticsActions', 'diagnosticsRunAction']);
+  resetDiagnosticsChecks();
 }
 
 function registerLifecycleListeners() {

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-15 02:33+0300\n"
-"PO-Revision-Date: 2026-05-15 02:33+0300\n"
+"POT-Creation-Date: 2026-05-16 17:59+0300\n"
+"PO-Revision-Date: 2026-05-16 17:59+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -19,9 +19,6 @@ msgstr ""
 
 msgid "✔ Running"
 msgstr "✔ Работает"
-
-msgid "✘ Not installed"
-msgstr "✘ Не установлен"
 
 msgid "✘ Stopped"
 msgstr "✘ Остановлен"
@@ -101,6 +98,48 @@ msgstr "Браузер использует FakeIP"
 msgid "Built-in rule sets"
 msgstr "Встроенные наборы правил"
 
+msgid "ByeDPI listen address and port are assigned by Podkop Plus and must not be set in the strategy."
+msgstr "Адрес и порт прослушивания ByeDPI назначаются Podkop Plus и не должны задаваться в стратегии."
+
+msgid "ByeDPI option does not accept a compact value: %s"
+msgstr "Опция ByeDPI не принимает компактное значение: %s"
+
+msgid "ByeDPI option does not accept a value: %s"
+msgstr "Опция ByeDPI не принимает значение: %s"
+
+msgid "ByeDPI option requires a value: %s"
+msgstr "Для опции ByeDPI требуется значение: %s"
+
+msgid "ByeDPI package is installed"
+msgstr "Пакет ByeDPI установлен"
+
+msgid "ByeDPI package is not installed"
+msgstr "Пакет ByeDPI не установлен"
+
+msgid "ByeDPI provider binary is available"
+msgstr "Бинарный файл провайдера ByeDPI доступен"
+
+msgid "ByeDPI provider binary is not available"
+msgstr "Бинарный файл провайдера ByeDPI недоступен"
+
+msgid "ByeDPI route rules are configured"
+msgstr "Маршрутные правила ByeDPI настроены"
+
+msgid "ByeDPI route rules are not configured"
+msgstr "Маршрутные правила ByeDPI не настроены"
+
+msgid "ByeDPI sing-box outbound is configured"
+msgstr "Outbound ByeDPI в sing-box настроен"
+
+msgid "ByeDPI sing-box outbound is not configured"
+msgstr "Outbound ByeDPI в sing-box не настроен"
+
+msgid "ByeDPI Strategy"
+msgstr "Стратегия ByeDPI"
+
+msgid "ByeDPI strategy cannot be empty"
+msgstr "Стратегия ByeDPI не может быть пустой"
+
 msgid "Cache File Path"
 msgstr "Путь к файлу кэша"
 
@@ -130,6 +169,9 @@ msgstr "Проверки пройдены"
 
 msgid "Choose how this outbound should be configured"
 msgstr "Выберите, как настроить этот outbound"
+
+msgid "ciadpi command options. Podkop Plus manages the listen address and port."
+msgstr "Параметры команды ciadpi. Адрес и порт прослушивания управляются Podkop Plus."
 
 msgid "CIDR must be between 0 and 32"
 msgstr "CIDR должен быть между 0 и 32"
@@ -395,6 +437,9 @@ msgstr "Задержка при мониторинге интерфейсов"
 msgid "Interface monitoring for Bad WAN"
 msgstr "Мониторинг интерфейса для Bad WAN"
 
+msgid "Invalid ByeDPI strategy"
+msgstr "Некорректная стратегия ByeDPI"
+
 msgid "Invalid DNS server format. Examples: 8.8.8.8 or dns.example.com or dns.example.com/nicedns for DoH"
 msgstr "Неверный формат DNS-сервера. Примеры: 8.8.8.8, dns.example.com или dns.example.com/nicedns для DoH"
 
@@ -611,6 +656,9 @@ msgstr "Стратегия NFQWS не может быть пустой"
 msgid "No other marking rules found"
 msgstr "Другие правила маркировки не найдены"
 
+msgid "No rules use ByeDPI"
+msgstr "Нет правил, использующих ByeDPI"
+
 msgid "No rules use Zapret"
 msgstr "Нет правил, использующих Zapret"
 
@@ -619,9 +667,6 @@ msgstr "Тип узла"
 
 msgid "Not implement yet"
 msgstr "Ещё не реализовано"
-
-msgid "not installed"
-msgstr "не установлен"
 
 msgid "Not responding"
 msgstr "Не отвечает"
@@ -636,7 +681,7 @@ msgid "Operation timed out"
 msgstr "Время ожидания истекло"
 
 msgid "Option \"%s\" contains an invalid input value."
-msgstr ""
+msgstr "Параметр \"%s\" содержит некорректное значение."
 
 msgid "Optional HTTP User-Agent for downloading the subscription."
 msgstr "Опциональный HTTP User-Agent для загрузки подписки."
@@ -674,6 +719,12 @@ msgstr "Путь должен заканчиваться на cache.db"
 msgid "Pending"
 msgstr "Ожидает запуска"
 
+msgid "Podkop Plus manages ciadpi pid files itself, so pidfile options are not allowed here."
+msgstr "Podkop Plus сам управляет pid-файлами ciadpi, поэтому параметры pidfile здесь запрещены."
+
+msgid "Podkop Plus manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Podkop Plus сам управляет жизненным циклом ciadpi, поэтому режим daemon здесь запрещён."
+
 msgid "Podkop Plus manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
 msgstr "Podkop Plus сам управляет жизненным циклом nfqws, поэтому режим daemon здесь запрещён."
 
@@ -682,6 +733,18 @@ msgstr "Настройки Podkop Plus"
 
 msgid "Podkop Plus will not modify your DHCP configuration"
 msgstr "Podkop Plus не будет изменять вашу конфигурацию DHCP"
+
+msgid "Podkop-managed ciadpi runtime has restarted"
+msgstr "ciadpi Podkop Plus перезапускался"
+
+msgid "Podkop-managed ciadpi runtime is not ready"
+msgstr "ciadpi Podkop Plus не готов"
+
+msgid "Podkop-managed ciadpi runtime is not running"
+msgstr "ciadpi Podkop Plus не запущен"
+
+msgid "Podkop-managed ciadpi runtime is ready"
+msgstr "ciadpi Podkop Plus готов"
 
 msgid "Podkop-managed nfqws runtime is not ready"
 msgstr "NFQWS Podkop Plus не готов"
@@ -881,6 +944,18 @@ msgstr "Укажите локальный IP-адрес, который след
 msgid "Specify local IP addresses or subnets whose traffic will always be routed through the configured route"
 msgstr "Укажите локальные IP-адреса или подсети, трафик которых всегда будет маршрутизироваться через маршрут этой секции"
 
+msgid "Standalone ByeDPI autostart is enabled"
+msgstr "Автозапуск отдельной службы ByeDPI включен"
+
+msgid "Standalone ByeDPI is active together with Podkop ByeDPI rules"
+msgstr "Отдельная служба ByeDPI активна вместе с правилами ByeDPI в Podkop Plus"
+
+msgid "Standalone ByeDPI service is active"
+msgstr "Отдельная служба ByeDPI активна"
+
+msgid "Standalone ByeDPI service is inactive"
+msgstr "Отдельная служба ByeDPI неактивна"
+
 msgid "Standalone Zapret is active together with Podkop Zapret rules"
 msgstr "Отдельная служба Zapret активна вместе с правилами Zapret в Podkop Plus"
 
@@ -935,8 +1010,14 @@ msgstr "DNS-сервер, используемый для поиска IP-адр
 msgid "The NFQUEUE number is assigned by Podkop Plus for each rule and must not be overridden here."
 msgstr "Номер NFQUEUE назначается Podkop Plus для каждого правила и не должен переопределяться здесь."
 
+msgid "There are rules using ByeDPI"
+msgstr "Есть правила, использующие ByeDPI"
+
 msgid "There are rules using Zapret"
 msgstr "Есть правила использующие Zapret"
+
+msgid "This field must start a working ciadpi strategy; help/version options exit immediately and are not allowed here."
+msgstr "Это поле должно запускать рабочую стратегию ciadpi; параметры help/version сразу завершают процесс и здесь запрещены."
 
 msgid "This field must start a working nfqws strategy; --dry-run exits immediately and is not allowed here."
 msgstr "Это поле должно запускать рабочую стратегию nfqws; --dry-run сразу завершает процесс и здесь запрещён."
@@ -959,6 +1040,9 @@ msgstr "Трафик"
 msgid "Traffic Total"
 msgstr "Всего трафика"
 
+msgid "Transparent proxy mode is incompatible with action=byedpi because Podkop Plus connects to ciadpi through SOCKS."
+msgstr "Режим прозрачного прокси несовместим с action=byedpi, потому что Podkop Plus подключается к ciadpi через SOCKS."
+
 msgid "Troubleshooting"
 msgstr "Устранение неполадок"
 
@@ -977,8 +1061,17 @@ msgstr "UDP (Незащищённый DNS)"
 msgid "UDP over TCP"
 msgstr "UDP через TCP"
 
+msgid "Unable to validate the ByeDPI strategy through the backend parser."
+msgstr "Не удалось проверить стратегию ByeDPI через backend-парсер."
+
 msgid "Unable to validate the NFQWS strategy through the backend parser."
 msgstr "Не удалось проверить стратегию NFQWS через backend-парсер."
+
+msgid "Unexpected ByeDPI strategy argument: %s"
+msgstr "Неожиданный аргумент стратегии ByeDPI: %s"
+
+msgid "Unexpected Podkop-managed ciadpi runtime is running"
+msgstr "Обнаружен лишний ciadpi Podkop Plus"
 
 msgid "Unexpected Podkop-managed nfqws runtime is running"
 msgstr "Обнаружен лишний NFQWS Podkop Plus"
@@ -991,6 +1084,9 @@ msgstr "уникальный идентификатор UCI"
 
 msgid "unknown"
 msgstr "неизвестно"
+
+msgid "Unknown ByeDPI option: %s"
+msgstr "Неизвестная опция ByeDPI: %s"
 
 msgid "Unknown error"
 msgstr "Неизвестная ошибка"
@@ -1075,9 +1171,6 @@ msgstr "Секретный ключ YACD"
 
 msgid "You can select Output Network Interface, by default autodetect"
 msgstr "Вы можете выбрать выходной сетевой интерфейс, по умолчанию он определяется автоматически."
-
-msgid "Zapret (provider not available)"
-msgstr "Zapret (провайдер недоступен)"
 
 msgid "Zapret hostlist templates are not supported here because Podkop Plus does not expand them for per-rule NFQWS strategies."
 msgstr "Шаблоны hostlist zapret здесь не поддерживаются, потому что Podkop Plus не разворачивает их для per-rule стратегий NFQWS."

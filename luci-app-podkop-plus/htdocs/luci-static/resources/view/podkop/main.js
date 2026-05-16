@@ -730,12 +730,14 @@ var Podkop;
     AvailableMethods2["CHECK_FAKEIP"] = "check_fakeip";
     AvailableMethods2["CHECK_NFT_RULES"] = "check_nft_rules";
     AvailableMethods2["CHECK_ZAPRET_RUNTIME"] = "check_zapret_runtime";
+    AvailableMethods2["CHECK_BYEDPI_RUNTIME"] = "check_byedpi_runtime";
     AvailableMethods2["GET_STATUS"] = "get_status";
     AvailableMethods2["GET_OUTBOUND_LINK"] = "get_outbound_link";
     AvailableMethods2["GET_SUBSCRIPTION_METADATA"] = "get_subscription_metadata";
     AvailableMethods2["CHECK_SING_BOX"] = "check_sing_box";
     AvailableMethods2["GET_SING_BOX_STATUS"] = "get_sing_box_status";
     AvailableMethods2["GET_ZAPRET_STATUS"] = "get_zapret_status";
+    AvailableMethods2["GET_BYEDPI_STATUS"] = "get_byedpi_status";
     AvailableMethods2["CLASH_API"] = "clash_api";
     AvailableMethods2["RESTART"] = "restart";
     AvailableMethods2["START"] = "start";
@@ -772,6 +774,9 @@ var PodkopShellMethods = {
   checkZapretRuntime: async () => callBaseMethod(
     Podkop.AvailableMethods.CHECK_ZAPRET_RUNTIME
   ),
+  checkByedpiRuntime: async () => callBaseMethod(
+    Podkop.AvailableMethods.CHECK_BYEDPI_RUNTIME
+  ),
   getStatus: async () => callBaseMethod(Podkop.AvailableMethods.GET_STATUS),
   getOutboundLink: async (section, tag) => callBaseMethod(
     Podkop.AvailableMethods.GET_OUTBOUND_LINK,
@@ -789,6 +794,9 @@ var PodkopShellMethods = {
   ),
   getZapretStatus: async () => callBaseMethod(
     Podkop.AvailableMethods.GET_ZAPRET_STATUS
+  ),
+  getByedpiStatus: async () => callBaseMethod(
+    Podkop.AvailableMethods.GET_BYEDPI_STATUS
   ),
   getClashApiProxies: async () => callBaseMethod(Podkop.AvailableMethods.CLASH_API, [
     Podkop.AvailableClashAPIMethods.GET_PROXIES
@@ -933,7 +941,7 @@ async function getDashboardSections(options = {}) {
   );
   const data = await Promise.all(
     configSections.filter(
-      (section) => section.enabled !== "0" && ["proxy", "vpn"].includes(getSectionAction(section))
+      (section) => section.enabled !== "0" && ["proxy", "vpn", "byedpi"].includes(getSectionAction(section))
     ).map(async (section) => {
       const displayName = getDisplayName(section);
       const sectionAction = getSectionAction(section);
@@ -951,6 +959,27 @@ async function getDashboardSections(options = {}) {
             {
               code: outbound?.code || section[".name"],
               displayName: section.interface || outbound?.value?.name || "",
+              latency: outbound?.value?.history?.[0]?.delay || 0,
+              type: outbound?.value?.type || "",
+              selected: true,
+              canCopyLink: false
+            }
+          ]
+        };
+      }
+      if (sectionAction === "byedpi") {
+        const outbound = proxies.find(
+          (proxy) => proxy.code === `${section[".name"]}-out`
+        );
+        return {
+          withTagSelect: false,
+          code: outbound?.code || section[".name"],
+          sectionName: section[".name"],
+          displayName,
+          outbounds: [
+            {
+              code: outbound?.code || section[".name"],
+              displayName: "ByeDPI",
               latency: outbound?.value?.history?.[0]?.delay || 0,
               type: outbound?.value?.type || "",
               selected: true,
@@ -1347,19 +1376,55 @@ var DIAGNOSTICS_CHECKS_MAP = {
     title: getCheckTitle("Zapret"),
     code: "ZAPRET" /* ZAPRET */
   },
-  ["OUTBOUNDS" /* OUTBOUNDS */]: {
+  ["BYEDPI" /* BYEDPI */]: {
     order: 5,
+    title: getCheckTitle("ByeDPI"),
+    code: "BYEDPI" /* BYEDPI */
+  },
+  ["OUTBOUNDS" /* OUTBOUNDS */]: {
+    order: 6,
     title: getCheckTitle("Outbounds"),
     code: "OUTBOUNDS" /* OUTBOUNDS */
   },
   ["FAKEIP" /* FAKEIP */]: {
-    order: 6,
+    order: 7,
     title: getCheckTitle("FakeIP"),
     code: "FAKEIP" /* FAKEIP */
   }
 };
 
 // src/podkop/tabs/diagnostic/diagnostic.store.ts
+function createDiagnosticCheck(code, description) {
+  const meta = DIAGNOSTICS_CHECKS_MAP[code];
+  return {
+    code,
+    title: meta.title,
+    order: meta.order,
+    description,
+    items: [],
+    state: "skipped"
+  };
+}
+function getDiagnosticsChecks(description, options = {}) {
+  const checks = [
+    "DNS" /* DNS */,
+    "SINGBOX" /* SINGBOX */,
+    "NFT" /* NFT */
+  ];
+  if (options.includeZapret) {
+    checks.push("ZAPRET" /* ZAPRET */);
+  }
+  if (options.includeByedpi) {
+    checks.push("BYEDPI" /* BYEDPI */);
+  }
+  checks.push("OUTBOUNDS" /* OUTBOUNDS */, "FAKEIP" /* FAKEIP */);
+  return checks.map((code) => createDiagnosticCheck(code, description));
+}
+function getLoadingDiagnosticsChecks(options = {}) {
+  return {
+    diagnosticsChecks: getDiagnosticsChecks(_("Pending"), options)
+  };
+}
 var initialDiagnosticStore = {
   diagnosticsSystemInfo: {
     loading: true,
@@ -1369,6 +1434,8 @@ var initialDiagnosticStore = {
     sing_box_version: "loading",
     zapret_version: "loading",
     zapret_installed: 0,
+    byedpi_version: "loading",
+    byedpi_installed: 0,
     openwrt_version: "loading",
     device_model: "loading"
   },
@@ -1399,108 +1466,7 @@ var initialDiagnosticStore = {
     }
   },
   diagnosticsRunAction: { loading: false },
-  diagnosticsChecks: [
-    {
-      code: "DNS" /* DNS */,
-      title: DIAGNOSTICS_CHECKS_MAP.DNS.title,
-      order: DIAGNOSTICS_CHECKS_MAP.DNS.order,
-      description: _("Not running"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "SINGBOX" /* SINGBOX */,
-      title: DIAGNOSTICS_CHECKS_MAP.SINGBOX.title,
-      order: DIAGNOSTICS_CHECKS_MAP.SINGBOX.order,
-      description: _("Not running"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "NFT" /* NFT */,
-      title: DIAGNOSTICS_CHECKS_MAP.NFT.title,
-      order: DIAGNOSTICS_CHECKS_MAP.NFT.order,
-      description: _("Not running"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "ZAPRET" /* ZAPRET */,
-      title: DIAGNOSTICS_CHECKS_MAP.ZAPRET.title,
-      order: DIAGNOSTICS_CHECKS_MAP.ZAPRET.order,
-      description: _("Not running"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "OUTBOUNDS" /* OUTBOUNDS */,
-      title: DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS.title,
-      order: DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS.order,
-      description: _("Not running"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "FAKEIP" /* FAKEIP */,
-      title: DIAGNOSTICS_CHECKS_MAP.FAKEIP.title,
-      order: DIAGNOSTICS_CHECKS_MAP.FAKEIP.order,
-      description: _("Not running"),
-      items: [],
-      state: "skipped"
-    }
-  ]
-};
-var loadingDiagnosticsChecksStore = {
-  diagnosticsChecks: [
-    {
-      code: "DNS" /* DNS */,
-      title: DIAGNOSTICS_CHECKS_MAP.DNS.title,
-      order: DIAGNOSTICS_CHECKS_MAP.DNS.order,
-      description: _("Pending"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "SINGBOX" /* SINGBOX */,
-      title: DIAGNOSTICS_CHECKS_MAP.SINGBOX.title,
-      order: DIAGNOSTICS_CHECKS_MAP.SINGBOX.order,
-      description: _("Pending"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "NFT" /* NFT */,
-      title: DIAGNOSTICS_CHECKS_MAP.NFT.title,
-      order: DIAGNOSTICS_CHECKS_MAP.NFT.order,
-      description: _("Pending"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "ZAPRET" /* ZAPRET */,
-      title: DIAGNOSTICS_CHECKS_MAP.ZAPRET.title,
-      order: DIAGNOSTICS_CHECKS_MAP.ZAPRET.order,
-      description: _("Pending"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "OUTBOUNDS" /* OUTBOUNDS */,
-      title: DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS.title,
-      order: DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS.order,
-      description: _("Pending"),
-      items: [],
-      state: "skipped"
-    },
-    {
-      code: "FAKEIP" /* FAKEIP */,
-      title: DIAGNOSTICS_CHECKS_MAP.FAKEIP.title,
-      order: DIAGNOSTICS_CHECKS_MAP.FAKEIP.order,
-      description: _("Pending"),
-      items: [],
-      state: "skipped"
-    }
-  ]
+  diagnosticsChecks: getDiagnosticsChecks(_("Not running"))
 };
 
 // src/podkop/services/store.service.ts
@@ -1623,9 +1589,7 @@ var initialStore = {
       podkopStatus: "",
       podkopLifecycleState: "unknown",
       podkopLifecycleAction: "none",
-      podkopLifecycleBusy: 0,
-      zapret: 0,
-      zapretInstalled: 0
+      podkopLifecycleBusy: 0
     }
   },
   sectionsWidget: {
@@ -3002,21 +2966,19 @@ function getSettledMethodResponse(scope, result) {
 }
 async function fetchServicesInfo() {
   const requestId = ++latestServicesInfoRequestId;
-  const [podkopResult, singboxResult, zapretResult] = await Promise.allSettled([
+  const [podkopResult, singboxResult] = await Promise.allSettled([
     PodkopShellMethods.getStatus(),
-    PodkopShellMethods.getSingBoxStatus(),
-    PodkopShellMethods.getZapretStatus()
+    PodkopShellMethods.getSingBoxStatus()
   ]);
   if (requestId !== latestServicesInfoRequestId) {
     return;
   }
   const podkop = getSettledMethodResponse("getStatus", podkopResult);
   const singbox = getSettledMethodResponse("getSingBoxStatus", singboxResult);
-  const zapret = getSettledMethodResponse("getZapretStatus", zapretResult);
   store.set({
     servicesInfoWidget: {
       loading: false,
-      failed: !podkop.success || !singbox.success || !zapret.success,
+      failed: !podkop.success || !singbox.success,
       data: {
         singbox: singbox.success ? singbox.data.running : 0,
         podkopRunning: podkop.success ? podkop.data.running : 0,
@@ -3024,9 +2986,7 @@ async function fetchServicesInfo() {
         podkopStatus: podkop.success ? podkop.data.status : "",
         podkopLifecycleState: podkop.success ? podkop.data.lifecycle_state || "unknown" : "unknown",
         podkopLifecycleAction: podkop.success ? podkop.data.lifecycle_action || "none" : "none",
-        podkopLifecycleBusy: podkop.success ? podkop.data.lifecycle_busy || 0 : 0,
-        zapret: zapret.success ? zapret.data.ready : 0,
-        zapretInstalled: zapret.success ? zapret.data.installed : 0
+        podkopLifecycleBusy: podkop.success ? podkop.data.lifecycle_busy || 0 : 0
       }
     }
   });
@@ -3383,13 +3343,6 @@ async function renderServicesInfoWidget() {
         value: servicesInfoWidget.data.singbox ? _("\u2714 Running") : _("\u2718 Stopped"),
         attributes: {
           class: servicesInfoWidget.data.singbox ? "pdk_dashboard-page__widgets-section__item__row--success" : "pdk_dashboard-page__widgets-section__item__row--error"
-        }
-      },
-      {
-        key: "Zapret",
-        value: !servicesInfoWidget.data.zapretInstalled ? _("\u2718 Not installed") : servicesInfoWidget.data.zapret ? _("\u2714 Running") : _("\u2718 Stopped"),
-        attributes: {
-          class: servicesInfoWidget.data.zapretInstalled && servicesInfoWidget.data.zapret ? "pdk_dashboard-page__widgets-section__item__row--success" : "pdk_dashboard-page__widgets-section__item__row--error"
         }
       }
     ]
@@ -4177,6 +4130,115 @@ async function runZapretCheck() {
     {
       state: standaloneConflict ? "warning" : "success",
       key: standaloneServiceRunning ? hasZapretRules ? _("Standalone Zapret is active together with Podkop Zapret rules") : _("Standalone Zapret service is active") : _("Standalone Zapret service is inactive"),
+      value: ""
+    }
+  ];
+  updateCheckStore({
+    order,
+    code,
+    title,
+    description,
+    state,
+    items
+  });
+}
+
+// src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts
+async function runByedpiCheck() {
+  const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.BYEDPI;
+  updateCheckStore({
+    order,
+    code,
+    title,
+    description: _("Checking, please wait"),
+    state: "loading",
+    items: []
+  });
+  const byedpiStatus = await PodkopShellMethods.getByedpiStatus();
+  if (!byedpiStatus.success) {
+    updateCheckStore({
+      order,
+      code,
+      title,
+      description: _("Cannot receive checks result"),
+      state: "error",
+      items: []
+    });
+    throw new Error("ByeDPI checks failed");
+  }
+  const data = byedpiStatus.data;
+  const providerAvailable = Boolean(data.provider_available ?? data.installed);
+  const packageInstalled = Boolean(data.package_installed);
+  const hasByedpiRules = Number(data.enabled_rule_count || 0) > 0;
+  const ready = Boolean(data.ready);
+  const expectedProcesses = Number(data.expected_process_count || 0);
+  const runningProcesses = Number(data.running_process_count || 0);
+  const supervisorProcesses = Number(data.supervisor_process_count || 0);
+  const restartCount = Number(data.restart_count || 0);
+  const runtimeUnstable = Boolean(data.runtime_unstable);
+  const podkopRuntimeReady = !hasByedpiRules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
+  const unexpectedRuntime = !hasByedpiRules && (runningProcesses > 0 || supervisorProcesses > 0);
+  const outboundsConfigured = Boolean(data.outbounds_configured);
+  const routesConfigured = Boolean(data.routes_configured);
+  const standaloneServiceEnabled = Boolean(data.standalone_service_enabled);
+  const standaloneServiceRunning = Boolean(data.standalone_service_running);
+  const standaloneConflict = hasByedpiRules && standaloneServiceRunning;
+  const standaloneAutostartRisk = hasByedpiRules && standaloneServiceEnabled && !standaloneServiceRunning;
+  let state = "success";
+  let description = _("Checks passed");
+  if (hasByedpiRules && !providerAvailable) {
+    state = "error";
+    description = _("Checks failed");
+  } else if (hasByedpiRules && !ready) {
+    state = "error";
+    description = _("Checks failed");
+  } else if (standaloneConflict) {
+    state = "error";
+    description = _("Checks failed");
+  } else if (runtimeUnstable) {
+    state = "warning";
+    description = _("Issues detected");
+  } else if (standaloneAutostartRisk) {
+    state = "warning";
+    description = _("Issues detected");
+  } else if (!packageInstalled) {
+    state = "warning";
+    description = _("Issues detected");
+  }
+  const items = [
+    {
+      state: providerAvailable ? "success" : hasByedpiRules ? "error" : "warning",
+      key: providerAvailable ? _("ByeDPI provider binary is available") : _("ByeDPI provider binary is not available"),
+      value: data.provider_path || ""
+    },
+    {
+      state: packageInstalled ? "success" : "warning",
+      key: packageInstalled ? _("ByeDPI package is installed") : _("ByeDPI package is not installed"),
+      value: ""
+    },
+    {
+      state: hasByedpiRules && !providerAvailable ? "error" : "success",
+      key: hasByedpiRules ? _("There are rules using ByeDPI") : _("No rules use ByeDPI"),
+      value: ""
+    },
+    {
+      state: unexpectedRuntime || !podkopRuntimeReady ? "error" : runtimeUnstable ? "warning" : "success",
+      key: hasByedpiRules ? runtimeUnstable ? _("Podkop-managed ciadpi runtime has restarted") : podkopRuntimeReady ? _("Podkop-managed ciadpi runtime is ready") : _("Podkop-managed ciadpi runtime is not ready") : unexpectedRuntime ? _("Unexpected Podkop-managed ciadpi runtime is running") : _("Podkop-managed ciadpi runtime is not running"),
+      value: hasByedpiRules ? runtimeUnstable ? `${restartCount}` : `${runningProcesses}/${expectedProcesses}` : ""
+    },
+    {
+      state: !hasByedpiRules || outboundsConfigured ? "success" : "error",
+      key: outboundsConfigured ? _("ByeDPI sing-box outbound is configured") : _("ByeDPI sing-box outbound is not configured"),
+      value: `${data.listen_address}:${Number(data.port_base || 0)}`
+    },
+    {
+      state: !hasByedpiRules || routesConfigured ? "success" : "error",
+      key: routesConfigured ? _("ByeDPI route rules are configured") : _("ByeDPI route rules are not configured"),
+      value: ""
+    },
+    {
+      state: standaloneConflict ? "error" : standaloneAutostartRisk ? "warning" : "success",
+      key: standaloneServiceRunning ? hasByedpiRules ? _("Standalone ByeDPI is active together with Podkop ByeDPI rules") : _("Standalone ByeDPI service is active") : standaloneAutostartRisk ? _("Standalone ByeDPI autostart is enabled") : _("Standalone ByeDPI service is inactive"),
       value: ""
     }
   ];
@@ -5091,6 +5153,8 @@ var UNKNOWN_DIAGNOSTICS_SYSTEM_INFO = {
   sing_box_version: _("unknown"),
   zapret_version: _("unknown"),
   zapret_installed: 0,
+  byedpi_version: _("unknown"),
+  byedpi_installed: 0,
   openwrt_version: _("unknown"),
   device_model: _("unknown")
 };
@@ -5104,6 +5168,20 @@ var diagnosticStatusPollTimer = null;
 var restartStartStopSnapshot = null;
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function getDiagnosticsProviderOptions(systemInfo = store.get().diagnosticsSystemInfo) {
+  return {
+    includeZapret: Boolean(systemInfo.zapret_installed),
+    includeByedpi: Boolean(systemInfo.byedpi_installed)
+  };
+}
+function getNotRunningDiagnosticsChecks() {
+  return getDiagnosticsChecks(_("Not running"), getDiagnosticsProviderOptions());
+}
+function resetDiagnosticsChecks() {
+  store.set({
+    diagnosticsChecks: getNotRunningDiagnosticsChecks()
+  });
 }
 function setDiagnosticActionLoading(action, loading) {
   const diagnosticsActions = store.get().diagnosticsActions;
@@ -5151,7 +5229,11 @@ async function fetchSystemInfo() {
         diagnosticsSystemInfo: {
           loading: false,
           ...systemInfo.data
-        }
+        },
+        diagnosticsChecks: getDiagnosticsChecks(
+          _("Not running"),
+          getDiagnosticsProviderOptions(systemInfo.data)
+        )
       });
       return;
     }
@@ -5169,7 +5251,9 @@ async function fetchSystemInfo() {
 }
 function renderDiagnosticsChecks() {
   logger.debug("[DIAGNOSTIC]", "renderDiagnosticsChecks");
-  const diagnosticsChecks = store.get().diagnosticsChecks.sort((a, b) => a.order - b.order);
+  const diagnosticsChecks = [...store.get().diagnosticsChecks].sort(
+    (a, b) => a.order - b.order
+  );
   const container = document.getElementById("pdk_diagnostic-page-checks");
   const renderedDiagnosticsChecks = diagnosticsChecks.map(
     (check) => renderCheckSection(check)
@@ -5201,7 +5285,7 @@ async function handleRestart() {
   } finally {
     restartStartStopSnapshot = null;
     setDiagnosticActionLoading("restart", false);
-    store.reset(["diagnosticsChecks"]);
+    resetDiagnosticsChecks();
   }
 }
 async function handleStop() {
@@ -5213,7 +5297,7 @@ async function handleStop() {
     logger.error("[DIAGNOSTIC]", "handleStop - e", e);
   } finally {
     setDiagnosticActionLoading("stop", false);
-    store.reset(["diagnosticsChecks"]);
+    resetDiagnosticsChecks();
   }
 }
 async function handleStart() {
@@ -5225,7 +5309,7 @@ async function handleStart() {
     logger.error("[DIAGNOSTIC]", "handleStart - e", e);
   } finally {
     setDiagnosticActionLoading("start", false);
-    store.reset(["diagnosticsChecks"]);
+    resetDiagnosticsChecks();
   }
 }
 async function handleEnable() {
@@ -5426,30 +5510,41 @@ function renderDiagnosticSystemInfoWidget() {
   logger.debug("[DIAGNOSTIC]", "renderDiagnosticSystemInfoWidget");
   const diagnosticsSystemInfo = store.get().diagnosticsSystemInfo;
   const container = document.getElementById("pdk_diagnostic-page-system-info");
+  const items = [
+    getPodkopVersionRow(diagnosticsSystemInfo),
+    {
+      key: "Luci App",
+      value: normalizeCompiledVersion(PODKOP_LUCI_APP_VERSION)
+    },
+    {
+      key: "Sing-box",
+      value: diagnosticsSystemInfo.sing_box_version
+    }
+  ];
+  if (diagnosticsSystemInfo.zapret_installed) {
+    items.push({
+      key: "Zapret",
+      value: diagnosticsSystemInfo.zapret_version
+    });
+  }
+  if (diagnosticsSystemInfo.byedpi_installed) {
+    items.push({
+      key: "ByeDPI",
+      value: diagnosticsSystemInfo.byedpi_version
+    });
+  }
+  items.push(
+    {
+      key: "OS",
+      value: diagnosticsSystemInfo.openwrt_version
+    },
+    {
+      key: "Device",
+      value: diagnosticsSystemInfo.device_model
+    }
+  );
   const renderedSystemInfo = renderSystemInfo({
-    items: [
-      getPodkopVersionRow(diagnosticsSystemInfo),
-      {
-        key: "Luci App",
-        value: normalizeCompiledVersion(PODKOP_LUCI_APP_VERSION)
-      },
-      {
-        key: "Sing-box",
-        value: diagnosticsSystemInfo.sing_box_version
-      },
-      {
-        key: "Zapret",
-        value: diagnosticsSystemInfo.loading ? "loading" : diagnosticsSystemInfo.zapret_installed ? diagnosticsSystemInfo.zapret_version : _("not installed")
-      },
-      {
-        key: "OS",
-        value: diagnosticsSystemInfo.openwrt_version
-      },
-      {
-        key: "Device",
-        value: diagnosticsSystemInfo.device_model
-      }
-    ]
+    items
   });
   return preserveScrollForPage(() => {
     container.replaceChildren(renderedSystemInfo);
@@ -5471,18 +5566,23 @@ async function onStoreUpdate2(next, prev, diff) {
   }
 }
 async function runChecks() {
-  const runners = [
-    runDnsCheck,
-    runSingBoxCheck,
-    runNftCheck,
-    runZapretCheck,
-    runSectionsCheck,
-    runFakeIPCheck
-  ];
   try {
+    if (store.get().diagnosticsSystemInfo.loading) {
+      await fetchSystemInfo();
+    }
+    const providerOptions = getDiagnosticsProviderOptions();
+    const runners = [
+      runDnsCheck,
+      runSingBoxCheck,
+      runNftCheck,
+      ...providerOptions.includeZapret ? [runZapretCheck] : [],
+      ...providerOptions.includeByedpi ? [runByedpiCheck] : [],
+      runSectionsCheck,
+      runFakeIPCheck
+    ];
     store.set({
       diagnosticsRunAction: { loading: true },
-      diagnosticsChecks: loadingDiagnosticsChecksStore.diagnosticsChecks
+      diagnosticsChecks: getLoadingDiagnosticsChecks(providerOptions).diagnosticsChecks
     });
     for (const runner of runners) {
       try {
@@ -5499,7 +5599,7 @@ async function runChecks() {
 }
 async function loadInitialDiagnosticData() {
   const diagnosticStatus = document.getElementById("diagnostic-status");
-  if (diagnosticStatus?.isConnected && diagnosticStatus.offsetParent !== null && store.get().diagnosticsSystemInfo.loading) {
+  if (diagnosticStatus?.isConnected && diagnosticStatus.offsetParent !== null) {
     await fetchSystemInfo();
   }
 }
@@ -5531,11 +5631,8 @@ function onPageMount2() {
 function onPageUnmount2() {
   store.unsubscribe(onStoreUpdate2);
   stopDiagnosticStatusPolling();
-  store.reset([
-    "diagnosticsActions",
-    "diagnosticsChecks",
-    "diagnosticsRunAction"
-  ]);
+  store.reset(["diagnosticsActions", "diagnosticsRunAction"]);
+  resetDiagnosticsChecks();
 }
 function registerLifecycleListeners2() {
   if (diagnosticLifecycleRegistered) {

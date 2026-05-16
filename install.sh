@@ -18,6 +18,11 @@ ZAPRET_ALREADY_PRESENT=0
 ZAPRET_REQUESTED=0
 ZAPRET_SKIPPED_REASON=""
 ZAPRET_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_ZAPRET:-${INSTALL_ZAPRET:-}}"
+BYEDPI_ARCH=""
+BYEDPI_ALREADY_PRESENT=0
+BYEDPI_REQUESTED=0
+BYEDPI_SKIPPED_REASON=""
+BYEDPI_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_BYEDPI:-${INSTALL_BYEDPI:-}}"
 SING_BOX_INSTALL_CHOICE="${PODKOP_PLUS_SING_BOX:-${SING_BOX_FLAVOR:-}}"
 SING_BOX_ACTION="keep"
 SING_BOX_CURRENT_VERSION=""
@@ -52,6 +57,13 @@ ZAPRET_PACKAGE_NAME=""
 ZAPRET_PACKAGE_FILE=""
 ZAPRET_PACKAGE_VERSION=""
 
+BYEDPI_RELEASE_JSON=""
+BYEDPI_RELEASE_TAG_RESOLVED=""
+BYEDPI_PACKAGE_URL=""
+BYEDPI_PACKAGE_NAME=""
+BYEDPI_PACKAGE_FILE=""
+BYEDPI_PACKAGE_VERSION=""
+
 command -v apk >/dev/null 2>&1 && PKG_IS_APK=1
 
 msg() {
@@ -69,11 +81,13 @@ fail() {
 
 usage() {
     cat <<EOF
-Usage: $0 [--with-zapret|--without-zapret] [--sing-box=stock|extended|keep]
+Usage: $0 [--with-zapret|--without-zapret] [--with-byedpi|--without-byedpi] [--sing-box=stock|extended|keep]
 
 Options:
   --with-zapret       Install the optional external zapret provider package.
   --without-zapret    Install Podkop Plus without the zapret provider.
+  --with-byedpi       Install the optional external ByeDPI provider package.
+  --without-byedpi    Install Podkop Plus without the ByeDPI provider.
   --sing-box=stock    Use the regular stable sing-box package from OpenWrt.
   --sing-box=extended Install or refresh sing-box-extended for XHTTP support.
   --sing-box=keep     Keep the current sing-box flavor.
@@ -88,6 +102,12 @@ parse_args() {
                 ;;
             --without-zapret)
                 ZAPRET_INSTALL_CHOICE=0
+                ;;
+            --with-byedpi)
+                BYEDPI_INSTALL_CHOICE=1
+                ;;
+            --without-byedpi)
+                BYEDPI_INSTALL_CHOICE=0
                 ;;
             --with-sing-box-extended)
                 SING_BOX_INSTALL_CHOICE="extended"
@@ -124,6 +144,16 @@ clear_zapret_download_state() {
     ZAPRET_PACKAGE_FILE=""
     ZAPRET_PACKAGE_VERSION=""
     ZAPRET_ARCH=""
+}
+
+clear_byedpi_download_state() {
+    BYEDPI_RELEASE_JSON=""
+    BYEDPI_RELEASE_TAG_RESOLVED=""
+    BYEDPI_PACKAGE_URL=""
+    BYEDPI_PACKAGE_NAME=""
+    BYEDPI_PACKAGE_FILE=""
+    BYEDPI_PACKAGE_VERSION=""
+    BYEDPI_ARCH=""
 }
 
 read_openwrt_release_value() {
@@ -230,6 +260,10 @@ pkg_is_installed() {
 
 is_zapret_present() {
     pkg_is_installed "zapret" || [ -x /opt/zapret/nfq/nfqws ]
+}
+
+is_byedpi_present() {
+    pkg_is_installed "byedpi" || [ -x /usr/bin/ciadpi ] || [ -x /etc/init.d/byedpi ]
 }
 
 pkg_list_update() {
@@ -450,6 +484,18 @@ extract_package_version() {
             ;;
         zapret-*.apk)
             printf '%s\n' "$package_name" | sed 's/^zapret-//;s/\.apk$//'
+            ;;
+        byedpi_*.ipk)
+            printf '%s\n' "$package_name" | sed 's/^byedpi_//;s/_[^_]*\.ipk$//'
+            ;;
+        byedpi_*.apk)
+            printf '%s\n' "$package_name" | sed 's/^byedpi_//;s/\.apk$//'
+            ;;
+        byedpi-*.ipk)
+            printf '%s\n' "$package_name" | sed 's/^byedpi-//;s/-[^-]*\.ipk$//'
+            ;;
+        byedpi-*.apk)
+            printf '%s\n' "$package_name" | sed 's/^byedpi-//;s/\.apk$//'
             ;;
         *)
             printf '%s\n' "$package_name"
@@ -1053,7 +1099,7 @@ resolve_arch_candidates() {
     done
 
     [ -n "$TARGET_ARCH" ] || fail "Failed to detect the router package architecture"
-    msg "Detected zapret architecture candidates: $ZAPRET_ARCH_CANDIDATES"
+    msg "Detected package architecture candidates: $ZAPRET_ARCH_CANDIDATES"
 }
 
 resolve_zapret_release() {
@@ -1129,6 +1175,116 @@ resolve_zapret_release() {
     fi
 }
 
+get_openwrt_release_series() {
+    release="$(read_openwrt_release_value "DISTRIB_RELEASE")"
+    printf '%s\n' "$release" | sed -n 's/^\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p'
+}
+
+resolve_byedpi_release() {
+    candidate_name=""
+    message=""
+    asset_ext="ipk"
+    release_series=""
+    response=""
+    tag=""
+    url="https://api.github.com/repos/DPITrickster/ByeDPI-OpenWrt/releases?per_page=30"
+
+    clear_byedpi_download_state
+
+    [ "$BYEDPI_REQUESTED" -eq 1 ] || return 0
+    [ "$PKG_IS_APK" -eq 1 ] && asset_ext="apk"
+    release_series="$(get_openwrt_release_series)"
+
+    response="$(http_get "$url" 2>/dev/null || true)"
+    if [ -z "$response" ]; then
+        warn "Failed to query ByeDPI release metadata. Continuing without ByeDPI provider."
+        BYEDPI_SKIPPED_REASON="release metadata unavailable"
+        return 0
+    fi
+
+    if ! printf '%s' "$response" | jq -e . >/dev/null 2>&1; then
+        warn "GitHub returned an invalid ByeDPI release response. Continuing without ByeDPI provider."
+        BYEDPI_SKIPPED_REASON="invalid release metadata"
+        clear_byedpi_download_state
+        return 0
+    fi
+
+    message="$(printf '%s' "$response" | jq -r '.message // empty')"
+    case "$message" in
+        *"API rate limit"*|*"rate limit exceeded"*)
+            warn "GitHub API rate limit reached while resolving ByeDPI. Continuing without ByeDPI provider."
+            BYEDPI_SKIPPED_REASON="GitHub API rate limit"
+            clear_byedpi_download_state
+            return 0
+            ;;
+        "Not Found")
+            warn "No published releases found for DPITrickster/ByeDPI-OpenWrt. Continuing without ByeDPI provider."
+            BYEDPI_SKIPPED_REASON="release not found"
+            clear_byedpi_download_state
+            return 0
+            ;;
+    esac
+
+    if [ -n "$release_series" ]; then
+        tag="$(printf '%s' "$response" | jq -r --arg series "$release_series" '
+            .[]
+            | select(((.draft // false) | not) and ((.prerelease // false) | not))
+            | select(((.tag_name // "") | contains($series)) or ((.name // "") | contains($series)))
+            | .tag_name // empty
+        ' | sed -n '1p')"
+    fi
+
+    if [ -z "$tag" ]; then
+        tag="$(printf '%s' "$response" | jq -r '
+            .[]
+            | select(((.draft // false) | not) and ((.prerelease // false) | not))
+            | .tag_name // empty
+        ' | sed -n '1p')"
+    fi
+
+    if [ -z "$tag" ]; then
+        warn "Failed to detect the ByeDPI release tag. Continuing without ByeDPI provider."
+        BYEDPI_SKIPPED_REASON="release tag unavailable"
+        clear_byedpi_download_state
+        return 0
+    fi
+
+    BYEDPI_RELEASE_TAG_RESOLVED="$tag"
+    BYEDPI_RELEASE_JSON="$(printf '%s' "$response" | jq -c --arg tag "$tag" '.[] | select(.tag_name == $tag)' | sed -n '1p')"
+
+    for arch in $ZAPRET_ARCH_CANDIDATES; do
+        candidate_name="$(printf '%s' "$BYEDPI_RELEASE_JSON" | jq -r --arg arch "$arch" --arg ext "$asset_ext" '
+            .assets[]
+            | select(((.name | startswith("byedpi_")) or (.name | startswith("byedpi-"))) and (.name | endswith("." + $ext)))
+            | select((.name | contains("_" + $arch + "." + $ext)) or (.name | contains("-" + $arch + "." + $ext)))
+            | .name
+        ' | sed -n '1p')"
+
+        if [ -n "$candidate_name" ]; then
+            BYEDPI_ARCH="$arch"
+            BYEDPI_PACKAGE_NAME="$candidate_name"
+            break
+        fi
+    done
+
+    if [ -z "$BYEDPI_PACKAGE_NAME" ]; then
+        warn "No ByeDPI package was found for architecture: $TARGET_ARCH. Tried: $ZAPRET_ARCH_CANDIDATES. Continuing without ByeDPI provider."
+        BYEDPI_SKIPPED_REASON="package not found for architecture"
+        clear_byedpi_download_state
+        return 0
+    fi
+
+    BYEDPI_PACKAGE_URL="$(printf '%s' "$BYEDPI_RELEASE_JSON" | jq -r --arg name "$BYEDPI_PACKAGE_NAME" '.assets[] | select(.name == $name) | .browser_download_url' | sed -n '1p')"
+    if [ -z "$BYEDPI_PACKAGE_URL" ]; then
+        warn "Failed to resolve the ByeDPI download URL for $BYEDPI_PACKAGE_NAME. Continuing without ByeDPI provider."
+        BYEDPI_SKIPPED_REASON="download URL unavailable"
+        clear_byedpi_download_state
+        return 0
+    fi
+
+    BYEDPI_PACKAGE_VERSION="$(extract_package_version "$BYEDPI_PACKAGE_NAME")"
+}
+
 decide_zapret_installation() {
     if is_zapret_present; then
         ZAPRET_ALREADY_PRESENT=1
@@ -1161,6 +1317,40 @@ decide_zapret_installation() {
 
     ZAPRET_SKIPPED_REASON="installation declined by user"
     warn "Continuing without zapret provider."
+}
+
+decide_byedpi_installation() {
+    if is_byedpi_present; then
+        BYEDPI_ALREADY_PRESENT=1
+        msg "Detected an existing ByeDPI provider. Skipping ByeDPI installation."
+        return 0
+    fi
+
+    case "$BYEDPI_INSTALL_CHOICE" in
+        1|yes|YES|true|TRUE|y|Y)
+            BYEDPI_REQUESTED=1
+            return 0
+            ;;
+        0|no|NO|false|FALSE|n|N)
+            BYEDPI_SKIPPED_REASON="installation disabled by installer option"
+            warn "Continuing without ByeDPI provider."
+            return 0
+            ;;
+    esac
+
+    if [ ! -t 0 ]; then
+        BYEDPI_SKIPPED_REASON="not requested; rerun with --with-byedpi to install the optional provider"
+        warn "Continuing without ByeDPI provider."
+        return 0
+    fi
+
+    if confirm_prompt "Install optional ByeDPI provider for action=byedpi?"; then
+        BYEDPI_REQUESTED=1
+        return 0
+    fi
+
+    BYEDPI_SKIPPED_REASON="installation declined by user"
+    warn "Continuing without ByeDPI provider."
 }
 
 decide_i18n_installation() {
@@ -1239,11 +1429,36 @@ download_and_extract_zapret_package() {
     fi
 }
 
+download_byedpi_package() {
+    [ -n "$BYEDPI_PACKAGE_URL" ] || return 0
+
+    BYEDPI_PACKAGE_FILE="$TMP_DIR/$BYEDPI_PACKAGE_NAME"
+    if ! download_with_retry "$BYEDPI_PACKAGE_URL" "$BYEDPI_PACKAGE_FILE" "$BYEDPI_PACKAGE_NAME"; then
+        warn "Failed to download $BYEDPI_PACKAGE_NAME. Continuing without ByeDPI provider."
+        BYEDPI_SKIPPED_REASON="download failed"
+        clear_byedpi_download_state
+        return 0
+    fi
+
+    if [ ! -s "$BYEDPI_PACKAGE_FILE" ]; then
+        warn "The downloaded ByeDPI package is empty. Continuing without ByeDPI provider."
+        BYEDPI_SKIPPED_REASON="empty package"
+        clear_byedpi_download_state
+        return 0
+    fi
+}
+
 install_packages() {
     if [ -n "$ZAPRET_PACKAGE_FILE" ]; then
         pkg_remove_if_installed "zapret"
         pkg_install_files "$ZAPRET_PACKAGE_FILE" || fail "zapret provider installation failed"
         disable_installed_zapret_service
+    fi
+
+    if [ -n "$BYEDPI_PACKAGE_FILE" ]; then
+        pkg_remove_if_installed "byedpi"
+        pkg_install_files "$BYEDPI_PACKAGE_FILE" || fail "ByeDPI provider installation failed"
+        disable_installed_byedpi_service
     fi
 
     pkg_install_files "$PODKOP_PLUS_BACKEND_FILE" || fail "podkop-plus installation failed"
@@ -1270,6 +1485,22 @@ disable_installed_zapret_service() {
     fi
 }
 
+disable_installed_byedpi_service() {
+    [ -n "$BYEDPI_PACKAGE_FILE" ] || return 0
+    [ -x /etc/init.d/byedpi ] || return 0
+
+    /etc/init.d/byedpi stop >/dev/null 2>&1 || true
+    /etc/init.d/byedpi disable >/dev/null 2>&1 || true
+
+    if /etc/init.d/byedpi status >/dev/null 2>&1; then
+        warn "Standalone /etc/init.d/byedpi is still running after installation. Stop it manually if you do not use standalone ByeDPI."
+    fi
+
+    if /etc/init.d/byedpi enabled >/dev/null 2>&1; then
+        warn "Standalone /etc/init.d/byedpi autostart is still enabled after installation. Disable it manually if you do not use standalone ByeDPI."
+    fi
+}
+
 post_install() {
     rm -f /var/luci-indexcache* /tmp/luci-indexcache*
     rm -f /tmp/podkop-plus.latest-version.cache
@@ -1291,6 +1522,13 @@ post_install() {
         warn "Podkop Plus does not modify /etc/config/zapret or luci-app-zapret settings."
         msg "Standalone /etc/init.d/zapret service and autostart were disabled after provider installation."
     fi
+
+    if [ -n "$BYEDPI_PACKAGE_FILE" ]; then
+        disable_installed_byedpi_service
+        warn "The ByeDPI provider was installed as an external upstream package."
+        warn "Podkop Plus manages only its own ciadpi processes for action=byedpi."
+        msg "Standalone /etc/init.d/byedpi service and autostart were disabled after provider installation."
+    fi
 }
 
 main() {
@@ -1304,6 +1542,7 @@ main() {
     check_system
 
     decide_zapret_installation
+    decide_byedpi_installation
     decide_i18n_installation
 
     deactivate_original_podkop_if_present
@@ -1321,15 +1560,23 @@ main() {
     remove_conflicting_dns_proxy
     remove_old_sing_box_if_needed
 
-    if [ "$ZAPRET_REQUESTED" -eq 1 ]; then
+    if [ "$ZAPRET_REQUESTED" -eq 1 ] || [ "$BYEDPI_REQUESTED" -eq 1 ]; then
         resolve_arch_candidates
+    fi
+
+    if [ "$ZAPRET_REQUESTED" -eq 1 ]; then
         resolve_zapret_release
+    fi
+
+    if [ "$BYEDPI_REQUESTED" -eq 1 ]; then
+        resolve_byedpi_release
     fi
 
     cleanup_legacy_installation
     prepare_sing_box_action_before_install
     download_podkop_plus_packages
     download_and_extract_zapret_package
+    download_byedpi_package
     install_packages
     apply_sing_box_action_after_install
     post_install
@@ -1344,6 +1591,15 @@ main() {
         msg "Using the existing zapret installation"
     elif [ -n "$ZAPRET_SKIPPED_REASON" ]; then
         warn "zapret was not installed: $ZAPRET_SKIPPED_REASON"
+    fi
+
+    if [ -n "$BYEDPI_PACKAGE_VERSION" ]; then
+        msg "ByeDPI $BYEDPI_PACKAGE_VERSION installed for architecture $BYEDPI_ARCH"
+        msg "ByeDPI source: DPITrickster/ByeDPI-OpenWrt@${BYEDPI_RELEASE_TAG_RESOLVED}"
+    elif [ "$BYEDPI_ALREADY_PRESENT" -eq 1 ]; then
+        msg "Using the existing ByeDPI installation"
+    elif [ -n "$BYEDPI_SKIPPED_REASON" ]; then
+        warn "ByeDPI was not installed: $BYEDPI_SKIPPED_REASON"
     fi
 
     warn "Open LuCI and review your rules before enabling Podkop Plus"

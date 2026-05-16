@@ -2,7 +2,59 @@ import {
   DIAGNOSTICS_CHECKS,
   DIAGNOSTICS_CHECKS_MAP,
 } from './checks/contstants';
-import { StoreType } from '../../services';
+import { IDiagnosticsChecksStoreItem, StoreType } from '../../services';
+
+export interface DiagnosticsProviderOptions {
+  includeZapret?: boolean;
+  includeByedpi?: boolean;
+}
+
+function createDiagnosticCheck(
+  code: DIAGNOSTICS_CHECKS,
+  description: string,
+): IDiagnosticsChecksStoreItem {
+  const meta = DIAGNOSTICS_CHECKS_MAP[code];
+
+  return {
+    code,
+    title: meta.title,
+    order: meta.order,
+    description,
+    items: [],
+    state: 'skipped',
+  };
+}
+
+export function getDiagnosticsChecks(
+  description: string,
+  options: DiagnosticsProviderOptions = {},
+): Array<IDiagnosticsChecksStoreItem> {
+  const checks = [
+    DIAGNOSTICS_CHECKS.DNS,
+    DIAGNOSTICS_CHECKS.SINGBOX,
+    DIAGNOSTICS_CHECKS.NFT,
+  ];
+
+  if (options.includeZapret) {
+    checks.push(DIAGNOSTICS_CHECKS.ZAPRET);
+  }
+
+  if (options.includeByedpi) {
+    checks.push(DIAGNOSTICS_CHECKS.BYEDPI);
+  }
+
+  checks.push(DIAGNOSTICS_CHECKS.OUTBOUNDS, DIAGNOSTICS_CHECKS.FAKEIP);
+
+  return checks.map((code) => createDiagnosticCheck(code, description));
+}
+
+export function getLoadingDiagnosticsChecks(
+  options: DiagnosticsProviderOptions = {},
+): Pick<StoreType, 'diagnosticsChecks'> {
+  return {
+    diagnosticsChecks: getDiagnosticsChecks(_('Pending'), options),
+  };
+}
 
 export const initialDiagnosticStore: Pick<
   StoreType,
@@ -19,6 +71,8 @@ export const initialDiagnosticStore: Pick<
     sing_box_version: 'loading',
     zapret_version: 'loading',
     zapret_installed: 0,
+    byedpi_version: 'loading',
+    byedpi_installed: 0,
     openwrt_version: 'loading',
     device_model: 'loading',
   },
@@ -49,110 +103,5 @@ export const initialDiagnosticStore: Pick<
     },
   },
   diagnosticsRunAction: { loading: false },
-  diagnosticsChecks: [
-    {
-      code: DIAGNOSTICS_CHECKS.DNS,
-      title: DIAGNOSTICS_CHECKS_MAP.DNS.title,
-      order: DIAGNOSTICS_CHECKS_MAP.DNS.order,
-      description: _('Not running'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.SINGBOX,
-      title: DIAGNOSTICS_CHECKS_MAP.SINGBOX.title,
-      order: DIAGNOSTICS_CHECKS_MAP.SINGBOX.order,
-      description: _('Not running'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.NFT,
-      title: DIAGNOSTICS_CHECKS_MAP.NFT.title,
-      order: DIAGNOSTICS_CHECKS_MAP.NFT.order,
-      description: _('Not running'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.ZAPRET,
-      title: DIAGNOSTICS_CHECKS_MAP.ZAPRET.title,
-      order: DIAGNOSTICS_CHECKS_MAP.ZAPRET.order,
-      description: _('Not running'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.OUTBOUNDS,
-      title: DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS.title,
-      order: DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS.order,
-      description: _('Not running'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.FAKEIP,
-      title: DIAGNOSTICS_CHECKS_MAP.FAKEIP.title,
-      order: DIAGNOSTICS_CHECKS_MAP.FAKEIP.order,
-      description: _('Not running'),
-      items: [],
-      state: 'skipped',
-    },
-  ],
-};
-
-export const loadingDiagnosticsChecksStore: Pick<
-  StoreType,
-  'diagnosticsChecks'
-> = {
-  diagnosticsChecks: [
-    {
-      code: DIAGNOSTICS_CHECKS.DNS,
-      title: DIAGNOSTICS_CHECKS_MAP.DNS.title,
-      order: DIAGNOSTICS_CHECKS_MAP.DNS.order,
-      description: _('Pending'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.SINGBOX,
-      title: DIAGNOSTICS_CHECKS_MAP.SINGBOX.title,
-      order: DIAGNOSTICS_CHECKS_MAP.SINGBOX.order,
-      description: _('Pending'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.NFT,
-      title: DIAGNOSTICS_CHECKS_MAP.NFT.title,
-      order: DIAGNOSTICS_CHECKS_MAP.NFT.order,
-      description: _('Pending'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.ZAPRET,
-      title: DIAGNOSTICS_CHECKS_MAP.ZAPRET.title,
-      order: DIAGNOSTICS_CHECKS_MAP.ZAPRET.order,
-      description: _('Pending'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.OUTBOUNDS,
-      title: DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS.title,
-      order: DIAGNOSTICS_CHECKS_MAP.OUTBOUNDS.order,
-      description: _('Pending'),
-      items: [],
-      state: 'skipped',
-    },
-    {
-      code: DIAGNOSTICS_CHECKS.FAKEIP,
-      title: DIAGNOSTICS_CHECKS_MAP.FAKEIP.title,
-      order: DIAGNOSTICS_CHECKS_MAP.FAKEIP.order,
-      description: _('Pending'),
-      items: [],
-      state: 'skipped',
-    },
-  ],
+  diagnosticsChecks: getDiagnosticsChecks(_('Not running')),
 };

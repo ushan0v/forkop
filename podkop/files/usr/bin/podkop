@@ -17,6 +17,7 @@ check_required_file "$PODKOP_LIB/constants.sh"
 check_required_file "$PODKOP_LIB/nft.sh"
 check_required_file "$PODKOP_LIB/helpers.sh"
 check_required_file "$PODKOP_LIB/zapret.sh"
+check_required_file "$PODKOP_LIB/byedpi.sh"
 check_required_file "$PODKOP_LIB/sing_box_config_manager.sh"
 check_required_file "$PODKOP_LIB/sing_box_config_facade.sh"
 check_required_file "$PODKOP_LIB/subscription_parser.sh"
@@ -29,6 +30,7 @@ check_required_file "$PODKOP_LIB/rulesets.sh"
 . "$PODKOP_LIB/nft.sh"
 . "$PODKOP_LIB/helpers.sh"
 . "$PODKOP_LIB/zapret.sh"
+. "$PODKOP_LIB/byedpi.sh"
 . "$PODKOP_LIB/sing_box_config_manager.sh"
 . "$PODKOP_LIB/sing_box_config_facade.sh"
 . "$PODKOP_LIB/subscription_parser.sh"
@@ -62,6 +64,7 @@ PODKOP_RUNTIME_STABLE_WAIT_TIMEOUT=8
 PODKOP_SYSTEM_INFO_CACHE_TTL=3600
 PODKOP_NFT_POPULATE_ENABLED=1
 PODKOP_ZAPRET_MISSING_WARNING_EMITTED=0
+PODKOP_BYEDPI_MISSING_WARNING_EMITTED=0
 
 config_load "$PODKOP_CONFIG_NAME"
 
@@ -854,6 +857,21 @@ append_sing_box_rule_signature() {
         config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 0
         signature_add "rule.$section.resolve_real_ip_for_routing" "$resolve_real_ip_for_routing"
         ;;
+    byedpi)
+        local byedpi_index
+        byedpi_index="$(get_byedpi_rule_index "$section")"
+        signature_add "rule.$section.byedpi_index" "$byedpi_index"
+
+        config_get_bool mixed_proxy_enabled "$section" "mixed_proxy_enabled" 0
+        signature_add "rule.$section.mixed_proxy_enabled" "$mixed_proxy_enabled"
+        if [ "$mixed_proxy_enabled" -eq 1 ]; then
+            config_get mixed_proxy_port "$section" "mixed_proxy_port"
+            signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
+        fi
+
+        config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 1
+        signature_add "rule.$section.resolve_real_ip_for_routing" "$resolve_real_ip_for_routing"
+        ;;
     vpn)
         local interface_name domain_resolver_enabled domain_resolver_dns_type domain_resolver_dns_server
         config_get interface_name "$section" "interface"
@@ -1042,6 +1060,24 @@ append_zapret_runtime_signature() {
 build_zapret_runtime_signature() {
     signature_begin
     config_foreach append_zapret_runtime_signature "rule"
+    signature_finish
+}
+
+append_byedpi_runtime_signature() {
+    local section="$1"
+    local byedpi_index
+
+    rule_is_enabled "$section" || return 0
+    [ "$(get_rule_action "$section")" = "byedpi" ] || return 0
+
+    byedpi_index="$(get_byedpi_rule_index "$section")"
+    signature_add "byedpi.$section.index" "$byedpi_index"
+    signature_add "byedpi.$section.cmd_opts" "$(get_rule_byedpi_cmd_opts "$section")"
+}
+
+build_byedpi_runtime_signature() {
+    signature_begin
+    config_foreach append_byedpi_runtime_signature "rule"
     signature_finish
 }
 
@@ -1249,6 +1285,7 @@ capture_reload_state() {
     RELOAD_STATE_NFT_SIGNATURE="$(build_nft_signature)"
     RELOAD_STATE_ZAPRET_QUEUE_SIGNATURE="$(build_zapret_queue_signature)"
     RELOAD_STATE_ZAPRET_RUNTIME_SIGNATURE="$(build_zapret_runtime_signature)"
+    RELOAD_STATE_BYEDPI_RUNTIME_SIGNATURE="$(build_byedpi_runtime_signature)"
     RELOAD_STATE_LIST_SIGNATURE="$(build_list_update_signature)"
     RELOAD_STATE_CRON_SIGNATURE="$(build_cron_signature)"
     config_get_bool RELOAD_STATE_DONT_TOUCH_DHCP "settings" "dont_touch_dhcp" 0
@@ -1264,6 +1301,7 @@ sing_box_signature=$RELOAD_STATE_SING_BOX_SIGNATURE
 nft_signature=$RELOAD_STATE_NFT_SIGNATURE
 zapret_queue_signature=$RELOAD_STATE_ZAPRET_QUEUE_SIGNATURE
 zapret_runtime_signature=$RELOAD_STATE_ZAPRET_RUNTIME_SIGNATURE
+byedpi_runtime_signature=$RELOAD_STATE_BYEDPI_RUNTIME_SIGNATURE
 list_signature=$RELOAD_STATE_LIST_SIGNATURE
 cron_signature=$RELOAD_STATE_CRON_SIGNATURE
 dont_touch_dhcp=$RELOAD_STATE_DONT_TOUCH_DHCP
@@ -1883,10 +1921,11 @@ check_requirements() {
     if has_outbound_section; then
         log "Outbound proxy section found" "debug"
     else
-        log "No proxy outbound sections found. Podkop Plus will use direct and/or Zapret-only routing." "warn"
+        log "No proxy outbound sections found. Podkop Plus will use direct and/or provider-only routing." "warn"
     fi
 
     check_zapret_requirements
+    check_byedpi_requirements
 }
 
 _check_outbound_node() {
@@ -1901,6 +1940,11 @@ _check_outbound_node() {
     config_get subscription_url "$section" "subscription_url"
     config_get outbound_json "$section" "outbound_json"
     config_get interface "$section" "interface"
+
+    if [ "$(get_rule_action "$section")" = "byedpi" ] && is_byedpi_installed; then
+        section_exists=0
+        return 0
+    fi
 
     if [ -n "$proxy_string" ] || [ -n "$selector_proxy_links" ] || [ -n "$urltest_proxy_links" ] ||
         [ -n "$subscription_url" ] || [ -n "$outbound_json" ] || [ -n "$interface" ]; then
@@ -1947,6 +1991,7 @@ start_main() {
     # sing-box
     sing_box_init_config
     refresh_list_update_cron
+    start_byedpi_runtime
     /etc/init.d/sing-box start
     start_zapret_runtime
 
@@ -1970,6 +2015,7 @@ stop_main() {
     rm -f "$TMP_RULESET_FOLDER"/*
 
     stop_zapret_runtime
+    stop_byedpi_runtime
 
     log "Flush nft"
     if nft list table inet "$NFT_TABLE_NAME" > /dev/null 2>&1; then
@@ -2071,10 +2117,10 @@ reload() {
     local status
     local force_runtime_reload=0
     local previous_service_trigger_signature previous_dnsmasq_signature previous_sing_box_signature previous_nft_signature
-    local previous_zapret_queue_signature previous_zapret_runtime_signature previous_list_signature previous_cron_signature
-    local previous_dont_touch_dhcp needs_sing_box_reload needs_nft_rebuild needs_zapret_restart
+    local previous_zapret_queue_signature previous_zapret_runtime_signature previous_byedpi_runtime_signature previous_list_signature previous_cron_signature
+    local previous_dont_touch_dhcp needs_sing_box_reload needs_nft_rebuild needs_zapret_restart needs_byedpi_restart
     local needs_dnsmasq_configure needs_dnsmasq_restore needs_cron_refresh needs_list_update
-    local changed_service_triggers changed_dnsmasq changed_sing_box changed_nft changed_zapret_queue changed_zapret_runtime changed_cron changed_list
+    local changed_service_triggers changed_dnsmasq changed_sing_box changed_nft changed_zapret_queue changed_zapret_runtime changed_byedpi_runtime changed_cron changed_list
 
     log "Podkop Plus reload"
     runtime_status_write "reloading" "reload"
@@ -2113,6 +2159,7 @@ reload() {
     previous_nft_signature="$(read_reload_state_value "nft_signature")"
     previous_zapret_queue_signature="$(read_reload_state_value "zapret_queue_signature")"
     previous_zapret_runtime_signature="$(read_reload_state_value "zapret_runtime_signature")"
+    previous_byedpi_runtime_signature="$(read_reload_state_value "byedpi_runtime_signature")"
     previous_list_signature="$(read_reload_state_value "list_signature")"
     previous_cron_signature="$(read_reload_state_value "cron_signature")"
     previous_dont_touch_dhcp="$(read_reload_state_value "dont_touch_dhcp")"
@@ -2121,6 +2168,7 @@ reload() {
     needs_sing_box_reload=0
     needs_nft_rebuild=0
     needs_zapret_restart=0
+    needs_byedpi_restart=0
     needs_dnsmasq_configure=0
     needs_dnsmasq_restore=0
     needs_cron_refresh=0
@@ -2131,6 +2179,7 @@ reload() {
     changed_nft=0
     changed_zapret_queue=0
     changed_zapret_runtime=0
+    changed_byedpi_runtime=0
     changed_cron=0
     changed_list=0
 
@@ -2156,6 +2205,11 @@ reload() {
     if [ "$RELOAD_STATE_ZAPRET_RUNTIME_SIGNATURE" != "$previous_zapret_runtime_signature" ]; then
         changed_zapret_runtime=1
         needs_zapret_restart=1
+    fi
+
+    if [ "$RELOAD_STATE_BYEDPI_RUNTIME_SIGNATURE" != "$previous_byedpi_runtime_signature" ]; then
+        changed_byedpi_runtime=1
+        needs_byedpi_restart=1
     fi
 
     if [ "$RELOAD_STATE_DNSMASQ_SIGNATURE" != "$previous_dnsmasq_signature" ]; then
@@ -2185,17 +2239,19 @@ reload() {
         [ "$needs_sing_box_reload" -eq 0 ] &&
         [ "$needs_nft_rebuild" -eq 0 ] &&
         [ "$needs_zapret_restart" -eq 0 ] &&
+        [ "$needs_byedpi_restart" -eq 0 ] &&
         [ "$needs_dnsmasq_configure" -eq 0 ] &&
         [ "$needs_dnsmasq_restore" -eq 0 ]; then
         needs_sing_box_reload=1
     fi
 
-    log "Reload signature changes: service_triggers=$changed_service_triggers sing-box=$changed_sing_box nft=$changed_nft zapret_queue=$changed_zapret_queue zapret_runtime=$changed_zapret_runtime dnsmasq=$changed_dnsmasq cron=$changed_cron list=$changed_list forced=$force_runtime_reload" "debug"
-    log "Reload plan: sing-box=$needs_sing_box_reload nft=$needs_nft_rebuild zapret=$needs_zapret_restart dnsmasq_configure=$needs_dnsmasq_configure dnsmasq_restore=$needs_dnsmasq_restore cron=$needs_cron_refresh list_update=$needs_list_update" "debug"
+    log "Reload signature changes: service_triggers=$changed_service_triggers sing-box=$changed_sing_box nft=$changed_nft zapret_queue=$changed_zapret_queue zapret_runtime=$changed_zapret_runtime byedpi_runtime=$changed_byedpi_runtime dnsmasq=$changed_dnsmasq cron=$changed_cron list=$changed_list forced=$force_runtime_reload" "debug"
+    log "Reload plan: sing-box=$needs_sing_box_reload nft=$needs_nft_rebuild zapret=$needs_zapret_restart byedpi=$needs_byedpi_restart dnsmasq_configure=$needs_dnsmasq_configure dnsmasq_restore=$needs_dnsmasq_restore cron=$needs_cron_refresh list_update=$needs_list_update" "debug"
 
     if [ "$needs_sing_box_reload" -eq 0 ] &&
         [ "$needs_nft_rebuild" -eq 0 ] &&
         [ "$needs_zapret_restart" -eq 0 ] &&
+        [ "$needs_byedpi_restart" -eq 0 ] &&
         [ "$needs_dnsmasq_configure" -eq 0 ] &&
         [ "$needs_dnsmasq_restore" -eq 0 ] &&
         [ "$needs_cron_refresh" -eq 0 ] &&
@@ -2212,6 +2268,10 @@ reload() {
 
     if [ "$needs_zapret_restart" -eq 1 ]; then
         stop_zapret_runtime
+    fi
+
+    if [ "$needs_byedpi_restart" -eq 1 ]; then
+        stop_byedpi_runtime
     fi
 
     if [ "$needs_nft_rebuild" -eq 1 ]; then
@@ -2234,6 +2294,10 @@ reload() {
 
     if [ "$needs_zapret_restart" -eq 1 ]; then
         start_zapret_runtime
+    fi
+
+    if [ "$needs_byedpi_restart" -eq 1 ]; then
+        start_byedpi_runtime
     fi
 
     if [ "$needs_dnsmasq_configure" -eq 1 ]; then
@@ -2560,6 +2624,22 @@ process_validate_rule() {
         fi
 
         validate_rule_nfqws_opt "$section"
+    fi
+
+    if [ "$action" = "byedpi" ]; then
+        if ! is_byedpi_installed; then
+            if [ "$PODKOP_BYEDPI_MISSING_WARNING_EMITTED" -eq 0 ]; then
+                log "There are enabled rules with action 'byedpi', but the byedpi package is not installed. These rules will be skipped." "error"
+                PODKOP_BYEDPI_MISSING_WARNING_EMITTED=1
+            fi
+            config_list_foreach "$section" "community_lists" validate_service
+            config_list_foreach "$section" "rule_set" validate_ruleset_reference
+            config_list_foreach "$section" "rule_set_with_subnets" validate_ruleset_reference
+            config_list_foreach "$section" "domain_ip_lists" validate_plain_domain_ip_list_reference
+            return 0
+        fi
+
+        validate_byedpi_strategy "$(get_rule_byedpi_cmd_opts "$section")" "Invalid ByeDPI strategy for rule '$section'"
     fi
 
     if [ "$action" = "proxy" ]; then
@@ -3899,6 +3979,25 @@ configure_outbound_handler() {
         return 0
     fi
 
+    if [ "$action" = "byedpi" ]; then
+        if ! is_byedpi_installed; then
+            return 0
+        fi
+
+        local outbound_tag byedpi_index byedpi_port
+
+        byedpi_index="$(get_byedpi_rule_index "$section")"
+        if [ "${byedpi_index:-0}" -le 0 ]; then
+            log "Unable to resolve ByeDPI index for rule '$section'. Aborted." "fatal"
+            exit 1
+        fi
+
+        byedpi_port="$(get_byedpi_rule_port "$byedpi_index")"
+        outbound_tag="$(get_outbound_tag_by_section "$section")"
+        config=$(sing_box_cm_add_socks_outbound "$config" "$outbound_tag" "$BYEDPI_LISTEN_ADDRESS" "$byedpi_port" "5" "" "" "" "")
+        return 0
+    fi
+
     if [ "$action" = "proxy" ]; then
         case "$proxy_config_type" in
         url)
@@ -4428,7 +4527,7 @@ create_route_rule_for_action() {
     local rule_tag="$3"
 
     case "$action" in
-    proxy | vpn)
+    proxy | vpn | byedpi)
         local outbound_tag
         outbound_tag="$(get_outbound_tag_by_section "$section")"
         config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$SB_TPROXY_INBOUND_TAG" "$outbound_tag")
@@ -4688,6 +4787,10 @@ configure_route_rule_handler() {
         return 0
     fi
 
+    if [ "$action" = "byedpi" ] && ! is_byedpi_installed; then
+        return 0
+    fi
+
     log "Configuring route rule '$section' with action '$action'"
 
     if ! rule_has_primary_matchers "$section"; then
@@ -4744,9 +4847,11 @@ configure_route_rule_handler() {
         configure_domain_ip_lists "$section" "$route_rule_tag"
     fi
 
-    if [ "$action" = "proxy" ] || [ "$action" = "vpn" ]; then
-        local resolve_real_ip_for_routing
-        config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 0
+    if [ "$action" = "proxy" ] || [ "$action" = "vpn" ] || [ "$action" = "byedpi" ]; then
+        local resolve_real_ip_for_routing resolve_real_ip_default
+        resolve_real_ip_default=0
+        [ "$action" = "byedpi" ] && resolve_real_ip_default=1
+        config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" "$resolve_real_ip_default"
         if [ "$resolve_real_ip_for_routing" -eq 1 ]; then
             if route_rule_has_resolve_matchers "$route_rule_tag"; then
                 config=$(sing_box_cm_add_resolve_rule "$config" "$route_rule_tag" "$(gen_id)" "$SB_DNS_SERVER_TAG")
@@ -4768,6 +4873,10 @@ include_source_ips_in_routing_handler() {
     [ -n "$action" ] || return 0
 
     if [ "$action" = "zapret" ] && ! is_zapret_installed; then
+        return 0
+    fi
+
+    if [ "$action" = "byedpi" ] && ! is_byedpi_installed; then
         return 0
     fi
 
@@ -5147,7 +5256,10 @@ configure_section_mixed_proxy() {
     rule_is_enabled "$section" || return 0
 
     action="$(get_rule_action "$section")"
-    [ "$action" = "proxy" ] || [ "$action" = "vpn" ] || return 0
+    [ "$action" = "proxy" ] || [ "$action" = "vpn" ] || [ "$action" = "byedpi" ] || return 0
+    if [ "$action" = "byedpi" ] && ! is_byedpi_installed; then
+        return 0
+    fi
 
     local mixed_inbound_enabled mixed_proxy_port mixed_inbound_tag mixed_outbound_tag mixed_proxy_address
     config_get_bool mixed_inbound_enabled "$section" "mixed_proxy_enabled" 0
@@ -5736,7 +5848,7 @@ _determine_first_outbound_section() {
     rule_is_enabled "$section" || return 0
 
     action="$(get_rule_action "$section")"
-    if [ "$action" = "proxy" ] || [ "$action" = "vpn" ]; then
+    if [ "$action" = "proxy" ] || [ "$action" = "vpn" ] || { [ "$action" = "byedpi" ] && is_byedpi_installed; }; then
         [ -z "$first_section" ] && first_section="$1"
     fi
 }
@@ -6328,7 +6440,7 @@ write_system_info_cache() {
 }
 
 build_system_info() {
-    local podkop_version podkop_latest_version luci_app_version sing_box_version sing_box_extended zapret_version zapret_installed openwrt_version device_model
+    local podkop_version podkop_latest_version luci_app_version sing_box_version sing_box_extended zapret_version zapret_installed byedpi_version byedpi_installed openwrt_version device_model
     local generated_at
 
     podkop_version="$PODKOP_VERSION"
@@ -6354,6 +6466,15 @@ build_system_info() {
         [ -z "$zapret_version" ] && zapret_version="unknown"
     else
         zapret_version="not installed"
+    fi
+
+    byedpi_installed=0
+    if is_byedpi_installed; then
+        byedpi_installed=1
+        byedpi_version="$(get_byedpi_package_version)"
+        [ -z "$byedpi_version" ] && byedpi_version="unknown"
+    else
+        byedpi_version="not installed"
     fi
 
     if [ -f /etc/os-release ]; then
@@ -6383,6 +6504,8 @@ build_system_info() {
         --argjson sing_box_extended "$sing_box_extended" \
         --arg zapret_version "$zapret_version" \
         --argjson zapret_installed "$zapret_installed" \
+        --arg byedpi_version "$byedpi_version" \
+        --argjson byedpi_installed "$byedpi_installed" \
         --arg openwrt_version "$openwrt_version" \
         --arg device_model "$device_model" \
         --argjson generated_at "$generated_at" \
@@ -6394,6 +6517,8 @@ build_system_info() {
             sing_box_extended: $sing_box_extended,
             zapret_version: $zapret_version,
             zapret_installed: $zapret_installed,
+            byedpi_version: $byedpi_version,
+            byedpi_installed: $byedpi_installed,
             openwrt_version: $openwrt_version,
             device_model: $device_model,
             generated_at: $generated_at
@@ -6434,6 +6559,14 @@ neutralize_zapret_defaults() {
 
 check_zapret_runtime() {
     check_zapret_runtime_json
+}
+
+get_byedpi_status() {
+    get_byedpi_status_json
+}
+
+check_byedpi_runtime() {
+    check_byedpi_runtime_json
 }
 
 get_sing_box_status() {
@@ -7059,7 +7192,7 @@ global_check() {
     system_info_json=$(get_system_info)
 
     if [ -n "$system_info_json" ]; then
-        local podkop_version podkop_latest_version luci_app_version sing_box_version sing_box_extended zapret_version openwrt_version device_model
+        local podkop_version podkop_latest_version luci_app_version sing_box_version sing_box_extended zapret_version zapret_installed byedpi_version byedpi_installed openwrt_version device_model
 
         podkop_version=$(echo "$system_info_json" | jq -r '.podkop_version // "unknown"')
         podkop_latest_version=$(echo "$system_info_json" | jq -r '.podkop_latest_version // "unknown"')
@@ -7067,6 +7200,9 @@ global_check() {
         sing_box_version=$(echo "$system_info_json" | jq -r '.sing_box_version // "unknown"')
         sing_box_extended=$(echo "$system_info_json" | jq -r '.sing_box_extended // 0')
         zapret_version=$(echo "$system_info_json" | jq -r '.zapret_version // "unknown"')
+        zapret_installed=$(echo "$system_info_json" | jq -r '.zapret_installed // 0')
+        byedpi_version=$(echo "$system_info_json" | jq -r '.byedpi_version // "unknown"')
+        byedpi_installed=$(echo "$system_info_json" | jq -r '.byedpi_installed // 0')
         openwrt_version=$(echo "$system_info_json" | jq -r '.openwrt_version // "unknown"')
         device_model=$(echo "$system_info_json" | jq -r '.device_model // "unknown"')
         if [ "$sing_box_extended" -eq 1 ]; then
@@ -7078,7 +7214,12 @@ global_check() {
         print_global "🕳️ Podkop:        $podkop_version (latest: $podkop_latest_version)"
         print_global "🕳️ LuCI App:      $luci_app_version"
         print_global "📦 Sing-box:      $sing_box_version"
-        print_global "🧵 Zapret:        $zapret_version"
+        if [ "$zapret_installed" -eq 1 ]; then
+            print_global "🧵 Zapret:        $zapret_version"
+        fi
+        if [ "$byedpi_installed" -eq 1 ]; then
+            print_global "🧵 ByeDPI:        $byedpi_version"
+        fi
         print_global "🛜 OpenWrt:       $openwrt_version"
         print_global "🛜 Device:        $device_model"
     else
@@ -7204,24 +7345,22 @@ global_check() {
         print_global "❌ Failed to get sing-box info"
     fi
 
-    print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    print_global "🧵 Zapret status"
-
     local zapret_check_json
     zapret_check_json=$(check_zapret_runtime)
 
-    if [ -n "$zapret_check_json" ]; then
-        local zapret_installed
-
-        zapret_installed=$(echo "$zapret_check_json" | jq -r '.zapret_installed // 0')
-
-        if [ "$zapret_installed" -eq 1 ]; then
+    if [ -n "$zapret_check_json" ] && [ "$(echo "$zapret_check_json" | jq -r '.zapret_installed // 0')" = "1" ]; then
+        print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        print_global "🧵 Zapret status"
         print_global "✅ Zapret provider available"
-    else
-        print_global "❌ Zapret provider available"
-        fi
-    else
-        print_global "❌ Failed to get zapret info"
+    fi
+
+    local byedpi_check_json
+    byedpi_check_json=$(check_byedpi_runtime)
+
+    if [ -n "$byedpi_check_json" ] && [ "$(echo "$byedpi_check_json" | jq -r '.byedpi_installed // 0')" = "1" ]; then
+        print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        print_global "🧵 ByeDPI status"
+        print_global "✅ ByeDPI provider available"
     fi
 
     print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -7421,6 +7560,7 @@ Available commands:
     check_sing_box_logs     Show sing-box logs
     check_fakeip            Test sing-box FakeIP DNS
     check_zapret_runtime    Check external zapret provider state
+    check_byedpi_runtime    Check external ByeDPI provider state
     neutralize_zapret_defaults
                             Compatibility no-op; Podkop Plus does not manage standalone zapret
     clash_api               Clash API interface for managing proxies and groups
@@ -7435,11 +7575,14 @@ Available commands:
                             Get UI-only metadata for a subscription rule
     get_sing_box_status     Get sing-box service status
     get_zapret_status       Get zapret provider and Podkop-managed nfqws status
+    get_byedpi_status       Get ByeDPI provider and Podkop-managed ciadpi status
     get_system_info         Get system information in JSON format
     check_dns_available     Check DNS server availability
     global_check            Run global system check
     validate_nfqws_strategy_json
                             Validate an NFQWS strategy and print JSON result
+    validate_byedpi_strategy_json
+                            Validate a ByeDPI ciadpi strategy and print JSON result
 EOF
 }
 
@@ -7504,6 +7647,9 @@ check_fakeip)
 check_zapret_runtime)
     check_zapret_runtime
     ;;
+check_byedpi_runtime)
+    check_byedpi_runtime
+    ;;
 neutralize_zapret_defaults)
     neutralize_zapret_defaults
     ;;
@@ -7540,6 +7686,9 @@ get_sing_box_status)
 get_zapret_status)
     get_zapret_status
     ;;
+get_byedpi_status)
+    get_byedpi_status
+    ;;
 get_system_info)
     get_system_info
     ;;
@@ -7551,6 +7700,9 @@ global_check)
     ;;
 validate_nfqws_strategy_json)
     validate_nfqws_strategy_json "${2:-}"
+    ;;
+validate_byedpi_strategy_json)
+    validate_byedpi_strategy_json "${2:-}"
     ;;
 *)
     show_help

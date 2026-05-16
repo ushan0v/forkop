@@ -101,3 +101,17 @@ ZAPRET_DESYNC_MARK="0x40000000"
 ZAPRET_DESYNC_MARK_POSTNAT="0x20000000"
 ZAPRET_LEGACY_DEFAULT_NFQWS_OPT="--filter-tcp=80 <HOSTLIST> --dpi-desync=fake,fakedsplit --dpi-desync-autottl=2 --dpi-desync-fooling=badsum --new --filter-tcp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake,multidisorder --dpi-desync-split-pos=1,midsld --dpi-desync-repeats=11 --dpi-desync-fooling=badsum --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new --filter-udp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=/opt/zapret/files/fake/quic_initial_www_google_com.bin --new --filter-udp=443 <HOSTLIST_NOAUTO> --dpi-desync=fake --dpi-desync-repeats=11 --new --filter-tcp=443 <HOSTLIST> --dpi-desync=multidisorder --dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1"
 ZAPRET_DEFAULT_NFQWS_OPT="--filter-tcp=80 --dpi-desync=fake,fakedsplit --dpi-desync-autottl=2 --dpi-desync-fooling=badsum --new --filter-tcp=443 --dpi-desync=fake,multidisorder --dpi-desync-split-pos=1,midsld --dpi-desync-repeats=11 --dpi-desync-fooling=badsum --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new --filter-udp=443 --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=/opt/zapret/files/fake/quic_initial_www_google_com.bin"
+
+## ByeDPI
+BYEDPI_BIN="/usr/bin/ciadpi"
+BYEDPI_SERVICE_INIT="/etc/init.d/byedpi"
+BYEDPI_CONFIG="/etc/config/byedpi"
+BYEDPI_STATE_DIR="/var/run/podkop-plus/byedpi"
+BYEDPI_PID_DIR="$BYEDPI_STATE_DIR/pid"
+BYEDPI_CHILD_PID_DIR="$BYEDPI_STATE_DIR/child-pid"
+BYEDPI_LOG_DIR="$BYEDPI_STATE_DIR/log"
+BYEDPI_LISTEN_ADDRESS="127.0.0.1"
+BYEDPI_PORT_BASE=1080
+BYEDPI_RESPAWN_DELAY=5
+BYEDPI_OPEN_FILES_LIMIT=4096
+BYEDPI_DEFAULT_CMD_OPTS="-o 2 --auto=t,r,a,s -d 2"

@@ -151,7 +151,7 @@ export async function getDashboardSections(
       .filter(
         (section) =>
           section.enabled !== '0' &&
-          ['proxy', 'vpn'].includes(getSectionAction(section)),
+          ['proxy', 'vpn', 'byedpi'].includes(getSectionAction(section)),
       )
       .map(async (section) => {
         const displayName = getDisplayName(section);
@@ -172,6 +172,29 @@ export async function getDashboardSections(
               {
                 code: outbound?.code || section['.name'],
                 displayName: section.interface || outbound?.value?.name || '',
+                latency: outbound?.value?.history?.[0]?.delay || 0,
+                type: outbound?.value?.type || '',
+                selected: true,
+                canCopyLink: false,
+              },
+            ],
+          };
+        }
+
+        if (sectionAction === 'byedpi') {
+          const outbound = proxies.find(
+            (proxy) => proxy.code === `${section['.name']}-out`,
+          );
+
+          return {
+            withTagSelect: false,
+            code: outbound?.code || section['.name'],
+            sectionName: section['.name'],
+            displayName,
+            outbounds: [
+              {
+                code: outbound?.code || section['.name'],
+                displayName: 'ByeDPI',
                 latency: outbound?.value?.history?.[0]?.delay || 0,
                 type: outbound?.value?.type || '',
                 selected: true,
