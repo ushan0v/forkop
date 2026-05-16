@@ -493,7 +493,7 @@ sing_box_cf_apply_subscription_batch() {
 
     validation_config="$(printf '%s' "$updated_config" | jq -c '
         (first(.outbounds[]? | select(.type == "direct") | .tag) // "direct-out") as $direct
-        | .route = {rules: [], rule_set: [], final: $direct}
+        | .route = ((.route // {}) + {rules: [], rule_set: [], final: $direct})
     ' 2>/dev/null)" || return 1
     [ -n "$validation_config" ] || return 1
 
@@ -563,7 +563,7 @@ sing_box_cf_apply_subscription_outbounds_individually() {
 
         validation_config="$(printf '%s' "$try_config" | jq -c '
             (first(.outbounds[]? | select(.type == "direct") | .tag) // "direct-out") as $direct
-            | .route = {rules: [], rule_set: [], final: $direct}
+            | .route = ((.route // {}) + {rules: [], rule_set: [], final: $direct})
         ' 2>/dev/null)"
         if [ -z "$validation_config" ]; then
             log "Skipped invalid subscription outbound '$display_name'" "warn"
