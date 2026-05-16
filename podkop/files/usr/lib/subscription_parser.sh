@@ -596,7 +596,7 @@ subscription_parse_v2ray_tls_transport_args() {
     local security="$2"
     local default_tls="$3"
     local sni insecure alpn fingerprint public_key short_id transport ws_path ws_host ws_early_data \
-        grpc_service_name tls_enabled
+        grpc_service_name xhttp_mode tls_enabled
 
     sni="$(subscription_url_get_query_param "$url" "sni")"
     [ -n "$sni" ] || sni="$(subscription_url_get_query_param "$url" "peer")"
@@ -612,6 +612,15 @@ subscription_parse_v2ray_tls_transport_args() {
     ws_host="$(subscription_url_get_query_param "$url" "host")"
     ws_early_data="$(subscription_url_get_query_param "$url" "ed")"
     grpc_service_name="$(subscription_url_get_query_param "$url" "serviceName")"
+    xhttp_mode="$(subscription_url_get_query_param "$url" "mode")"
+    case "$xhttp_mode" in
+    auto | packet-up | stream-up | stream-one) ;;
+    *) xhttp_mode="auto" ;;
+    esac
+
+    if [ "$transport" = "xhttp" ] && [ -z "$alpn" ]; then
+        alpn="h2,http/1.1"
+    fi
 
     tls_enabled=false
     case "$security" in
@@ -636,7 +645,8 @@ subscription_parse_v2ray_tls_transport_args() {
         --arg ws_path "$ws_path" \
         --arg ws_host "$ws_host" \
         --arg ws_early_data "$ws_early_data" \
-        --arg grpc_service_name "$grpc_service_name" '
+        --arg grpc_service_name "$grpc_service_name" \
+        --arg xhttp_mode "$xhttp_mode" '
         {
             tls: (
                 if $tls_enabled then
@@ -677,6 +687,23 @@ subscription_parse_v2ray_tls_transport_args() {
                     }
                     + (if $ws_path != "" then {path: $ws_path} else {} end)
                     + (if $ws_host != "" then {host: ($ws_host | split(","))} else {} end)
+                elif $transport == "httpupgrade" then
+                    {
+                        type: "httpupgrade"
+                    }
+                    + (if $ws_path != "" then {path: $ws_path} else {} end)
+                    + (if $ws_host != "" then {host: $ws_host} else {} end)
+                elif $transport == "xhttp" then
+                    {
+                        type: "xhttp",
+                        mode: $xhttp_mode,
+                        path: (if $ws_path != "" then $ws_path else "/" end),
+                        x_padding_bytes: "100-1000",
+                        no_grpc_header: false,
+                        sc_max_each_post_bytes: 1000000,
+                        sc_min_posts_interval_ms: 30
+                    }
+                    + (if $ws_host != "" then {host: $ws_host} elif $sni != "" then {host: $sni} else {} end)
                 else
                     null
                 end
@@ -1063,13 +1090,17 @@ subscription_v2ray_tls_member() {
     local url="$1"
     local security="$2"
     local default_tls="$3"
-    local sni insecure alpn fingerprint public_key short_id tls_enabled json reality
+    local sni insecure alpn fingerprint public_key short_id transport tls_enabled json reality
 
     sni="$(subscription_url_get_query_param "$url" "sni")"
     [ -n "$sni" ] || sni="$(subscription_url_get_query_param "$url" "peer")"
     insecure="$(subscription_url_get_query_param "$url" "allowInsecure")"
     [ -n "$insecure" ] || insecure="$(subscription_url_get_query_param "$url" "insecure")"
     alpn="$(subscription_url_get_query_param "$url" "alpn")"
+    transport="$(subscription_url_get_query_param "$url" "type")"
+    if [ "$transport" = "xhttp" ] && [ -z "$alpn" ]; then
+        alpn="h2,http/1.1"
+    fi
     fingerprint="$(subscription_url_get_query_param "$url" "fp")"
     fingerprint="$(subscription_normalize_utls_fingerprint "$fingerprint")"
     public_key="$(subscription_url_get_query_param "$url" "pbk")"
@@ -1111,13 +1142,19 @@ subscription_v2ray_tls_member() {
 
 subscription_v2ray_transport_member() {
     local url="$1"
-    local transport ws_path ws_host ws_early_data grpc_service_name json
+    local transport ws_path ws_host ws_early_data grpc_service_name xhttp_mode sni json
 
     transport="$(subscription_url_get_query_param "$url" "type")"
     ws_path="$(subscription_url_get_query_param "$url" "path")"
     ws_host="$(subscription_url_get_query_param "$url" "host")"
     ws_early_data="$(subscription_url_get_query_param "$url" "ed")"
     grpc_service_name="$(subscription_url_get_query_param "$url" "serviceName")"
+    xhttp_mode="$(subscription_url_get_query_param "$url" "mode")"
+    sni="$(subscription_url_get_query_param "$url" "sni")"
+    case "$xhttp_mode" in
+    auto | packet-up | stream-up | stream-one) ;;
+    *) xhttp_mode="auto" ;;
+    esac
 
     case "$transport" in
     ws)
@@ -1139,6 +1176,25 @@ subscription_v2ray_transport_member() {
         json=',"transport":{"type":"http"'
         [ -n "$ws_path" ] && json="$json,\"path\":$(subscription_json_string "$ws_path")"
         [ -n "$ws_host" ] && json="$json,\"host\":$(subscription_json_csv_array "$ws_host")"
+        printf '%s}' "$json"
+        ;;
+    httpupgrade)
+        json=',"transport":{"type":"httpupgrade"'
+        [ -n "$ws_path" ] && json="$json,\"path\":$(subscription_json_string "$ws_path")"
+        [ -n "$ws_host" ] && json="$json,\"host\":$(subscription_json_string "$ws_host")"
+        printf '%s}' "$json"
+        ;;
+    xhttp)
+        [ -n "$ws_path" ] || ws_path="/"
+        [ -n "$ws_host" ] || ws_host="$sni"
+        json=',"transport":{"type":"xhttp"'
+        json="$json,\"mode\":$(subscription_json_string "$xhttp_mode")"
+        json="$json,\"path\":$(subscription_json_string "$ws_path")"
+        json="$json,\"x_padding_bytes\":\"100-1000\""
+        json="$json,\"no_grpc_header\":false"
+        json="$json,\"sc_max_each_post_bytes\":1000000"
+        json="$json,\"sc_min_posts_interval_ms\":30"
+        [ -n "$ws_host" ] && json="$json,\"host\":$(subscription_json_string "$ws_host")"
         printf '%s}' "$json"
         ;;
     esac

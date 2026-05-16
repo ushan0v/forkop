@@ -1842,7 +1842,7 @@ check_requirements() {
     log "Check Requirements"
 
     local sing_box_version jq_version coreutils_base64_version
-    sing_box_version="$(sing-box version | head -n1 | awk '{print $3}')"
+    sing_box_version="$(sing-box version | head -n1 | awk '{print $NF}')"
     jq_version="$(jq --version | awk -F- '{print $2}')"
     coreutils_base64_version="$(base64 --version | head -n1 | awk '{print $4}')"
 
@@ -6328,7 +6328,7 @@ write_system_info_cache() {
 }
 
 build_system_info() {
-    local podkop_version podkop_latest_version luci_app_version sing_box_version zapret_version zapret_installed openwrt_version device_model
+    local podkop_version podkop_latest_version luci_app_version sing_box_version sing_box_extended zapret_version zapret_installed openwrt_version device_model
     local generated_at
 
     podkop_version="$PODKOP_VERSION"
@@ -6339,11 +6339,13 @@ build_system_info() {
     luci_app_version="$(get_luci_app_version)"
 
     if command -v sing-box > /dev/null 2>&1; then
-        sing_box_version=$(sing-box version 2> /dev/null | head -n 1 | awk '{print $3}')
+        sing_box_version=$(sing-box version 2> /dev/null | head -n 1 | awk '{print $NF}')
         [ -z "$sing_box_version" ] && sing_box_version="unknown"
     else
         sing_box_version="not installed"
     fi
+    sing_box_extended=0
+    is_sing_box_extended "$sing_box_version" && sing_box_extended=1
 
     zapret_installed=0
     if is_zapret_installed; then
@@ -6378,6 +6380,7 @@ build_system_info() {
         --arg podkop_latest_version "$podkop_latest_version" \
         --arg luci_app_version "$luci_app_version" \
         --arg sing_box_version "$sing_box_version" \
+        --argjson sing_box_extended "$sing_box_extended" \
         --arg zapret_version "$zapret_version" \
         --argjson zapret_installed "$zapret_installed" \
         --arg openwrt_version "$openwrt_version" \
@@ -6388,6 +6391,7 @@ build_system_info() {
             podkop_latest_version: $podkop_latest_version,
             luci_app_version: $luci_app_version,
             sing_box_version: $sing_box_version,
+            sing_box_extended: $sing_box_extended,
             zapret_version: $zapret_version,
             zapret_installed: $zapret_installed,
             openwrt_version: $openwrt_version,
@@ -6837,6 +6841,7 @@ check_nft_rules() {
 check_sing_box() {
     local sing_box_installed=0
     local sing_box_version_ok=0
+    local sing_box_extended=0
     local sing_box_service_exist=0
     local sing_box_autostart_disabled=0
     local sing_box_process_running=0
@@ -6848,9 +6853,10 @@ check_sing_box() {
 
         # Check version (must be >= 1.12.4)
         local version
-        version=$(sing-box version 2> /dev/null | head -n 1 | awk '{print $3}')
+        version=$(sing-box version 2> /dev/null | head -n 1 | awk '{print $NF}')
         if [ -n "$version" ]; then
             version=$(echo "$version" | sed 's/^v//')
+            is_sing_box_extended "$version" && sing_box_extended=1
 
             if is_min_package_version "$version" "1.12.4"; then
                 sing_box_version_ok=1
@@ -6889,7 +6895,7 @@ check_sing_box() {
         sing_box_ports_listening=1
     fi
 
-    echo "{\"sing_box_installed\":$sing_box_installed,\"sing_box_version_ok\":$sing_box_version_ok,\"sing_box_service_exist\":$sing_box_service_exist,\"sing_box_autostart_disabled\":$sing_box_autostart_disabled,\"sing_box_process_running\":$sing_box_process_running,\"sing_box_ports_listening\":$sing_box_ports_listening}" | jq .
+    echo "{\"sing_box_installed\":$sing_box_installed,\"sing_box_version_ok\":$sing_box_version_ok,\"sing_box_extended\":$sing_box_extended,\"sing_box_service_exist\":$sing_box_service_exist,\"sing_box_autostart_disabled\":$sing_box_autostart_disabled,\"sing_box_process_running\":$sing_box_process_running,\"sing_box_ports_listening\":$sing_box_ports_listening}" | jq .
 }
 
 check_fakeip() {
@@ -7053,15 +7059,21 @@ global_check() {
     system_info_json=$(get_system_info)
 
     if [ -n "$system_info_json" ]; then
-        local podkop_version podkop_latest_version luci_app_version sing_box_version zapret_version openwrt_version device_model
+        local podkop_version podkop_latest_version luci_app_version sing_box_version sing_box_extended zapret_version openwrt_version device_model
 
         podkop_version=$(echo "$system_info_json" | jq -r '.podkop_version // "unknown"')
         podkop_latest_version=$(echo "$system_info_json" | jq -r '.podkop_latest_version // "unknown"')
         luci_app_version=$(echo "$system_info_json" | jq -r '.luci_app_version // "unknown"')
         sing_box_version=$(echo "$system_info_json" | jq -r '.sing_box_version // "unknown"')
+        sing_box_extended=$(echo "$system_info_json" | jq -r '.sing_box_extended // 0')
         zapret_version=$(echo "$system_info_json" | jq -r '.zapret_version // "unknown"')
         openwrt_version=$(echo "$system_info_json" | jq -r '.openwrt_version // "unknown"')
         device_model=$(echo "$system_info_json" | jq -r '.device_model // "unknown"')
+        if [ "$sing_box_extended" -eq 1 ]; then
+            print_global "Sing-box core: extended"
+        else
+            print_global "Sing-box core: regular"
+        fi
 
         print_global "🕳️ Podkop:        $podkop_version (latest: $podkop_latest_version)"
         print_global "🕳️ LuCI App:      $luci_app_version"
@@ -7137,10 +7149,11 @@ global_check() {
     singbox_check_json=$(check_sing_box)
 
     if [ -n "$singbox_check_json" ]; then
-        local sing_box_installed sing_box_version_ok sing_box_service_exist sing_box_autostart_disabled sing_box_process_running sing_box_ports_listening
+        local sing_box_installed sing_box_version_ok sing_box_extended sing_box_service_exist sing_box_autostart_disabled sing_box_process_running sing_box_ports_listening
 
         sing_box_installed=$(echo "$singbox_check_json" | jq -r '.sing_box_installed // 0')
         sing_box_version_ok=$(echo "$singbox_check_json" | jq -r '.sing_box_version_ok // 0')
+        sing_box_extended=$(echo "$singbox_check_json" | jq -r '.sing_box_extended // 0')
         sing_box_service_exist=$(echo "$singbox_check_json" | jq -r '.sing_box_service_exist // 0')
         sing_box_autostart_disabled=$(echo "$singbox_check_json" | jq -r '.sing_box_autostart_disabled // 0')
         sing_box_process_running=$(echo "$singbox_check_json" | jq -r '.sing_box_process_running // 0')
@@ -7156,6 +7169,12 @@ global_check() {
             print_global "✅ Sing-box version is compatible (newer than 1.12.4)"
         else
             print_global "❌ Sing-box version is not compatible (older than 1.12.4)"
+        fi
+
+        if [ "$sing_box_extended" -eq 1 ]; then
+            print_global "Sing-box extended detected"
+        else
+            print_global "Sing-box regular build detected"
         fi
 
         if [ "$sing_box_service_exist" -eq 1 ]; then

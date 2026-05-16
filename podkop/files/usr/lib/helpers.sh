@@ -299,6 +299,18 @@ get_sing_box_version() {
     echo "${version:-1.0}"
 }
 
+is_sing_box_extended() {
+    local version="${1:-}"
+
+    [ -n "$version" ] || version="$(get_sing_box_version)"
+
+    case "$version" in
+    *extended*) return 0 ;;
+    esac
+
+    return 1
+}
+
 get_subscription_user_agent() {
     local custom_user_agent="${1:-}"
 

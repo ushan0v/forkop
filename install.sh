@@ -18,6 +18,17 @@ ZAPRET_ALREADY_PRESENT=0
 ZAPRET_REQUESTED=0
 ZAPRET_SKIPPED_REASON=""
 ZAPRET_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_ZAPRET:-${INSTALL_ZAPRET:-}}"
+SING_BOX_INSTALL_CHOICE="${PODKOP_PLUS_SING_BOX:-${SING_BOX_FLAVOR:-}}"
+SING_BOX_ACTION="keep"
+SING_BOX_CURRENT_VERSION=""
+SING_BOX_CURRENT_IS_EXTENDED=0
+SING_BOX_EXTENDED_RELEASE_JSON=""
+SING_BOX_EXTENDED_RELEASE_TAG=""
+SING_BOX_EXTENDED_ARCH_SUFFIX=""
+SING_BOX_EXTENDED_ASSET_NAME=""
+SING_BOX_EXTENDED_ASSET_URL=""
+SING_BOX_EXTENDED_BACKUP_FILE=""
+SING_BOX_EXTENDED_WORK_DIR=""
 PODKOP_PLUS_I18N_REQUESTED=0
 
 PODKOP_PLUS_RELEASE_JSON=""
@@ -58,11 +69,14 @@ fail() {
 
 usage() {
     cat <<EOF
-Usage: $0 [--with-zapret|--without-zapret]
+Usage: $0 [--with-zapret|--without-zapret] [--sing-box=stock|extended|keep]
 
 Options:
   --with-zapret       Install the optional external zapret provider package.
   --without-zapret    Install Podkop Plus without the zapret provider.
+  --sing-box=stock    Use the regular stable sing-box package from OpenWrt.
+  --sing-box=extended Install or refresh sing-box-extended for XHTTP support.
+  --sing-box=keep     Keep the current sing-box flavor.
 EOF
 }
 
@@ -74,6 +88,15 @@ parse_args() {
                 ;;
             --without-zapret)
                 ZAPRET_INSTALL_CHOICE=0
+                ;;
+            --with-sing-box-extended)
+                SING_BOX_INSTALL_CHOICE="extended"
+                ;;
+            --with-stock-sing-box)
+                SING_BOX_INSTALL_CHOICE="stock"
+                ;;
+            --sing-box=*)
+                SING_BOX_INSTALL_CHOICE="${1#--sing-box=}"
                 ;;
             -h|--help)
                 usage
@@ -89,6 +112,7 @@ parse_args() {
 
 cleanup() {
     [ -n "$TMP_DIR" ] && rm -rf "$TMP_DIR"
+    [ -n "$SING_BOX_EXTENDED_WORK_DIR" ] && rm -rf "$SING_BOX_EXTENDED_WORK_DIR"
 }
 
 clear_zapret_download_state() {
@@ -561,6 +585,281 @@ remove_old_sing_box_if_needed() {
     pkg_remove_if_installed "sing-box"
 }
 
+get_sing_box_binary_version() {
+    command_exists sing-box || return 0
+    sing-box version 2>/dev/null | head -n 1 | awk '{print $NF}'
+}
+
+sing_box_version_is_extended() {
+    case "$1" in
+        *extended*)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+detect_sing_box_flavor() {
+    SING_BOX_CURRENT_VERSION="$(get_sing_box_binary_version)"
+    SING_BOX_CURRENT_IS_EXTENDED=0
+
+    if [ -n "$SING_BOX_CURRENT_VERSION" ] && sing_box_version_is_extended "$SING_BOX_CURRENT_VERSION"; then
+        SING_BOX_CURRENT_IS_EXTENDED=1
+    fi
+}
+
+normalize_sing_box_choice() {
+    case "$1" in
+        extended|sing-box-extended|xhttp|yes|YES|true|TRUE|y|Y|1)
+            printf 'extended'
+            ;;
+        stock|regular|stable|original|official|sing-box|no|NO|false|FALSE|n|N|0)
+            printf 'stock'
+            ;;
+        keep|"")
+            printf 'keep'
+            ;;
+        *)
+            fail "Unknown sing-box flavor: $1"
+            ;;
+    esac
+}
+
+decide_sing_box_installation() {
+    choice="$(normalize_sing_box_choice "$SING_BOX_INSTALL_CHOICE")"
+    detect_sing_box_flavor
+
+    case "$choice" in
+        extended)
+            SING_BOX_ACTION="install_extended"
+            return 0
+            ;;
+        stock)
+            SING_BOX_ACTION="install_stock"
+            return 0
+            ;;
+        keep)
+            ;;
+    esac
+
+    if [ "$SING_BOX_CURRENT_IS_EXTENDED" -eq 1 ]; then
+        msg "Detected sing-box-extended $SING_BOX_CURRENT_VERSION."
+
+        if [ ! -t 0 ]; then
+            SING_BOX_ACTION="preserve_extended"
+            msg "Keeping sing-box-extended in non-interactive mode."
+            return 0
+        fi
+
+        if confirm_prompt "Replace sing-box-extended with the regular stable sing-box package?"; then
+            SING_BOX_ACTION="install_stock"
+        else
+            SING_BOX_ACTION="preserve_extended"
+            msg "Keeping sing-box-extended after Podkop Plus installation."
+        fi
+        return 0
+    fi
+
+    if [ -n "$SING_BOX_CURRENT_VERSION" ]; then
+        msg "Detected regular sing-box $SING_BOX_CURRENT_VERSION."
+
+        if [ ! -t 0 ]; then
+            SING_BOX_ACTION="keep"
+            return 0
+        fi
+
+        if confirm_prompt "Install sing-box-extended for XHTTP support instead of the regular sing-box binary?"; then
+            SING_BOX_ACTION="install_extended"
+        fi
+        return 0
+    fi
+
+    msg "sing-box is not installed yet."
+
+    if [ ! -t 0 ]; then
+        SING_BOX_ACTION="keep"
+        msg "Using the regular sing-box dependency in non-interactive mode."
+        return 0
+    fi
+
+    if confirm_prompt "Install sing-box-extended for XHTTP support instead of the regular sing-box binary?"; then
+        SING_BOX_ACTION="install_extended"
+    else
+        SING_BOX_ACTION="keep"
+        msg "The regular sing-box package will be installed as a dependency."
+    fi
+}
+
+resolve_sing_box_extended_arch_suffix() {
+    host_arch="$(uname -m 2>/dev/null || true)"
+    distrib_arch=""
+
+    if [ -f "/etc/openwrt_release" ]; then
+        distrib_arch=$(. /etc/openwrt_release 2>/dev/null && echo "$DISTRIB_ARCH")
+        case "$distrib_arch" in
+            *mipsel*|*mipsle*) host_arch="mipsel" ;;
+            *mips64el*|*mips64le*) host_arch="mips64el" ;;
+        esac
+    fi
+
+    case "$host_arch" in
+        aarch64) SING_BOX_EXTENDED_ARCH_SUFFIX="arm64" ;;
+        armv7*) SING_BOX_EXTENDED_ARCH_SUFFIX="armv7" ;;
+        armv6*) SING_BOX_EXTENDED_ARCH_SUFFIX="armv6" ;;
+        x86_64) SING_BOX_EXTENDED_ARCH_SUFFIX="amd64" ;;
+        i386|i686) SING_BOX_EXTENDED_ARCH_SUFFIX="386" ;;
+        mips) SING_BOX_EXTENDED_ARCH_SUFFIX="mips-softfloat" ;;
+        mipsel|mipsle) SING_BOX_EXTENDED_ARCH_SUFFIX="mipsle-softfloat" ;;
+        mips64) SING_BOX_EXTENDED_ARCH_SUFFIX="mips64" ;;
+        mips64el|mips64le) SING_BOX_EXTENDED_ARCH_SUFFIX="mips64le" ;;
+        riscv64) SING_BOX_EXTENDED_ARCH_SUFFIX="riscv64" ;;
+        s390x) SING_BOX_EXTENDED_ARCH_SUFFIX="s390x" ;;
+        *)
+            fail "Unsupported sing-box-extended architecture: ${host_arch:-unknown}"
+            ;;
+    esac
+}
+
+resolve_sing_box_extended_release() {
+    response=""
+    tag=""
+    asset_pattern=""
+
+    resolve_sing_box_extended_arch_suffix
+
+    response="$(http_get "https://api.github.com/repos/shtorm-7/sing-box-extended/releases?per_page=30" 2>/dev/null || true)"
+    [ -n "$response" ] || fail "Failed to query sing-box-extended release metadata"
+    printf '%s' "$response" | jq -e . >/dev/null 2>&1 || fail "GitHub returned an invalid response for sing-box-extended"
+
+    tag="$(printf '%s' "$response" | jq -r '
+        .[]
+        | select(((.prerelease // false) | not) and ((.draft // false) | not))
+        | .tag_name // empty
+    ' | while IFS= read -r candidate_tag; do
+        candidate_tag_lc="$(printf '%s' "$candidate_tag" | tr '[:upper:]' '[:lower:]')"
+        case "$candidate_tag_lc" in
+            *alpha* | *beta* | *rc*) continue ;;
+        esac
+        printf '%s\n' "$candidate_tag"
+        break
+    done)"
+    [ -n "$tag" ] || fail "No stable sing-box-extended release was found"
+
+    SING_BOX_EXTENDED_RELEASE_TAG="$tag"
+    SING_BOX_EXTENDED_RELEASE_JSON="$(fetch_github_release_json "shtorm-7" "sing-box-extended")"
+    if [ "$(printf '%s' "$SING_BOX_EXTENDED_RELEASE_JSON" | jq -r '.tag_name // empty')" != "$tag" ]; then
+        SING_BOX_EXTENDED_RELEASE_JSON="$(http_get "https://api.github.com/repos/shtorm-7/sing-box-extended/releases/tags/$tag" 2>/dev/null || true)"
+        [ -n "$SING_BOX_EXTENDED_RELEASE_JSON" ] || fail "Failed to query sing-box-extended release $tag"
+        printf '%s' "$SING_BOX_EXTENDED_RELEASE_JSON" | jq -e . >/dev/null 2>&1 || fail "GitHub returned an invalid sing-box-extended release response"
+    fi
+
+    asset_pattern="linux-${SING_BOX_EXTENDED_ARCH_SUFFIX}.tar.gz"
+    SING_BOX_EXTENDED_ASSET_URL="$(printf '%s' "$SING_BOX_EXTENDED_RELEASE_JSON" | jq -r --arg pattern "$asset_pattern" '
+        .assets[]
+        | select(.name | endswith($pattern))
+        | .browser_download_url
+    ' | sed -n '1p')"
+    [ -n "$SING_BOX_EXTENDED_ASSET_URL" ] || fail "No sing-box-extended asset was found for architecture suffix $SING_BOX_EXTENDED_ARCH_SUFFIX"
+
+    SING_BOX_EXTENDED_ASSET_NAME="$(basename "$SING_BOX_EXTENDED_ASSET_URL")"
+}
+
+select_sing_box_extended_work_dir() {
+    free_ram_kb="$(awk '/MemAvailable/ {print $2; exit} /MemFree/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
+    case "$free_ram_kb" in
+        ''|*[!0-9]*) free_ram_kb=0 ;;
+    esac
+
+    if [ "$free_ram_kb" -gt 81920 ]; then
+        SING_BOX_EXTENDED_WORK_DIR="$TMP_DIR/sing-box-extended"
+    else
+        SING_BOX_EXTENDED_WORK_DIR="${HOME:-/root}/podkop-plus-sing-box-extended.$$"
+    fi
+
+    rm -rf "$SING_BOX_EXTENDED_WORK_DIR"
+    mkdir -p "$SING_BOX_EXTENDED_WORK_DIR" || fail "Failed to create sing-box-extended work directory"
+}
+
+stop_sing_box_dependant_services() {
+    [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
+    [ -x /etc/init.d/podkop ] && /etc/init.d/podkop stop >/dev/null 2>&1 || true
+    [ -x /etc/init.d/sing-box ] && /etc/init.d/sing-box stop >/dev/null 2>&1 || true
+}
+
+prepare_sing_box_action_before_install() {
+    [ "$SING_BOX_ACTION" = "preserve_extended" ] || return 0
+    [ -x /usr/bin/sing-box ] || return 0
+
+    SING_BOX_EXTENDED_BACKUP_FILE="$TMP_DIR/sing-box.extended.backup"
+    cp /usr/bin/sing-box "$SING_BOX_EXTENDED_BACKUP_FILE" || fail "Failed to back up the current sing-box-extended binary"
+    chmod 0755 "$SING_BOX_EXTENDED_BACKUP_FILE" 2>/dev/null || true
+}
+
+install_sing_box_extended_binary() {
+    archive_file=""
+    binary_path=""
+    new_version=""
+
+    resolve_sing_box_extended_release
+    select_sing_box_extended_work_dir
+
+    archive_file="$SING_BOX_EXTENDED_WORK_DIR/$SING_BOX_EXTENDED_ASSET_NAME"
+    download_with_retry "$SING_BOX_EXTENDED_ASSET_URL" "$archive_file" "$SING_BOX_EXTENDED_ASSET_NAME" || fail "Failed to download sing-box-extended"
+
+    tar -xzf "$archive_file" -C "$SING_BOX_EXTENDED_WORK_DIR" || fail "Failed to extract sing-box-extended archive"
+    binary_path="$(find "$SING_BOX_EXTENDED_WORK_DIR" -type f -name sing-box | sed -n '1p')"
+    [ -n "$binary_path" ] || fail "sing-box binary was not found in the sing-box-extended archive"
+
+    stop_sing_box_dependant_services
+    mv -f "$binary_path" /usr/bin/sing-box || fail "Failed to install sing-box-extended binary"
+    chmod 0755 /usr/bin/sing-box || fail "Failed to mark sing-box binary executable"
+
+    new_version="$(get_sing_box_binary_version)"
+    msg "Installed sing-box-extended ${new_version:-unknown} from shtorm-7/sing-box-extended@$SING_BOX_EXTENDED_RELEASE_TAG"
+}
+
+restore_preserved_sing_box_extended() {
+    current_version=""
+
+    [ -n "$SING_BOX_EXTENDED_BACKUP_FILE" ] || return 0
+    [ -f "$SING_BOX_EXTENDED_BACKUP_FILE" ] || return 0
+
+    current_version="$(get_sing_box_binary_version)"
+    if sing_box_version_is_extended "$current_version"; then
+        msg "sing-box-extended $current_version is still installed."
+        return 0
+    fi
+
+    stop_sing_box_dependant_services
+    cp "$SING_BOX_EXTENDED_BACKUP_FILE" /usr/bin/sing-box || fail "Failed to restore sing-box-extended after package installation"
+    chmod 0755 /usr/bin/sing-box || fail "Failed to mark restored sing-box binary executable"
+    msg "Restored sing-box-extended after package installation"
+}
+
+install_stock_sing_box_package() {
+    stop_sing_box_dependant_services
+    pkg_remove_if_installed "sing-box"
+    pkg_install_name "sing-box" || fail "Failed to install the regular sing-box package"
+    msg "Installed the regular sing-box package ${SING_BOX_CURRENT_VERSION:+(previously $SING_BOX_CURRENT_VERSION)}"
+}
+
+apply_sing_box_action_after_install() {
+    case "$SING_BOX_ACTION" in
+        install_extended)
+            install_sing_box_extended_binary
+            ;;
+        preserve_extended)
+            restore_preserved_sing_box_extended
+            ;;
+        install_stock)
+            install_stock_sing_box_package
+            ;;
+        keep)
+            ;;
+    esac
+}
+
 remember_service_state() {
     service_status=""
 
@@ -1011,6 +1310,7 @@ main() {
 
     pkg_list_update || fail "Failed to update package lists"
     ensure_bootstrap_tool "jq" "jq"
+    decide_sing_box_installation
 
     if [ "$ZAPRET_REQUESTED" -eq 1 ]; then
         ensure_bootstrap_tool "unzip" "unzip"
@@ -1027,9 +1327,11 @@ main() {
     fi
 
     cleanup_legacy_installation
+    prepare_sing_box_action_before_install
     download_podkop_plus_packages
     download_and_extract_zapret_package
     install_packages
+    apply_sing_box_action_after_install
     post_install
 
     msg "Podkop Plus $PODKOP_PLUS_PACKAGE_VERSION has been installed successfully"

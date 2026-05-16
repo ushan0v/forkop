@@ -195,6 +195,9 @@ _add_outbound_security() {
         sni=$(url_get_query_param "$url" "sni")
         insecure=$(_get_insecure_query_param_from_url "$url")
         alpn=$(comma_string_to_json_array "$(url_get_query_param "$url" "alpn")")
+        if [ "$alpn" = "[]" ] && [ "$(url_get_query_param "$url" "type")" = "xhttp" ]; then
+            alpn='["h2","http/1.1"]'
+        fi
         fingerprint=$(url_get_query_param "$url" "fp")
         public_key=$(url_get_query_param "$url" "pbk")
         short_id=$(url_get_query_param "$url" "sid")
@@ -241,6 +244,15 @@ _add_outbound_transport() {
     transport=$(url_get_query_param "$url" "type")
     case "$transport" in
     tcp | raw) ;;
+    http | h2)
+        local http_path http_hosts
+        http_path=$(url_get_query_param "$url" "path")
+        http_hosts=$(comma_string_to_json_array "$(url_get_query_param "$url" "host")")
+
+        config=$(
+            sing_box_cm_set_http_transport_for_outbound "$config" "$outbound_tag" "$http_path" "$http_hosts"
+        )
+        ;;
     ws)
         local ws_path ws_host ws_early_data
         ws_path=$(url_get_query_param "$url" "path")
@@ -258,6 +270,33 @@ _add_outbound_transport() {
 
         config=$(
             sing_box_cm_set_grpc_transport_for_outbound "$config" "$outbound_tag" "$grpc_service_name"
+        )
+        ;;
+    httpupgrade)
+        local httpupgrade_path httpupgrade_host
+        httpupgrade_path=$(url_get_query_param "$url" "path")
+        httpupgrade_host=$(url_get_query_param "$url" "host")
+
+        config=$(
+            sing_box_cm_set_httpupgrade_transport_for_outbound "$config" "$outbound_tag" "$httpupgrade_path" "$httpupgrade_host"
+        )
+        ;;
+    xhttp)
+        local xhttp_path xhttp_host xhttp_mode xhttp_sni
+        if ! is_sing_box_extended; then
+            log "XHTTP transport requires sing-box-extended. Install sing-box-extended and retry." "error"
+            echo "$config"
+            return 0
+        fi
+
+        xhttp_path=$(url_get_query_param "$url" "path")
+        xhttp_host=$(url_get_query_param "$url" "host")
+        xhttp_sni=$(url_get_query_param "$url" "sni")
+        [ -n "$xhttp_host" ] || xhttp_host="$xhttp_sni"
+        xhttp_mode=$(url_get_query_param "$url" "mode")
+
+        config=$(
+            sing_box_cm_set_xhttp_transport_for_outbound "$config" "$outbound_tag" "$xhttp_path" "$xhttp_host" "$xhttp_mode"
         )
         ;;
     *)
@@ -449,6 +488,8 @@ sing_box_cf_apply_subscription_batch() {
 
     [ "$jq_status" -eq 0 ] || return 1
     [ -n "$updated_config" ] || return 1
+    updated_config="$(printf '%s' "$updated_config" | jq -c 'del(.outbounds[]?.share_link, .outbounds[]?.remark)' 2>/dev/null)" || return 1
+    [ -n "$updated_config" ] || return 1
 
     validation_config="$(printf '%s' "$updated_config" | jq -c '
         (first(.outbounds[]? | select(.type == "direct") | .tag) // "direct-out") as $direct
@@ -503,7 +544,7 @@ sing_box_cf_apply_subscription_outbounds_individually() {
     while [ "$index" -lt "$outbounds_count" ]; do
         outbound_tag="$(printf '%s' "$prepared_json" | jq -r --argjson index "$index" '.outbounds[$index].tag // empty' 2>/dev/null)"
         display_name="$(printf '%s' "$prepared_json" | jq -r --argjson index "$index" '.names[$index] // .outbounds[$index].tag // ("server-" + (($index + 1) | tostring))' 2>/dev/null)"
-        raw_outbound="$(printf '%s' "$prepared_json" | jq -c --argjson index "$index" '.outbounds[$index] | del(.tag)' 2>/dev/null)"
+        raw_outbound="$(printf '%s' "$prepared_json" | jq -c --argjson index "$index" '.outbounds[$index] | del(.tag, .share_link, .remark)' 2>/dev/null)"
         source_link="$(printf '%s' "$prepared_json" | jq -r --argjson index "$index" '.links[$index] // empty' 2>/dev/null)"
 
         if [ -z "$outbound_tag" ] || [ -z "$raw_outbound" ] || [ "$raw_outbound" = "null" ]; then

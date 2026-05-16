@@ -823,6 +823,127 @@ sing_box_cm_set_ws_transport_for_outbound() {
 }
 
 #######################################
+# Set HTTP transport settings for an outbound in a sing-box JSON configuration.
+# Arguments:
+#   config: string (JSON), sing-box configuration to modify
+#   tag: string, identifier of the outbound to modify
+#   path: string, HTTP request path (optional)
+#   hosts: string, JSON array of host domains (optional)
+# Outputs:
+#   Writes updated JSON configuration to stdout
+#######################################
+sing_box_cm_set_http_transport_for_outbound() {
+    local config="$1"
+    local tag="$2"
+    local path="$3"
+    local hosts="$4"
+
+    echo "$config" | jq \
+        --arg tag "$tag" \
+        --arg path "$path" \
+        --argjson hosts "$hosts" \
+        '.outbounds |= map(
+            if .tag == $tag then
+                . + {
+                    transport: (
+                        { type: "http" }
+                        + (if $path != "" then {path: $path} else {} end)
+                        + (if ($hosts | length) > 0 then {host: $hosts} else {} end)
+                    )
+                }
+            else
+                .
+            end
+        )'
+}
+
+#######################################
+# Set HTTPUpgrade transport settings for an outbound in a sing-box JSON configuration.
+# Arguments:
+#   config: string (JSON), sing-box configuration to modify
+#   tag: string, identifier of the outbound to modify
+#   path: string, HTTPUpgrade request path (optional)
+#   host: string, HTTPUpgrade host (optional)
+# Outputs:
+#   Writes updated JSON configuration to stdout
+#######################################
+sing_box_cm_set_httpupgrade_transport_for_outbound() {
+    local config="$1"
+    local tag="$2"
+    local path="$3"
+    local host="$4"
+
+    echo "$config" | jq \
+        --arg tag "$tag" \
+        --arg path "$path" \
+        --arg host "$host" \
+        '.outbounds |= map(
+            if .tag == $tag then
+                . + {
+                    transport: (
+                        { type: "httpupgrade" }
+                        + (if $path != "" then {path: $path} else {} end)
+                        + (if $host != "" then {host: $host} else {} end)
+                    )
+                }
+            else
+                .
+            end
+        )'
+}
+
+#######################################
+# Set XHTTP transport settings for an outbound in a sing-box JSON configuration.
+# Arguments:
+#   config: string (JSON), sing-box configuration to modify
+#   tag: string, identifier of the outbound to modify
+#   path: string, XHTTP request path (optional, defaults to /)
+#   host: string, XHTTP host (optional)
+#   mode: string, XHTTP mode (auto, packet-up, stream-up, stream-one)
+# Outputs:
+#   Writes updated JSON configuration to stdout
+#######################################
+sing_box_cm_set_xhttp_transport_for_outbound() {
+    local config="$1"
+    local tag="$2"
+    local path="$3"
+    local host="$4"
+    local mode="$5"
+
+    [ -n "$path" ] || path="/"
+    case "$mode" in
+    auto | packet-up | stream-up | stream-one) ;;
+    *) mode="auto" ;;
+    esac
+
+    echo "$config" | jq \
+        --arg tag "$tag" \
+        --arg path "$path" \
+        --arg host "$host" \
+        --arg mode "$mode" \
+        '.outbounds |= map(
+            if .tag == $tag then
+                . + {
+                    transport: (
+                        {
+                            type: "xhttp",
+                            mode: $mode,
+                            path: $path,
+                            x_padding_bytes: "100-1000",
+                            no_grpc_header: false,
+                            sc_max_each_post_bytes: 1000000,
+                            sc_min_posts_interval_ms: 30
+                        }
+                        + (if $host != "" then {host: $host} else {} end)
+                    )
+                }
+            else
+                .
+            end
+        )'
+}
+
+#######################################
 # Set TLS settings for an outbound in a sing-box JSON configuration.
 # Arguments:
 #   config: string (JSON), sing-box configuration to modify
