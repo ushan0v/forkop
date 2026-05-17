@@ -40,7 +40,6 @@ sh <(wget -O - https://raw.githubusercontent.com/ushan0v/podkop-plus/main/instal
 - Обновленный LuCI-интерфейс секций. Расширенное управление секциями: изменение приоритета, новые условия и значения.
 - Интеграция Zapret и ByeDPI как отдельного действия для секции.
 - Поддержка sing-box extended и транспорта XHTTP.
-- Поддержка AmneziaVPN-style VLESS Reality формата для ключей. 
 
 ### Секции
 
