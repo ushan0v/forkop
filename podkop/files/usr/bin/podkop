@@ -925,7 +925,7 @@ append_sing_box_rule_signature() {
 build_sing_box_signature() {
     local dns_type dns_server bootstrap_dns_server rewrite_ttl output_network_interface disable_quic routing_excluded_ips \
         update_interval cache_path config_path log_level enable_yacd enable_yacd_wan_access yacd_secret_key \
-        download_lists_via_proxy download_lists_via_proxy_section service_listen_address
+        download_lists_via_proxy download_lists_via_proxy_section service_listen_address mwan3_active
 
     signature_begin
 
@@ -944,6 +944,8 @@ build_sing_box_signature() {
     config_get_bool enable_yacd "settings" "enable_yacd" 0
     config_get_bool enable_yacd_wan_access "settings" "enable_yacd_wan_access" 0
     config_get_bool download_lists_via_proxy "settings" "download_lists_via_proxy" 0
+    mwan3_active=0
+    mwan3_is_active && mwan3_active=1
 
     signature_add "settings.dns_type" "$dns_type"
     signature_add "settings.dns_server" "$dns_server"
@@ -959,6 +961,7 @@ build_sing_box_signature() {
     signature_add "settings.config_path" "$config_path"
     signature_add "settings.log_level" "$log_level"
     signature_add "settings.service_listen_address" "$service_listen_address"
+    signature_add "runtime.mwan3_active" "$mwan3_active"
     signature_add "settings.enable_yacd" "$enable_yacd"
     if [ "$enable_yacd" -eq 1 ]; then
         signature_add "settings.enable_yacd_wan_access" "$enable_yacd_wan_access"
@@ -1958,6 +1961,26 @@ has_outbound_section() {
     config_foreach _check_outbound_node "rule"
 
     return $section_exists
+}
+
+mwan3_has_enabled_interface() {
+    local section
+
+    [ -s /etc/config/mwan3 ] || return 1
+
+    for section in $(uci -q show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([^=]*\)=interface$/\1/p'); do
+        [ "$(uci -q get "mwan3.$section.enabled" 2>/dev/null)" = "1" ] && return 0
+    done
+
+    return 1
+}
+
+mwan3_is_active() {
+    [ -x /etc/init.d/mwan3 ] || return 1
+    mwan3_has_enabled_interface || return 1
+
+    /etc/init.d/mwan3 status >/dev/null 2>&1 ||
+        /etc/init.d/mwan3 enabled >/dev/null 2>&1
 }
 
 start_main() {
@@ -4483,8 +4506,16 @@ sing_box_configure_route() {
     local output_network_interface
     config_get output_network_interface "settings" "output_network_interface"
     if [ -z "$output_network_interface" ]; then
-        config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" true "$SB_DNS_SERVER_TAG")
+        if mwan3_is_active; then
+            log "mwan3 is active; disabling sing-box auto_detect_interface so mwan3 can control egress routing" "warn"
+            config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" false "$SB_DNS_SERVER_TAG")
+        else
+            config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" true "$SB_DNS_SERVER_TAG")
+        fi
     else
+        if mwan3_is_active; then
+            log "mwan3 is active and Output Network Interface is set to '$output_network_interface'; sing-box egress is pinned to this interface" "warn"
+        fi
         config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" false "$SB_DNS_SERVER_TAG" \
             "$output_network_interface")
     fi
