@@ -857,6 +857,14 @@ subscription_parse_shadowsocks_link() {
     port="${port%%/*}"
     plugin="$(subscription_url_get_query_param "$link" "plugin")"
     plugin_opts="$(subscription_url_get_query_param "$link" "plugin-opts")"
+    if [ -n "$plugin" ] && [ -z "$plugin_opts" ]; then
+        case "$plugin" in
+        *";"*)
+            plugin_opts="${plugin#*;}"
+            plugin="${plugin%%;*}"
+            ;;
+        esac
+    fi
 
     [ -n "$tag" ] || tag="$host:$port"
     [ -n "$method" ] && [ -n "$password" ] && [ -n "$host" ] && [ -n "$port" ] || return 1
@@ -1024,7 +1032,7 @@ subscription_parse_vmess_link() {
 subscription_json_string() {
     local value="$1"
 
-    value="$(printf '%s' "$value" | sed 's/\\/\\\\/g;s/"/\\"/g')"
+    value="$(printf '%s' "$value" | sed 's/[[:cntrl:]]/ /g;s/\\/\\\\/g;s/"/\\"/g')"
     printf '"%s"' "$value"
 }
 
@@ -1319,6 +1327,14 @@ subscription_parse_shadowsocks_link() {
     port="${port%%/*}"
     plugin="$(subscription_url_get_query_param "$link" "plugin")"
     plugin_opts="$(subscription_url_get_query_param "$link" "plugin-opts")"
+    if [ -n "$plugin" ] && [ -z "$plugin_opts" ]; then
+        case "$plugin" in
+        *";"*)
+            plugin_opts="${plugin#*;}"
+            plugin="${plugin%%;*}"
+            ;;
+        esac
+    fi
 
     [ -n "$tag" ] || tag="$host:$port"
     [ -n "$method" ] && [ -n "$password" ] && [ -n "$host" ] && [ -n "$port" ] || return 1

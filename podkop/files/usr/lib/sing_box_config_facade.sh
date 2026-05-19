@@ -385,10 +385,66 @@ sing_box_cf_subscription_candidate_outbounds() {
     )]' "$subscription_json_path" 2>/dev/null
 }
 
+sing_box_cf_log_subscription_skips() {
+    local prepared_json="$1"
+    local context="$2"
+    local skipped_count index display_name reason
+
+    skipped_count="$(printf '%s' "$prepared_json" | jq -r '(.skipped_names // []) | length' 2>/dev/null)"
+    [ -n "$skipped_count" ] || return 0
+
+    index=0
+    while [ "$index" -lt "$skipped_count" ]; do
+        display_name="$(printf '%s' "$prepared_json" |
+            jq -r --argjson index "$index" '(.skipped_names[$index] // "unknown") | tostring' 2>/dev/null |
+            tr '\r\n\t' '   ' |
+            sed 's/[[:space:]][[:space:]]*/ /g;s/^[[:space:]]*//;s/[[:space:]]*$//')"
+        reason="$(printf '%s' "$prepared_json" |
+            jq -r --argjson index "$index" '(.skipped_reasons[$index] // "unsupported or invalid outbound") | tostring' 2>/dev/null |
+            tr '\r\n\t' '   ' |
+            sed 's/[[:space:]][[:space:]]*/ /g;s/^[[:space:]]*//;s/[[:space:]]*$//')"
+        log "Skipped subscription outbound '$display_name' $context: $reason" "warn"
+        index=$((index + 1))
+    done
+}
+
+sing_box_cf_subscription_plugin_supports() {
+    local outbounds_json="$1"
+    local plugin plugin_name plugin_supports_json supported
+
+    plugin_supports_json="{}"
+    while IFS= read -r plugin || [ -n "$plugin" ]; do
+        [ -n "$plugin" ] || continue
+        plugin_name="${plugin%%;*}"
+        [ -n "$plugin_name" ] || continue
+
+        if command -v "$plugin_name" >/dev/null 2>&1; then
+            supported=true
+        else
+            supported=false
+        fi
+
+        plugin_supports_json="$(printf '%s' "$plugin_supports_json" |
+            jq -c --arg plugin "$plugin_name" --argjson supported "$supported" '.[$plugin] = $supported' 2>/dev/null)"
+        [ -n "$plugin_supports_json" ] || plugin_supports_json="{}"
+    done <<EOF
+$(printf '%s' "$outbounds_json" | jq -r '.[]? | select(.type == "shadowsocks") | .plugin // empty' 2>/dev/null)
+EOF
+
+    printf '%s\n' "$plugin_supports_json"
+}
+
 sing_box_cf_prepare_subscription_batch() {
     local config="$1"
     local outbounds_json="$2"
-    local existing_tags_json existing_tags_tmp outbounds_tmp prepared_json jq_status
+    local existing_tags_json existing_tags_tmp outbounds_tmp prepared_json jq_status supports_xhttp plugin_supports_json
+
+    supports_xhttp=false
+    if is_sing_box_extended; then
+        supports_xhttp=true
+    fi
+    plugin_supports_json="$(sing_box_cf_subscription_plugin_supports "$outbounds_json")"
+    [ -n "$plugin_supports_json" ] || plugin_supports_json="{}"
 
     existing_tags_json="$(printf '%s' "$config" | jq -c '[.outbounds[]?.tag // empty]' 2>/dev/null)"
     [ -n "$existing_tags_json" ] || existing_tags_json="[]"
@@ -408,12 +464,91 @@ sing_box_cf_prepare_subscription_batch() {
         return 1
     }
 
-    prepared_json="$(jq -c --slurpfile existing_tags "$existing_tags_tmp" '
+    prepared_json="$(jq -c --slurpfile existing_tags "$existing_tags_tmp" \
+        --argjson supports_xhttp "$supports_xhttp" \
+        --argjson plugin_supports "$plugin_supports_json" '
         ($existing_tags[0] // []) as $existing_tags
         |
         def safe_string($value; $fallback):
             (($value // $fallback) | tostring) as $result
             | if $result == "" or $result == "null" then $fallback else $result end;
+
+        def non_empty_string($value):
+            ($value | type) == "string" and $value != "";
+
+        def valid_server($outbound):
+            non_empty_string($outbound.server // null);
+
+        def valid_server_port($outbound):
+            ($outbound.server_port | type) == "number" and
+            (($outbound.server_port | floor) == $outbound.server_port) and
+            $outbound.server_port >= 1 and
+            $outbound.server_port <= 65535;
+
+        def type_requires_server($type):
+            ["vless", "vmess", "trojan", "shadowsocks", "socks", "hysteria2"] | index($type) != null;
+
+        def supported_flow($flow):
+            ($flow == null) or ($flow == "") or ($flow == "xtls-rprx-vision");
+
+        def supported_transport_type($transport):
+            ["http", "ws", "quic", "grpc", "httpupgrade", "xhttp", "kcp"] | index($transport) != null;
+
+        def supported_shadowsocks_method($method):
+            [
+                "none",
+                "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
+                "chacha20-ietf-poly1305", "xchacha20-ietf-poly1305",
+                "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305",
+                "aes-128-cfb", "aes-192-cfb", "aes-256-cfb",
+                "aes-128-ctr", "aes-192-ctr", "aes-256-ctr",
+                "chacha20", "chacha20-ietf", "xchacha20",
+                "salsa20", "rc4-md5"
+            ] | index($method) != null;
+
+        def reality_enabled($outbound):
+            ($outbound.tls.reality? | type) == "object" and (($outbound.tls.reality.enabled // true) == true);
+
+        def plugin_name($plugin):
+            ($plugin | tostring | split(";")[0]);
+
+        def prefilter_skip_reason($outbound):
+            ($outbound.type // "" | tostring) as $type
+            | if $type == "" then
+                "missing outbound type"
+              elif ($outbound.type != ($outbound.type | tostring)) then
+                "outbound type must be a string"
+              elif type_requires_server($type) and (valid_server($outbound) | not) then
+                "missing or empty server"
+              elif type_requires_server($type) and (valid_server_port($outbound) | not) then
+                "missing or invalid server_port"
+              elif ($type == "vless" or $type == "vmess") and (non_empty_string($outbound.uuid // null) | not) then
+                "missing uuid"
+              elif ($type == "trojan" or $type == "hysteria2") and (non_empty_string($outbound.password // null) | not) then
+                "missing password"
+              elif $type == "shadowsocks" and (non_empty_string($outbound.method // null) | not) then
+                "missing shadowsocks method"
+              elif $type == "shadowsocks" and (non_empty_string($outbound.password // null) | not) then
+                "missing shadowsocks password"
+              elif $type == "shadowsocks" and (supported_shadowsocks_method($outbound.method) | not) then
+                "unsupported shadowsocks method: \($outbound.method)"
+              elif $type == "shadowsocks" and non_empty_string($outbound.plugin // null) and (($plugin_supports[plugin_name($outbound.plugin)] // false) | not) then
+                "shadowsocks plugin is not installed: \(plugin_name($outbound.plugin))"
+              elif reality_enabled($outbound) and (non_empty_string($outbound.tls.reality.public_key // null) | not) then
+                "reality public_key is missing"
+              elif ($type == "vless") and (supported_flow($outbound.flow // "") | not) then
+                "unsupported vless flow: \($outbound.flow)"
+              elif (($outbound.transport? | type) == "object") and (($outbound.transport.type // "" | tostring) == "") then
+                "missing transport type"
+              elif (($outbound.transport? | type) == "object") and (supported_transport_type(($outbound.transport.type // "") | tostring) | not) then
+                "unknown transport type: \($outbound.transport.type)"
+              elif (($outbound.transport? | type) == "object") and (($outbound.transport.type // "" | tostring) == "xhttp") and ($supports_xhttp | not) then
+                "transport xhttp requires sing-box-extended"
+              elif ($type == "shadowsocks" and (($outbound.tls.enabled // false) == true)) then
+                "shadowsocks with TLS is not supported"
+              else
+                ""
+              end;
 
         def unique_tag($base; $taken):
             if (($taken[$base] // false) | not) then
@@ -431,12 +566,17 @@ sing_box_cf_prepare_subscription_batch() {
                 names: [],
                 links: [],
                 skipped: 0,
+                skipped_names: [],
+                skipped_reasons: [],
                 taken: (reduce $existing_tags[] as $tag ({}; .[$tag] = true))
             };
             ((.outbounds | length) + 1) as $index
             | safe_string($outbound.remark // $outbound.tag; "server-\($index)") as $display_name
-            | if ($outbound.type == "shadowsocks" and (($outbound.tls.enabled // false) == true)) then
+            | prefilter_skip_reason($outbound) as $skip_reason
+            | if $skip_reason != "" then
                 .skipped += 1
+                | .skipped_names += [$display_name]
+                | .skipped_reasons += [$skip_reason]
               else
                 safe_string($outbound.tag // $outbound.remark; "server-\($index)") as $base_tag
                 | (.taken as $taken | unique_tag($base_tag; $taken)) as $tag
@@ -457,14 +597,25 @@ sing_box_cf_prepare_subscription_batch() {
     printf '%s\n' "$prepared_json"
 }
 
-sing_box_cf_apply_subscription_batch() {
-    local config="$1"
-    local prepared_json="$2"
-    local new_outbounds new_outbounds_tmp config_tmp validation_tmp validation_config updated_config jq_status
+sing_box_cf_validation_error_summary() {
+    local output="$1"
+    local summary
 
-    new_outbounds="$(printf '%s' "$prepared_json" | jq -c '.outbounds // []' 2>/dev/null)"
-    [ -n "$new_outbounds" ] || return 1
-    [ "$(printf '%s' "$new_outbounds" | jq -r 'length' 2>/dev/null)" -gt 0 ] || return 1
+    summary="$(printf '%s\n' "$output" |
+        sed 's/\x1b\[[0-9;]*m//g;s/^[[:space:]]*//;s/[[:space:]]*$//' |
+        sed '/^$/d' |
+        sed -n '1p')"
+    [ -n "$summary" ] || summary="sing-box check failed"
+    printf '%s\n' "$summary"
+}
+
+sing_box_cf_try_subscription_outbounds_batch() {
+    local config="$1"
+    local new_outbounds="$2"
+    local new_outbounds_tmp config_tmp validation_tmp validation_config updated_config jq_status check_output
+
+    SING_BOX_CF_VALIDATED_CONFIG=""
+    SING_BOX_CF_VALIDATION_ERROR=""
 
     new_outbounds_tmp="$(mktemp)" || return 1
     config_tmp="$(mktemp)" || {
@@ -499,114 +650,201 @@ sing_box_cf_apply_subscription_batch() {
 
     validation_tmp="$(mktemp)" || return 1
     sing_box_cm_save_config_to_file "$validation_config" "$validation_tmp"
-    if ! sing-box -c "$validation_tmp" check > /dev/null 2>&1; then
+    if ! check_output="$(sing-box -c "$validation_tmp" check 2>&1)"; then
+        SING_BOX_CF_VALIDATION_ERROR="$(sing_box_cf_validation_error_summary "$check_output")"
         rm -f "$validation_tmp"
         return 1
     fi
     rm -f "$validation_tmp"
 
-    SUBSCRIPTION_OUTBOUND_TAGS_JSON="$(printf '%s' "$prepared_json" | jq -c '.tags // []' 2>/dev/null)"
-    [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
-    SUBSCRIPTION_OUTBOUND_TAGS="$(printf '%s' "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" | jq -r 'join(",")' 2>/dev/null)"
-    SUBSCRIPTION_OUTBOUND_NAMES="$(printf '%s' "$prepared_json" | jq -r '.names[]?' 2>/dev/null)"
-    SUBSCRIPTION_OUTBOUND_LINKS_JSON="$(printf '%s' "$prepared_json" | jq -c '
+    SING_BOX_CF_VALIDATED_CONFIG="$updated_config"
+    return 0
+}
+
+sing_box_cf_prepared_links_json() {
+    local prepared_json="$1"
+
+    printf '%s' "$prepared_json" | jq -c '
         (.tags // []) as $tags
         | (.links // []) as $links
         | reduce range(0; ($tags | length)) as $index (
             {};
             .[$tags[$index]] = ($links[$index] // "")
         )
-    ' 2>/dev/null)"
+    ' 2>/dev/null
+}
+
+sing_box_cf_prepared_names_lines() {
+    local prepared_json="$1"
+
+    printf '%s' "$prepared_json" | jq -r '.names[]?' 2>/dev/null
+}
+
+sing_box_cf_subscription_prepared_slice() {
+    local prepared_json="$1"
+    local start="$2"
+    local end="$3"
+
+    printf '%s' "$prepared_json" | jq -c --argjson start "$start" --argjson end "$end" '
+        . + {
+            outbounds: ((.outbounds // [])[$start:$end]),
+            tags: ((.tags // [])[$start:$end]),
+            names: ((.names // [])[$start:$end]),
+            links: ((.links // [])[$start:$end]),
+            skipped: 0,
+            skipped_names: [],
+            skipped_reasons: []
+        }
+    ' 2>/dev/null
+}
+
+sing_box_cf_append_subscription_prepared_metadata() {
+    local prepared_json="$1"
+    local tags_json links_json names
+
+    tags_json="$(printf '%s' "$prepared_json" | jq -c '.tags // []' 2>/dev/null)"
+    [ -n "$tags_json" ] || tags_json="[]"
+
+    links_json="$(sing_box_cf_prepared_links_json "$prepared_json")"
+    [ -n "$links_json" ] || links_json="{}"
+
+    SUBSCRIPTION_OUTBOUND_TAGS_JSON="$(printf '%s' "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" |
+        jq -c --argjson tags "$tags_json" '. + $tags' 2>/dev/null)"
+    [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
+
+    SUBSCRIPTION_OUTBOUND_LINKS_JSON="$(printf '%s' "$SUBSCRIPTION_OUTBOUND_LINKS_JSON" |
+        jq -c --argjson links "$links_json" '. + $links' 2>/dev/null)"
     [ -n "$SUBSCRIPTION_OUTBOUND_LINKS_JSON" ] || SUBSCRIPTION_OUTBOUND_LINKS_JSON="{}"
-    SING_BOX_CF_LAST_CONFIG="$updated_config"
+
+    names="$(sing_box_cf_prepared_names_lines "$prepared_json")"
+    if [ -n "$names" ]; then
+        if [ -z "$SUBSCRIPTION_OUTBOUND_NAMES" ]; then
+            SUBSCRIPTION_OUTBOUND_NAMES="$names"
+        else
+            SUBSCRIPTION_OUTBOUND_NAMES="$SUBSCRIPTION_OUTBOUND_NAMES
+$names"
+        fi
+    fi
+}
+
+sing_box_cf_apply_subscription_batch() {
+    local config="$1"
+    local prepared_json="$2"
+    local new_outbounds new_outbounds_count
+
+    new_outbounds="$(printf '%s' "$prepared_json" | jq -c '.outbounds // []' 2>/dev/null)"
+    [ -n "$new_outbounds" ] || return 1
+    new_outbounds_count="$(printf '%s' "$new_outbounds" | jq -r 'length' 2>/dev/null)"
+    [ -n "$new_outbounds_count" ] || return 1
+    [ "$new_outbounds_count" -gt 0 ] || return 1
+
+    if ! sing_box_cf_try_subscription_outbounds_batch "$config" "$new_outbounds"; then
+        return 1
+    fi
+
+    SUBSCRIPTION_OUTBOUND_TAGS_JSON="$(printf '%s' "$prepared_json" | jq -c '.tags // []' 2>/dev/null)"
+    [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
+    SUBSCRIPTION_OUTBOUND_TAGS="$(printf '%s' "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" | jq -r 'join(",")' 2>/dev/null)"
+    SUBSCRIPTION_OUTBOUND_NAMES="$(sing_box_cf_prepared_names_lines "$prepared_json")"
+    SUBSCRIPTION_OUTBOUND_LINKS_JSON="$(sing_box_cf_prepared_links_json "$prepared_json")"
+    [ -n "$SUBSCRIPTION_OUTBOUND_LINKS_JSON" ] || SUBSCRIPTION_OUTBOUND_LINKS_JSON="{}"
+    SING_BOX_CF_LAST_CONFIG="$SING_BOX_CF_VALIDATED_CONFIG"
 
     return 0
 }
 
-sing_box_cf_apply_subscription_outbounds_individually() {
+sing_box_cf_apply_subscription_outbounds_range() {
+    local start="$1"
+    local count="$2"
+    local end chunk outbounds_json display_name half rest index
+
+    [ "$count" -gt 0 ] || return 0
+
+    end=$((start + count))
+    chunk="$(sing_box_cf_subscription_prepared_slice "$SING_BOX_CF_FALLBACK_PREPARED_JSON" "$start" "$end")" || {
+        SING_BOX_CF_FALLBACK_SKIPPED_COUNT=$((SING_BOX_CF_FALLBACK_SKIPPED_COUNT + count))
+        return 0
+    }
+
+    outbounds_json="$(printf '%s' "$chunk" | jq -c '.outbounds // []' 2>/dev/null)"
+    [ -n "$outbounds_json" ] || {
+        SING_BOX_CF_FALLBACK_SKIPPED_COUNT=$((SING_BOX_CF_FALLBACK_SKIPPED_COUNT + count))
+        return 0
+    }
+
+    if sing_box_cf_try_subscription_outbounds_batch "$SING_BOX_CF_FALLBACK_WORKING_CONFIG" "$outbounds_json"; then
+        SING_BOX_CF_FALLBACK_WORKING_CONFIG="$SING_BOX_CF_VALIDATED_CONFIG"
+        sing_box_cf_append_subscription_prepared_metadata "$chunk"
+        SING_BOX_CF_FALLBACK_ADDED_COUNT=$((SING_BOX_CF_FALLBACK_ADDED_COUNT + count))
+        return 0
+    fi
+
+    if [ "$count" -eq 1 ]; then
+        display_name="$(printf '%s' "$chunk" |
+            jq -r '(.names[0] // .outbounds[0].tag // "unknown") | tostring' 2>/dev/null |
+            tr '\r\n\t' '   ' |
+            sed 's/[[:space:]][[:space:]]*/ /g;s/^[[:space:]]*//;s/[[:space:]]*$//')"
+        [ -n "$display_name" ] || display_name="unknown"
+        [ -n "$SING_BOX_CF_VALIDATION_ERROR" ] || SING_BOX_CF_VALIDATION_ERROR="sing-box check failed"
+        log "Skipped unsupported subscription outbound '$display_name': $SING_BOX_CF_VALIDATION_ERROR" "warn"
+        SING_BOX_CF_FALLBACK_SKIPPED_COUNT=$((SING_BOX_CF_FALLBACK_SKIPPED_COUNT + 1))
+        return 0
+    fi
+
+    if [ "$count" -le 8 ]; then
+        index=0
+        while [ "$index" -lt "$count" ]; do
+            sing_box_cf_apply_subscription_outbounds_range $((start + index)) 1
+            index=$((index + 1))
+        done
+        return 0
+    fi
+
+    half=$((count / 2))
+    [ "$half" -gt 0 ] || half=1
+    rest=$((count - half))
+
+    sing_box_cf_apply_subscription_outbounds_range "$start" "$half"
+    sing_box_cf_apply_subscription_outbounds_range $((start + half)) "$rest"
+}
+
+sing_box_cf_apply_subscription_outbounds_chunked() {
     local config="$1"
     local prepared_json="$2"
-    local working_config="$config"
-    local outbounds_count index outbound_tag display_name raw_outbound try_config validation_config validation_tmp
-    local added_count skipped_count tags_json links_json names source_link
+    local outbounds_count half rest
 
     outbounds_count="$(printf '%s' "$prepared_json" | jq -r '(.outbounds // []) | length' 2>/dev/null)"
     [ -n "$outbounds_count" ] || return 1
     [ "$outbounds_count" -gt 0 ] || return 1
 
-    index=0
-    added_count=0
-    skipped_count=0
-    tags_json="[]"
-    links_json="{}"
-    names=""
+    SING_BOX_CF_FALLBACK_WORKING_CONFIG="$config"
+    SING_BOX_CF_FALLBACK_PREPARED_JSON="$prepared_json"
+    SING_BOX_CF_FALLBACK_ADDED_COUNT=0
+    SING_BOX_CF_FALLBACK_SKIPPED_COUNT=0
+    SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
+    SUBSCRIPTION_OUTBOUND_LINKS_JSON="{}"
+    SUBSCRIPTION_OUTBOUND_NAMES=""
 
-    while [ "$index" -lt "$outbounds_count" ]; do
-        outbound_tag="$(printf '%s' "$prepared_json" | jq -r --argjson index "$index" '.outbounds[$index].tag // empty' 2>/dev/null)"
-        display_name="$(printf '%s' "$prepared_json" | jq -r --argjson index "$index" '.names[$index] // .outbounds[$index].tag // ("server-" + (($index + 1) | tostring))' 2>/dev/null)"
-        raw_outbound="$(printf '%s' "$prepared_json" | jq -c --argjson index "$index" '.outbounds[$index] | del(.tag, .share_link, .remark)' 2>/dev/null)"
-        source_link="$(printf '%s' "$prepared_json" | jq -r --argjson index "$index" '.links[$index] // empty' 2>/dev/null)"
+    if [ "$outbounds_count" -le 8 ]; then
+        sing_box_cf_apply_subscription_outbounds_range 0 "$outbounds_count"
+    else
+        half=$((outbounds_count / 2))
+        [ "$half" -gt 0 ] || half=1
+        rest=$((outbounds_count - half))
+        sing_box_cf_apply_subscription_outbounds_range 0 "$half"
+        sing_box_cf_apply_subscription_outbounds_range "$half" "$rest"
+    fi
 
-        if [ -z "$outbound_tag" ] || [ -z "$raw_outbound" ] || [ "$raw_outbound" = "null" ]; then
-            skipped_count=$((skipped_count + 1))
-            index=$((index + 1))
-            continue
-        fi
-
-        try_config="$(sing_box_cm_add_raw_outbound "$working_config" "$outbound_tag" "$raw_outbound")"
-        if [ -z "$try_config" ]; then
-            log "Skipped invalid subscription outbound '$display_name'" "warn"
-            skipped_count=$((skipped_count + 1))
-            index=$((index + 1))
-            continue
-        fi
-
-        validation_config="$(printf '%s' "$try_config" | jq -c '
-            (first(.outbounds[]? | select(.type == "direct") | .tag) // "direct-out") as $direct
-            | .route = ((.route // {}) + {rules: [], rule_set: [], final: $direct})
-        ' 2>/dev/null)"
-        if [ -z "$validation_config" ]; then
-            log "Skipped invalid subscription outbound '$display_name'" "warn"
-            skipped_count=$((skipped_count + 1))
-            index=$((index + 1))
-            continue
-        fi
-
-        validation_tmp="$(mktemp)" || return 1
-        sing_box_cm_save_config_to_file "$validation_config" "$validation_tmp"
-        if sing-box -c "$validation_tmp" check > /dev/null 2>&1; then
-            working_config="$try_config"
-            tags_json="$(printf '%s' "$tags_json" | jq -c --arg tag "$outbound_tag" '. + [$tag]' 2>/dev/null)"
-            links_json="$(printf '%s' "$links_json" | jq -c --arg tag "$outbound_tag" --arg link "$source_link" '.[$tag] = $link' 2>/dev/null)"
-            if [ -z "$names" ]; then
-                names="$display_name"
-            else
-                names="$names
-$display_name"
-            fi
-            added_count=$((added_count + 1))
-        else
-            log "Skipped unsupported subscription outbound '$display_name'" "warn"
-            skipped_count=$((skipped_count + 1))
-        fi
-        rm -f "$validation_tmp"
-
-        index=$((index + 1))
-    done
-
-    if [ "$added_count" -eq 0 ]; then
+    if [ "$SING_BOX_CF_FALLBACK_ADDED_COUNT" -eq 0 ]; then
         return 1
     fi
 
-    if [ "$skipped_count" -gt 0 ]; then
-        log "Skipped $skipped_count unsupported subscription outbounds during fallback validation" "warn"
+    if [ "$SING_BOX_CF_FALLBACK_SKIPPED_COUNT" -gt 0 ]; then
+        log "Skipped $SING_BOX_CF_FALLBACK_SKIPPED_COUNT unsupported subscription outbounds during chunked fallback validation" "warn"
     fi
 
-    SUBSCRIPTION_OUTBOUND_TAGS_JSON="$tags_json"
     SUBSCRIPTION_OUTBOUND_TAGS="$(printf '%s' "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" | jq -r 'join(",")' 2>/dev/null)"
-    SUBSCRIPTION_OUTBOUND_LINKS_JSON="$links_json"
-    SUBSCRIPTION_OUTBOUND_NAMES="$names"
-    SING_BOX_CF_LAST_CONFIG="$working_config"
+    SING_BOX_CF_LAST_CONFIG="$SING_BOX_CF_FALLBACK_WORKING_CONFIG"
 
     return 0
 }
@@ -645,6 +883,7 @@ sing_box_cf_add_subscription_outbounds() {
         skipped_count="$(printf '%s' "$prepared_json" | jq -r '.skipped // 0' 2>/dev/null)"
         if [ "${skipped_count:-0}" -gt 0 ]; then
             log "Skipped $skipped_count unsupported subscription outbounds before validation" "warn"
+            sing_box_cf_log_subscription_skips "$prepared_json" "before validation"
         fi
 
         if sing_box_cf_apply_subscription_batch "$config" "$prepared_json"; then
@@ -654,8 +893,8 @@ sing_box_cf_add_subscription_outbounds() {
         fi
     fi
 
-    log "Batch subscription validation failed for rule '$section', trying per-outbound validation" "warn"
-    if [ -n "$prepared_json" ] && sing_box_cf_apply_subscription_outbounds_individually "$config" "$prepared_json"; then
+    log "Batch subscription validation failed for rule '$section', trying chunked fallback validation" "warn"
+    if [ -n "$prepared_json" ] && sing_box_cf_apply_subscription_outbounds_chunked "$config" "$prepared_json"; then
         log "Added $(printf '%s' "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" | jq -r 'length' 2>/dev/null) subscription outbounds for rule '$section'" "info"
         echo "$SING_BOX_CF_LAST_CONFIG"
         return 0
