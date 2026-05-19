@@ -1,6 +1,7 @@
 import {
   renderCopyIcon24,
   renderLinkIcon24,
+  renderRotateCcwIcon24,
 } from '../../../../icons';
 import { isCopyableProxyLink } from '../../../../helpers';
 import { prettyBytes } from '../../../../helpers/prettyBytes';
@@ -15,6 +16,10 @@ interface IRenderSectionsProps {
   onCopyOutbound: (
     section: Podkop.OutboundGroup,
     outbound: Podkop.Outbound,
+  ) => void;
+  onUpdateSubscription: (
+    section: Podkop.OutboundGroup,
+    sourceIndex: number,
   ) => void;
   latencyFetching: boolean;
 }
@@ -51,7 +56,11 @@ function formatBytes(value?: number) {
 }
 
 function formatDate(seconds?: number) {
-  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) {
+  if (
+    typeof seconds !== 'number' ||
+    !Number.isFinite(seconds) ||
+    seconds <= 0
+  ) {
     return undefined;
   }
 
@@ -86,7 +95,45 @@ function renderMetadataAction(label: string, url?: string) {
   );
 }
 
-function renderSubscriptionMetadata(metadata?: Podkop.SubscriptionMetadata) {
+function renderSubscriptionUpdateAction(
+  metadata: Podkop.SubscriptionMetadata,
+  metadataIndex: number,
+  section: Podkop.OutboundGroup,
+  onUpdateSubscription: (
+    section: Podkop.OutboundGroup,
+    sourceIndex: number,
+  ) => void,
+) {
+  const sourceIndex =
+    typeof metadata.sourceIndex === 'number' && metadata.sourceIndex > 0
+      ? metadata.sourceIndex
+      : metadataIndex + 1;
+
+  return E(
+    'button',
+    {
+      type: 'button',
+      class: 'btn pdk_dashboard-page__subscription-meta__action',
+      title: _('Update subscription'),
+      'aria-label': _('Update subscription'),
+      click: (event: MouseEvent) => {
+        event.stopPropagation();
+        onUpdateSubscription(section, sourceIndex);
+      },
+    },
+    renderRotateCcwIcon24(),
+  );
+}
+
+function renderSubscriptionMetadata(
+  metadata: Podkop.SubscriptionMetadata | undefined,
+  metadataIndex: number,
+  section: Podkop.OutboundGroup,
+  onUpdateSubscription: (
+    section: Podkop.OutboundGroup,
+    sourceIndex: number,
+  ) => void,
+) {
   if (!metadata || Object.keys(metadata).length <= 1) {
     return undefined;
   }
@@ -115,6 +162,12 @@ function renderSubscriptionMetadata(metadata?: Podkop.SubscriptionMetadata) {
     renderMetadataAction('Profile', metadata.webPageUrl),
     renderMetadataAction('Support', metadata.supportUrl),
     renderMetadataAction('More details', metadata.announceUrl),
+    renderSubscriptionUpdateAction(
+      metadata,
+      metadataIndex,
+      section,
+      onUpdateSubscription,
+    ),
   ].filter(Boolean) as HTMLElement[];
 
   return E('div', { class: 'pdk_dashboard-page__subscription-meta' }, [
@@ -142,7 +195,9 @@ function renderSubscriptionMetadata(metadata?: Podkop.SubscriptionMetadata) {
                 [
                   E(
                     'span',
-                    { class: 'pdk_dashboard-page__subscription-meta__fact-key' },
+                    {
+                      class: 'pdk_dashboard-page__subscription-meta__fact-key',
+                    },
                     row.label,
                   ),
                   E(
@@ -181,6 +236,7 @@ export function renderDefaultState({
   onChooseOutbound,
   onCopyOutbound,
   onTestLatency,
+  onUpdateSubscription,
   latencyFetching,
 }: IRenderSectionsProps) {
   function testLatency() {
@@ -261,7 +317,14 @@ export function renderDefaultState({
   }
 
   const metadataNodes = (section.subscriptionMetadata || [])
-    .map((metadata) => renderSubscriptionMetadata(metadata))
+    .map((metadata, metadataIndex) =>
+      renderSubscriptionMetadata(
+        metadata,
+        metadataIndex,
+        section,
+        onUpdateSubscription,
+      ),
+    )
     .filter(Boolean) as HTMLElement[];
 
   return E('div', { class: 'pdk_dashboard-page__outbound-section' }, [
@@ -285,14 +348,10 @@ export function renderDefaultState({
             _('Test latency'),
           ),
     ]),
-    E(
-      'div',
-      { class: 'pdk_dashboard-page__outbound-grid' },
-      [
-        ...metadataNodes,
-        ...section.outbounds.map((outbound) => renderOutbound(outbound)),
-      ],
-    ),
+    E('div', { class: 'pdk_dashboard-page__outbound-grid' }, [
+      ...metadataNodes,
+      ...section.outbounds.map((outbound) => renderOutbound(outbound)),
+    ]),
   ]);
 }
 

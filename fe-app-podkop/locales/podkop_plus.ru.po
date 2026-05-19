@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-18 01:56+0300\n"
-"PO-Revision-Date: 2026-05-18 01:56+0300\n"
+"POT-Creation-Date: 2026-05-18 02:51+0300\n"
+"PO-Revision-Date: 2026-05-18 02:51+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -358,6 +358,9 @@ msgstr "Не удалось скопировать!"
 
 msgid "Failed to execute!"
 msgstr "Не удалось выполнить!"
+
+msgid "Failed to update subscription"
+msgstr "Не удалось обновить подписку"
 
 msgid "Fastest"
 msgstr "Самый быстрый"
@@ -920,6 +923,9 @@ msgstr "Автообновление подписок"
 msgid "Subscription info:"
 msgstr "Информация о подписке:"
 
+msgid "Subscription update failed"
+msgstr "Обновление подписки завершилось ошибкой"
+
 msgid "Subscription update interval"
 msgstr "Интервал обновления подписки"
 
@@ -928,6 +934,9 @@ msgstr "URL подписки"
 
 msgid "Subscription URL cannot be empty"
 msgstr "URL подписки не может быть пустым"
+
+msgid "Subscription was updated"
+msgstr "Подписка обновлена"
 
 msgid "Successfully copied!"
 msgstr "Успешно скопировано!"
@@ -1039,6 +1048,9 @@ msgstr "Неизвестный флаг NFQWS."
 
 msgid "Update interval"
 msgstr "Интервал обновления"
+
+msgid "Update subscription"
+msgstr "Обновить подписку"
 
 msgid "Uplink"
 msgstr "Исходящий"

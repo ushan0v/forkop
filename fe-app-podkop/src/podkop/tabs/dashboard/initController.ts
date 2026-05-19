@@ -205,6 +205,24 @@ async function handleCopyOutbound(
   showToast(_('Proxy link is unavailable'), 'error');
 }
 
+async function handleUpdateSubscription(
+  section: Podkop.OutboundGroup,
+  sourceIndex: number,
+) {
+  const response = await PodkopShellMethods.subscriptionUpdate(
+    section.sectionName,
+    sourceIndex,
+  );
+
+  if (!response.success) {
+    showToast(_('Failed to update subscription'), 'error');
+    return;
+  }
+
+  showToast(_('Subscription was updated'), 'success');
+  await fetchDashboardSections();
+}
+
 // Renderer
 
 async function renderSectionsWidget() {
@@ -226,6 +244,7 @@ async function renderSectionsWidget() {
       onTestLatency: () => {},
       onChooseOutbound: () => {},
       onCopyOutbound: () => {},
+      onUpdateSubscription: () => {},
       latencyFetching: sectionsWidget.latencyFetching,
     });
 
@@ -252,6 +271,9 @@ async function renderSectionsWidget() {
       },
       onCopyOutbound: (section, outbound) => {
         void handleCopyOutbound(section, outbound);
+      },
+      onUpdateSubscription: (section, sourceIndex) => {
+        void handleUpdateSubscription(section, sourceIndex);
       },
     }),
   );

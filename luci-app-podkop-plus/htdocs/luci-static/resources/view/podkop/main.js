@@ -852,7 +852,28 @@ var PodkopShellMethods = {
   getSystemInfo: async () => callBaseMethod(
     Podkop.AvailableMethods.GET_SYSTEM_INFO
   ),
-  subscriptionUpdate: async () => callBaseMethod(Podkop.AvailableMethods.SUBSCRIPTION_UPDATE)
+  subscriptionUpdate: async (section, sourceIndex) => {
+    const args = [
+      Podkop.AvailableMethods.SUBSCRIPTION_UPDATE,
+      ...section ? [section] : [],
+      ...section && sourceIndex ? [String(sourceIndex)] : []
+    ];
+    const response = await executeShellCommand({
+      command: "/usr/bin/podkop-plus",
+      args,
+      timeout: 12e4
+    });
+    if (response.stderr || response.code && response.code !== 0) {
+      return {
+        success: false,
+        error: response.stderr || _("Subscription update failed")
+      };
+    }
+    return {
+      success: true,
+      data: response.stdout
+    };
+  }
 };
 
 // src/podkop/methods/custom/getDashboardSections.ts
@@ -2723,7 +2744,24 @@ function renderMetadataAction(label, url) {
     renderLinkIcon24()
   );
 }
-function renderSubscriptionMetadata(metadata) {
+function renderSubscriptionUpdateAction(metadata, metadataIndex, section, onUpdateSubscription) {
+  const sourceIndex = typeof metadata.sourceIndex === "number" && metadata.sourceIndex > 0 ? metadata.sourceIndex : metadataIndex + 1;
+  return E(
+    "button",
+    {
+      type: "button",
+      class: "btn pdk_dashboard-page__subscription-meta__action",
+      title: _("Update subscription"),
+      "aria-label": _("Update subscription"),
+      click: (event) => {
+        event.stopPropagation();
+        onUpdateSubscription(section, sourceIndex);
+      }
+    },
+    renderRotateCcwIcon24()
+  );
+}
+function renderSubscriptionMetadata(metadata, metadataIndex, section, onUpdateSubscription) {
   if (!metadata || Object.keys(metadata).length <= 1) {
     return void 0;
   }
@@ -2744,7 +2782,13 @@ function renderSubscriptionMetadata(metadata) {
   const actions = [
     renderMetadataAction("Profile", metadata.webPageUrl),
     renderMetadataAction("Support", metadata.supportUrl),
-    renderMetadataAction("More details", metadata.announceUrl)
+    renderMetadataAction("More details", metadata.announceUrl),
+    renderSubscriptionUpdateAction(
+      metadata,
+      metadataIndex,
+      section,
+      onUpdateSubscription
+    )
   ].filter(Boolean);
   return E("div", { class: "pdk_dashboard-page__subscription-meta" }, [
     E("div", { class: "pdk_dashboard-page__subscription-meta__main" }, [
@@ -2768,7 +2812,9 @@ function renderSubscriptionMetadata(metadata) {
             [
               E(
                 "span",
-                { class: "pdk_dashboard-page__subscription-meta__fact-key" },
+                {
+                  class: "pdk_dashboard-page__subscription-meta__fact-key"
+                },
                 row.label
               ),
               E(
@@ -2800,6 +2846,7 @@ function renderDefaultState({
   onChooseOutbound,
   onCopyOutbound,
   onTestLatency,
+  onUpdateSubscription,
   latencyFetching
 }) {
   function testLatency() {
@@ -2865,7 +2912,14 @@ function renderDefaultState({
       ]
     );
   }
-  const metadataNodes = (section.subscriptionMetadata || []).map((metadata) => renderSubscriptionMetadata(metadata)).filter(Boolean);
+  const metadataNodes = (section.subscriptionMetadata || []).map(
+    (metadata, metadataIndex) => renderSubscriptionMetadata(
+      metadata,
+      metadataIndex,
+      section,
+      onUpdateSubscription
+    )
+  ).filter(Boolean);
   return E("div", { class: "pdk_dashboard-page__outbound-section" }, [
     // Title with test latency
     E("div", { class: "pdk_dashboard-page__outbound-section__title-section" }, [
@@ -2885,14 +2939,10 @@ function renderDefaultState({
         _("Test latency")
       )
     ]),
-    E(
-      "div",
-      { class: "pdk_dashboard-page__outbound-grid" },
-      [
-        ...metadataNodes,
-        ...section.outbounds.map((outbound) => renderOutbound(outbound))
-      ]
-    )
+    E("div", { class: "pdk_dashboard-page__outbound-grid" }, [
+      ...metadataNodes,
+      ...section.outbounds.map((outbound) => renderOutbound(outbound))
+    ])
   ]);
 }
 function renderSections(props) {
@@ -3018,6 +3068,8 @@ function render() {
           onChooseOutbound: () => {
           },
           onCopyOutbound: () => {
+          },
+          onUpdateSubscription: () => {
           },
           latencyFetching: false
         })
@@ -3288,6 +3340,18 @@ async function handleCopyOutbound(section, outbound) {
   }
   showToast(_("Proxy link is unavailable"), "error");
 }
+async function handleUpdateSubscription(section, sourceIndex) {
+  const response = await PodkopShellMethods.subscriptionUpdate(
+    section.sectionName,
+    sourceIndex
+  );
+  if (!response.success) {
+    showToast(_("Failed to update subscription"), "error");
+    return;
+  }
+  showToast(_("Subscription was updated"), "success");
+  await fetchDashboardSections();
+}
 async function renderSectionsWidget() {
   logger.debug("[DASHBOARD]", "renderSectionsWidget");
   const sectionsWidget = store.get().sectionsWidget;
@@ -3308,6 +3372,8 @@ async function renderSectionsWidget() {
       onChooseOutbound: () => {
       },
       onCopyOutbound: () => {
+      },
+      onUpdateSubscription: () => {
       },
       latencyFetching: sectionsWidget.latencyFetching
     });
@@ -3332,6 +3398,9 @@ async function renderSectionsWidget() {
       },
       onCopyOutbound: (section2, outbound) => {
         void handleCopyOutbound(section2, outbound);
+      },
+      onUpdateSubscription: (section2, sourceIndex) => {
+        void handleUpdateSubscription(section2, sourceIndex);
       }
     })
   );

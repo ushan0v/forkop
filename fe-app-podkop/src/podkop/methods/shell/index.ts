@@ -1,5 +1,6 @@
 import { callBaseMethod } from './callBaseMethod';
 import { ClashAPI, Podkop } from '../../types';
+import { executeShellCommand } from '../../../helpers';
 
 export const PodkopShellMethods = {
   checkDNSAvailable: async () =>
@@ -117,6 +118,28 @@ export const PodkopShellMethods = {
     callBaseMethod<Podkop.GetSystemInfo>(
       Podkop.AvailableMethods.GET_SYSTEM_INFO,
     ),
-  subscriptionUpdate: async () =>
-    callBaseMethod<unknown>(Podkop.AvailableMethods.SUBSCRIPTION_UPDATE),
+  subscriptionUpdate: async (section?: string, sourceIndex?: number) => {
+    const args = [
+      Podkop.AvailableMethods.SUBSCRIPTION_UPDATE,
+      ...(section ? [section] : []),
+      ...(section && sourceIndex ? [String(sourceIndex)] : []),
+    ];
+    const response = await executeShellCommand({
+      command: '/usr/bin/podkop-plus',
+      args,
+      timeout: 120000,
+    });
+
+    if (response.stderr || (response.code && response.code !== 0)) {
+      return {
+        success: false,
+        error: response.stderr || _('Subscription update failed'),
+      } as Podkop.MethodFailureResponse;
+    }
+
+    return {
+      success: true,
+      data: response.stdout,
+    } as Podkop.MethodSuccessResponse<string>;
+  },
 };

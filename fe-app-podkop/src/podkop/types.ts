@@ -124,6 +124,8 @@ export namespace Podkop {
     announce?: string;
     announceUrl?: string;
     fileName?: string;
+    sourceIndex?: number;
+    sourceSection?: string;
   }
 
   export type RuleAction =
@@ -308,6 +310,8 @@ export namespace Podkop {
     expected_process_count: number;
     running_process_count: number;
     supervisor_process_count: number;
+    restart_count: number;
+    runtime_unstable: 0 | 1;
     standalone_service_enabled: 0 | 1;
     standalone_service_running: 0 | 1;
     listen_address: string;

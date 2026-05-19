@@ -48,6 +48,7 @@ export function render() {
           onTestLatency: () => {},
           onChooseOutbound: () => {},
           onCopyOutbound: () => {},
+          onUpdateSubscription: () => {},
           latencyFetching: false,
         }),
       ),

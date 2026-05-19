@@ -143,6 +143,8 @@ cleanup_subscription_source_metadata_files() {
 subscription_metadata_append_file() {
     local array_path="$1"
     local metadata_path="$2"
+    local source_index="${3:-0}"
+    local source_section="${4:-}"
     local tmpfile
 
     [ -n "$array_path" ] || return 0
@@ -155,7 +157,9 @@ subscription_metadata_append_file() {
 
     tmpfile="${array_path}.$$"
     jq -cn --slurpfile array "$array_path" --slurpfile metadata "$metadata_path" \
-        '($array[0] // []) + [$metadata[0]]' > "$tmpfile" 2>/dev/null &&
+        --argjson source_index "$source_index" \
+        --arg source_section "$source_section" \
+        '($array[0] // []) + [($metadata[0] + {sourceIndex: $source_index, sourceSection: $source_section})]' > "$tmpfile" 2>/dev/null &&
         mv "$tmpfile" "$array_path" || rm -f "$tmpfile"
 }
 
@@ -186,6 +190,84 @@ write_subscription_metadata_json() {
     fi
 
     cleanup_subscription_source_metadata_files "$section"
+}
+
+write_subscription_source_metadata_json() {
+    local section="$1"
+    local source_index="$2"
+    local source_section="$3"
+    local metadata_json_path="$4"
+    local target_path existing_tmp metadata_input_tmp tmpfile metadata_valid metadata_count
+
+    mkdir -p "$PODKOP_SUBSCRIPTION_METADATA_DIR"
+    target_path="$(get_subscription_metadata_path "$section")"
+    existing_tmp="$(mktemp "$TMP_SUBSCRIPTION_FOLDER/${section}.metadata-existing.XXXXXX" 2>/dev/null || true)"
+    tmpfile="${target_path}.$$"
+
+    [ -n "$existing_tmp" ] || return 1
+
+    if [ -f "$target_path" ] && jq -e 'type == "array"' "$target_path" >/dev/null 2>&1; then
+        cp "$target_path" "$existing_tmp" || printf '[]\n' > "$existing_tmp"
+    else
+        printf '[]\n' > "$existing_tmp"
+    fi
+
+    metadata_valid=0
+    metadata_input_tmp="$metadata_json_path"
+    if [ -n "$metadata_json_path" ] &&
+        [ -s "$metadata_json_path" ] &&
+        jq -e 'type == "object" and (keys | length > 1)' "$metadata_json_path" >/dev/null 2>&1; then
+        metadata_valid=1
+    else
+        metadata_input_tmp="$(mktemp "$TMP_SUBSCRIPTION_FOLDER/${section}.metadata-empty.XXXXXX" 2>/dev/null || true)"
+        if [ -z "$metadata_input_tmp" ]; then
+            rm -f "$existing_tmp"
+            return 1
+        fi
+        printf '{}\n' > "$metadata_input_tmp"
+    fi
+
+    if jq -cn --slurpfile existing "$existing_tmp" --slurpfile metadata "$metadata_input_tmp" \
+        --argjson has_metadata "$metadata_valid" \
+        --argjson source_index "$source_index" \
+        --arg source_section "$source_section" '
+            ($existing[0] // []) as $items |
+            ($items | any(type == "object" and (((.sourceIndex? // .source_index? // null) != null) or ((.sourceSection? // .source_section? // "") != "")))) as $has_source_markers |
+            (
+                if $has_source_markers then
+                    $items
+                    | map(select(
+                        ((.sourceIndex? // .source_index? // -1) != $source_index) and
+                        ((.sourceSection? // .source_section? // "") != $source_section)
+                    ))
+                else
+                    $items
+                    | to_entries
+                    | map(select(.key != ($source_index - 1)) | .value)
+                end
+            ) as $kept |
+            (
+                if $has_metadata == 1 then
+                    $kept + [($metadata[0] + {sourceIndex: $source_index, sourceSection: $source_section})]
+                else
+                    $kept
+                end
+            )
+            | sort_by(.sourceIndex? // .source_index? // 999999)
+            | map(select(type == "object" and (keys | length > 1)))
+        ' > "$tmpfile" 2>/dev/null; then
+        metadata_count="$(jq -r 'length' "$tmpfile" 2>/dev/null)"
+        if [ -n "$metadata_count" ] && [ "$metadata_count" -gt 0 ]; then
+            mv "$tmpfile" "$target_path"
+        else
+            rm -f "$target_path" "$tmpfile"
+        fi
+    else
+        rm -f "$tmpfile"
+    fi
+
+    [ "$metadata_valid" -eq 1 ] || rm -f "$metadata_input_tmp"
+    rm -f "$existing_tmp"
 }
 
 trim_string() {
@@ -473,6 +555,7 @@ ensure_subscription_cache_for_source() {
     local subscription_url="$3"
     local subscription_user_agent="$4"
     local fatal_on_error="${5:-0}"
+    local source_index="${6:-0}"
     local subscription_json_path subscription_url_cache_path subscription_user_agent_cache_path metadata_output_path \
         cached_subscription_url cached_subscription_user_agent
     local had_usable_cache cache_needs_refresh update_result
@@ -523,7 +606,7 @@ ensure_subscription_cache_for_source() {
     update_result="$?"
     case "$update_result" in
     0 | 2)
-        subscription_metadata_append_file "$SUBSCRIPTION_SECTION_METADATA_TMP" "$metadata_output_path"
+        subscription_metadata_append_file "$SUBSCRIPTION_SECTION_METADATA_TMP" "$metadata_output_path" "$source_index" "$source_section"
         rm -f "$metadata_output_path"
         return 0
         ;;
@@ -561,7 +644,7 @@ prepare_subscription_cache_source() {
 
     source_section="$(subscription_source_id "$section" "$index")"
     if ! ensure_subscription_cache_for_source \
-        "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 0; then
+        "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 0 "$index"; then
         subscription_startup_blocked=1
     fi
 }
@@ -1100,8 +1183,15 @@ append_sing_box_rule_signature() {
             signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
         fi
 
-        config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 1
-        signature_add "rule.$section.resolve_real_ip_for_routing" "$resolve_real_ip_for_routing"
+        signature_add "rule.$section.resolve_real_ip_for_routing" "1"
+        ;;
+    zapret)
+        config_get_bool mixed_proxy_enabled "$section" "mixed_proxy_enabled" 0
+        signature_add "rule.$section.mixed_proxy_enabled" "$mixed_proxy_enabled"
+        if [ "$mixed_proxy_enabled" -eq 1 ]; then
+            config_get mixed_proxy_port "$section" "mixed_proxy_port"
+            signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
+        fi
         ;;
     vpn)
         local interface_name domain_resolver_enabled domain_resolver_dns_type domain_resolver_dns_server
@@ -4284,11 +4374,11 @@ subscription_update_source_handler() {
 
     case "$update_result" in
     0)
-        subscription_metadata_append_file "$SUBSCRIPTION_SECTION_METADATA_TMP" "$metadata_output_path"
+        subscription_metadata_append_file "$SUBSCRIPTION_SECTION_METADATA_TMP" "$metadata_output_path" "$index" "$source_section"
         SUBSCRIPTION_SECTION_UPDATE_CHANGED=$((SUBSCRIPTION_SECTION_UPDATE_CHANGED + 1))
         ;;
     2)
-        subscription_metadata_append_file "$SUBSCRIPTION_SECTION_METADATA_TMP" "$metadata_output_path"
+        subscription_metadata_append_file "$SUBSCRIPTION_SECTION_METADATA_TMP" "$metadata_output_path" "$index" "$source_section"
         SUBSCRIPTION_SECTION_UPDATE_UNCHANGED=$((SUBSCRIPTION_SECTION_UPDATE_UNCHANGED + 1))
         ;;
     4)
@@ -4299,6 +4389,126 @@ subscription_update_source_handler() {
         ;;
     esac
     rm -f "$metadata_output_path"
+}
+
+subscription_update_selected_source_handler() {
+    local section="$1"
+    local index="$2"
+    local entry="$3"
+    local source_section subscription_json_path subscription_url_cache_path metadata_output_path update_result
+
+    [ "$index" = "$SUBSCRIPTION_SELECTED_SOURCE_INDEX" ] || return 0
+
+    SUBSCRIPTION_SELECTED_SOURCE_FOUND=1
+    if ! parse_subscription_source_entry "$entry"; then
+        echolog "Invalid subscription URL in rule '$section': $SUBSCRIPTION_SOURCE_PARSE_ERROR"
+        SUBSCRIPTION_SELECTED_SOURCE_RESULT=1
+        return 0
+    fi
+
+    source_section="$(subscription_source_id "$section" "$index")"
+    subscription_json_path="$(get_subscription_json_path "$source_section")"
+    subscription_url_cache_path="$(get_subscription_url_cache_path "$source_section")"
+    metadata_output_path="$(mktemp "$TMP_SUBSCRIPTION_FOLDER/${source_section}.metadata-output.XXXXXX" 2>/dev/null || true)"
+
+    download_subscription_into_cache \
+        "$section" "$SUBSCRIPTION_SOURCE_URL" "$subscription_json_path" "$subscription_url_cache_path" "" \
+        "$SUBSCRIPTION_SOURCE_USER_AGENT" "$source_section" "$metadata_output_path"
+    update_result=$?
+
+    case "$update_result" in
+    0 | 2)
+        write_subscription_source_metadata_json "$section" "$index" "$source_section" "$metadata_output_path"
+        ;;
+    esac
+
+    rm -f "$metadata_output_path"
+    SUBSCRIPTION_SELECTED_SOURCE_RESULT="$update_result"
+}
+
+subscription_update_selected_source() {
+    local section="$1"
+    local source_index="$2"
+    local force="$3"
+    local now
+
+    case "$section" in
+    "" | */* | *..*)
+        echolog "Invalid subscription rule name"
+        return 1
+        ;;
+    esac
+
+    case "$source_index" in
+    "" | *[!0-9]*)
+        echolog "Invalid subscription source index for rule '$section'"
+        return 1
+        ;;
+    esac
+
+    [ "$source_index" -gt 0 ] || {
+        echolog "Invalid subscription source index for rule '$section'"
+        return 1
+    }
+
+    rule_is_subscription_proxy "$section" || {
+        echolog "Rule '$section' has no subscription sources"
+        return 1
+    }
+
+    if [ "$force" -eq 0 ]; then
+        subscription_update_section_is_due "$section"
+        case "$?" in
+        0) ;;
+        1) return 3 ;;
+        *) return 1 ;;
+        esac
+    fi
+
+    mkdir -p "$TMP_SUBSCRIPTION_FOLDER"
+
+    echolog "Updating subscription source '$source_index' for rule '$section'..."
+
+    SUBSCRIPTION_SELECTED_SOURCE_INDEX="$source_index"
+    SUBSCRIPTION_SELECTED_SOURCE_FOUND=0
+    SUBSCRIPTION_SELECTED_SOURCE_RESULT=3
+    for_each_subscription_source "$section" subscription_update_selected_source_handler
+
+    if [ "$SUBSCRIPTION_SELECTED_SOURCE_FOUND" -eq 0 ]; then
+        echolog "Subscription source '$source_index' was not found for rule '$section'"
+        return 1
+    fi
+
+    case "$SUBSCRIPTION_SELECTED_SOURCE_RESULT" in
+    0)
+        now="$(date +%s 2>/dev/null)"
+        case "$now" in
+        '' | *[!0-9]*) ;;
+        *) write_subscription_update_timestamp "$section" "$now" ;;
+        esac
+
+        echolog "Subscription source '$source_index' updated for rule '$section'"
+        return 0
+        ;;
+    2)
+        now="$(date +%s 2>/dev/null)"
+        case "$now" in
+        '' | *[!0-9]*) ;;
+        *) write_subscription_update_timestamp "$section" "$now" ;;
+        esac
+
+        echolog "Subscription source '$source_index' for rule '$section' is unchanged"
+        return 2
+        ;;
+    4)
+        echolog "Subscription source '$source_index' update for rule '$section' was superseded by newer URLs"
+        return 4
+        ;;
+    *)
+        echolog "Failed to download subscription source '$source_index' for rule '$section'"
+        return 1
+        ;;
+    esac
 }
 
 subscription_update_handler() {
@@ -4319,6 +4529,8 @@ subscription_update_handler() {
 
 subscription_update_common_locked() {
     local force="$1"
+    local target_section="${2:-}"
+    local target_source_index="${3:-}"
 
     SUBSCRIPTION_UPDATE_FORCE="$force"
     SUBSCRIPTION_UPDATED_SECTIONS=0
@@ -4326,7 +4538,25 @@ subscription_update_common_locked() {
     SUBSCRIPTION_UNCHANGED_SECTIONS=0
     SUBSCRIPTION_SUPERSEDED_SECTIONS=0
 
-    config_foreach subscription_update_handler "rule"
+    if [ -n "$target_section" ]; then
+        local result
+        if [ -n "$target_source_index" ]; then
+            subscription_update_selected_source "$target_section" "$target_source_index" "$force"
+        else
+            subscription_update_section "$target_section" "$force"
+        fi
+        result=$?
+
+        case "$result" in
+        0) SUBSCRIPTION_UPDATED_SECTIONS=$((SUBSCRIPTION_UPDATED_SECTIONS + 1)) ;;
+        1) SUBSCRIPTION_FAILED_SECTIONS=$((SUBSCRIPTION_FAILED_SECTIONS + 1)) ;;
+        2) SUBSCRIPTION_UNCHANGED_SECTIONS=$((SUBSCRIPTION_UNCHANGED_SECTIONS + 1)) ;;
+        4) SUBSCRIPTION_SUPERSEDED_SECTIONS=$((SUBSCRIPTION_SUPERSEDED_SECTIONS + 1)) ;;
+        3) ;;
+        esac
+    else
+        config_foreach subscription_update_handler "rule"
+    fi
 
     if [ "$SUBSCRIPTION_UPDATED_SECTIONS" -eq 0 ]; then
         if [ "$SUBSCRIPTION_SUPERSEDED_SECTIONS" -gt 0 ]; then
@@ -4367,6 +4597,8 @@ subscription_update_common_locked() {
 
 subscription_update_common() {
     local force="$1"
+    local target_section="${2:-}"
+    local target_source_index="${3:-}"
     local result
 
     config_load "$PODKOP_CONFIG_NAME"
@@ -4388,7 +4620,7 @@ subscription_update_common() {
     runtime_status_write "updating_subscription" "subscription_update"
     trap 'runtime_status_mark_failure "subscription_update"' EXIT INT TERM
 
-    subscription_update_common_locked "$force"
+    subscription_update_common_locked "$force" "$target_section" "$target_source_index"
     result=$?
 
     trap - EXIT INT TERM
@@ -4406,8 +4638,15 @@ subscription_update_if_due() {
 }
 
 subscription_update() {
-    echolog "Starting subscription update..."
-    subscription_update_common 1
+    local target_section="${1:-}"
+    local target_source_index="${2:-}"
+
+    if [ -n "$target_section" ]; then
+        echolog "Starting subscription update for rule '$target_section'..."
+    else
+        echolog "Starting subscription update..."
+    fi
+    subscription_update_common 1 "$target_section" "$target_source_index"
 }
 
 # sing-box funcs
@@ -4699,7 +4938,7 @@ proxy_group_add_subscription_source() {
 
     source_section="$(subscription_source_id "$section" "$index")"
     ensure_subscription_cache_for_source \
-        "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 1
+        "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 1 "$index"
 
     subscription_json_path="$(get_subscription_json_path "$source_section")"
     if ! sing_box_cf_add_subscription_outbounds "$config" "$section" "$subscription_json_path" > /dev/null; then
@@ -5438,10 +5677,12 @@ configure_route_rule_handler() {
     fi
 
     if [ "$action" = "proxy" ] || [ "$action" = "outbound" ] || [ "$action" = "vpn" ] || [ "$action" = "byedpi" ]; then
-        local resolve_real_ip_for_routing resolve_real_ip_default
-        resolve_real_ip_default=0
-        [ "$action" = "byedpi" ] && resolve_real_ip_default=1
-        config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" "$resolve_real_ip_default"
+        local resolve_real_ip_for_routing
+        if [ "$action" = "byedpi" ]; then
+            resolve_real_ip_for_routing=1
+        else
+            config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 0
+        fi
         if [ "$resolve_real_ip_for_routing" -eq 1 ]; then
             if route_rule_has_resolve_matchers "$route_rule_tag"; then
                 config=$(sing_box_cm_add_resolve_rule "$config" "$route_rule_tag" "$(gen_id)" "$SB_DNS_SERVER_TAG")
@@ -5846,8 +6087,11 @@ configure_section_mixed_proxy() {
     rule_is_enabled "$section" || return 0
 
     action="$(get_rule_action "$section")"
-    [ "$action" = "proxy" ] || [ "$action" = "outbound" ] || [ "$action" = "vpn" ] || [ "$action" = "byedpi" ] || return 0
+    [ "$action" = "proxy" ] || [ "$action" = "outbound" ] || [ "$action" = "vpn" ] || [ "$action" = "byedpi" ] || [ "$action" = "zapret" ] || return 0
     if [ "$action" = "byedpi" ] && ! is_byedpi_installed; then
+        return 0
+    fi
+    if [ "$action" = "zapret" ] && ! is_zapret_installed; then
         return 0
     fi
 
@@ -8199,7 +8443,8 @@ Available commands:
     main                    Run main Podkop Plus process
     list_update             Update remote lists
     list_update_if_due      Update remote lists only when the configured interval has elapsed
-    subscription_update     Update subscription proxies
+    subscription_update [rule] [source_index]
+                            Update all subscription proxies, one rule, or one source in a rule
     subscription_update_if_due
                             Update subscription proxies only when per-rule intervals have elapsed
     check_proxy             Check proxy connectivity
@@ -8268,7 +8513,7 @@ list_update_if_due)
     list_update_if_due
     ;;
 subscription_update)
-    subscription_update
+    subscription_update "$2" "$3"
     ;;
 subscription_update_if_due)
     subscription_update_if_due

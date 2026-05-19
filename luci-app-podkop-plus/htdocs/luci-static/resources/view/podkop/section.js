@@ -2539,12 +2539,6 @@ function createSectionContent(section) {
       return this.cfgvalue(section_id);
     });
   };
-  o.onchange = function (_ev, section_id, value) {
-    if (value === "byedpi") {
-      setFlagOptionWidgetValue(section_id, "resolve_real_ip_for_routing", true);
-    }
-  };
-
   o = section.taboption(
     "settings",
     form.TextValue,
@@ -2909,6 +2903,7 @@ function createSectionContent(section) {
   o.depends("action", "outbound");
   o.depends("action", "vpn");
   o.depends("action", "byedpi");
+  o.depends("action", "zapret");
   o.modalonly = true;
 
   o = section.taboption(
@@ -2923,6 +2918,7 @@ function createSectionContent(section) {
   o.depends({ action: "outbound", mixed_proxy_enabled: "1" });
   o.depends({ action: "vpn", mixed_proxy_enabled: "1" });
   o.depends({ action: "byedpi", mixed_proxy_enabled: "1" });
+  o.depends({ action: "zapret", mixed_proxy_enabled: "1" });
   o.modalonly = true;
   o.validate = function (_section_id, value) {
     if (!value || value.length === 0) {
@@ -2951,7 +2947,6 @@ function createSectionContent(section) {
   o.depends("action", "proxy");
   o.depends("action", "outbound");
   o.depends("action", "vpn");
-  o.depends("action", "byedpi");
   o.modalonly = true;
   o.cfgvalue = function (section_id) {
     const value = uci.get(
