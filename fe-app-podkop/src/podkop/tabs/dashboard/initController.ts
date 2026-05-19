@@ -42,8 +42,11 @@ async function fetchDashboardSections() {
       logger.error('[DASHBOARD]', 'fetchDashboardSections: failed to fetch');
     }
 
+    const current = store.get().sectionsWidget;
+
     store.set({
       sectionsWidget: {
+        ...current,
         latencyFetching: false,
         loading: false,
         failed: !success,
@@ -53,6 +56,26 @@ async function fetchDashboardSections() {
   } finally {
     sectionsRefreshInFlight = false;
   }
+}
+
+function setSubscriptionUpdating(sectionName: string, updating: boolean) {
+  const sectionsWidget = store.get().sectionsWidget;
+  const subscriptionUpdatingSections = {
+    ...sectionsWidget.subscriptionUpdatingSections,
+  };
+
+  if (updating) {
+    subscriptionUpdatingSections[sectionName] = true;
+  } else {
+    delete subscriptionUpdatingSections[sectionName];
+  }
+
+  store.set({
+    sectionsWidget: {
+      ...sectionsWidget,
+      subscriptionUpdatingSections,
+    },
+  });
 }
 
 async function connectToClashSockets() {
@@ -205,22 +228,30 @@ async function handleCopyOutbound(
   showToast(_('Proxy link is unavailable'), 'error');
 }
 
-async function handleUpdateSubscription(
-  section: Podkop.OutboundGroup,
-  sourceIndex: number,
-) {
-  const response = await PodkopShellMethods.subscriptionUpdate(
-    section.sectionName,
-    sourceIndex,
-  );
-
-  if (!response.success) {
-    showToast(_('Failed to update subscription'), 'error');
+async function handleUpdateSubscription(section: Podkop.OutboundGroup) {
+  if (
+    store.get().sectionsWidget.subscriptionUpdatingSections[section.sectionName]
+  ) {
     return;
   }
 
-  showToast(_('Subscription was updated'), 'success');
-  await fetchDashboardSections();
+  setSubscriptionUpdating(section.sectionName, true);
+
+  try {
+    const response = await PodkopShellMethods.subscriptionUpdate(
+      section.sectionName,
+    );
+
+    if (!response.success) {
+      showToast(_('Failed to update subscriptions'), 'error');
+      return;
+    }
+
+    showToast(_('Subscription update completed'), 'success');
+    await fetchDashboardSections();
+  } finally {
+    setSubscriptionUpdating(section.sectionName, false);
+  }
 }
 
 // Renderer
@@ -246,6 +277,7 @@ async function renderSectionsWidget() {
       onCopyOutbound: () => {},
       onUpdateSubscription: () => {},
       latencyFetching: sectionsWidget.latencyFetching,
+      subscriptionUpdating: false,
     });
 
     return preserveScrollForPage(() => {
@@ -259,6 +291,9 @@ async function renderSectionsWidget() {
       failed: sectionsWidget.failed,
       section,
       latencyFetching: sectionsWidget.latencyFetching,
+      subscriptionUpdating: Boolean(
+        sectionsWidget.subscriptionUpdatingSections[section.sectionName],
+      ),
       onTestLatency: (tag) => {
         if (section.withTagSelect) {
           return handleTestGroupLatency(tag);
@@ -272,8 +307,8 @@ async function renderSectionsWidget() {
       onCopyOutbound: (section, outbound) => {
         void handleCopyOutbound(section, outbound);
       },
-      onUpdateSubscription: (section, sourceIndex) => {
-        void handleUpdateSubscription(section, sourceIndex);
+      onUpdateSubscription: (section) => {
+        void handleUpdateSubscription(section);
       },
     }),
   );

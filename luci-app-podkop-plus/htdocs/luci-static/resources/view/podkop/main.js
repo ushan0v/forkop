@@ -932,7 +932,14 @@ function getManualProxyLinks(section) {
   return splitProxyString(section.proxy_string || "");
 }
 function hasSubscriptionSources(section) {
-  return getListValues(section.subscription_urls).length > 0 || Boolean((section.subscription_url || "").trim());
+  return getSubscriptionSourceCount(section) > 0;
+}
+function getSubscriptionSourceCount(section) {
+  const subscriptionUrls = getListValues(section.subscription_urls);
+  if (subscriptionUrls.length > 0) {
+    return subscriptionUrls.length;
+  }
+  return (section.subscription_url || "").trim() ? 1 : 0;
 }
 function getConfiguredProxyConfigType(section) {
   if (!section.proxy_config_type || section.proxy_config_type === "interface") {
@@ -1211,7 +1218,8 @@ async function getDashboardSections(options = {}) {
         };
       }
       if (sectionAction === "proxy" && shouldUseProxyGroup(section)) {
-        const subscriptionEnabled = hasSubscriptionSources(section);
+        const subscriptionSourceCount = getSubscriptionSourceCount(section);
+        const subscriptionEnabled = subscriptionSourceCount > 0;
         const { selector, outbounds } = buildProxyGroupOutbounds(
           section,
           proxies
@@ -1224,6 +1232,7 @@ async function getDashboardSections(options = {}) {
           sectionName,
           displayName,
           proxyConfigType,
+          subscriptionSourceCount,
           subscriptionMetadata,
           outbounds: includeSubscriptionCopyState ? await markSubscriptionCopyableOutbounds(
             sectionName,
@@ -1639,6 +1648,7 @@ var initialStore = {
     loading: true,
     failed: false,
     latencyFetching: false,
+    subscriptionUpdatingSections: {},
     data: []
   },
   ...initialDiagnosticStore
@@ -2744,24 +2754,7 @@ function renderMetadataAction(label, url) {
     renderLinkIcon24()
   );
 }
-function renderSubscriptionUpdateAction(metadata, metadataIndex, section, onUpdateSubscription) {
-  const sourceIndex = typeof metadata.sourceIndex === "number" && metadata.sourceIndex > 0 ? metadata.sourceIndex : metadataIndex + 1;
-  return E(
-    "button",
-    {
-      type: "button",
-      class: "btn pdk_dashboard-page__subscription-meta__action",
-      title: _("Update subscription"),
-      "aria-label": _("Update subscription"),
-      click: (event) => {
-        event.stopPropagation();
-        onUpdateSubscription(section, sourceIndex);
-      }
-    },
-    renderRotateCcwIcon24()
-  );
-}
-function renderSubscriptionMetadata(metadata, metadataIndex, section, onUpdateSubscription) {
+function renderSubscriptionMetadata(metadata) {
   if (!metadata || Object.keys(metadata).length <= 1) {
     return void 0;
   }
@@ -2782,13 +2775,7 @@ function renderSubscriptionMetadata(metadata, metadataIndex, section, onUpdateSu
   const actions = [
     renderMetadataAction("Profile", metadata.webPageUrl),
     renderMetadataAction("Support", metadata.supportUrl),
-    renderMetadataAction("More details", metadata.announceUrl),
-    renderSubscriptionUpdateAction(
-      metadata,
-      metadataIndex,
-      section,
-      onUpdateSubscription
-    )
+    renderMetadataAction("More details", metadata.announceUrl)
   ].filter(Boolean);
   return E("div", { class: "pdk_dashboard-page__subscription-meta" }, [
     E("div", { class: "pdk_dashboard-page__subscription-meta__main" }, [
@@ -2841,13 +2828,37 @@ function renderSubscriptionMetadata(metadata, metadataIndex, section, onUpdateSu
     ) : ""
   ]);
 }
+function renderSubscriptionUpdateAction(section, subscriptionUpdating, onUpdateSubscription) {
+  if (!section.subscriptionSourceCount) {
+    return void 0;
+  }
+  return E(
+    "button",
+    {
+      type: "button",
+      class: "btn pdk_dashboard-page__outbound-section__subscription-update",
+      title: _("Update subscriptions"),
+      "aria-label": _("Update subscriptions"),
+      disabled: subscriptionUpdating ? true : void 0,
+      click: (event) => {
+        event.stopPropagation();
+        if (subscriptionUpdating) {
+          return;
+        }
+        onUpdateSubscription(section);
+      }
+    },
+    subscriptionUpdating ? renderLoaderCircleIcon24() : renderRotateCcwIcon24()
+  );
+}
 function renderDefaultState({
   section,
   onChooseOutbound,
   onCopyOutbound,
   onTestLatency,
   onUpdateSubscription,
-  latencyFetching
+  latencyFetching,
+  subscriptionUpdating
 }) {
   function testLatency() {
     if (section.withTagSelect) {
@@ -2912,14 +2923,12 @@ function renderDefaultState({
       ]
     );
   }
-  const metadataNodes = (section.subscriptionMetadata || []).map(
-    (metadata, metadataIndex) => renderSubscriptionMetadata(
-      metadata,
-      metadataIndex,
-      section,
-      onUpdateSubscription
-    )
-  ).filter(Boolean);
+  const metadataNodes = (section.subscriptionMetadata || []).map((metadata) => renderSubscriptionMetadata(metadata)).filter(Boolean);
+  const subscriptionUpdateAction = renderSubscriptionUpdateAction(
+    section,
+    subscriptionUpdating,
+    onUpdateSubscription
+  );
   return E("div", { class: "pdk_dashboard-page__outbound-section" }, [
     // Title with test latency
     E("div", { class: "pdk_dashboard-page__outbound-section__title-section" }, [
@@ -2930,13 +2939,25 @@ function renderDefaultState({
         },
         section.displayName
       ),
-      latencyFetching ? E("div", { class: "skeleton", style: "width: 99px; height: 28px" }) : E(
-        "button",
+      E(
+        "div",
         {
-          class: "btn dashboard-sections-grid-item-test-latency",
-          click: () => testLatency()
+          class: "pdk_dashboard-page__outbound-section__title-section__actions"
         },
-        _("Test latency")
+        [
+          ...subscriptionUpdateAction ? [subscriptionUpdateAction] : [],
+          latencyFetching ? E("div", {
+            class: "skeleton",
+            style: "width: 99px; height: 28px"
+          }) : E(
+            "button",
+            {
+              class: "btn dashboard-sections-grid-item-test-latency",
+              click: () => testLatency()
+            },
+            _("Test latency")
+          )
+        ]
       )
     ]),
     E("div", { class: "pdk_dashboard-page__outbound-grid" }, [
@@ -3071,7 +3092,8 @@ function render() {
           },
           onUpdateSubscription: () => {
           },
-          latencyFetching: false
+          latencyFetching: false,
+          subscriptionUpdating: false
         })
       )
     ]
@@ -3200,8 +3222,10 @@ async function fetchDashboardSections() {
     if (!success) {
       logger.error("[DASHBOARD]", "fetchDashboardSections: failed to fetch");
     }
+    const current = store.get().sectionsWidget;
     store.set({
       sectionsWidget: {
+        ...current,
         latencyFetching: false,
         loading: false,
         failed: !success,
@@ -3211,6 +3235,23 @@ async function fetchDashboardSections() {
   } finally {
     sectionsRefreshInFlight = false;
   }
+}
+function setSubscriptionUpdating(sectionName, updating) {
+  const sectionsWidget = store.get().sectionsWidget;
+  const subscriptionUpdatingSections = {
+    ...sectionsWidget.subscriptionUpdatingSections
+  };
+  if (updating) {
+    subscriptionUpdatingSections[sectionName] = true;
+  } else {
+    delete subscriptionUpdatingSections[sectionName];
+  }
+  store.set({
+    sectionsWidget: {
+      ...sectionsWidget,
+      subscriptionUpdatingSections
+    }
+  });
 }
 async function connectToClashSockets() {
   const clashApiSecret = await getClashApiSecret();
@@ -3340,17 +3381,24 @@ async function handleCopyOutbound(section, outbound) {
   }
   showToast(_("Proxy link is unavailable"), "error");
 }
-async function handleUpdateSubscription(section, sourceIndex) {
-  const response = await PodkopShellMethods.subscriptionUpdate(
-    section.sectionName,
-    sourceIndex
-  );
-  if (!response.success) {
-    showToast(_("Failed to update subscription"), "error");
+async function handleUpdateSubscription(section) {
+  if (store.get().sectionsWidget.subscriptionUpdatingSections[section.sectionName]) {
     return;
   }
-  showToast(_("Subscription was updated"), "success");
-  await fetchDashboardSections();
+  setSubscriptionUpdating(section.sectionName, true);
+  try {
+    const response = await PodkopShellMethods.subscriptionUpdate(
+      section.sectionName
+    );
+    if (!response.success) {
+      showToast(_("Failed to update subscriptions"), "error");
+      return;
+    }
+    showToast(_("Subscription update completed"), "success");
+    await fetchDashboardSections();
+  } finally {
+    setSubscriptionUpdating(section.sectionName, false);
+  }
 }
 async function renderSectionsWidget() {
   logger.debug("[DASHBOARD]", "renderSectionsWidget");
@@ -3375,7 +3423,8 @@ async function renderSectionsWidget() {
       },
       onUpdateSubscription: () => {
       },
-      latencyFetching: sectionsWidget.latencyFetching
+      latencyFetching: sectionsWidget.latencyFetching,
+      subscriptionUpdating: false
     });
     return preserveScrollForPage(() => {
       container.replaceChildren(renderedWidget);
@@ -3387,6 +3436,9 @@ async function renderSectionsWidget() {
       failed: sectionsWidget.failed,
       section,
       latencyFetching: sectionsWidget.latencyFetching,
+      subscriptionUpdating: Boolean(
+        sectionsWidget.subscriptionUpdatingSections[section.sectionName]
+      ),
       onTestLatency: (tag) => {
         if (section.withTagSelect) {
           return handleTestGroupLatency(tag);
@@ -3399,8 +3451,8 @@ async function renderSectionsWidget() {
       onCopyOutbound: (section2, outbound) => {
         void handleCopyOutbound(section2, outbound);
       },
-      onUpdateSubscription: (section2, sourceIndex) => {
-        void handleUpdateSubscription(section2, sourceIndex);
+      onUpdateSubscription: (section2) => {
+        void handleUpdateSubscription(section2);
       }
     })
   );
@@ -3683,6 +3735,38 @@ var styles = `
 .pdk_dashboard-page__outbound-section__title-section__title {
     color: var(--text-color-high);
     font-weight: 700;
+}
+
+.pdk_dashboard-page__outbound-section__title-section__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-left: 10px;
+    flex: 0 0 auto;
+}
+
+.pdk_dashboard-page__outbound-section__subscription-update {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin: 0;
+}
+
+.pdk_dashboard-page__outbound-section__subscription-update svg {
+    width: 15px;
+    height: 15px;
+}
+
+.pdk_dashboard-page__outbound-section__subscription-update[disabled] {
+    cursor: not-allowed;
+    opacity: 0.65;
 }
 
 .pdk_dashboard-page__outbound-grid {

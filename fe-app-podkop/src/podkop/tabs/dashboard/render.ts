@@ -50,6 +50,7 @@ export function render() {
           onCopyOutbound: () => {},
           onUpdateSubscription: () => {},
           latencyFetching: false,
+          subscriptionUpdating: false,
         }),
       ),
     ],

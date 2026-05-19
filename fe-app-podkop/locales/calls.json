@@ -3,16 +3,16 @@
     "call": "✔ Running",
     "key": "✔ Running",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:413",
-      "src/podkop/tabs/dashboard/initController.ts:424"
+      "src/podkop/tabs/dashboard/initController.ts:448",
+      "src/podkop/tabs/dashboard/initController.ts:459"
     ]
   },
   {
     "call": "✘ Stopped",
     "key": "✘ Stopped",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:414",
-      "src/podkop/tabs/dashboard/initController.ts:425"
+      "src/podkop/tabs/dashboard/initController.ts:449",
+      "src/podkop/tabs/dashboard/initController.ts:460"
     ]
   },
   {
@@ -27,7 +27,7 @@
     "call": "Active Connections",
     "key": "Active Connections",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:375"
+      "src/podkop/tabs/dashboard/initController.ts:410"
     ]
   },
   {
@@ -415,8 +415,8 @@
     "call": "Copy proxy link",
     "key": "Copy proxy link",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:291",
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:292"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:279",
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:280"
     ]
   },
   {
@@ -437,7 +437,7 @@
     "call": "Dashboard currently unavailable",
     "key": "Dashboard currently unavailable",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:34"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:33"
     ]
   },
   {
@@ -637,8 +637,8 @@
     "call": "Downlink",
     "key": "Downlink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:309",
-      "src/podkop/tabs/dashboard/initController.ts:343"
+      "src/podkop/tabs/dashboard/initController.ts:344",
+      "src/podkop/tabs/dashboard/initController.ts:378"
     ]
   },
   {
@@ -802,7 +802,7 @@
     "call": "Expires",
     "key": "Expires",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:157"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:120"
     ]
   },
   {
@@ -839,17 +839,17 @@
     ]
   },
   {
-    "call": "Failed to update subscription",
-    "key": "Failed to update subscription",
+    "call": "Failed to update subscriptions",
+    "key": "Failed to update subscriptions",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:218"
+      "src/podkop/tabs/dashboard/initController.ts:246"
     ]
   },
   {
     "call": "Fastest",
     "key": "Fastest",
     "places": [
-      "src/podkop/methods/custom/getDashboardSections.ts:219",
+      "src/podkop/methods/custom/getDashboardSections.ts:224",
       "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:93"
     ]
   },
@@ -1376,7 +1376,7 @@
     "call": "Memory Usage",
     "key": "Memory Usage",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:379"
+      "src/podkop/tabs/dashboard/initController.ts:414"
     ]
   },
   {
@@ -1696,7 +1696,7 @@
     "call": "Proxy link is unavailable",
     "key": "Proxy link is unavailable",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:205"
+      "src/podkop/tabs/dashboard/initController.ts:228"
     ]
   },
   {
@@ -1717,7 +1717,7 @@
     "call": "Refill",
     "key": "Refill",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:158"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:121"
     ]
   },
   {
@@ -1983,7 +1983,7 @@
     "call": "Services info",
     "key": "Services info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:408"
+      "src/podkop/tabs/dashboard/initController.ts:443"
     ]
   },
   {
@@ -2167,7 +2167,14 @@
     "call": "Subscription info:",
     "key": "Subscription info:",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:178"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:135"
+    ]
+  },
+  {
+    "call": "Subscription update completed",
+    "key": "Subscription update completed",
+    "places": [
+      "src/podkop/tabs/dashboard/initController.ts:250"
     ]
   },
   {
@@ -2199,13 +2206,6 @@
     ]
   },
   {
-    "call": "Subscription was updated",
-    "key": "Subscription was updated",
-    "places": [
-      "src/podkop/tabs/dashboard/initController.ts:222"
-    ]
-  },
-  {
     "call": "Successfully copied!",
     "key": "Successfully copied!",
     "places": [
@@ -2216,7 +2216,7 @@
     "call": "System info",
     "key": "System info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:372"
+      "src/podkop/tabs/dashboard/initController.ts:407"
     ]
   },
   {
@@ -2237,7 +2237,7 @@
     "call": "Test latency",
     "key": "Test latency",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:348"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:344"
     ]
   },
   {
@@ -2321,15 +2321,15 @@
     "call": "Traffic",
     "key": "Traffic",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:306",
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:153"
+      "src/podkop/tabs/dashboard/initController.ts:341",
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:116"
     ]
   },
   {
     "call": "Traffic Total",
     "key": "Traffic Total",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:336"
+      "src/podkop/tabs/dashboard/initController.ts:371"
     ]
   },
   {
@@ -2477,19 +2477,19 @@
     ]
   },
   {
-    "call": "Update subscription",
-    "key": "Update subscription",
+    "call": "Update subscriptions",
+    "key": "Update subscriptions",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:117",
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:118"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:205",
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:206"
     ]
   },
   {
     "call": "Uplink",
     "key": "Uplink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:308",
-      "src/podkop/tabs/dashboard/initController.ts:339"
+      "src/podkop/tabs/dashboard/initController.ts:343",
+      "src/podkop/tabs/dashboard/initController.ts:374"
     ]
   },
   {

@@ -100,6 +100,7 @@ export namespace Podkop {
     sectionName: string;
     displayName: string;
     proxyConfigType?: ProxyConfigType;
+    subscriptionSourceCount?: number;
     subscriptionMetadata?: SubscriptionMetadata[];
     outbounds: Outbound[];
   }

@@ -1,4 +1,5 @@
 import {
+  renderLoaderCircleIcon24,
   renderCopyIcon24,
   renderLinkIcon24,
   renderRotateCcwIcon24,
@@ -17,11 +18,9 @@ interface IRenderSectionsProps {
     section: Podkop.OutboundGroup,
     outbound: Podkop.Outbound,
   ) => void;
-  onUpdateSubscription: (
-    section: Podkop.OutboundGroup,
-    sourceIndex: number,
-  ) => void;
+  onUpdateSubscription: (section: Podkop.OutboundGroup) => void;
   latencyFetching: boolean;
+  subscriptionUpdating: boolean;
 }
 
 function renderFailedState() {
@@ -95,44 +94,8 @@ function renderMetadataAction(label: string, url?: string) {
   );
 }
 
-function renderSubscriptionUpdateAction(
-  metadata: Podkop.SubscriptionMetadata,
-  metadataIndex: number,
-  section: Podkop.OutboundGroup,
-  onUpdateSubscription: (
-    section: Podkop.OutboundGroup,
-    sourceIndex: number,
-  ) => void,
-) {
-  const sourceIndex =
-    typeof metadata.sourceIndex === 'number' && metadata.sourceIndex > 0
-      ? metadata.sourceIndex
-      : metadataIndex + 1;
-
-  return E(
-    'button',
-    {
-      type: 'button',
-      class: 'btn pdk_dashboard-page__subscription-meta__action',
-      title: _('Update subscription'),
-      'aria-label': _('Update subscription'),
-      click: (event: MouseEvent) => {
-        event.stopPropagation();
-        onUpdateSubscription(section, sourceIndex);
-      },
-    },
-    renderRotateCcwIcon24(),
-  );
-}
-
 function renderSubscriptionMetadata(
   metadata: Podkop.SubscriptionMetadata | undefined,
-  metadataIndex: number,
-  section: Podkop.OutboundGroup,
-  onUpdateSubscription: (
-    section: Podkop.OutboundGroup,
-    sourceIndex: number,
-  ) => void,
 ) {
   if (!metadata || Object.keys(metadata).length <= 1) {
     return undefined;
@@ -162,12 +125,6 @@ function renderSubscriptionMetadata(
     renderMetadataAction('Profile', metadata.webPageUrl),
     renderMetadataAction('Support', metadata.supportUrl),
     renderMetadataAction('More details', metadata.announceUrl),
-    renderSubscriptionUpdateAction(
-      metadata,
-      metadataIndex,
-      section,
-      onUpdateSubscription,
-    ),
   ].filter(Boolean) as HTMLElement[];
 
   return E('div', { class: 'pdk_dashboard-page__subscription-meta' }, [
@@ -231,6 +188,36 @@ function renderSubscriptionMetadata(
   ]);
 }
 
+function renderSubscriptionUpdateAction(
+  section: Podkop.OutboundGroup,
+  subscriptionUpdating: boolean,
+  onUpdateSubscription: (section: Podkop.OutboundGroup) => void,
+) {
+  if (!section.subscriptionSourceCount) {
+    return undefined;
+  }
+
+  return E(
+    'button',
+    {
+      type: 'button',
+      class: 'btn pdk_dashboard-page__outbound-section__subscription-update',
+      title: _('Update subscriptions'),
+      'aria-label': _('Update subscriptions'),
+      disabled: subscriptionUpdating ? true : undefined,
+      click: (event: MouseEvent) => {
+        event.stopPropagation();
+        if (subscriptionUpdating) {
+          return;
+        }
+
+        onUpdateSubscription(section);
+      },
+    },
+    subscriptionUpdating ? renderLoaderCircleIcon24() : renderRotateCcwIcon24(),
+  );
+}
+
 export function renderDefaultState({
   section,
   onChooseOutbound,
@@ -238,6 +225,7 @@ export function renderDefaultState({
   onTestLatency,
   onUpdateSubscription,
   latencyFetching,
+  subscriptionUpdating,
 }: IRenderSectionsProps) {
   function testLatency() {
     if (section.withTagSelect) {
@@ -317,15 +305,13 @@ export function renderDefaultState({
   }
 
   const metadataNodes = (section.subscriptionMetadata || [])
-    .map((metadata, metadataIndex) =>
-      renderSubscriptionMetadata(
-        metadata,
-        metadataIndex,
-        section,
-        onUpdateSubscription,
-      ),
-    )
+    .map((metadata) => renderSubscriptionMetadata(metadata))
     .filter(Boolean) as HTMLElement[];
+  const subscriptionUpdateAction = renderSubscriptionUpdateAction(
+    section,
+    subscriptionUpdating,
+    onUpdateSubscription,
+  );
 
   return E('div', { class: 'pdk_dashboard-page__outbound-section' }, [
     // Title with test latency
@@ -337,16 +323,28 @@ export function renderDefaultState({
         },
         section.displayName,
       ),
-      latencyFetching
-        ? E('div', { class: 'skeleton', style: 'width: 99px; height: 28px' })
-        : E(
-            'button',
-            {
-              class: 'btn dashboard-sections-grid-item-test-latency',
-              click: () => testLatency(),
-            },
-            _('Test latency'),
-          ),
+      E(
+        'div',
+        {
+          class: 'pdk_dashboard-page__outbound-section__title-section__actions',
+        },
+        [
+          ...(subscriptionUpdateAction ? [subscriptionUpdateAction] : []),
+          latencyFetching
+            ? E('div', {
+                class: 'skeleton',
+                style: 'width: 99px; height: 28px',
+              })
+            : E(
+                'button',
+                {
+                  class: 'btn dashboard-sections-grid-item-test-latency',
+                  click: () => testLatency(),
+                },
+                _('Test latency'),
+              ),
+        ],
+      ),
     ]),
     E('div', { class: 'pdk_dashboard-page__outbound-grid' }, [
       ...metadataNodes,

@@ -68,6 +68,38 @@ export const styles = `
     font-weight: 700;
 }
 
+.pdk_dashboard-page__outbound-section__title-section__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-left: 10px;
+    flex: 0 0 auto;
+}
+
+.pdk_dashboard-page__outbound-section__subscription-update {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin: 0;
+}
+
+.pdk_dashboard-page__outbound-section__subscription-update svg {
+    width: 15px;
+    height: 15px;
+}
+
+.pdk_dashboard-page__outbound-section__subscription-update[disabled] {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
 .pdk_dashboard-page__outbound-grid {
     margin-top: 5px;
     display: grid;

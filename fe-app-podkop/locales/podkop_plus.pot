@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-18 23:51+0300\n"
-"PO-Revision-Date: 2026-05-18 23:51+0300\n"
+"POT-Creation-Date: 2026-05-19 13:03+0300\n"
+"PO-Revision-Date: 2026-05-19 13:03+0300\n"
 "Last-Translator: ushan0v <ushanov2209@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -16,13 +16,13 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/podkop/tabs/dashboard/initController.ts:413
-#: src/podkop/tabs/dashboard/initController.ts:424
+#: src/podkop/tabs/dashboard/initController.ts:448
+#: src/podkop/tabs/dashboard/initController.ts:459
 msgid "✔ Running"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:414
-#: src/podkop/tabs/dashboard/initController.ts:425
+#: src/podkop/tabs/dashboard/initController.ts:449
+#: src/podkop/tabs/dashboard/initController.ts:460
 msgid "✘ Stopped"
 msgstr ""
 
@@ -31,7 +31,7 @@ msgstr ""
 msgid "Action"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:375
+#: src/podkop/tabs/dashboard/initController.ts:410
 msgid "Active Connections"
 msgstr ""
 
@@ -263,8 +263,8 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:291
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:292
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:279
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:280
 msgid "Copy proxy link"
 msgstr ""
 
@@ -276,7 +276,7 @@ msgstr ""
 msgid "Dashboard"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:34
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:33
 msgid "Dashboard currently unavailable"
 msgstr ""
 
@@ -392,8 +392,8 @@ msgstr ""
 msgid "Dont Touch My DHCP!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:309
-#: src/podkop/tabs/dashboard/initController.ts:343
+#: src/podkop/tabs/dashboard/initController.ts:344
+#: src/podkop/tabs/dashboard/initController.ts:378
 msgid "Downlink"
 msgstr ""
 
@@ -488,7 +488,7 @@ msgstr ""
 msgid "Expecting: %s"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:157
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:120
 msgid "Expires"
 msgstr ""
 
@@ -513,11 +513,11 @@ msgstr ""
 msgid "Failed to execute!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:218
-msgid "Failed to update subscription"
+#: src/podkop/tabs/dashboard/initController.ts:246
+msgid "Failed to update subscriptions"
 msgstr ""
 
-#: src/podkop/methods/custom/getDashboardSections.ts:219
+#: src/podkop/methods/custom/getDashboardSections.ts:224
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:93
 msgid "Fastest"
 msgstr ""
@@ -822,7 +822,7 @@ msgstr ""
 msgid "Maximum response time delta in milliseconds"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:379
+#: src/podkop/tabs/dashboard/initController.ts:414
 msgid "Memory Usage"
 msgstr ""
 
@@ -1007,7 +1007,7 @@ msgstr ""
 msgid "Port for the local mixed proxy of this section"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:205
+#: src/podkop/tabs/dashboard/initController.ts:228
 msgid "Proxy link is unavailable"
 msgstr ""
 
@@ -1019,7 +1019,7 @@ msgstr ""
 msgid "Proxy traffic is routed via FakeIP"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:158
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:121
 msgid "Refill"
 msgstr ""
 
@@ -1171,7 +1171,7 @@ msgstr ""
 msgid "Service list"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:408
+#: src/podkop/tabs/dashboard/initController.ts:443
 msgid "Services info"
 msgstr ""
 
@@ -1277,8 +1277,12 @@ msgstr ""
 msgid "Subscription auto updates"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:178
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:135
 msgid "Subscription info:"
+msgstr ""
+
+#: src/podkop/tabs/dashboard/initController.ts:250
+msgid "Subscription update completed"
 msgstr ""
 
 #: src/podkop/methods/shell/index.ts:136
@@ -1297,15 +1301,11 @@ msgstr ""
 msgid "Subscription URL cannot be empty"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:222
-msgid "Subscription was updated"
-msgstr ""
-
 #: src/helpers/copyToClipboard.ts:10
 msgid "Successfully copied!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:372
+#: src/podkop/tabs/dashboard/initController.ts:407
 msgid "System info"
 msgstr ""
 
@@ -1317,7 +1317,7 @@ msgstr ""
 msgid "Table exist"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:348
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:344
 msgid "Test latency"
 msgstr ""
 
@@ -1365,12 +1365,12 @@ msgstr ""
 msgid "Time in seconds for DNS record caching (default: 60)"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:306
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:153
+#: src/podkop/tabs/dashboard/initController.ts:341
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:116
 msgid "Traffic"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:336
+#: src/podkop/tabs/dashboard/initController.ts:371
 msgid "Traffic Total"
 msgstr ""
 
@@ -1461,13 +1461,13 @@ msgstr ""
 msgid "Update interval"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:117
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:118
-msgid "Update subscription"
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:205
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:206
+msgid "Update subscriptions"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:308
-#: src/podkop/tabs/dashboard/initController.ts:339
+#: src/podkop/tabs/dashboard/initController.ts:343
+#: src/podkop/tabs/dashboard/initController.ts:374
 msgid "Uplink"
 msgstr ""
 

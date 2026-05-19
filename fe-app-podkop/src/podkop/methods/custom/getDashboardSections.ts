@@ -93,10 +93,16 @@ function getManualProxyLinks(section: Podkop.ConfigSection) {
 }
 
 function hasSubscriptionSources(section: Podkop.ConfigSection) {
-  return (
-    getListValues(section.subscription_urls).length > 0 ||
-    Boolean((section.subscription_url || '').trim())
-  );
+  return getSubscriptionSourceCount(section) > 0;
+}
+
+function getSubscriptionSourceCount(section: Podkop.ConfigSection) {
+  const subscriptionUrls = getListValues(section.subscription_urls);
+  if (subscriptionUrls.length > 0) {
+    return subscriptionUrls.length;
+  }
+
+  return (section.subscription_url || '').trim() ? 1 : 0;
 }
 
 function getConfiguredProxyConfigType(section: Podkop.ConfigSection) {
@@ -123,8 +129,7 @@ function isUrlTestEnabled(section: Podkop.ConfigSection) {
 
 function shouldUseProxyGroup(section: Podkop.ConfigSection) {
   return (
-    getManualProxyLinks(section).length > 0 ||
-    hasSubscriptionSources(section)
+    getManualProxyLinks(section).length > 0 || hasSubscriptionSources(section)
   );
 }
 
@@ -217,9 +222,7 @@ function buildProxyGroupOutbounds(
         code: item.code,
         displayName: isFastest
           ? _('Fastest')
-          : getProxyUrlName(link) ||
-            item.value.name ||
-            item.code,
+          : getProxyUrlName(link) || item.value.name || item.code,
         latency: item.value.history?.[0]?.delay || 0,
         type: item.value.type || '',
         selected: selector?.value?.now === item.code,
@@ -474,7 +477,8 @@ export async function getDashboardSections(
         }
 
         if (sectionAction === 'proxy' && shouldUseProxyGroup(section)) {
-          const subscriptionEnabled = hasSubscriptionSources(section);
+          const subscriptionSourceCount = getSubscriptionSourceCount(section);
+          const subscriptionEnabled = subscriptionSourceCount > 0;
           const { selector, outbounds } = buildProxyGroupOutbounds(
             section,
             proxies,
@@ -492,6 +496,7 @@ export async function getDashboardSections(
             sectionName,
             displayName,
             proxyConfigType,
+            subscriptionSourceCount,
             subscriptionMetadata,
             outbounds: includeSubscriptionCopyState
               ? await markSubscriptionCopyableOutbounds(
