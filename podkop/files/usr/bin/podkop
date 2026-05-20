@@ -2169,11 +2169,15 @@ migrate_0_7_17_8_proxy_rule() {
 
 migrate_0_7_17_8_rule_action() {
     local section="$1"
-    local action proxy_config_type connection_type
+    local action proxy_config_type connection_type interface outbound_json selector_proxy_links subscription_urls
 
     config_get action "$section" "action"
     config_get proxy_config_type "$section" "proxy_config_type"
     config_get connection_type "$section" "connection_type"
+    config_get interface "$section" "interface"
+    config_get outbound_json "$section" "outbound_json"
+    config_get selector_proxy_links "$section" "selector_proxy_links"
+    config_get subscription_urls "$section" "subscription_urls"
 
     if [ "$action" = "proxy" ]; then
         case "$proxy_config_type" in
@@ -2233,7 +2237,15 @@ migrate_0_7_17_8_rule_action() {
         echo "proxy"
         ;;
     *)
-        echo ""
+        if [ -n "$outbound_json" ]; then
+            echo "outbound"
+        elif [ -n "$interface" ]; then
+            echo "vpn"
+        elif [ -n "$selector_proxy_links" ] || [ -n "$subscription_urls" ]; then
+            echo "proxy"
+        else
+            echo ""
+        fi
         ;;
     esac
 }

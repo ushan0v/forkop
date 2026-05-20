@@ -464,9 +464,13 @@ function isByedpiInstalledForUi() {
   return actionProvidersAvailabilityState.byedpiInstalled;
 }
 
-function getRuleResolvedAction(section_id) {
+function getRuleConfiguredAction(section_id) {
   const action = uci.get(UCI_PACKAGE, section_id, "action");
-  return action ? `${action}` : "proxy";
+  return action ? `${action}` : null;
+}
+
+function getRuleResolvedAction(section_id) {
+  return getRuleConfiguredAction(section_id) || "proxy";
 }
 
 function getActionOptionLabel(action) {
@@ -2638,7 +2642,7 @@ function createSectionContent(section) {
   o.rmempty = false;
   o.modalonly = true;
   o.cfgvalue = function (section_id) {
-    return getRuleResolvedAction(section_id);
+    return getRuleConfiguredAction(section_id);
   };
   o.load = function (section_id) {
     return ensureActionProvidersAvailabilityLoaded().then(() => {
