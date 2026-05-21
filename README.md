@@ -2,6 +2,7 @@
 
 [![Star](https://img.shields.io/github/stars/ushan0v/podkop-plus?style=social)](https://github.com/ushan0v/podkop-plus/stargazers)
 [![Releases](https://img.shields.io/github/v/release/ushan0v/podkop-plus?label=releases)](https://github.com/ushan0v/podkop-plus/releases)
+[![Telegram](https://img.shields.io/badge/Telegram-@ushan0v-2CA5E0?logo=telegram&logoColor=white)](https://t.me/ushan0v)
 [![Original](https://img.shields.io/badge/original-itdoginfo%2Fpodkop-blue)](https://github.com/itdoginfo/podkop)
 [![podkop-evolution](https://img.shields.io/badge/podkop--evolution-yandexru45-blue)](https://github.com/yandexru45/podkop-evolution)
 [![zapret-openwrt](https://img.shields.io/badge/zapret--openwrt-remittor-blue)](https://github.com/remittor/zapret-openwrt/releases)
@@ -20,6 +21,10 @@
   </tr>
 </table>
 
+> **НЕ ПИШИТЕ** с проблемами Podkop Plus в официальный [Telegram-чат](https://t.me/itdogchat). Это независимый форк. Разработчики и участники оригинального чата не имеют отношения к этому проекту.
+> * Нашли баг или есть проблема? Создайте [Issue](https://github.com/ushan0v/podkop-plus/issues) в этом репозитории.
+> * Не хотите или не умеете создавать Issue? Можете попробовать постучаться в личку [@ushan0v](https://t.me/ushan0v).
+
 ### Установка
 
 ```sh
@@ -33,13 +38,22 @@ sh <(wget -O - https://raw.githubusercontent.com/ushan0v/podkop-plus/main/instal
 - [sing-box-extended](https://github.com/shtorm-7/sing-box-extended/releases)
 - [awg-openwrt](https://github.com/Slava-Shchipunov/awg-openwrt/releases)
 
-### Возможности
+### Что нового в этом форке
 
-- Поддержка подписок, адаптированная из [podkop-evolution](https://github.com/yandexru45/podkop-evolution). 
-- Расширена поддержка всех основных форматов подписок: sing-box JSON, URI/base64 списки, Clash/Mihomo. Добавлено чтение метаданных подписки.
-- Обновленный LuCI-интерфейс секций. Расширенное управление секциями: изменение приоритета, новые условия и значения.
-- Интеграция Zapret и ByeDPI как отдельного действия для секции.
+- Добавлена поддержка подписок.
+- Интеграция Zapret и ByeDPI как отдельного действия.
 - Поддержка sing-box extended и транспорта XHTTP.
+- Обновленный LuCI-интерфейс и расширенное управление секциями. 
+- Возможность исключать серверы из URLTest по стране или названию.
+
+### Подписки
+
+- Работа с подписками адаптирована из [podkop-evolution](https://github.com/yandexru45/podkop-evolution) и значительно расширена. 
+- Реализована поддержка основных форматов: sing-box json, uri/base64 списки, clash/mihomo
+- Добавлено чтение метаданных подписки.
+- Подписки поддерживают HWID авторизацию.
+- Для расшифровки подписок в формате `happ://crypt` используйте сервис [leeeet.dev/happ-decryptor](https://leeeet.dev/happ-decryptor).
+- Парсинг подписок с большим количеством серверов (+100) создает сильную нагрузку, что может привести к высоким задержкам запуска или зависаниям. 
 
 ### Секции
 

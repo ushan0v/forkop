@@ -57,6 +57,8 @@ export const DOMAIN_LIST_OPTIONS = {
   google_play: 'Google Play',
   hodca: 'H.O.D.C.A',
   roblox: 'Roblox',
+  ads_hagezi_pro: 'Ads (Hagezi Pro)',
+  supercell: 'Supercell',
   hetzner: 'Hetzner ASN',
   ovh: 'OVH ASN',
   digitalocean: 'Digital Ocean ASN',

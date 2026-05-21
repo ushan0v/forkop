@@ -1216,8 +1216,8 @@ append_sing_box_rule_signature() {
     proxy)
         local selector_proxy_links subscription_urls udp_over_tcp urltest_enabled \
             urltest_check_interval urltest_tolerance urltest_testing_url subscription_update_enabled \
-            subscription_update_interval detect_server_country urltest_exclude_countries \
-            urltest_exclude_outbounds urltest_exclude_regex
+            subscription_update_interval detect_server_country urltest_filter_mode urltest_exclude_countries urltest_include_countries \
+            urltest_exclude_outbounds urltest_exclude_regex urltest_include_outbounds urltest_include_regex
         config_get selector_proxy_links "$section" "selector_proxy_links"
         config_get subscription_urls "$section" "subscription_urls"
         config_get_bool udp_over_tcp "$section" "enable_udp_over_tcp" 0
@@ -1228,9 +1228,13 @@ append_sing_box_rule_signature() {
         config_get urltest_testing_url "$section" "urltest_testing_url" "https://www.gstatic.com/generate_204"
         config_get_bool subscription_update_enabled "$section" "subscription_update_enabled" 1
         subscription_update_interval="$(get_subscription_update_interval_for_rule "$section")"
+        config_get urltest_filter_mode "$section" "urltest_filter_mode" "disabled"
         config_get urltest_exclude_countries "$section" "urltest_exclude_countries"
+        config_get urltest_include_countries "$section" "urltest_include_countries"
         config_get urltest_exclude_outbounds "$section" "urltest_exclude_outbounds"
         config_get urltest_exclude_regex "$section" "urltest_exclude_regex"
+        config_get urltest_include_outbounds "$section" "urltest_include_outbounds"
+        config_get urltest_include_regex "$section" "urltest_include_regex"
 
         signature_add "rule.$section.selector_proxy_links" "$selector_proxy_links"
         signature_add "rule.$section.subscription_urls" "$subscription_urls"
@@ -1240,9 +1244,13 @@ append_sing_box_rule_signature() {
         signature_add "rule.$section.urltest_check_interval" "$urltest_check_interval"
         signature_add "rule.$section.urltest_tolerance" "$urltest_tolerance"
         signature_add "rule.$section.urltest_testing_url" "$urltest_testing_url"
+        signature_add "rule.$section.urltest_filter_mode" "$urltest_filter_mode"
         signature_add "rule.$section.urltest_exclude_countries" "$urltest_exclude_countries"
+        signature_add "rule.$section.urltest_include_countries" "$urltest_include_countries"
         signature_add "rule.$section.urltest_exclude_outbounds" "$urltest_exclude_outbounds"
         signature_add "rule.$section.urltest_exclude_regex" "$urltest_exclude_regex"
+        signature_add "rule.$section.urltest_include_outbounds" "$urltest_include_outbounds"
+        signature_add "rule.$section.urltest_include_regex" "$urltest_include_regex"
         signature_add "rule.$section.subscription_update_enabled" "$subscription_update_enabled"
         signature_add "rule.$section.subscription_update_interval" "$subscription_update_interval"
 
@@ -1600,13 +1608,9 @@ filter_community_subnet_lists() {
 }
 
 reference_is_remote_sing_box_ruleset() {
-    local extension
-
     case "$1" in
     http://* | https://*)
-        extension="$(url_get_file_extension "$1")"
-        [ "$extension" = "srs" ] || [ "$extension" = "json" ]
-        return "$?"
+        return 0
         ;;
     esac
 
@@ -2007,6 +2011,19 @@ podkop_uci_set_option_if_missing() {
     podkop_uci_set_option "$section" "$option" "$value"
 }
 
+podkop_uci_migrate_urltest_filter_mode() {
+    local section="$1"
+
+    podkop_uci_option_exists "$section" "urltest_filter_mode" && return 0
+
+    if podkop_uci_option_exists "$section" "urltest_exclude_countries" ||
+        podkop_uci_option_exists "$section" "urltest_include_countries" ||
+        podkop_uci_option_exists "$section" "urltest_exclude_outbounds" ||
+        podkop_uci_option_exists "$section" "urltest_exclude_regex"; then
+        podkop_uci_set_option "$section" "urltest_filter_mode" "exclude"
+    fi
+}
+
 podkop_uci_delete_option() {
     local section="$1"
     local option="$2"
@@ -2294,6 +2311,7 @@ migrate_0_7_17_8_rule() {
 
     case "$action" in
     proxy)
+        podkop_uci_migrate_urltest_filter_mode "$section"
         migrate_0_7_17_8_proxy_rule "$section" "$proxy_config_type"
         if [ "$converted_from_rule" -eq 1 ] && [ -n "$subscription_urls" ]; then
             migrate_0_7_17_8_delete_subscription_cache "$section"
@@ -2879,7 +2897,6 @@ validate_service() {
 
 validate_ruleset_reference() {
     local reference="$1"
-    local extension
 
     if [ -z "$reference" ]; then
         return 0
@@ -2891,10 +2908,7 @@ validate_ruleset_reference() {
 
     case "$reference" in
     http://* | https://*)
-        extension="$(url_get_file_extension "$reference")"
-        if [ "$extension" = "srs" ] || [ "$extension" = "json" ]; then
-            return 0
-        fi
+        return 0
         ;;
     /*.srs | /*.json)
         return 0
@@ -2907,7 +2921,6 @@ validate_ruleset_reference() {
 
 validate_plain_domain_ip_list_reference() {
     local reference="$1"
-    local extension
 
     if [ -z "$reference" ]; then
         return 0
@@ -2915,8 +2928,7 @@ validate_plain_domain_ip_list_reference() {
 
     case "$reference" in
     http://* | https://*)
-        extension="$(url_get_file_extension "$reference")"
-        [ "$extension" = "lst" ] && return 0
+        return 0
         ;;
     /*.lst)
         return 0
@@ -2978,7 +2990,22 @@ validate_country_code_option() {
     exit 1
 }
 
-validate_urltest_exclude_regex_option() {
+validate_urltest_filter_mode_option() {
+    local value="$1"
+    local section="$2"
+
+    [ -n "$value" ] || return 0
+    case "$value" in
+    disabled | exclude | include)
+        return 0
+        ;;
+    esac
+
+    log "Invalid URLTest filter mode '$value' in rule '$section'. Aborted." "fatal"
+    exit 1
+}
+
+validate_urltest_regex_option() {
     local value="$1"
     local section="$2"
     local grep_status
@@ -2990,7 +3017,7 @@ validate_urltest_exclude_regex_option() {
         return 0
     fi
 
-    log "Invalid URLTest exclude regular expression '$value' in rule '$section'. Aborted." "fatal"
+    log "Invalid URLTest regular expression '$value' in rule '$section'. Aborted." "fatal"
     exit 1
 }
 
@@ -3097,15 +3124,31 @@ detect_inline_ruleset_reference_kind() {
         ;;
     http://* | https://*)
         extension="$(url_get_file_extension "$reference")"
-        [ "$extension" = "srs" ] || [ "$extension" = "json" ] || {
-            echo "unknown"
-            return 0
-        }
+        [ "$extension" = "srs" ] || [ "$extension" = "json" ] || [ -z "$extension" ] || log "Unknown rule set URL extension '$extension' for '$reference'; assuming binary format" "debug"
         [ "$kind" = "unknown" ] && kind="domains"
         echo "$kind"
         ;;
     *)
         echo "unknown"
+        ;;
+    esac
+}
+
+get_inline_remote_ruleset_format() {
+    local reference="$1"
+    local extension
+
+    extension="$(url_get_file_extension "$reference")"
+    case "$extension" in
+    json)
+        echo "source"
+        ;;
+    srs | "")
+        echo "binary"
+        ;;
+    *)
+        log "Unknown rule set URL extension '$extension' for '$reference'; assuming binary format" "debug"
+        echo "binary"
         ;;
     esac
 }
@@ -3171,13 +3214,24 @@ process_validate_rule() {
     fi
 
     if [ "$action" = "proxy" ]; then
-        local urltest_enabled
+        local urltest_enabled urltest_filter_mode
         config_get_bool urltest_enabled "$section" "urltest_enabled" 0
         if [ "$urltest_enabled" -eq 1 ]; then
+            config_get urltest_filter_mode "$section" "urltest_filter_mode" "disabled"
+            validate_urltest_filter_mode_option "$urltest_filter_mode" "$section"
             urltest_check_interval="$(get_urltest_check_interval_for_rule "$section")"
             validate_required_sing_box_duration_option "$urltest_check_interval" "rule.$section.urltest_check_interval"
-            config_list_foreach "$section" "urltest_exclude_countries" validate_country_code_option "$section"
-            config_list_foreach "$section" "urltest_exclude_regex" validate_urltest_exclude_regex_option "$section"
+            case "$urltest_filter_mode" in
+            include)
+                config_list_foreach "$section" "urltest_include_regex" validate_urltest_regex_option "$section"
+                config_list_foreach "$section" "urltest_include_countries" validate_country_code_option "$section"
+                ;;
+            exclude)
+                config_list_foreach "$section" "urltest_exclude_countries" validate_country_code_option "$section"
+                config_list_foreach "$section" "urltest_exclude_outbounds" validate_outbound_name_option "$section"
+                config_list_foreach "$section" "urltest_exclude_regex" validate_urltest_regex_option "$section"
+                ;;
+            esac
         fi
 
         if rule_has_subscription_urls "$section"; then
@@ -3284,6 +3338,22 @@ register_ruleset_tag() {
 ENSURED_RULESET_TAG=""
 ENSURED_RULESET_KIND="unknown"
 
+get_community_ruleset_url() {
+    local name="$1"
+
+    case "$name" in
+    ads_hagezi_pro)
+        printf '%s\n' "$SRS_ADS_HAGEZI_PRO_URL"
+        ;;
+    supercell)
+        printf '%s\n' "$SRS_SUPERCELL_URL"
+        ;;
+    *)
+        printf '%s\n' "$SRS_MAIN_URL/$name.srs"
+        ;;
+    esac
+}
+
 ensure_builtin_ruleset() {
     local name="$1"
     local tag="builtin-$name-ruleset"
@@ -3295,7 +3365,7 @@ ensure_builtin_ruleset() {
         local detour update_interval url
         detour="$(get_download_detour_tag)"
         update_interval="$(get_remote_ruleset_update_interval)"
-        url="$SRS_MAIN_URL/$name.srs"
+        url="$(get_community_ruleset_url "$name")"
         config=$(sing_box_cm_add_remote_ruleset "$config" "$tag" "binary" "$url" "$detour" "$update_interval")
         register_ruleset_tag "$tag"
     fi
@@ -3352,7 +3422,7 @@ ensure_custom_ruleset() {
 
 ensure_inline_custom_ruleset() {
     local reference="$1"
-    local tag hash detour update_interval extension
+    local tag hash detour update_interval extension format
 
     hash="$(printf '%s' "$reference" | md5sum | cut -c1-12)"
     tag="inline-custom-$hash-ruleset"
@@ -3380,7 +3450,8 @@ ensure_inline_custom_ruleset() {
                 config=$(sing_box_cm_add_remote_ruleset "$config" "$tag" "source" "$reference" "$detour" "$update_interval")
                 ;;
             *)
-                return 1
+                format="$(get_inline_remote_ruleset_format "$reference")"
+                config=$(sing_box_cm_add_remote_ruleset "$config" "$tag" "$format" "$reference" "$detour" "$update_interval")
                 ;;
             esac
             ;;
@@ -4727,7 +4798,7 @@ config_list_to_json() {
     printf '%s\n' "$CONFIG_LIST_VALUES_JSON"
 }
 
-get_urltest_regex_excluded_tags_json() {
+get_urltest_regex_matching_tags_json() {
     local tags_json="$1"
     local names_json="$2"
     local regex_json="$3"
@@ -4771,6 +4842,10 @@ get_urltest_regex_excluded_tags_json() {
     done
 
     printf '%s\n' "$result_json"
+}
+
+get_urltest_regex_excluded_tags_json() {
+    get_urltest_regex_matching_tags_json "$@"
 }
 
 is_ipv6_literal() {
@@ -5163,55 +5238,114 @@ filter_urltest_outbounds() {
     local names_json="$3"
     local countries_json="$4"
     local country_filter_enabled="$5"
-    local exclude_names_json exclude_regex_json exclude_regex_tags_json exclude_countries_json filtered_json filtered_count original_count
+    local filter_mode exclude_names_json exclude_regex_json exclude_regex_tags_json exclude_countries_json \
+        include_names_json include_regex_json include_regex_tags_json filtered_json filtered_count original_count
 
-    exclude_names_json="$(config_list_to_json "$section" "urltest_exclude_outbounds")"
-    exclude_regex_json="$(config_list_to_json "$section" "urltest_exclude_regex")"
-    exclude_regex_tags_json="$(get_urltest_regex_excluded_tags_json "$tags_json" "$names_json" "$exclude_regex_json")"
-    [ -n "$exclude_regex_tags_json" ] || exclude_regex_tags_json="[]"
-    exclude_countries_json="[]"
-    if [ "$country_filter_enabled" -eq 1 ]; then
-        exclude_countries_json="$(config_list_to_json "$section" "urltest_exclude_countries" |
-            jq -c 'map(tostring | ascii_upcase | select(length == 2))' 2>/dev/null)"
-        [ -n "$exclude_countries_json" ] || exclude_countries_json="[]"
-    fi
+    config_get filter_mode "$section" "urltest_filter_mode" "disabled"
 
-    filtered_json="$(jq -cn \
-        --argjson tags "$tags_json" \
-        --argjson names "$names_json" \
-        --argjson countries "$countries_json" \
-        --argjson exclude_names "$exclude_names_json" \
-        --argjson exclude_regex_tags "$exclude_regex_tags_json" \
-        --argjson exclude_countries "$exclude_countries_json" '
-        reduce ($tags // [])[] as $tag (
-            [];
-            ($names[$tag] // $tag) as $name
-            | (($countries[$tag] // "") | ascii_upcase) as $country
-            | if
-                (($exclude_names | index($name)) != null) or
-                (($exclude_names | index($tag)) != null) or
-                ($country != "" and (($exclude_countries | index($country)) != null)) or
-                (($exclude_regex_tags | index($tag)) != null)
-              then
-                .
-              else
-                . + [$tag]
-              end
-        )
-    ' 2>/dev/null)"
+    case "$filter_mode" in
+    disabled)
+        printf '%s\n' "$tags_json"
+        return 0
+        ;;
+    include)
+        include_names_json="$(config_list_to_json "$section" "urltest_include_outbounds")"
+        include_regex_json="$(config_list_to_json "$section" "urltest_include_regex")"
+        include_regex_tags_json="$(get_urltest_regex_matching_tags_json "$tags_json" "$names_json" "$include_regex_json")"
+        [ -n "$include_regex_tags_json" ] || include_regex_tags_json="[]"
+        include_countries_json="[]"
+        if [ "$country_filter_enabled" -eq 1 ]; then
+            include_countries_json="$(config_list_to_json "$section" "urltest_include_countries" |
+                jq -c 'map(tostring | ascii_upcase | select(length == 2))' 2>/dev/null)"
+            [ -n "$include_countries_json" ] || include_countries_json="[]"
+        fi
+
+        filtered_json="$(jq -cn \
+            --argjson tags "$tags_json" \
+            --argjson names "$names_json" \
+            --argjson countries "$countries_json" \
+            --argjson include_names "$include_names_json" \
+            --argjson include_regex_tags "$include_regex_tags_json" \
+            --argjson include_countries "$include_countries_json" '
+            reduce ($tags // [])[] as $tag (
+                [];
+                ($names[$tag] // $tag) as $name
+                | (($countries[$tag] // "") | ascii_upcase) as $country
+                | if
+                    (($include_names | index($name)) != null) or
+                    (($include_names | index($tag)) != null) or
+                    ($country != "" and (($include_countries | index($country)) != null)) or
+                    (($include_regex_tags | index($tag)) != null)
+                  then
+                    . + [$tag]
+                  else
+                    .
+                  end
+            )
+        ' 2>/dev/null)"
+        ;;
+    exclude)
+        exclude_names_json="$(config_list_to_json "$section" "urltest_exclude_outbounds")"
+        exclude_regex_json="$(config_list_to_json "$section" "urltest_exclude_regex")"
+        exclude_regex_tags_json="$(get_urltest_regex_matching_tags_json "$tags_json" "$names_json" "$exclude_regex_json")"
+        [ -n "$exclude_regex_tags_json" ] || exclude_regex_tags_json="[]"
+        exclude_countries_json="[]"
+        if [ "$country_filter_enabled" -eq 1 ]; then
+            exclude_countries_json="$(config_list_to_json "$section" "urltest_exclude_countries" |
+                jq -c 'map(tostring | ascii_upcase | select(length == 2))' 2>/dev/null)"
+            [ -n "$exclude_countries_json" ] || exclude_countries_json="[]"
+        fi
+
+        filtered_json="$(jq -cn \
+            --argjson tags "$tags_json" \
+            --argjson names "$names_json" \
+            --argjson countries "$countries_json" \
+            --argjson exclude_names "$exclude_names_json" \
+            --argjson exclude_regex_tags "$exclude_regex_tags_json" \
+            --argjson exclude_countries "$exclude_countries_json" '
+            reduce ($tags // [])[] as $tag (
+                [];
+                ($names[$tag] // $tag) as $name
+                | (($countries[$tag] // "") | ascii_upcase) as $country
+                | if
+                    (($exclude_names | index($name)) != null) or
+                    (($exclude_names | index($tag)) != null) or
+                    ($country != "" and (($exclude_countries | index($country)) != null)) or
+                    (($exclude_regex_tags | index($tag)) != null)
+                  then
+                    .
+                  else
+                    . + [$tag]
+                  end
+            )
+        ' 2>/dev/null)"
+        ;;
+    *)
+        printf '%s\n' "$tags_json"
+        return 0
+        ;;
+    esac
 
     [ -n "$filtered_json" ] || filtered_json="$tags_json"
     filtered_count="$(printf '%s' "$filtered_json" | jq -r 'length' 2>/dev/null)"
     original_count="$(printf '%s' "$tags_json" | jq -r 'length' 2>/dev/null)"
 
     if [ -z "$filtered_count" ] || [ "$filtered_count" -eq 0 ]; then
-        log "URLTest filters excluded all outbounds for rule '$section'; URLTest will be disabled for this rule" "warn"
+        if [ "$filter_mode" = "include" ]; then
+            log "URLTest whitelist matched no outbounds for rule '$section'; URLTest will be disabled for this rule" "warn"
+        else
+            log "URLTest filters excluded all outbounds for rule '$section'; URLTest will be disabled for this rule" "warn"
+        fi
         printf '[]\n'
         return 0
     fi
 
     if [ -n "$original_count" ] && [ "$filtered_count" -lt "$original_count" ]; then
-        log "URLTest filters excluded $((original_count - filtered_count)) outbound(s) for rule '$section'" "info"
+        if [ "$filter_mode" = "include" ]; then
+            log "URLTest whitelist selected $filtered_count of $original_count outbound(s) for rule '$section'" "info"
+        else
+            log "URLTest filters excluded $((original_count - filtered_count)) outbound(s) for rule '$section'" "info"
+        fi
     fi
 
     printf '%s\n' "$filtered_json"
@@ -6043,7 +6177,7 @@ configure_community_list_handler() {
     local ruleset_tag format url update_interval detour
     ruleset_tag="$(get_ruleset_tag "$section" "$tag" "community")"
     format="binary"
-    url="$SRS_MAIN_URL/$tag.srs"
+    url="$(get_community_ruleset_url "$tag")"
     detour="$(get_download_detour_tag)"
     update_interval="$(get_remote_ruleset_update_interval)"
 
@@ -6358,7 +6492,7 @@ import_inline_custom_ruleset_subnets_from_rule() {
 
 import_inline_custom_ruleset_subnets_reference_handler() {
     local reference="$1"
-    local extension
+    local extension format
 
     case "$reference" in
     /*.srs)
@@ -6375,6 +6509,10 @@ import_inline_custom_ruleset_subnets_reference_handler() {
             ;;
         json)
             import_custom_ruleset_subnets_from_remote "$reference" "source"
+            ;;
+        *)
+            format="$(get_inline_remote_ruleset_format "$reference")"
+            import_custom_ruleset_subnets_from_remote "$reference" "$format"
             ;;
         esac
         ;;
@@ -6397,7 +6535,7 @@ import_rule_sets_with_subnets_from_rule() {
 import_rule_set_with_subnets_reference_handler() {
     local reference="$1"
     local section="$2"
-    local extension
+    local extension format
 
     log "Importing subnets from rule set reference for '$section': $reference"
 
@@ -6422,7 +6560,9 @@ import_rule_set_with_subnets_reference_handler() {
                 log "Failed to import subnets from remote JSON rule set: $reference" "error"
             ;;
         *)
-            log "Unsupported rule set extension for subnet import: $reference" "error"
+            format="$(get_inline_remote_ruleset_format "$reference")"
+            import_custom_ruleset_subnets_from_remote "$reference" "$format" || \
+                log "Failed to import subnets from remote rule set: $reference" "error"
             ;;
         esac
         ;;

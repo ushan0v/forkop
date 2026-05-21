@@ -67,6 +67,8 @@ SB_CLASH_API_CONTROLLER_PORT=9090
 ## Lists
 GITHUB_RAW_URL="https://raw.githubusercontent.com/itdoginfo/allow-domains/main"
 SRS_MAIN_URL="https://github.com/itdoginfo/allow-domains/releases/latest/download"
+SRS_ADS_HAGEZI_PRO_URL="https://github.com/zxc-rv/ad-filter/releases/latest/download/adlist.srs"
+SRS_SUPERCELL_URL="https://raw.githubusercontent.com/ushan0v/sing-box-supercell-ruleset/main/supercell.srs"
 SUBNETS_TWITTER="${GITHUB_RAW_URL}/Subnets/IPv4/twitter.lst"
 SUBNETS_META="${GITHUB_RAW_URL}/Subnets/IPv4/meta.lst"
 SUBNETS_DISCORD="${GITHUB_RAW_URL}/Subnets/IPv4/discord.lst"
@@ -77,7 +79,7 @@ SUBNETS_HETZNER="${GITHUB_RAW_URL}/Subnets/IPv4/hetzner.lst"
 SUBNETS_OVH="${GITHUB_RAW_URL}/Subnets/IPv4/ovh.lst"
 SUBNETS_DIGITALOCEAN="${GITHUB_RAW_URL}/Subnets/IPv4/digitalocean.lst"
 SUBNETS_CLOUDFRONT="${GITHUB_RAW_URL}/Subnets/IPv4/cloudfront.lst"
-COMMUNITY_SERVICES="russia_inside russia_outside ukraine_inside geoblock block porn news anime youtube hdrezka tiktok google_ai google_play hodca discord meta twitter cloudflare cloudfront digitalocean hetzner ovh telegram roblox"
+COMMUNITY_SERVICES="russia_inside russia_outside ukraine_inside geoblock block porn news anime youtube hdrezka tiktok google_ai google_play hodca discord meta twitter cloudflare cloudfront digitalocean hetzner ovh telegram roblox ads_hagezi_pro supercell"
 
 ## Zapret
 ZAPRET_PROVIDER_BASE_DIR="/opt/zapret"

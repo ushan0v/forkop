@@ -176,9 +176,12 @@ export namespace Podkop {
     urltest_enabled?: '0' | '1';
     urltest_check_interval_disabled?: '0' | '1';
     detect_server_country?: '0' | '1';
+    urltest_filter_mode?: 'exclude' | 'include';
     urltest_exclude_countries?: string[];
     urltest_exclude_outbounds?: string[];
     urltest_exclude_regex?: string[];
+    urltest_include_outbounds?: string[];
+    urltest_include_regex?: string[];
     outbound_json?: string;
     interface?: string;
     yacd_secret_key?: string;
