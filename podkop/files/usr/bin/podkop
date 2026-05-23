@@ -1095,7 +1095,7 @@ build_sing_box_signature() {
     config_get output_network_interface "settings" "output_network_interface"
     config_get_bool disable_quic "settings" "disable_quic" 0
     config_get routing_excluded_ips "settings" "routing_excluded_ips"
-    config_get update_interval "settings" "update_interval"
+    update_interval="$(get_settings_update_interval)"
     config_get cache_path "settings" "cache_path" "/tmp/sing-box/cache.db"
     config_get config_path "settings" "config_path"
     config_get log_level "settings" "log_level" "warn"
@@ -1288,7 +1288,7 @@ build_cron_signature() {
     local update_interval
 
     signature_begin
-    config_get update_interval "settings" "update_interval"
+    update_interval="$(get_settings_update_interval)"
     signature_add "settings.update_interval" "$update_interval"
     config_foreach append_list_update_signature "section"
     config_foreach append_subscription_update_cron_signature "section"
@@ -1389,10 +1389,20 @@ has_remote_sing_box_ruleset_sources() {
 }
 
 get_settings_update_interval() {
-    local update_interval
+    local enabled update_interval
 
-    config_get update_interval "settings" "update_interval"
-    printf '%s\n' "$update_interval"
+    config_get_bool enabled "settings" "list_update_enabled" 1
+    if [ "$enabled" -eq 0 ]; then
+        printf '\n'
+        return 0
+    fi
+
+    config_get update_interval "settings" "update_interval" "1d"
+    if [ -n "$update_interval" ]; then
+        printf '%s\n' "$update_interval"
+    else
+        printf '1d\n'
+    fi
 }
 
 get_duration_option_with_default_if_unset() {
@@ -1700,7 +1710,19 @@ validate_download_lists_via_proxy_section() {
     fi
 }
 
+validate_list_update_settings() {
+    local enabled update_interval
+
+    config_get_bool enabled "settings" "list_update_enabled" 1
+    [ "$enabled" -eq 1 ] || return 0
+
+    config_get update_interval "settings" "update_interval" "1d"
+    [ -n "$update_interval" ] || update_interval="1d"
+    validate_required_sing_box_duration_option "$update_interval" "settings.update_interval"
+}
+
 validate_runtime_settings() {
+    validate_list_update_settings
     validate_download_lists_via_proxy_section
 }
 
@@ -2076,6 +2098,27 @@ migrate_0_7_17_8_rule_section() {
     uci set "$PODKOP_CONFIG_NAME.$section=section"
     podkop_config_migration_changed=1
     migrate_0_7_17_8_rule "$section" 1
+}
+
+migrate_list_update_enabled() {
+    local list_update_enabled update_interval
+
+    if podkop_uci_option_exists "settings" "list_update_enabled"; then
+        config_get_bool list_update_enabled "settings" "list_update_enabled" 1
+        if [ "$list_update_enabled" -eq 1 ]; then
+            config_get update_interval "settings" "update_interval"
+            [ -n "$update_interval" ] || podkop_uci_set_option "settings" "update_interval" "1d"
+        fi
+        return 0
+    fi
+
+    config_get update_interval "settings" "update_interval"
+    if [ -n "$update_interval" ]; then
+        podkop_uci_set_option "settings" "list_update_enabled" "1"
+    else
+        podkop_uci_set_option "settings" "list_update_enabled" "0"
+        podkop_uci_set_option "settings" "update_interval" "1d"
+    fi
 }
 
 check_requirements() {
@@ -2596,12 +2639,13 @@ migration() {
     podkop_config_migration_added_lists=""
 
     ensure_runtime_cache_format
+    migrate_list_update_enabled
 
     config_foreach migrate_0_7_17_8_rule_section "rule"
     config_foreach migrate_0_7_17_8_rule "section"
 
     if [ "$podkop_config_migration_changed" -eq 1 ]; then
-        log "Migrated Podkop Plus UCI config from 0.7.17-8 schema"
+        log "Migrated Podkop Plus UCI config"
         commit_podkop_config
     fi
 }

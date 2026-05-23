@@ -3,6 +3,7 @@
 "require uci";
 "require baseclass";
 "require tools.widgets as widgets";
+"require view.podkop_plus.local_devices as localDevices";
 "require view.podkop_plus.main as main";
 
 const UCI_PACKAGE = main.PODKOP_UCI_PACKAGE;
@@ -154,9 +155,7 @@ function createSettingsContent(section) {
     }
 
     // Reject lan*
-    if (
-        value.startsWith("lan")
-    ) {
+    if (value.startsWith("lan")) {
       return false;
     }
 
@@ -250,7 +249,9 @@ function createSettingsContent(section) {
     form.Flag,
     "enable_yacd_wan_access",
     _("Enable YACD WAN Access"),
-    _("Allows access to YACD from the WAN. Make sure to open the appropriate port in your firewall."),
+    _(
+      "Allows access to YACD from the WAN. Make sure to open the appropriate port in your firewall.",
+    ),
   );
   o.depends("enable_yacd", "1");
   o.default = "0";
@@ -260,7 +261,9 @@ function createSettingsContent(section) {
     form.Value,
     "yacd_secret_key",
     _("YACD Secret Key"),
-    _("Secret key for authenticating remote access to YACD when WAN access is enabled."),
+    _(
+      "Secret key for authenticating remote access to YACD when WAN access is enabled.",
+    ),
   );
   o.depends("enable_yacd_wan_access", "1");
   o.rmempty = false;
@@ -277,17 +280,26 @@ function createSettingsContent(section) {
   o.rmempty = false;
 
   o = section.option(
+    form.Flag,
+    "list_update_enabled",
+    _("Enable list updates"),
+    _("Enable automatic updates for remote lists and rule sets"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+
+  o = section.option(
     form.Value,
     "update_interval",
     _("List Update Frequency"),
-    _(
-      "Use sing-box duration format. Leave empty to disable automatic updates.",
-    ),
+    _("Use sing-box duration format like 1d, 12h or 30m"),
   );
+  o.depends("list_update_enabled", "1");
   o.placeholder = "1d";
-  o.rmempty = true;
+  o.default = "1d";
+  o.rmempty = false;
   o.cfgvalue = function (section_id) {
-    return uci.get(UCI_PACKAGE, section_id, "update_interval") || "";
+    return uci.get(UCI_PACKAGE, section_id, "update_interval") || "1d";
   };
   o.write = function (section_id, value) {
     const normalized = value ? `${value}`.trim() : "";
@@ -295,14 +307,14 @@ function createSettingsContent(section) {
     if (normalized.length) {
       uci.set(UCI_PACKAGE, section_id, "update_interval", normalized);
     } else {
-      uci.unset(UCI_PACKAGE, section_id, "update_interval");
+      uci.set(UCI_PACKAGE, section_id, "update_interval", "1d");
     }
   };
   o.validate = function (_section_id, value) {
     const normalized = value ? `${value}`.trim() : "";
 
     if (!normalized.length) {
-      return true;
+      return _("Use sing-box duration format like 1d, 12h or 30m");
     }
 
     if (isSingBoxDuration(normalized)) {
@@ -420,9 +432,7 @@ function createSettingsContent(section) {
     form.ListValue,
     "log_level",
     _("Log Level"),
-    _(
-      "Select the log level for sing-box",
-    ),
+    _("Select the log level for sing-box"),
   );
   o.value("trace", "Trace");
   o.value("debug", "Debug");
@@ -449,9 +459,11 @@ function createSettingsContent(section) {
     form.DynamicList,
     "routing_excluded_ips",
     _("Routing Excluded IPs"),
-    _("Specify a local IP address to be excluded from routing"),
+    _(
+      "Select local devices or enter IP addresses/subnets to be excluded from routing",
+    ),
   );
-  o.placeholder = "IP";
+  o.placeholder = _("Device, IP, or subnet");
   o.rmempty = true;
   o.validate = function (section_id, value) {
     // Optional
@@ -459,13 +471,29 @@ function createSettingsContent(section) {
       return true;
     }
 
-    const validation = main.validateIPV4(value);
+    const validation = main.validateSubnet(value);
 
     if (validation.valid) {
       return true;
     }
 
     return validation.message;
+  };
+  o.load = function (section_id) {
+    const values = localDevices.normalizeOptionValues(
+      uci.get(UCI_PACKAGE, section_id, "routing_excluded_ips"),
+    );
+
+    return localDevices
+      .preloadLocalDeviceChoicesForValues(values)
+      .then(() => values);
+  };
+  o.renderWidget = function (section_id, _option_index, cfgvalue) {
+    return localDevices.createLocalDeviceDynamicListWidget(
+      this,
+      section_id,
+      cfgvalue,
+    );
   };
 }
 
