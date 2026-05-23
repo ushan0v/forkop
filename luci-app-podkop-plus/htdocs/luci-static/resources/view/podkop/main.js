@@ -3890,12 +3890,13 @@ var styles = `
     flex: 0 0 auto;
 }
 
-.pdk_dashboard-page__outbound-section__subscription-update {
+.pdk_dashboard-page .btn.pdk_dashboard-page__outbound-section__subscription-update {
     width: 28px;
     height: 28px;
     min-width: 28px;
     min-height: 28px;
     padding: 2px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3906,6 +3907,8 @@ var styles = `
 .pdk_dashboard-page__outbound-section__subscription-update svg {
     width: 15px;
     height: 15px;
+    display: block;
+    flex: 0 0 auto;
 }
 
 .pdk_dashboard-page__outbound-section__subscription-update[disabled] {
@@ -3993,12 +3996,13 @@ var styles = `
     gap: var(--subscription-meta-action-gap);
 }
 
-.pdk_dashboard-page__subscription-meta__action {
+.pdk_dashboard-page .btn.pdk_dashboard-page__subscription-meta__action {
     width: var(--subscription-meta-action-size);
     height: var(--subscription-meta-action-size);
     min-width: var(--subscription-meta-action-size);
     min-height: var(--subscription-meta-action-size);
     padding: 2px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4010,6 +4014,8 @@ var styles = `
 .pdk_dashboard-page__subscription-meta__action svg {
     width: 15px;
     height: 15px;
+    display: block;
+    flex: 0 0 auto;
 }
 
 .pdk_dashboard-page__subscription-meta__announce {
@@ -4120,12 +4126,13 @@ var styles = `
     overflow-wrap: anywhere;
 }
 
-.pdk_dashboard-page__outbound-grid__item__copy-button {
+.pdk_dashboard-page .btn.pdk_dashboard-page__outbound-grid__item__copy-button {
     width: 22px;
     height: 22px;
     min-width: 22px;
     min-height: 22px;
     padding: 1px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4136,6 +4143,8 @@ var styles = `
 .pdk_dashboard-page__outbound-grid__item__copy-button svg {
     width: 13px;
     height: 13px;
+    display: block;
+    flex: 0 0 auto;
 }
 
 .pdk_dashboard-page__outbound-grid__item__footer {
@@ -4714,9 +4723,10 @@ var styles2 = `
 }
 
 .pdk-partial-button--with-icon {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 5px;
 }
 
 .pdk-partial-button--loading {
@@ -4726,11 +4736,11 @@ var styles2 = `
 }
 
 .pdk-partial-button__icon {
-    margin-right: 5px;
+    flex: 0 0 auto;
 }
 
 .pdk-partial-button__icon {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
 }
@@ -4738,6 +4748,8 @@ var styles2 = `
 .pdk-partial-button__icon svg {
     width: 16px;
     height: 16px;
+    display: block;
+    flex: 0 0 auto;
 }
 `;
 
@@ -4820,7 +4832,12 @@ function renderButton({
   }
   return E(
     "button",
-    { class: getClass(), disabled: getDisabled(), click: onClick },
+    {
+      type: "button",
+      class: getClass(),
+      disabled: getDisabled(),
+      click: onClick
+    },
     [...insertIf(hasIcon, [getWrappedIcon()]), E("span", {}, text)]
   );
 }
@@ -6344,6 +6361,12 @@ var styles4 = `
 
 }
 
+.pdk_diagnostic-page__right-bar__actions > .pdk-partial-button {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+}
+
 .pdk_diagnostic-page__right-bar__system-info {
     border: 2px var(--background-color-low, lightgray) solid;
     border-radius: 4px;
@@ -6517,6 +6540,10 @@ ${PartialStyles}
     display: inline-flex;
     align-items: center;
     gap: 4px;
+}
+
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-actions {
+    text-align: right;
 }
 
 /* Rule reorder visuals */

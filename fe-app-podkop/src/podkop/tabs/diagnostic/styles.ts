@@ -66,6 +66,12 @@ export const styles = `
 
 }
 
+.pdk_diagnostic-page__right-bar__actions > .pdk-partial-button {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+}
+
 .pdk_diagnostic-page__right-bar__system-info {
     border: 2px var(--background-color-low, lightgray) solid;
     border-radius: 4px;

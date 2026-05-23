@@ -63,7 +63,12 @@ export function renderButton({
 
   return E(
     'button',
-    { class: getClass(), disabled: getDisabled(), click: onClick },
+    {
+      type: 'button',
+      class: getClass(),
+      disabled: getDisabled(),
+      click: onClick,
+    },
     [...insertIf(hasIcon, [getWrappedIcon()]), E('span', {}, text)],
   );
 }

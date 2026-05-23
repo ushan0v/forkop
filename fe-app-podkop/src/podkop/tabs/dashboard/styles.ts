@@ -89,12 +89,13 @@ export const styles = `
     flex: 0 0 auto;
 }
 
-.pdk_dashboard-page__outbound-section__subscription-update {
+.pdk_dashboard-page .btn.pdk_dashboard-page__outbound-section__subscription-update {
     width: 28px;
     height: 28px;
     min-width: 28px;
     min-height: 28px;
     padding: 2px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -105,6 +106,8 @@ export const styles = `
 .pdk_dashboard-page__outbound-section__subscription-update svg {
     width: 15px;
     height: 15px;
+    display: block;
+    flex: 0 0 auto;
 }
 
 .pdk_dashboard-page__outbound-section__subscription-update[disabled] {
@@ -192,12 +195,13 @@ export const styles = `
     gap: var(--subscription-meta-action-gap);
 }
 
-.pdk_dashboard-page__subscription-meta__action {
+.pdk_dashboard-page .btn.pdk_dashboard-page__subscription-meta__action {
     width: var(--subscription-meta-action-size);
     height: var(--subscription-meta-action-size);
     min-width: var(--subscription-meta-action-size);
     min-height: var(--subscription-meta-action-size);
     padding: 2px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -209,6 +213,8 @@ export const styles = `
 .pdk_dashboard-page__subscription-meta__action svg {
     width: 15px;
     height: 15px;
+    display: block;
+    flex: 0 0 auto;
 }
 
 .pdk_dashboard-page__subscription-meta__announce {
@@ -319,12 +325,13 @@ export const styles = `
     overflow-wrap: anywhere;
 }
 
-.pdk_dashboard-page__outbound-grid__item__copy-button {
+.pdk_dashboard-page .btn.pdk_dashboard-page__outbound-grid__item__copy-button {
     width: 22px;
     height: 22px;
     min-width: 22px;
     min-height: 22px;
     padding: 1px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -335,6 +342,8 @@ export const styles = `
 .pdk_dashboard-page__outbound-grid__item__copy-button svg {
     width: 13px;
     height: 13px;
+    display: block;
+    flex: 0 0 auto;
 }
 
 .pdk_dashboard-page__outbound-grid__item__footer {

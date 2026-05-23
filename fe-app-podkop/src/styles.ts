@@ -40,6 +40,10 @@ ${PartialStyles}
     gap: 4px;
 }
 
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-actions {
+    text-align: right;
+}
+
 /* Rule reorder visuals */
 #cbi-${PODKOP_CBI_PREFIX}-section {
     position: relative;

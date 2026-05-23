@@ -5,9 +5,10 @@ export const styles = `
 }
 
 .pdk-partial-button--with-icon {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 5px;
 }
 
 .pdk-partial-button--loading {
@@ -17,11 +18,11 @@ export const styles = `
 }
 
 .pdk-partial-button__icon {
-    margin-right: 5px;
+    flex: 0 0 auto;
 }
 
 .pdk-partial-button__icon {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
 }
@@ -29,5 +30,7 @@ export const styles = `
 .pdk-partial-button__icon svg {
     width: 16px;
     height: 16px;
+    display: block;
+    flex: 0 0 auto;
 }
 `;
