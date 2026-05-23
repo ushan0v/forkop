@@ -441,9 +441,7 @@ export async function getDashboardSections(
         if (sectionAction === 'proxy' && shouldUseProxyGroup(section)) {
           const subscriptionSourceCount = getSubscriptionSourceCount(section);
           const subscriptionEnabled = subscriptionSourceCount > 0;
-          const dashboardCache = subscriptionEnabled
-            ? await readDashboardSectionCache(sectionName)
-            : undefined;
+          const dashboardCache = await readDashboardSectionCache(sectionName);
           const outboundMetadata = getOutboundMetadata(dashboardCache);
           const subscriptionMetadata = subscriptionEnabled
             ? getSubscriptionMetadata(

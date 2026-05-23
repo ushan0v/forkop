@@ -1188,7 +1188,7 @@ async function getDashboardSections(options = {}) {
       if (sectionAction === "proxy" && shouldUseProxyGroup(section)) {
         const subscriptionSourceCount = getSubscriptionSourceCount(section);
         const subscriptionEnabled = subscriptionSourceCount > 0;
-        const dashboardCache = subscriptionEnabled ? await readDashboardSectionCache(sectionName) : void 0;
+        const dashboardCache = await readDashboardSectionCache(sectionName);
         const outboundMetadata = getOutboundMetadata(dashboardCache);
         const subscriptionMetadata = subscriptionEnabled ? getSubscriptionMetadata(
           sectionName,
@@ -2669,6 +2669,48 @@ function prettyBytes(n) {
 }
 
 // src/podkop/tabs/dashboard/partials/renderSections.ts
+var REGION_NAME_FALLBACKS = {
+  XK: "Kosovo"
+};
+var regionDisplayNamesCache = {};
+function getLuciLanguage() {
+  const luci = globalThis.L;
+  if (luci?.env?.lang) {
+    return `${luci.env.lang}`.replace("_", "-");
+  }
+  if (document.documentElement.lang) {
+    return document.documentElement.lang;
+  }
+  return navigator.language || "en";
+}
+function getCountryDisplayName(country) {
+  const code = `${country || ""}`.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) {
+    return "";
+  }
+  const language = getLuciLanguage();
+  const cacheKey = `${language}:${code}`;
+  if (regionDisplayNamesCache[cacheKey]) {
+    return regionDisplayNamesCache[cacheKey];
+  }
+  try {
+    const displayNamesConstructor = Intl.DisplayNames;
+    if (displayNamesConstructor) {
+      const displayNames = new displayNamesConstructor([language, "en"], {
+        type: "region"
+      });
+      const displayName = displayNames.of(code);
+      if (displayName && displayName !== code) {
+        regionDisplayNamesCache[cacheKey] = displayName;
+        return displayName;
+      }
+    }
+  } catch (_error) {
+  }
+  const fallback = REGION_NAME_FALLBACKS[code] || code;
+  regionDisplayNamesCache[cacheKey] = fallback;
+  return fallback;
+}
 function getCountryFlagEmoji(country) {
   const code = `${country || ""}`.trim().toUpperCase();
   if (!/^[A-Z]{2}$/.test(code)) {
@@ -2676,6 +2718,22 @@ function getCountryFlagEmoji(country) {
   }
   return String.fromCodePoint(
     ...code.split("").map((char) => 127462 + char.charCodeAt(0) - 65)
+  );
+}
+function renderCountryFlag(country) {
+  const countryFlag = getCountryFlagEmoji(country);
+  if (!countryFlag) {
+    return void 0;
+  }
+  const countryName = getCountryDisplayName(country);
+  return E(
+    "span",
+    {
+      class: "pdk_dashboard-page__outbound-grid__item__country",
+      title: countryName || void 0,
+      "aria-label": countryName || void 0
+    },
+    countryFlag
   );
 }
 function renderFailedState() {
@@ -2863,7 +2921,8 @@ function renderDefaultState({
       return "pdk_dashboard-page__outbound-grid__item__latency--red";
     }
     const canCopyLink = Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
-    const countryFlag = getCountryFlagEmoji(outbound.country);
+    const countryFlag = renderCountryFlag(outbound.country);
+    const typeChildren = countryFlag ? [countryFlag, outbound.type ? ` ${outbound.type}` : ""] : [outbound.type].filter(Boolean);
     return E(
       "div",
       {
@@ -2894,7 +2953,7 @@ function renderDefaultState({
           E(
             "div",
             { class: "pdk_dashboard-page__outbound-grid__item__type" },
-            [countryFlag, outbound.type].filter(Boolean).join(" ")
+            typeChildren
           ),
           E(
             "div",
