@@ -2334,6 +2334,7 @@ post_install() {
     rm -f /var/luci-indexcache* /tmp/luci-indexcache*
     rm -f /tmp/podkop-plus.latest-version.cache
     rm -f /var/run/podkop-plus/system-info.json
+    rm -f /var/run/podkop-plus/server-country-cache.json
     rm -f /tmp/podkop-plus/system-info.json
     [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 

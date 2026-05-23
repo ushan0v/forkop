@@ -50,7 +50,6 @@ PODKOP_SUBSCRIPTION_METADATA_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-metadat
 PODKOP_OUTBOUND_METADATA_DIR="$PODKOP_RUNTIME_STATE_DIR/outbound-metadata"
 PODKOP_SECTION_CACHE_DIR="$PODKOP_RUNTIME_STATE_DIR/section-cache"
 PODKOP_RUNTIME_CACHE_FORMAT_FILE="$PODKOP_RUNTIME_STATE_DIR/cache-format"
-PODKOP_SERVER_COUNTRY_CACHE_FILE="$PODKOP_RUNTIME_STATE_DIR/server-country-cache.json"
 PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-update.lock"
 PODKOP_RELOAD_LOCK_DIR="/var/run/podkop-plus.reload.lock"
 PODKOP_LIST_UPDATE_CRON_MARKER="# podkop-plus-list-update"
@@ -150,6 +149,10 @@ ensure_runtime_cache_format() {
         ensure_runtime_dirs
         printf '%s\n' "$PODKOP_RUNTIME_CACHE_FORMAT" > "$PODKOP_RUNTIME_CACHE_FORMAT_FILE"
     fi
+}
+
+remove_legacy_server_country_cache() {
+    rm -f "$PODKOP_RUNTIME_STATE_DIR/server-country-cache.json"
 }
 
 subscription_cache_lua() {
@@ -2639,6 +2642,7 @@ migration() {
     podkop_config_migration_added_lists=""
 
     ensure_runtime_cache_format
+    remove_legacy_server_country_cache
     migrate_list_update_enabled
 
     config_foreach migrate_0_7_17_8_rule_section "rule"
@@ -4662,32 +4666,30 @@ resolve_country_server_ip() {
     printf '%s\n' "$ip"
 }
 
-read_server_country_cache() {
-    if [ -s "$PODKOP_SERVER_COUNTRY_CACHE_FILE" ] &&
-        jq -e 'type == "object"' "$PODKOP_SERVER_COUNTRY_CACHE_FILE" >/dev/null 2>&1; then
-        jq -c '.' "$PODKOP_SERVER_COUNTRY_CACHE_FILE" 2>/dev/null
+read_section_outbound_country_cache() {
+    local section="$1"
+    local cache_path countries_json
+
+    case "$section" in
+    "" | */* | *..*)
+        printf '{}\n'
         return 0
+        ;;
+    esac
+
+    cache_path="$(get_section_cache_path "$section")"
+    if [ -s "$cache_path" ] && jq -e 'type == "object"' "$cache_path" >/dev/null 2>&1; then
+        countries_json="$(jq -c '
+            def object_or_empty: if type == "object" then . else {} end;
+            .outboundMetadata.countries | object_or_empty
+        ' "$cache_path" 2>/dev/null)"
+        if [ -n "$countries_json" ]; then
+            printf '%s\n' "$countries_json"
+            return 0
+        fi
     fi
 
     printf '{}\n'
-}
-
-write_server_country_cache_patch() {
-    local patch_json="$1"
-    local cache_json tmpfile
-
-    [ -n "$patch_json" ] || return 0
-    printf '%s' "$patch_json" | jq -e 'type == "object"' >/dev/null 2>&1 || return 0
-
-    mkdir -p "$PODKOP_RUNTIME_STATE_DIR"
-    cache_json="$(read_server_country_cache)"
-    tmpfile="${PODKOP_SERVER_COUNTRY_CACHE_FILE}.$$"
-
-    if jq -cn --argjson cache "$cache_json" --argjson patch "$patch_json" '$cache + $patch' > "$tmpfile" 2>/dev/null; then
-        mv "$tmpfile" "$PODKOP_SERVER_COUNTRY_CACHE_FILE"
-    else
-        rm -f "$tmpfile"
-    fi
 }
 
 country_is_lookup_ips_individually() {
@@ -4721,7 +4723,7 @@ country_is_lookup_ips_individually() {
         body_error="$(jq -r '.error.code // .code // .error // empty' "$body_tmp" 2>/dev/null)"
 
         if [ "$body_error" = "rate_limit" ] || [ "$http_code" = "429" ]; then
-            log "country.is rate_limit response while detecting server countries" "warn"
+            log "Server country lookup is rate-limited" "warn"
             rm -f "$body_tmp"
             break
         fi
@@ -4732,7 +4734,7 @@ country_is_lookup_ips_individually() {
                 printf '%s\t%s\n' "$ip" "$country" >> "$result_tmp"
             fi
         elif [ "$http_code" != "404" ]; then
-            log "country.is single lookup failed with HTTP status ${http_code:-unknown}" "warn"
+            log "Server country lookup failed" "warn"
         fi
 
         rm -f "$body_tmp"
@@ -4790,7 +4792,7 @@ country_is_lookup_ips() {
 
         body_error="$(jq -r '.error.code // .code // .error // empty' "$body_tmp" 2>/dev/null)"
         if [ "$body_error" = "rate_limit" ]; then
-            log "country.is rate_limit response while detecting server countries" "warn"
+            log "Server country lookup is rate-limited" "warn"
             rm -f "$body_tmp"
             break
         fi
@@ -4799,11 +4801,11 @@ country_is_lookup_ips() {
             jq -r '.[]? | select((.ip // "") != "" and (.country // "") != "") | [.ip, .country] | @tsv' \
                 "$body_tmp" >> "$result_tmp" 2>/dev/null || true
         elif [ "$http_code" = "429" ]; then
-            log "country.is rate limit reached while detecting server countries" "warn"
+            log "Server country lookup is rate-limited" "warn"
             rm -f "$body_tmp"
             break
         else
-            log "country.is lookup failed with HTTP status ${http_code:-unknown}" "warn"
+            log "Server country lookup failed" "warn"
         fi
 
         rm -f "$body_tmp"
@@ -4828,7 +4830,7 @@ country_is_lookup_ips() {
         $ips | map(select(($result[.] // "") == ""))
     ' 2>/dev/null)"
     if [ -n "$fallback_ips_json" ] && [ "$fallback_ips_json" != "[]" ]; then
-        log "country.is batch response missed some IPs; retrying them individually" "info"
+        log "Retrying server country lookup" "debug"
         fallback_json="$(country_is_lookup_ips_individually "$fallback_ips_json" 2>/dev/null || printf '{}')"
         [ -n "$fallback_json" ] || fallback_json="{}"
         result_json="$(jq -cn --argjson batch "$result_json" --argjson fallback "$fallback_json" '$batch + $fallback' 2>/dev/null)"
@@ -4842,8 +4844,8 @@ detect_server_countries_for_tags() {
     local servers_json="$1"
     local section="${2:-}"
     local cache_json cached_countries_json missing_tmp resolved_tmp ips_json ip_country_json
-    local resolved_countries_json cache_patch_json now line tag server_key server ip
-    local server_count cached_count missing_count resolved_count resolved_ip_count ip_country_count detected_count unresolved_count log_prefix
+    local resolved_countries_json tag server ip
+    local server_count missing_count resolved_count unresolved_count log_prefix
 
     if [ -z "$servers_json" ] || ! printf '%s' "$servers_json" | jq -e 'type == "object"' >/dev/null 2>&1; then
         printf '{}\n'
@@ -4861,25 +4863,22 @@ detect_server_countries_for_tags() {
     '' | *[!0-9]*) server_count=0 ;;
     esac
     if [ "$server_count" -eq 0 ]; then
-        log "Country detection skipped for $log_prefix: no servers to check" "debug"
+        log "Server country detection skipped for $log_prefix" "debug"
         printf '{}\n'
         return 0
     fi
 
-    cache_json="$(read_server_country_cache)"
+    log "Detecting server countries for $log_prefix" "info"
+
+    cache_json="$(read_section_outbound_country_cache "$section")"
     cached_countries_json="$(jq -cn --argjson servers "$servers_json" --argjson cache "$cache_json" '
         reduce ($servers | to_entries[]) as $entry (
             {};
-            ($entry.value | tostring | ascii_downcase) as $server
-            | ($cache[$server].country // "") as $country
+            ($cache[$entry.key] // "") as $country
             | if $country != "" then .[$entry.key] = $country else . end
         )
     ' 2>/dev/null)"
     [ -n "$cached_countries_json" ] || cached_countries_json="{}"
-    cached_count="$(printf '%s' "$cached_countries_json" | jq -r 'length' 2>/dev/null)"
-    case "$cached_count" in
-    '' | *[!0-9]*) cached_count=0 ;;
-    esac
 
     missing_tmp="$(mktemp)" || {
         printf '%s\n' "$cached_countries_json"
@@ -4894,8 +4893,8 @@ detect_server_countries_for_tags() {
     jq -r --argjson cache "$cache_json" '
         to_entries[]?
         | (.value | tostring | ascii_downcase) as $server
-        | select($server != "" and (($cache[$server].country // "") == ""))
-        | [.key, $server, .value] | @tsv
+        | select($server != "" and (($cache[.key] // "") == ""))
+        | [.key, .value] | @tsv
     ' <<EOF > "$missing_tmp" 2>/dev/null
 $servers_json
 EOF
@@ -4904,27 +4903,21 @@ EOF
     case "$missing_count" in
     '' | *[!0-9]*) missing_count=0 ;;
     esac
-    log "Country detection for $log_prefix: $server_count server(s), $cached_count cached, $missing_count new" "info"
-
-    while IFS="$(printf '\t')" read -r tag server_key server || [ -n "$tag" ]; do
+    while IFS="$(printf '\t')" read -r tag server || [ -n "$tag" ]; do
         [ -n "$tag" ] || continue
         ip="$(resolve_country_server_ip "$server")" || continue
         [ -n "$ip" ] || continue
-        printf '%s\t%s\t%s\n' "$tag" "$server_key" "$ip" >> "$resolved_tmp"
+        printf '%s\t%s\n' "$tag" "$ip" >> "$resolved_tmp"
     done < "$missing_tmp"
 
     resolved_count="$(wc -l < "$resolved_tmp" 2>/dev/null | tr -d ' ')"
     case "$resolved_count" in
     '' | *[!0-9]*) resolved_count=0 ;;
     esac
-    resolved_ip_count="$(cut -f 3 "$resolved_tmp" 2>/dev/null | sort -u | wc -l | tr -d ' ')"
-    case "$resolved_ip_count" in
-    '' | *[!0-9]*) resolved_ip_count=0 ;;
-    esac
 
     if [ ! -s "$resolved_tmp" ]; then
         if [ "$missing_count" -gt 0 ]; then
-            log "Country detection for $log_prefix: failed to resolve IP address for $missing_count server(s)" "warn"
+            log "Server country detection for $log_prefix could not resolve some servers" "warn"
         fi
         rm -f "$missing_tmp" "$resolved_tmp"
         printf '%s\n' "$cached_countries_json"
@@ -4932,29 +4925,22 @@ EOF
     fi
 
     unresolved_count=$((missing_count - resolved_count))
-    [ "$unresolved_count" -le 0 ] || log "Country detection for $log_prefix: failed to resolve IP address for $unresolved_count server(s)" "warn"
-    log "Country detection for $log_prefix: querying country.is for $resolved_ip_count IP address(es)" "info"
+    [ "$unresolved_count" -le 0 ] || log "Server country detection for $log_prefix could not resolve some servers" "warn"
 
-    ips_json="$(cut -f 3 "$resolved_tmp" | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))' 2>/dev/null)"
+    ips_json="$(cut -f 2 "$resolved_tmp" | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))' 2>/dev/null)"
     [ -n "$ips_json" ] || ips_json="[]"
     ip_country_json="$(country_is_lookup_ips "$ips_json" 2>/dev/null || printf '{}')"
     [ -n "$ip_country_json" ] || ip_country_json="{}"
-    ip_country_count="$(printf '%s' "$ip_country_json" | jq -r 'length' 2>/dev/null)"
-    case "$ip_country_count" in
-    '' | *[!0-9]*) ip_country_count=0 ;;
-    esac
-    if [ "$ip_country_count" -eq 0 ]; then
-        log "Country detection for $log_prefix: country.is did not return countries for requested IPs" "warn"
-    else
-        log "Country detection for $log_prefix: country.is returned $ip_country_count country result(s)" "info"
+    if ! printf '%s' "$ip_country_json" | jq -e 'length > 0' >/dev/null 2>&1; then
+        log "Server country detection for $log_prefix returned no countries" "warn"
     fi
 
     resolved_countries_json="$(jq -Rn --argjson ip_country "$ip_country_json" '
         reduce inputs as $line (
             {};
             ($line | split("\t")) as $parts
-            | if ($parts | length) >= 3 then
-                ($ip_country[$parts[2]] // "") as $country
+            | if ($parts | length) >= 2 then
+                ($ip_country[$parts[1]] // "") as $country
                 | if $country != "" then .[$parts[0]] = $country else . end
               else
                 .
@@ -4962,37 +4948,9 @@ EOF
         )
     ' < "$resolved_tmp" 2>/dev/null)"
     [ -n "$resolved_countries_json" ] || resolved_countries_json="{}"
-    detected_count="$(printf '%s' "$resolved_countries_json" | jq -r 'length' 2>/dev/null)"
-    case "$detected_count" in
-    '' | *[!0-9]*) detected_count=0 ;;
-    esac
-
-    now="$(date +%s 2>/dev/null)"
-    case "$now" in
-    '' | *[!0-9]*) now=0 ;;
-    esac
-
-    cache_patch_json="$(jq -Rn --argjson ip_country "$ip_country_json" --argjson updated_at "$now" '
-        reduce inputs as $line (
-            {};
-            ($line | split("\t")) as $parts
-            | if ($parts | length) >= 3 then
-                ($ip_country[$parts[2]] // "") as $country
-                | if $country != "" then
-                    .[$parts[1]] = { ip: $parts[2], country: $country, updated_at: $updated_at }
-                  else
-                    .
-                  end
-              else
-                .
-              end
-        )
-    ' < "$resolved_tmp" 2>/dev/null)"
-    [ -n "$cache_patch_json" ] || cache_patch_json="{}"
-    write_server_country_cache_patch "$cache_patch_json"
 
     rm -f "$missing_tmp" "$resolved_tmp"
-    log "Country detection for $log_prefix: detected countries for $detected_count new server(s)" "info"
+    log "Server country detection for $log_prefix completed" "info"
     jq -cn --argjson cached "$cached_countries_json" --argjson resolved "$resolved_countries_json" '$cached + $resolved' 2>/dev/null ||
         printf '%s\n' "$cached_countries_json"
 }
@@ -7856,7 +7814,7 @@ check_nft_rules() {
     wait $pid2 2> /dev/null
     sleep 1
 
-    # Check if PodkopTable exists
+    # Check if PodkopPlusTable exists
     if nft list table inet "$NFT_TABLE_NAME" > /dev/null 2>&1; then
         table_exist=1
 
@@ -7900,7 +7858,7 @@ check_nft_rules() {
         fi
     fi
 
-    # Check for other mark rules outside PodkopTable
+    # Check for other mark rules outside PodkopPlusTable
     nft list tables 2> /dev/null | while read -r _ family table_name; do
         [ -z "$table_name" ] && continue
 
@@ -8383,7 +8341,7 @@ global_check() {
     fi
 
     print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    print_global "📄 Podkop config"
+    print_global "📄 Podkop Plus config"
     show_config
 
     # print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -8525,8 +8483,8 @@ Available commands:
     get_subscription_metadata
                             Get UI-only metadata for a subscription rule
     get_sing_box_status     Get sing-box service status
-    get_zapret_status       Get zapret provider and Podkop-managed nfqws status
-    get_byedpi_status       Get ByeDPI provider and Podkop-managed ciadpi status
+    get_zapret_status       Get zapret provider and Podkop Plus-managed nfqws status
+    get_byedpi_status       Get ByeDPI provider and Podkop Plus-managed ciadpi status
     get_system_info         Get system information in JSON format
     check_dns_available     Check DNS server availability
     global_check            Run global system check
