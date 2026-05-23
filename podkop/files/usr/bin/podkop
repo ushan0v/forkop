@@ -7882,17 +7882,25 @@ check_fakeip() {
 #######################################
 # Clash API interface for managing proxies and groups
 # Arguments:
-#   $1 - Action: get_proxies, get_proxy_latency, get_group_latency, set_group_proxy
-#   $2 - Proxy/Group tag (required for latency and set operations)
+#   $1 - Action: get_proxies, get_connections, get_proxy_latency, get_group_latency, set_group_proxy,
+#        close_connection, close_all_connections
+#   $2 - Proxy/Group tag (required for latency and set operations) or connection id
 #   $3 - Timeout in ms (optional, defaults: 2000 for proxy, 5000 for group) or target proxy tag for set_group_proxy
 # Outputs:
 #   JSON formatted response
 # Usage:
 #   clash_api get_proxies
+#   clash_api get_connections
 #   clash_api get_proxy_latency <proxy_tag> [timeout]
 #   clash_api get_group_latency <group_tag> [timeout]
 #   clash_api set_group_proxy <group_tag> <proxy_tag>
+#   clash_api close_connection <connection_id>
+#   clash_api close_all_connections
 #######################################
+
+clash_api_urlencode_path_segment() {
+    jq -nr --arg value "$1" '$value|@uri'
+}
 
 clash_api() {
     local action="$1"
@@ -7917,6 +7925,10 @@ clash_api() {
     case "$action" in
     get_proxies)
         curl -s --header "$auth_header" "$CLASH_URL/proxies" | jq .
+        ;;
+
+    get_connections)
+        curl -s --header "$auth_header" "$CLASH_URL/connections" | jq .
         ;;
 
     get_proxy_latency)
@@ -7999,8 +8011,75 @@ clash_api() {
         esac
         ;;
 
+    close_connection)
+        local connection_id="$2"
+
+        if [ -z "$connection_id" ]; then
+            echo '{"error":"connection_id required"}' | jq .
+            return 1
+        fi
+
+        local encoded_connection_id response http_code body
+        encoded_connection_id="$(clash_api_urlencode_path_segment "$connection_id")" || return 1
+        response=$(
+            curl -X DELETE -s -w "\n%{http_code}" "$CLASH_URL/connections/$encoded_connection_id" \
+                --header "$auth_header"
+        )
+        http_code=$(echo "$response" | tail -n 1)
+        body=$(echo "$response" | sed '$d')
+
+        case "$http_code" in
+        200 | 204)
+            jq -n --arg connection_id "$connection_id" '{success:true, connection_id:$connection_id}'
+            ;;
+        404)
+            jq -n --arg connection_id "$connection_id" \
+                '{success:false, error:"connection_not_found", connection_id:$connection_id}'
+            return 1
+            ;;
+        *)
+            if [ -n "$body" ]; then
+                local body_json
+                body_json=$(echo "$body" | jq -c . 2> /dev/null || jq -Rn --arg body "$body" '$body')
+                jq -n --arg http_code "$http_code" --argjson body "$body_json" \
+                    '{success:false, http_code:$http_code, body:$body}'
+            else
+                jq -n --arg http_code "$http_code" '{success:false, http_code:$http_code}'
+            fi
+            return 1
+            ;;
+        esac
+        ;;
+
+    close_all_connections)
+        local response http_code body
+        response=$(
+            curl -X DELETE -s -w "\n%{http_code}" "$CLASH_URL/connections" \
+                --header "$auth_header"
+        )
+        http_code=$(echo "$response" | tail -n 1)
+        body=$(echo "$response" | sed '$d')
+
+        case "$http_code" in
+        200 | 204)
+            echo '{"success":true}' | jq .
+            ;;
+        *)
+            if [ -n "$body" ]; then
+                local body_json
+                body_json=$(echo "$body" | jq -c . 2> /dev/null || jq -Rn --arg body "$body" '$body')
+                jq -n --arg http_code "$http_code" --argjson body "$body_json" \
+                    '{success:false, http_code:$http_code, body:$body}'
+            else
+                jq -n --arg http_code "$http_code" '{success:false, http_code:$http_code}'
+            fi
+            return 1
+            ;;
+        esac
+        ;;
+
     *)
-        echo '{"error":"unknown action","available":["get_proxies","get_proxy_latency","get_group_latency","set_group_proxy"]}' | jq .
+        echo '{"error":"unknown action","available":["get_proxies","get_connections","get_proxy_latency","get_group_latency","set_group_proxy","close_connection","close_all_connections"]}' | jq .
         return 1
         ;;
     esac

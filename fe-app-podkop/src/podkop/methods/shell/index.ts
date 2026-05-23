@@ -67,6 +67,10 @@ export const PodkopShellMethods = {
     callBaseMethod<ClashAPI.Proxies>(Podkop.AvailableMethods.CLASH_API, [
       Podkop.AvailableClashAPIMethods.GET_PROXIES,
     ]),
+  getClashApiConnections: async () =>
+    callBaseMethod<unknown>(Podkop.AvailableMethods.CLASH_API, [
+      Podkop.AvailableClashAPIMethods.GET_CONNECTIONS,
+    ]),
   getClashApiProxyLatency: async (tag: string) =>
     callBaseMethod<Podkop.GetClashApiProxyLatency>(
       Podkop.AvailableMethods.CLASH_API,
@@ -82,6 +86,15 @@ export const PodkopShellMethods = {
       Podkop.AvailableClashAPIMethods.SET_GROUP_PROXY,
       group,
       proxy,
+    ]),
+  closeClashApiConnection: async (connectionId: string) =>
+    callBaseMethod<unknown>(Podkop.AvailableMethods.CLASH_API, [
+      Podkop.AvailableClashAPIMethods.CLOSE_CONNECTION,
+      connectionId,
+    ]),
+  closeAllClashApiConnections: async () =>
+    callBaseMethod<unknown>(Podkop.AvailableMethods.CLASH_API, [
+      Podkop.AvailableClashAPIMethods.CLOSE_ALL_CONNECTIONS,
     ]),
   restart: async () =>
     callBaseMethod<unknown>(

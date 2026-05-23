@@ -80,9 +80,12 @@ export namespace Podkop {
 
   export enum AvailableClashAPIMethods {
     GET_PROXIES = 'get_proxies',
+    GET_CONNECTIONS = 'get_connections',
     GET_PROXY_LATENCY = 'get_proxy_latency',
     GET_GROUP_LATENCY = 'get_group_latency',
     SET_GROUP_PROXY = 'set_group_proxy',
+    CLOSE_CONNECTION = 'close_connection',
+    CLOSE_ALL_CONNECTIONS = 'close_all_connections',
   }
 
   export interface Outbound {

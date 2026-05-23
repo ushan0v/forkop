@@ -15,6 +15,9 @@
 // Dashboard
 "require view.podkop_plus.dashboard as dashboard";
 
+// Monitoring
+"require view.podkop_plus.monitoring as monitoring";
+
 // Diagnostic
 "require view.podkop_plus.diagnostic as diagnostic";
 
@@ -149,6 +152,18 @@ const EntryPoint = {
       return ["dashboard"];
     };
     dashboard.createDashboardContent(dashboardSection);
+
+    const monitoringSection = podkopMap.section(
+      form.TypedSection,
+      "monitoring",
+      _("Monitoring"),
+    );
+    monitoringSection.anonymous = true;
+    monitoringSection.addremove = false;
+    monitoringSection.cfgsections = function () {
+      return ["monitoring"];
+    };
+    monitoring.createMonitoringContent(monitoringSection);
 
     main.coreService();
 
