@@ -41,12 +41,19 @@ const UNKNOWN_DIAGNOSTICS_SYSTEM_INFO = {
   device_model: _('unknown'),
 };
 
-const SERVICE_ACTION_REFRESH_DELAY_MS = 5000;
+const SERVICE_STATUS_REFRESH_INTERVAL_MS = 2000;
+const SERVICE_ACTION_STATUS_TIMEOUT_MS = 45000;
 
 let latestProviderInfoRequestId = 0;
 let latestSystemInfoRequestId = 0;
 let diagnosticLifecycleRegistered = false;
 let diagnosticControllerInitialized = false;
+let diagnosticMounted = false;
+let diagnosticMountId = 0;
+let servicesInfoRefreshTimer: ReturnType<typeof setInterval> | null = null;
+let servicesInfoRefreshPromise: Promise<void> | null = null;
+
+type ServiceRuntimeAction = 'restart' | 'start' | 'stop';
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -91,9 +98,128 @@ function setDiagnosticActionLoading(
   });
 }
 
-async function refreshServicesInfoAfterServiceAction() {
-  await sleep(SERVICE_ACTION_REFRESH_DELAY_MS);
-  await fetchServicesInfo();
+function isDiagnosticMountActive(mountId = diagnosticMountId) {
+  return diagnosticMounted && diagnosticMountId === mountId;
+}
+
+function isMutatingServiceActionLoading() {
+  const actions = store.get().diagnosticsActions;
+
+  return (
+    actions.restart.loading ||
+    actions.start.loading ||
+    actions.stop.loading ||
+    actions.enable.loading ||
+    actions.disable.loading
+  );
+}
+
+function getPodkopStatusText(running: boolean, enabled: boolean) {
+  if (running) {
+    return enabled ? 'running & enabled' : 'running but disabled';
+  }
+
+  return enabled ? 'stopped but enabled' : 'stopped & disabled';
+}
+
+function setDisplayedPodkopRunning(running: boolean) {
+  const servicesInfoWidget = store.get().servicesInfoWidget;
+  const enabled = Boolean(servicesInfoWidget.data.podkopEnabled);
+
+  store.set({
+    servicesInfoWidget: {
+      ...servicesInfoWidget,
+      loading: false,
+      data: {
+        ...servicesInfoWidget.data,
+        podkopRunning: running ? 1 : 0,
+        podkopStatus: getPodkopStatusText(running, enabled),
+      },
+    },
+  });
+}
+
+async function refreshDiagnosticServicesInfo({
+  force = false,
+  mountId = diagnosticMountId,
+}: {
+  force?: boolean;
+  mountId?: number;
+} = {}) {
+  if (!isDiagnosticMountActive(mountId)) {
+    return;
+  }
+
+  if (!force && isMutatingServiceActionLoading()) {
+    return;
+  }
+
+  if (servicesInfoRefreshPromise) {
+    return servicesInfoRefreshPromise;
+  }
+
+  const promise = fetchServicesInfo()
+    .catch((error) => {
+      logger.error(
+        '[DIAGNOSTIC]',
+        'refreshDiagnosticServicesInfo failed',
+        error,
+      );
+    })
+    .finally(() => {
+      if (servicesInfoRefreshPromise === promise) {
+        servicesInfoRefreshPromise = null;
+      }
+    });
+
+  servicesInfoRefreshPromise = promise;
+  return promise;
+}
+
+async function waitForPodkopRunningState(
+  expectedRunning: boolean,
+  mountId: number,
+) {
+  const startedAt = Date.now();
+
+  while (isDiagnosticMountActive(mountId)) {
+    await refreshDiagnosticServicesInfo({ force: true, mountId });
+
+    const podkopRunning = Boolean(
+      store.get().servicesInfoWidget.data.podkopRunning,
+    );
+
+    if (podkopRunning === expectedRunning) {
+      return true;
+    }
+
+    if (Date.now() - startedAt >= SERVICE_ACTION_STATUS_TIMEOUT_MS) {
+      return false;
+    }
+
+    await sleep(SERVICE_STATUS_REFRESH_INTERVAL_MS);
+  }
+
+  return false;
+}
+
+function startServicesInfoRefreshTimer() {
+  if (servicesInfoRefreshTimer) {
+    clearInterval(servicesInfoRefreshTimer);
+  }
+
+  servicesInfoRefreshTimer = setInterval(() => {
+    void refreshDiagnosticServicesInfo();
+  }, SERVICE_STATUS_REFRESH_INTERVAL_MS);
+}
+
+function stopServicesInfoRefreshTimer() {
+  if (!servicesInfoRefreshTimer) {
+    return;
+  }
+
+  clearInterval(servicesInfoRefreshTimer);
+  servicesInfoRefreshTimer = null;
 }
 
 async function fetchSystemInfo() {
@@ -255,49 +381,78 @@ function renderDiagnosticRunActionWidget() {
   });
 }
 
-async function handleRestart() {
-  setDiagnosticActionLoading('restart', true);
+async function handleServiceRuntimeAction({
+  action,
+  command,
+  expectedRunning,
+  optimisticRunning,
+}: {
+  action: ServiceRuntimeAction;
+  command: () => Promise<unknown>;
+  expectedRunning: boolean;
+  optimisticRunning?: boolean;
+}) {
+  const mountId = diagnosticMountId;
+
+  setDiagnosticActionLoading(action, true);
+
+  if (optimisticRunning !== undefined) {
+    setDisplayedPodkopRunning(optimisticRunning);
+  }
 
   try {
-    await PodkopShellMethods.restart();
-    await refreshServicesInfoAfterServiceAction();
+    await command();
+
+    const reachedExpectedState = await waitForPodkopRunningState(
+      expectedRunning,
+      mountId,
+    );
+
+    if (!reachedExpectedState && isDiagnosticMountActive(mountId)) {
+      logger.error(
+        '[DIAGNOSTIC]',
+        `${action} did not reach expected running state`,
+      );
+      showToast(_('Failed to execute!'), 'error');
+    }
   } catch (e) {
-    logger.error('[DIAGNOSTIC]', 'handleRestart - e', e);
+    logger.error('[DIAGNOSTIC]', `handleServiceRuntimeAction(${action})`, e);
   } finally {
-    setDiagnosticActionLoading('restart', false);
-    resetDiagnosticsChecks();
+    if (isDiagnosticMountActive(mountId)) {
+      setDiagnosticActionLoading(action, false);
+      resetDiagnosticsChecks();
+    }
   }
 }
 
-async function handleStop() {
-  setDiagnosticActionLoading('stop', true);
-
-  try {
-    await PodkopShellMethods.stop();
-    await refreshServicesInfoAfterServiceAction();
-  } catch (e) {
-    logger.error('[DIAGNOSTIC]', 'handleStop - e', e);
-  } finally {
-    setDiagnosticActionLoading('stop', false);
-    resetDiagnosticsChecks();
-  }
+async function handleRestart() {
+  await handleServiceRuntimeAction({
+    action: 'restart',
+    command: PodkopShellMethods.restart,
+    expectedRunning: true,
+    optimisticRunning: false,
+  });
 }
 
 async function handleStart() {
-  setDiagnosticActionLoading('start', true);
+  await handleServiceRuntimeAction({
+    action: 'start',
+    command: PodkopShellMethods.start,
+    expectedRunning: true,
+  });
+}
 
-  try {
-    await PodkopShellMethods.start();
-    await refreshServicesInfoAfterServiceAction();
-  } catch (e) {
-    logger.error('[DIAGNOSTIC]', 'handleStart - e', e);
-  } finally {
-    setDiagnosticActionLoading('start', false);
-    resetDiagnosticsChecks();
-  }
+async function handleStop() {
+  await handleServiceRuntimeAction({
+    action: 'stop',
+    command: PodkopShellMethods.stop,
+    expectedRunning: false,
+  });
 }
 
 async function handleEnable() {
+  const mountId = diagnosticMountId;
+
   setDiagnosticActionLoading('enable', true);
 
   try {
@@ -305,12 +460,17 @@ async function handleEnable() {
   } catch (e) {
     logger.error('[DIAGNOSTIC]', 'handleEnable - e', e);
   } finally {
-    await fetchServicesInfo();
-    setDiagnosticActionLoading('enable', false);
+    await refreshDiagnosticServicesInfo({ force: true, mountId });
+
+    if (isDiagnosticMountActive(mountId)) {
+      setDiagnosticActionLoading('enable', false);
+    }
   }
 }
 
 async function handleDisable() {
+  const mountId = diagnosticMountId;
+
   setDiagnosticActionLoading('disable', true);
 
   try {
@@ -318,8 +478,11 @@ async function handleDisable() {
   } catch (e) {
     logger.error('[DIAGNOSTIC]', 'handleDisable - e', e);
   } finally {
-    await fetchServicesInfo();
-    setDiagnosticActionLoading('disable', false);
+    await refreshDiagnosticServicesInfo({ force: true, mountId });
+
+    if (isDiagnosticMountActive(mountId)) {
+      setDiagnosticActionLoading('disable', false);
+    }
   }
 }
 
@@ -639,6 +802,9 @@ function onPageMount() {
   // Cleanup before mount
   onPageUnmount();
 
+  diagnosticMounted = true;
+  diagnosticMountId += 1;
+
   // Add new listener
   store.subscribe(onStoreUpdate);
 
@@ -657,11 +823,17 @@ function onPageMount() {
   // Initial Wiki disclaimer render
   renderWikiDisclaimerWidget();
 
-  void fetchServicesInfo();
+  void refreshDiagnosticServicesInfo({ force: true });
+  startServicesInfoRefreshTimer();
   void loadInitialDiagnosticData();
 }
 
 function onPageUnmount() {
+  diagnosticMounted = false;
+  diagnosticMountId += 1;
+  stopServicesInfoRefreshTimer();
+  servicesInfoRefreshPromise = null;
+
   // Remove old listener
   store.unsubscribe(onStoreUpdate);
 

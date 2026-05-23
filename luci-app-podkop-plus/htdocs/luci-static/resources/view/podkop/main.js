@@ -5510,11 +5510,16 @@ var UNKNOWN_DIAGNOSTICS_SYSTEM_INFO = {
   openwrt_version: _("unknown"),
   device_model: _("unknown")
 };
-var SERVICE_ACTION_REFRESH_DELAY_MS = 5e3;
+var SERVICE_STATUS_REFRESH_INTERVAL_MS = 2e3;
+var SERVICE_ACTION_STATUS_TIMEOUT_MS = 45e3;
 var latestProviderInfoRequestId = 0;
 var latestSystemInfoRequestId = 0;
 var diagnosticLifecycleRegistered = false;
 var diagnosticControllerInitialized = false;
+var diagnosticMounted = false;
+var diagnosticMountId = 0;
+var servicesInfoRefreshTimer = null;
+var servicesInfoRefreshPromise = null;
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -5544,9 +5549,92 @@ function setDiagnosticActionLoading(action, loading) {
     }
   });
 }
-async function refreshServicesInfoAfterServiceAction() {
-  await sleep(SERVICE_ACTION_REFRESH_DELAY_MS);
-  await fetchServicesInfo();
+function isDiagnosticMountActive(mountId = diagnosticMountId) {
+  return diagnosticMounted && diagnosticMountId === mountId;
+}
+function isMutatingServiceActionLoading() {
+  const actions = store.get().diagnosticsActions;
+  return actions.restart.loading || actions.start.loading || actions.stop.loading || actions.enable.loading || actions.disable.loading;
+}
+function getPodkopStatusText(running, enabled) {
+  if (running) {
+    return enabled ? "running & enabled" : "running but disabled";
+  }
+  return enabled ? "stopped but enabled" : "stopped & disabled";
+}
+function setDisplayedPodkopRunning(running) {
+  const servicesInfoWidget = store.get().servicesInfoWidget;
+  const enabled = Boolean(servicesInfoWidget.data.podkopEnabled);
+  store.set({
+    servicesInfoWidget: {
+      ...servicesInfoWidget,
+      loading: false,
+      data: {
+        ...servicesInfoWidget.data,
+        podkopRunning: running ? 1 : 0,
+        podkopStatus: getPodkopStatusText(running, enabled)
+      }
+    }
+  });
+}
+async function refreshDiagnosticServicesInfo({
+  force = false,
+  mountId = diagnosticMountId
+} = {}) {
+  if (!isDiagnosticMountActive(mountId)) {
+    return;
+  }
+  if (!force && isMutatingServiceActionLoading()) {
+    return;
+  }
+  if (servicesInfoRefreshPromise) {
+    return servicesInfoRefreshPromise;
+  }
+  const promise = fetchServicesInfo().catch((error) => {
+    logger.error(
+      "[DIAGNOSTIC]",
+      "refreshDiagnosticServicesInfo failed",
+      error
+    );
+  }).finally(() => {
+    if (servicesInfoRefreshPromise === promise) {
+      servicesInfoRefreshPromise = null;
+    }
+  });
+  servicesInfoRefreshPromise = promise;
+  return promise;
+}
+async function waitForPodkopRunningState(expectedRunning, mountId) {
+  const startedAt = Date.now();
+  while (isDiagnosticMountActive(mountId)) {
+    await refreshDiagnosticServicesInfo({ force: true, mountId });
+    const podkopRunning = Boolean(
+      store.get().servicesInfoWidget.data.podkopRunning
+    );
+    if (podkopRunning === expectedRunning) {
+      return true;
+    }
+    if (Date.now() - startedAt >= SERVICE_ACTION_STATUS_TIMEOUT_MS) {
+      return false;
+    }
+    await sleep(SERVICE_STATUS_REFRESH_INTERVAL_MS);
+  }
+  return false;
+}
+function startServicesInfoRefreshTimer() {
+  if (servicesInfoRefreshTimer) {
+    clearInterval(servicesInfoRefreshTimer);
+  }
+  servicesInfoRefreshTimer = setInterval(() => {
+    void refreshDiagnosticServicesInfo();
+  }, SERVICE_STATUS_REFRESH_INTERVAL_MS);
+}
+function stopServicesInfoRefreshTimer() {
+  if (!servicesInfoRefreshTimer) {
+    return;
+  }
+  clearInterval(servicesInfoRefreshTimer);
+  servicesInfoRefreshTimer = null;
 }
 async function fetchSystemInfo() {
   const requestId = ++latestSystemInfoRequestId;
@@ -5675,62 +5763,87 @@ function renderDiagnosticRunActionWidget() {
     container.replaceChildren(renderedAction);
   });
 }
-async function handleRestart() {
-  setDiagnosticActionLoading("restart", true);
+async function handleServiceRuntimeAction({
+  action,
+  command,
+  expectedRunning,
+  optimisticRunning
+}) {
+  const mountId = diagnosticMountId;
+  setDiagnosticActionLoading(action, true);
+  if (optimisticRunning !== void 0) {
+    setDisplayedPodkopRunning(optimisticRunning);
+  }
   try {
-    await PodkopShellMethods.restart();
-    await refreshServicesInfoAfterServiceAction();
+    await command();
+    const reachedExpectedState = await waitForPodkopRunningState(
+      expectedRunning,
+      mountId
+    );
+    if (!reachedExpectedState && isDiagnosticMountActive(mountId)) {
+      logger.error(
+        "[DIAGNOSTIC]",
+        `${action} did not reach expected running state`
+      );
+      showToast(_("Failed to execute!"), "error");
+    }
   } catch (e) {
-    logger.error("[DIAGNOSTIC]", "handleRestart - e", e);
+    logger.error("[DIAGNOSTIC]", `handleServiceRuntimeAction(${action})`, e);
   } finally {
-    setDiagnosticActionLoading("restart", false);
-    resetDiagnosticsChecks();
+    if (isDiagnosticMountActive(mountId)) {
+      setDiagnosticActionLoading(action, false);
+      resetDiagnosticsChecks();
+    }
   }
 }
-async function handleStop() {
-  setDiagnosticActionLoading("stop", true);
-  try {
-    await PodkopShellMethods.stop();
-    await refreshServicesInfoAfterServiceAction();
-  } catch (e) {
-    logger.error("[DIAGNOSTIC]", "handleStop - e", e);
-  } finally {
-    setDiagnosticActionLoading("stop", false);
-    resetDiagnosticsChecks();
-  }
+async function handleRestart() {
+  await handleServiceRuntimeAction({
+    action: "restart",
+    command: PodkopShellMethods.restart,
+    expectedRunning: true,
+    optimisticRunning: false
+  });
 }
 async function handleStart() {
-  setDiagnosticActionLoading("start", true);
-  try {
-    await PodkopShellMethods.start();
-    await refreshServicesInfoAfterServiceAction();
-  } catch (e) {
-    logger.error("[DIAGNOSTIC]", "handleStart - e", e);
-  } finally {
-    setDiagnosticActionLoading("start", false);
-    resetDiagnosticsChecks();
-  }
+  await handleServiceRuntimeAction({
+    action: "start",
+    command: PodkopShellMethods.start,
+    expectedRunning: true
+  });
+}
+async function handleStop() {
+  await handleServiceRuntimeAction({
+    action: "stop",
+    command: PodkopShellMethods.stop,
+    expectedRunning: false
+  });
 }
 async function handleEnable() {
+  const mountId = diagnosticMountId;
   setDiagnosticActionLoading("enable", true);
   try {
     await PodkopShellMethods.enable();
   } catch (e) {
     logger.error("[DIAGNOSTIC]", "handleEnable - e", e);
   } finally {
-    await fetchServicesInfo();
-    setDiagnosticActionLoading("enable", false);
+    await refreshDiagnosticServicesInfo({ force: true, mountId });
+    if (isDiagnosticMountActive(mountId)) {
+      setDiagnosticActionLoading("enable", false);
+    }
   }
 }
 async function handleDisable() {
+  const mountId = diagnosticMountId;
   setDiagnosticActionLoading("disable", true);
   try {
     await PodkopShellMethods.disable();
   } catch (e) {
     logger.error("[DIAGNOSTIC]", "handleDisable - e", e);
   } finally {
-    await fetchServicesInfo();
-    setDiagnosticActionLoading("disable", false);
+    await refreshDiagnosticServicesInfo({ force: true, mountId });
+    if (isDiagnosticMountActive(mountId)) {
+      setDiagnosticActionLoading("disable", false);
+    }
   }
 }
 async function handleShowGlobalCheck() {
@@ -5994,16 +6107,23 @@ async function loadInitialDiagnosticData() {
 }
 function onPageMount2() {
   onPageUnmount2();
+  diagnosticMounted = true;
+  diagnosticMountId += 1;
   store.subscribe(onStoreUpdate2);
   renderDiagnosticsChecks();
   renderDiagnosticRunActionWidget();
   renderDiagnosticAvailableActionsWidget();
   renderDiagnosticSystemInfoWidget();
   renderWikiDisclaimerWidget();
-  void fetchServicesInfo();
+  void refreshDiagnosticServicesInfo({ force: true });
+  startServicesInfoRefreshTimer();
   void loadInitialDiagnosticData();
 }
 function onPageUnmount2() {
+  diagnosticMounted = false;
+  diagnosticMountId += 1;
+  stopServicesInfoRefreshTimer();
+  servicesInfoRefreshPromise = null;
   store.unsubscribe(onStoreUpdate2);
   store.reset(["diagnosticsActions", "diagnosticsRunAction"]);
   resetDiagnosticsChecks();
