@@ -138,6 +138,26 @@ function setSubscriptionUpdating(sectionName: string, updating: boolean) {
   });
 }
 
+function setSelectorSwitching(sectionName: string, tag?: string) {
+  const sectionsWidget = store.get().sectionsWidget;
+  const selectorSwitchingSections = {
+    ...sectionsWidget.selectorSwitchingSections,
+  };
+
+  if (tag) {
+    selectorSwitchingSections[sectionName] = tag;
+  } else {
+    delete selectorSwitchingSections[sectionName];
+  }
+
+  store.set({
+    sectionsWidget: {
+      ...sectionsWidget,
+      selectorSwitchingSections,
+    },
+  });
+}
+
 async function connectToClashSockets() {
   const clashApiSecret = await getClashApiSecret();
 
@@ -221,9 +241,34 @@ async function connectToClashSockets() {
 
 // Handlers
 
-async function handleChooseOutbound(selector: string, tag: string) {
-  await PodkopShellMethods.setClashApiGroupProxy(selector, tag);
-  await fetchDashboardSections({ force: true });
+async function handleChooseOutbound(
+  sectionName: string,
+  selector: string,
+  tag: string,
+) {
+  const sectionsWidget = store.get().sectionsWidget;
+  const section = sectionsWidget.data.find(
+    (item) => item.sectionName === sectionName,
+  );
+
+  if (
+    !section?.withTagSelect ||
+    sectionsWidget.selectorSwitchingSections[sectionName] ||
+    section.outbounds.some(
+      (outbound) => outbound.code === tag && outbound.selected,
+    )
+  ) {
+    return;
+  }
+
+  setSelectorSwitching(sectionName, tag);
+
+  try {
+    await PodkopShellMethods.setClashApiGroupProxy(selector, tag);
+    await fetchDashboardSections({ force: true });
+  } finally {
+    setSelectorSwitching(sectionName);
+  }
 }
 
 async function handleTestGroupLatency(tag: string) {
@@ -346,6 +391,7 @@ async function renderSectionsWidget() {
       onUpdateSubscription: () => {},
       latencyFetching: sectionsWidget.latencyFetching,
       subscriptionUpdating: false,
+      selectorSwitchingTag: undefined,
     });
 
     return preserveScrollForPage(() => {
@@ -362,6 +408,8 @@ async function renderSectionsWidget() {
       subscriptionUpdating: Boolean(
         sectionsWidget.subscriptionUpdatingSections[section.sectionName],
       ),
+      selectorSwitchingTag:
+        sectionsWidget.selectorSwitchingSections[section.sectionName],
       onTestLatency: (tag) => {
         if (section.withTagSelect) {
           return handleTestGroupLatency(tag);
@@ -369,8 +417,8 @@ async function renderSectionsWidget() {
 
         return handleTestProxyLatency(tag);
       },
-      onChooseOutbound: (selector, tag) => {
-        handleChooseOutbound(selector, tag);
+      onChooseOutbound: (sectionName, selector, tag) => {
+        void handleChooseOutbound(sectionName, selector, tag);
       },
       onCopyOutbound: (section, outbound) => {
         void handleCopyOutbound(section, outbound);

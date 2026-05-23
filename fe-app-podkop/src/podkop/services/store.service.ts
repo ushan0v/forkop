@@ -171,6 +171,7 @@ export interface StoreType {
     failed: boolean;
     data: Podkop.OutboundGroup[];
     latencyFetching: boolean;
+    selectorSwitchingSections: Record<string, string>;
     subscriptionUpdatingSections: Record<string, boolean>;
   };
   diagnosticsRunAction: {
@@ -237,6 +238,7 @@ const initialStore: StoreType = {
     loading: true,
     failed: false,
     latencyFetching: false,
+    selectorSwitchingSections: {},
     subscriptionUpdatingSections: {},
     data: [],
   },

@@ -1609,6 +1609,7 @@ var initialStore = {
     loading: true,
     failed: false,
     latencyFetching: false,
+    selectorSwitchingSections: {},
     subscriptionUpdatingSections: {},
     data: []
   },
@@ -2886,7 +2887,8 @@ function renderDefaultState({
   onTestLatency,
   onUpdateSubscription,
   latencyFetching,
-  subscriptionUpdating
+  subscriptionUpdating,
+  selectorSwitchingTag
 }) {
   function testLatency() {
     if (section.withTagSelect) {
@@ -2911,14 +2913,42 @@ function renderDefaultState({
     }
     const canCopyLink = Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
     const countryFlag = renderCountryFlag(outbound.country);
+    const selectorSwitching = Boolean(selectorSwitchingTag);
+    const outboundSwitching = selectorSwitchingTag === outbound.code;
+    const canChooseOutbound = section.withTagSelect && !selectorSwitching && !outbound.selected;
+    const className = [
+      "pdk_dashboard-page__outbound-grid__item",
+      outbound.selected ? "pdk_dashboard-page__outbound-grid__item--active" : "",
+      canChooseOutbound ? "pdk_dashboard-page__outbound-grid__item--selectable" : "",
+      section.withTagSelect && !canChooseOutbound ? "pdk_dashboard-page__outbound-grid__item--disabled" : "",
+      outboundSwitching ? "pdk_dashboard-page__outbound-grid__item--switching" : ""
+    ].filter(Boolean).join(" ");
     const typeChildren = countryFlag ? [countryFlag, outbound.type ? ` ${outbound.type}` : ""] : [outbound.type].filter(Boolean);
     return E(
       "div",
       {
-        class: `pdk_dashboard-page__outbound-grid__item ${outbound.selected ? "pdk_dashboard-page__outbound-grid__item--active" : ""} ${section.withTagSelect ? "pdk_dashboard-page__outbound-grid__item--selectable" : ""}`,
-        click: () => section.withTagSelect && onChooseOutbound(section.code, outbound.code)
+        class: className,
+        "aria-busy": outboundSwitching ? "true" : void 0,
+        "aria-disabled": section.withTagSelect && !canChooseOutbound ? "true" : void 0,
+        click: () => canChooseOutbound && onChooseOutbound(section.sectionName, section.code, outbound.code)
       },
       [
+        ...outboundSwitching ? [
+          svgEl(
+            "svg",
+            { class: "pdk_dashboard-page__outbound-grid__item__snake" },
+            [
+              svgEl("rect", {
+                width: "100%",
+                height: "100%",
+                fill: "none",
+                rx: 4,
+                ry: 4,
+                pathLength: 100
+              })
+            ]
+          )
+        ] : [],
         E("div", { class: "pdk_dashboard-page__outbound-grid__item__header" }, [
           E("b", {}, outbound.displayName),
           ...canCopyLink ? [
@@ -3298,6 +3328,23 @@ function setSubscriptionUpdating(sectionName, updating) {
     }
   });
 }
+function setSelectorSwitching(sectionName, tag) {
+  const sectionsWidget = store.get().sectionsWidget;
+  const selectorSwitchingSections = {
+    ...sectionsWidget.selectorSwitchingSections
+  };
+  if (tag) {
+    selectorSwitchingSections[sectionName] = tag;
+  } else {
+    delete selectorSwitchingSections[sectionName];
+  }
+  store.set({
+    sectionsWidget: {
+      ...sectionsWidget,
+      selectorSwitchingSections
+    }
+  });
+}
 async function connectToClashSockets() {
   const clashApiSecret = await getClashApiSecret();
   socket.subscribe(
@@ -3374,9 +3421,23 @@ async function connectToClashSockets() {
     }
   );
 }
-async function handleChooseOutbound(selector, tag) {
-  await PodkopShellMethods.setClashApiGroupProxy(selector, tag);
-  await fetchDashboardSections({ force: true });
+async function handleChooseOutbound(sectionName, selector, tag) {
+  const sectionsWidget = store.get().sectionsWidget;
+  const section = sectionsWidget.data.find(
+    (item) => item.sectionName === sectionName
+  );
+  if (!section?.withTagSelect || sectionsWidget.selectorSwitchingSections[sectionName] || section.outbounds.some(
+    (outbound) => outbound.code === tag && outbound.selected
+  )) {
+    return;
+  }
+  setSelectorSwitching(sectionName, tag);
+  try {
+    await PodkopShellMethods.setClashApiGroupProxy(selector, tag);
+    await fetchDashboardSections({ force: true });
+  } finally {
+    setSelectorSwitching(sectionName);
+  }
 }
 async function handleTestGroupLatency(tag) {
   store.set({
@@ -3476,7 +3537,8 @@ async function renderSectionsWidget() {
       onUpdateSubscription: () => {
       },
       latencyFetching: sectionsWidget.latencyFetching,
-      subscriptionUpdating: false
+      subscriptionUpdating: false,
+      selectorSwitchingTag: void 0
     });
     return preserveScrollForPage(() => {
       container.replaceChildren(renderedWidget);
@@ -3491,14 +3553,15 @@ async function renderSectionsWidget() {
       subscriptionUpdating: Boolean(
         sectionsWidget.subscriptionUpdatingSections[section.sectionName]
       ),
+      selectorSwitchingTag: sectionsWidget.selectorSwitchingSections[section.sectionName],
       onTestLatency: (tag) => {
         if (section.withTagSelect) {
           return handleTestGroupLatency(tag);
         }
         return handleTestProxyLatency(tag);
       },
-      onChooseOutbound: (selector, tag) => {
-        handleChooseOutbound(selector, tag);
+      onChooseOutbound: (sectionName, selector, tag) => {
+        void handleChooseOutbound(sectionName, selector, tag);
       },
       onCopyOutbound: (section2, outbound) => {
         void handleCopyOutbound(section2, outbound);
@@ -3991,6 +4054,7 @@ var styles = `
     padding: 10px;
     transition: border 0.2s ease;
     min-width: 0;
+    position: relative;
 }
 
 .pdk_dashboard-page__outbound-grid__item--selectable {
@@ -4003,6 +4067,44 @@ var styles = `
 
 .pdk_dashboard-page__outbound-grid__item--active {
     border-color: var(--success-color-medium, green);
+}
+
+.pdk_dashboard-page__outbound-grid__item--disabled {
+    cursor: default;
+}
+
+.pdk_dashboard-page__outbound-grid__item--switching {
+    border-color: transparent !important;
+    overflow: hidden;
+    cursor: wait;
+}
+
+.pdk_dashboard-page__outbound-grid__item__snake {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    box-sizing: border-box;
+}
+
+.pdk_dashboard-page__outbound-grid__item__snake rect {
+    stroke: var(--primary-color-high, dodgerblue);
+    stroke-width: 4;
+    animation: pdk-dashboard-selector-snake-svg 1.2s linear infinite;
+}
+
+@keyframes pdk-dashboard-selector-snake-svg {
+    0% {
+        stroke-dasharray: 30 70;
+        stroke-dashoffset: 100;
+    }
+    100% {
+        stroke-dasharray: 30 70;
+        stroke-dashoffset: 0;
+    }
 }
 
 .pdk_dashboard-page__outbound-grid__item__header {

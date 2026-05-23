@@ -4,7 +4,7 @@ import {
   renderLinkIcon24,
   renderRotateCcwIcon24,
 } from '../../../../icons';
-import { isCopyableProxyLink } from '../../../../helpers';
+import { isCopyableProxyLink, svgEl } from '../../../../helpers';
 import { prettyBytes } from '../../../../helpers/prettyBytes';
 import { Podkop } from '../../../types';
 
@@ -13,7 +13,11 @@ interface IRenderSectionsProps {
   failed: boolean;
   section: Podkop.OutboundGroup;
   onTestLatency: (tag: string) => void;
-  onChooseOutbound: (selector: string, tag: string) => void;
+  onChooseOutbound: (
+    sectionName: string,
+    selector: string,
+    tag: string,
+  ) => void;
   onCopyOutbound: (
     section: Podkop.OutboundGroup,
     outbound: Podkop.Outbound,
@@ -21,6 +25,7 @@ interface IRenderSectionsProps {
   onUpdateSubscription: (section: Podkop.OutboundGroup) => void;
   latencyFetching: boolean;
   subscriptionUpdating: boolean;
+  selectorSwitchingTag?: string;
 }
 
 const REGION_NAME_FALLBACKS: Record<string, string> = {
@@ -321,6 +326,7 @@ export function renderDefaultState({
   onUpdateSubscription,
   latencyFetching,
   subscriptionUpdating,
+  selectorSwitchingTag,
 }: IRenderSectionsProps) {
   function testLatency() {
     if (section.withTagSelect) {
@@ -352,6 +358,27 @@ export function renderDefaultState({
     const canCopyLink =
       Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
     const countryFlag = renderCountryFlag(outbound.country);
+    const selectorSwitching = Boolean(selectorSwitchingTag);
+    const outboundSwitching = selectorSwitchingTag === outbound.code;
+    const canChooseOutbound =
+      section.withTagSelect && !selectorSwitching && !outbound.selected;
+    const className = [
+      'pdk_dashboard-page__outbound-grid__item',
+      outbound.selected
+        ? 'pdk_dashboard-page__outbound-grid__item--active'
+        : '',
+      canChooseOutbound
+        ? 'pdk_dashboard-page__outbound-grid__item--selectable'
+        : '',
+      section.withTagSelect && !canChooseOutbound
+        ? 'pdk_dashboard-page__outbound-grid__item--disabled'
+        : '',
+      outboundSwitching
+        ? 'pdk_dashboard-page__outbound-grid__item--switching'
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
     const typeChildren = countryFlag
       ? ([countryFlag, outbound.type ? ` ${outbound.type}` : ''] as (
           | Node
@@ -362,12 +389,33 @@ export function renderDefaultState({
     return E(
       'div',
       {
-        class: `pdk_dashboard-page__outbound-grid__item ${outbound.selected ? 'pdk_dashboard-page__outbound-grid__item--active' : ''} ${section.withTagSelect ? 'pdk_dashboard-page__outbound-grid__item--selectable' : ''}`,
+        class: className,
+        'aria-busy': outboundSwitching ? 'true' : undefined,
+        'aria-disabled':
+          section.withTagSelect && !canChooseOutbound ? 'true' : undefined,
         click: () =>
-          section.withTagSelect &&
-          onChooseOutbound(section.code, outbound.code),
+          canChooseOutbound &&
+          onChooseOutbound(section.sectionName, section.code, outbound.code),
       },
       [
+        ...(outboundSwitching
+          ? [
+              svgEl(
+                'svg',
+                { class: 'pdk_dashboard-page__outbound-grid__item__snake' },
+                [
+                  svgEl('rect', {
+                    width: '100%',
+                    height: '100%',
+                    fill: 'none',
+                    rx: 4,
+                    ry: 4,
+                    pathLength: 100,
+                  }),
+                ],
+              ),
+            ]
+          : []),
         E('div', { class: 'pdk_dashboard-page__outbound-grid__item__header' }, [
           E('b', {}, outbound.displayName),
           ...(canCopyLink

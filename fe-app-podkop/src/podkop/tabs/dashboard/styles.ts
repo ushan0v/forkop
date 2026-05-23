@@ -253,6 +253,7 @@ export const styles = `
     padding: 10px;
     transition: border 0.2s ease;
     min-width: 0;
+    position: relative;
 }
 
 .pdk_dashboard-page__outbound-grid__item--selectable {
@@ -265,6 +266,44 @@ export const styles = `
 
 .pdk_dashboard-page__outbound-grid__item--active {
     border-color: var(--success-color-medium, green);
+}
+
+.pdk_dashboard-page__outbound-grid__item--disabled {
+    cursor: default;
+}
+
+.pdk_dashboard-page__outbound-grid__item--switching {
+    border-color: transparent !important;
+    overflow: hidden;
+    cursor: wait;
+}
+
+.pdk_dashboard-page__outbound-grid__item__snake {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    box-sizing: border-box;
+}
+
+.pdk_dashboard-page__outbound-grid__item__snake rect {
+    stroke: var(--primary-color-high, dodgerblue);
+    stroke-width: 4;
+    animation: pdk-dashboard-selector-snake-svg 1.2s linear infinite;
+}
+
+@keyframes pdk-dashboard-selector-snake-svg {
+    0% {
+        stroke-dasharray: 30 70;
+        stroke-dashoffset: 100;
+    }
+    100% {
+        stroke-dasharray: 30 70;
+        stroke-dashoffset: 0;
+    }
 }
 
 .pdk_dashboard-page__outbound-grid__item__header {
