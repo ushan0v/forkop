@@ -49,6 +49,41 @@ is_min_package_version() {
     [ "$lowest" = "$required" ]
 }
 
+get_apk_installed_package_version() {
+    local package_name="$1"
+    local version
+
+    version="$(
+        apk list --installed --manifest "$package_name" 2>/dev/null |
+            awk -v pkg="$package_name" '$1 == pkg { print $2; exit }'
+    )"
+
+    if [ -z "$version" ]; then
+        version="$(
+            apk list --installed --manifest 2>/dev/null |
+                awk -v pkg="$package_name" '$1 == pkg { print $2; exit }'
+        )"
+    fi
+
+    if [ -n "$version" ]; then
+        echo "$version"
+        return 0
+    fi
+
+    apk info -v "$package_name" 2>/dev/null |
+        awk -v pkg="$package_name" '
+            NR == 1 {
+                prefix = pkg "-"
+                if (index($0, prefix) == 1) {
+                    version = substr($0, length(prefix) + 1)
+                    sub(/[[:space:]].*$/, "", version)
+                    print version
+                }
+                exit
+            }
+        '
+}
+
 # Checks if the given file exists
 file_exists() {
     local filepath="$1"

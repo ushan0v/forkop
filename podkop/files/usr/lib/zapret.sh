@@ -677,7 +677,7 @@ get_zapret_package_version() {
     local version=""
 
     if command -v apk >/dev/null 2>&1 && apk info -e zapret >/dev/null 2>&1; then
-        version="$(apk info -v zapret 2>/dev/null | awk 'NR == 1 { sub(/^zapret-/, "", $0); print; exit }')"
+        version="$(get_apk_installed_package_version "zapret")"
     elif command -v opkg >/dev/null 2>&1; then
         version="$(opkg list-installed 2>/dev/null | awk '$1 == "zapret" { print $3; exit }')"
     fi

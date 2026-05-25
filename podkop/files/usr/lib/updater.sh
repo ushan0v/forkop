@@ -584,7 +584,7 @@ updates_get_installed_package_version() {
 
     if updates_is_apk; then
         apk info -e "$package_name" >/dev/null 2>&1 || return 0
-        apk info -v "$package_name" 2>/dev/null | sed "s/^${package_name}-//" | sed -n '1p'
+        get_apk_installed_package_version "$package_name"
         return 0
     fi
 
