@@ -7681,7 +7681,7 @@ global_check() {
             print_global "Sing-box core: regular"
         fi
 
-        print_global "🕳️ Podkop Plus:   $podkop_version (latest: $podkop_latest_version)"
+        print_global "🕳️ Podkop Plus:   $podkop_version"
         print_global "🕳️ LuCI App:      $luci_app_version"
         print_global "📦 Sing-box:      $sing_box_version"
         if [ "$zapret_installed" -eq 1 ]; then
