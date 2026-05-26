@@ -2889,7 +2889,7 @@ validate_urltest_filter_mode_option() {
 
     [ -n "$value" ] || return 0
     case "$value" in
-    disabled | exclude | include)
+    disabled | exclude | include | mixed)
         return 0
         ;;
     esac
@@ -3115,13 +3115,14 @@ process_validate_rule() {
             urltest_check_interval="$(get_urltest_check_interval_for_rule "$section")"
             validate_required_sing_box_duration_option "$urltest_check_interval" "rule.$section.urltest_check_interval"
             case "$urltest_filter_mode" in
-            include)
+            include | mixed)
                 config_list_foreach "$section" "urltest_include_regex" validate_urltest_regex_option "$section"
                 config_list_foreach "$section" "urltest_include_countries" validate_country_code_option "$section"
                 ;;
-            exclude)
+            esac
+            case "$urltest_filter_mode" in
+            exclude | mixed)
                 config_list_foreach "$section" "urltest_exclude_countries" validate_country_code_option "$section"
-                config_list_foreach "$section" "urltest_exclude_outbounds" validate_outbound_name_option "$section"
                 config_list_foreach "$section" "urltest_exclude_regex" validate_urltest_regex_option "$section"
                 ;;
             esac
@@ -4923,14 +4924,107 @@ EOF
         printf '%s\n' "$cached_countries_json"
 }
 
+select_urltest_included_outbounds() {
+    local section="$1"
+    local tags_json="$2"
+    local names_json="$3"
+    local countries_json="$4"
+    local country_filter_enabled="$5"
+    local include_names_json include_regex_json include_regex_tags_json include_countries_json filtered_json
+
+    include_names_json="$(config_list_to_json "$section" "urltest_include_outbounds")"
+    include_regex_json="$(config_list_to_json "$section" "urltest_include_regex")"
+    include_regex_tags_json="$(get_urltest_regex_matching_tags_json "$tags_json" "$names_json" "$include_regex_json")"
+    [ -n "$include_regex_tags_json" ] || include_regex_tags_json="[]"
+    include_countries_json="[]"
+    if [ "$country_filter_enabled" -eq 1 ]; then
+        include_countries_json="$(config_list_to_json "$section" "urltest_include_countries" |
+            jq -c 'map(tostring | ascii_upcase | select(length == 2))' 2>/dev/null)"
+        [ -n "$include_countries_json" ] || include_countries_json="[]"
+    fi
+
+    filtered_json="$(jq -cn \
+        --argjson tags "$tags_json" \
+        --argjson names "$names_json" \
+        --argjson countries "$countries_json" \
+        --argjson include_names "$include_names_json" \
+        --argjson include_regex_tags "$include_regex_tags_json" \
+        --argjson include_countries "$include_countries_json" '
+        reduce ($tags // [])[] as $tag (
+            [];
+            ($names[$tag] // $tag) as $name
+            | (($countries[$tag] // "") | ascii_upcase) as $country
+            | if
+                (($include_names | index($name)) != null) or
+                (($include_names | index($tag)) != null) or
+                ($country != "" and (($include_countries | index($country)) != null)) or
+                (($include_regex_tags | index($tag)) != null)
+              then
+                . + [$tag]
+              else
+                .
+              end
+        )
+    ' 2>/dev/null)"
+
+    [ -n "$filtered_json" ] || filtered_json="[]"
+    printf '%s\n' "$filtered_json"
+}
+
+exclude_urltest_outbounds() {
+    local section="$1"
+    local tags_json="$2"
+    local names_json="$3"
+    local countries_json="$4"
+    local country_filter_enabled="$5"
+    local exclude_names_json exclude_regex_json exclude_regex_tags_json exclude_countries_json filtered_json
+
+    exclude_names_json="$(config_list_to_json "$section" "urltest_exclude_outbounds")"
+    exclude_regex_json="$(config_list_to_json "$section" "urltest_exclude_regex")"
+    exclude_regex_tags_json="$(get_urltest_regex_matching_tags_json "$tags_json" "$names_json" "$exclude_regex_json")"
+    [ -n "$exclude_regex_tags_json" ] || exclude_regex_tags_json="[]"
+    exclude_countries_json="[]"
+    if [ "$country_filter_enabled" -eq 1 ]; then
+        exclude_countries_json="$(config_list_to_json "$section" "urltest_exclude_countries" |
+            jq -c 'map(tostring | ascii_upcase | select(length == 2))' 2>/dev/null)"
+        [ -n "$exclude_countries_json" ] || exclude_countries_json="[]"
+    fi
+
+    filtered_json="$(jq -cn \
+        --argjson tags "$tags_json" \
+        --argjson names "$names_json" \
+        --argjson countries "$countries_json" \
+        --argjson exclude_names "$exclude_names_json" \
+        --argjson exclude_regex_tags "$exclude_regex_tags_json" \
+        --argjson exclude_countries "$exclude_countries_json" '
+        reduce ($tags // [])[] as $tag (
+            [];
+            ($names[$tag] // $tag) as $name
+            | (($countries[$tag] // "") | ascii_upcase) as $country
+            | if
+                (($exclude_names | index($name)) != null) or
+                (($exclude_names | index($tag)) != null) or
+                ($country != "" and (($exclude_countries | index($country)) != null)) or
+                (($exclude_regex_tags | index($tag)) != null)
+              then
+                .
+              else
+                . + [$tag]
+              end
+        )
+    ' 2>/dev/null)"
+
+    [ -n "$filtered_json" ] || filtered_json="[]"
+    printf '%s\n' "$filtered_json"
+}
+
 filter_urltest_outbounds() {
     local section="$1"
     local tags_json="$2"
     local names_json="$3"
     local countries_json="$4"
     local country_filter_enabled="$5"
-    local filter_mode exclude_names_json exclude_regex_json exclude_regex_tags_json exclude_countries_json \
-        include_names_json include_regex_json include_regex_tags_json filtered_json filtered_count original_count
+    local filter_mode filtered_json included_json filtered_count original_count
 
     config_get filter_mode "$section" "urltest_filter_mode" "disabled"
 
@@ -4940,76 +5034,15 @@ filter_urltest_outbounds() {
         return 0
         ;;
     include)
-        include_names_json="$(config_list_to_json "$section" "urltest_include_outbounds")"
-        include_regex_json="$(config_list_to_json "$section" "urltest_include_regex")"
-        include_regex_tags_json="$(get_urltest_regex_matching_tags_json "$tags_json" "$names_json" "$include_regex_json")"
-        [ -n "$include_regex_tags_json" ] || include_regex_tags_json="[]"
-        include_countries_json="[]"
-        if [ "$country_filter_enabled" -eq 1 ]; then
-            include_countries_json="$(config_list_to_json "$section" "urltest_include_countries" |
-                jq -c 'map(tostring | ascii_upcase | select(length == 2))' 2>/dev/null)"
-            [ -n "$include_countries_json" ] || include_countries_json="[]"
-        fi
-
-        filtered_json="$(jq -cn \
-            --argjson tags "$tags_json" \
-            --argjson names "$names_json" \
-            --argjson countries "$countries_json" \
-            --argjson include_names "$include_names_json" \
-            --argjson include_regex_tags "$include_regex_tags_json" \
-            --argjson include_countries "$include_countries_json" '
-            reduce ($tags // [])[] as $tag (
-                [];
-                ($names[$tag] // $tag) as $name
-                | (($countries[$tag] // "") | ascii_upcase) as $country
-                | if
-                    (($include_names | index($name)) != null) or
-                    (($include_names | index($tag)) != null) or
-                    ($country != "" and (($include_countries | index($country)) != null)) or
-                    (($include_regex_tags | index($tag)) != null)
-                  then
-                    . + [$tag]
-                  else
-                    .
-                  end
-            )
-        ' 2>/dev/null)"
+        filtered_json="$(select_urltest_included_outbounds "$section" "$tags_json" "$names_json" "$countries_json" "$country_filter_enabled")"
         ;;
     exclude)
-        exclude_names_json="$(config_list_to_json "$section" "urltest_exclude_outbounds")"
-        exclude_regex_json="$(config_list_to_json "$section" "urltest_exclude_regex")"
-        exclude_regex_tags_json="$(get_urltest_regex_matching_tags_json "$tags_json" "$names_json" "$exclude_regex_json")"
-        [ -n "$exclude_regex_tags_json" ] || exclude_regex_tags_json="[]"
-        exclude_countries_json="[]"
-        if [ "$country_filter_enabled" -eq 1 ]; then
-            exclude_countries_json="$(config_list_to_json "$section" "urltest_exclude_countries" |
-                jq -c 'map(tostring | ascii_upcase | select(length == 2))' 2>/dev/null)"
-            [ -n "$exclude_countries_json" ] || exclude_countries_json="[]"
-        fi
-
-        filtered_json="$(jq -cn \
-            --argjson tags "$tags_json" \
-            --argjson names "$names_json" \
-            --argjson countries "$countries_json" \
-            --argjson exclude_names "$exclude_names_json" \
-            --argjson exclude_regex_tags "$exclude_regex_tags_json" \
-            --argjson exclude_countries "$exclude_countries_json" '
-            reduce ($tags // [])[] as $tag (
-                [];
-                ($names[$tag] // $tag) as $name
-                | (($countries[$tag] // "") | ascii_upcase) as $country
-                | if
-                    (($exclude_names | index($name)) != null) or
-                    (($exclude_names | index($tag)) != null) or
-                    ($country != "" and (($exclude_countries | index($country)) != null)) or
-                    (($exclude_regex_tags | index($tag)) != null)
-                  then
-                    .
-                  else
-                    . + [$tag]
-                  end
-            )
-        ' 2>/dev/null)"
+        filtered_json="$(exclude_urltest_outbounds "$section" "$tags_json" "$names_json" "$countries_json" "$country_filter_enabled")"
+        ;;
+    mixed)
+        included_json="$(select_urltest_included_outbounds "$section" "$tags_json" "$names_json" "$countries_json" "$country_filter_enabled")"
+        [ -n "$included_json" ] || included_json="[]"
+        filtered_json="$(exclude_urltest_outbounds "$section" "$included_json" "$names_json" "$countries_json" "$country_filter_enabled")"
         ;;
     *)
         printf '%s\n' "$tags_json"
@@ -5024,6 +5057,8 @@ filter_urltest_outbounds() {
     if [ -z "$filtered_count" ] || [ "$filtered_count" -eq 0 ]; then
         if [ "$filter_mode" = "include" ]; then
             log "URLTest whitelist matched no outbounds for rule '$section'; URLTest will be disabled for this rule" "warn"
+        elif [ "$filter_mode" = "mixed" ]; then
+            log "URLTest mixed filters matched no outbounds for rule '$section'; URLTest will be disabled for this rule" "warn"
         else
             log "URLTest filters excluded all outbounds for rule '$section'; URLTest will be disabled for this rule" "warn"
         fi
@@ -5034,6 +5069,8 @@ filter_urltest_outbounds() {
     if [ -n "$original_count" ] && [ "$filtered_count" -lt "$original_count" ]; then
         if [ "$filter_mode" = "include" ]; then
             log "URLTest whitelist selected $filtered_count of $original_count outbound(s) for rule '$section'" "info"
+        elif [ "$filter_mode" = "mixed" ]; then
+            log "URLTest mixed filters selected $filtered_count of $original_count outbound(s) for rule '$section'" "info"
         else
             log "URLTest filters excluded $((original_count - filtered_count)) outbound(s) for rule '$section'" "info"
         fi

@@ -2771,72 +2771,17 @@ function createSectionContent(section) {
     "settings",
     form.ListValue,
     "urltest_filter_mode",
-    _("URLTest server filtering"),
+    _("Server filtering for URLTest"),
     _("Allows limiting the list of servers for URLTest"),
   );
-  o.value("disabled", _("Disabled"));
-  o.value("exclude", _("Blacklist"));
-  o.value("include", _("Whitelist"));
+  o.value("disabled", _("All servers"));
+  o.value("exclude", _("All except selected"));
+  o.value("include", _("Only selected"));
+  o.value("mixed", _("Only selected except exclusions"));
   o.default = "disabled";
   o.rmempty = false;
   o.depends({ action: "proxy", urltest_enabled: "1" });
   o.modalonly = true;
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_exclude_countries",
-    _("Exclude country from URLTest"),
-    _("Servers from selected countries will not be tested by URLTest"),
-  );
-  populateCountryOptionValues(o);
-  o.create = false;
-  o.rmempty = true;
-  o.depends({
-    action: "proxy",
-    detect_server_country: "1",
-    urltest_filter_mode: "exclude",
-    urltest_enabled: "1",
-  });
-  o.modalonly = true;
-  o.validate = validateCountryCode;
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_exclude_outbounds",
-    _("Exclude server from URLTest"),
-    _("Select a loaded server or enter an exact server name"),
-  );
-  o.placeholder = _("-- Select --");
-  o.rmempty = true;
-  o.depends({
-    action: "proxy",
-    urltest_enabled: "1",
-    urltest_filter_mode: "exclude",
-  });
-  o.modalonly = true;
-  o.renderWidget = function (section_id, _option_index, cfgvalue) {
-    return createOutboundNameDynamicListWidget(this, section_id, cfgvalue);
-  };
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_exclude_regex",
-    _("Exclude server by regular expression from URLTest"),
-    _(
-      "Servers with names matching these regular expressions will not be tested by URLTest",
-    ),
-  );
-  o.rmempty = true;
-  o.depends({
-    action: "proxy",
-    urltest_enabled: "1",
-    urltest_filter_mode: "exclude",
-  });
-  o.modalonly = true;
-  o.validate = validateRegex;
 
   o = section.taboption(
     "settings",
@@ -2852,6 +2797,12 @@ function createSectionContent(section) {
     action: "proxy",
     detect_server_country: "1",
     urltest_filter_mode: "include",
+    urltest_enabled: "1",
+  });
+  o.depends({
+    action: "proxy",
+    detect_server_country: "1",
+    urltest_filter_mode: "mixed",
     urltest_enabled: "1",
   });
   o.modalonly = true;
@@ -2873,6 +2824,11 @@ function createSectionContent(section) {
     urltest_enabled: "1",
     urltest_filter_mode: "include",
   });
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "mixed",
+  });
   o.modalonly = true;
   o.renderWidget = function (section_id, _option_index, cfgvalue) {
     return createOutboundNameDynamicListWidget(this, section_id, cfgvalue);
@@ -2892,6 +2848,83 @@ function createSectionContent(section) {
     action: "proxy",
     urltest_enabled: "1",
     urltest_filter_mode: "include",
+  });
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "mixed",
+  });
+  o.modalonly = true;
+  o.validate = validateRegex;
+
+  o = section.taboption(
+    "settings",
+    form.DynamicList,
+    "urltest_exclude_countries",
+    _("Exclude country from URLTest"),
+    _("Servers from selected countries will not be tested by URLTest"),
+  );
+  populateCountryOptionValues(o);
+  o.create = false;
+  o.rmempty = true;
+  o.depends({
+    action: "proxy",
+    detect_server_country: "1",
+    urltest_filter_mode: "exclude",
+    urltest_enabled: "1",
+  });
+  o.depends({
+    action: "proxy",
+    detect_server_country: "1",
+    urltest_filter_mode: "mixed",
+    urltest_enabled: "1",
+  });
+  o.modalonly = true;
+  o.validate = validateCountryCode;
+
+  o = section.taboption(
+    "settings",
+    form.DynamicList,
+    "urltest_exclude_outbounds",
+    _("Exclude server from URLTest"),
+    _("Select a loaded server or enter an exact server name"),
+  );
+  o.placeholder = _("-- Select --");
+  o.rmempty = true;
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "exclude",
+  });
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "mixed",
+  });
+  o.modalonly = true;
+  o.renderWidget = function (section_id, _option_index, cfgvalue) {
+    return createOutboundNameDynamicListWidget(this, section_id, cfgvalue);
+  };
+
+  o = section.taboption(
+    "settings",
+    form.DynamicList,
+    "urltest_exclude_regex",
+    _("Exclude server by regular expression from URLTest"),
+    _(
+      "Servers with names matching these regular expressions will not be tested by URLTest",
+    ),
+  );
+  o.rmempty = true;
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "exclude",
+  });
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "mixed",
   });
   o.modalonly = true;
   o.validate = validateRegex;
