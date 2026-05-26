@@ -67,6 +67,8 @@ PODKOP_SYSTEM_INFO_CACHE_TTL=3600
 PODKOP_NFT_POPULATE_ENABLED=1
 PODKOP_ZAPRET_MISSING_WARNING_EMITTED=0
 PODKOP_BYEDPI_MISSING_WARNING_EMITTED=0
+PODKOP_URLTEST_NEW_ENABLED_SECTIONS=""
+PODKOP_URLTEST_SELECTOR_SWITCHES=""
 
 config_load "$PODKOP_CONFIG_NAME"
 
@@ -903,6 +905,17 @@ read_reload_state_value() {
     awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1); exit }' "$PODKOP_RELOAD_STATE_FILE"
 }
 
+reload_state_has_key() {
+    local key="$1"
+
+    [ -f "$PODKOP_RELOAD_STATE_FILE" ] || return 1
+
+    awk -F= -v key="$key" '
+        $1 == key { found = 1 }
+        END { exit found ? 0 : 1 }
+    ' "$PODKOP_RELOAD_STATE_FILE"
+}
+
 reload_state_is_compatible() {
     [ "$(read_reload_state_value "format")" = "$PODKOP_RELOAD_STATE_FORMAT" ]
 }
@@ -1485,6 +1498,52 @@ get_remote_ruleset_update_interval() {
 
 }
 
+append_urltest_enabled_section() {
+    local section="$1"
+    local action enabled
+
+    rule_is_enabled "$section" || return 0
+
+    action="$(get_rule_action "$section")"
+    [ "$action" = "proxy" ] || return 0
+
+    config_get_bool enabled "$section" "urltest_enabled" 0
+    [ "$enabled" -eq 1 ] || return 0
+
+    RELOAD_STATE_URLTEST_ENABLED_SECTIONS="${RELOAD_STATE_URLTEST_ENABLED_SECTIONS}${RELOAD_STATE_URLTEST_ENABLED_SECTIONS:+ }$section"
+}
+
+build_urltest_enabled_sections() {
+    RELOAD_STATE_URLTEST_ENABLED_SECTIONS=""
+    config_foreach append_urltest_enabled_section "section"
+    printf '%s\n' "$RELOAD_STATE_URLTEST_ENABLED_SECTIONS"
+}
+
+list_has_word() {
+    local list="$1"
+    local value="$2"
+
+    case " $list " in
+    *" $value "*) return 0 ;;
+    esac
+
+    return 1
+}
+
+build_new_urltest_enabled_sections() {
+    local previous_sections="$1"
+    local current_sections="$2"
+    local section new_sections
+
+    new_sections=""
+    for section in $current_sections; do
+        list_has_word "$previous_sections" "$section" && continue
+        new_sections="${new_sections}${new_sections:+ }$section"
+    done
+
+    printf '%s\n' "$new_sections"
+}
+
 capture_reload_state() {
     config_load "$PODKOP_CONFIG_NAME"
     RELOAD_STATE_SERVICE_TRIGGER_SIGNATURE="$(build_service_trigger_signature)"
@@ -1496,6 +1555,7 @@ capture_reload_state() {
     RELOAD_STATE_BYEDPI_RUNTIME_SIGNATURE="$(build_byedpi_runtime_signature)"
     RELOAD_STATE_LIST_SIGNATURE="$(build_list_update_signature)"
     RELOAD_STATE_CRON_SIGNATURE="$(build_cron_signature)"
+    RELOAD_STATE_URLTEST_ENABLED_SECTIONS="$(build_urltest_enabled_sections)"
     config_get_bool RELOAD_STATE_DONT_TOUCH_DHCP "settings" "dont_touch_dhcp" 0
 }
 
@@ -1512,6 +1572,7 @@ zapret_runtime_signature=$RELOAD_STATE_ZAPRET_RUNTIME_SIGNATURE
 byedpi_runtime_signature=$RELOAD_STATE_BYEDPI_RUNTIME_SIGNATURE
 list_signature=$RELOAD_STATE_LIST_SIGNATURE
 cron_signature=$RELOAD_STATE_CRON_SIGNATURE
+urltest_enabled_sections=$RELOAD_STATE_URLTEST_ENABLED_SECTIONS
 dont_touch_dhcp=$RELOAD_STATE_DONT_TOUCH_DHCP
 EOF
 }
@@ -1647,6 +1708,46 @@ reload_sing_box_runtime() {
         log "Failed to reload sing-box. Aborted." "fatal"
         exit 1
     fi
+}
+
+schedule_urltest_selector_switch() {
+    local selector_tag="$1"
+    local urltest_tag="$2"
+
+    PODKOP_URLTEST_SELECTOR_SWITCHES="${PODKOP_URLTEST_SELECTOR_SWITCHES}${selector_tag} ${urltest_tag}
+"
+}
+
+apply_urltest_selector_switch() {
+    local selector_tag="$1"
+    local urltest_tag="$2"
+    local attempt response
+
+    attempt=1
+    while [ "$attempt" -le 10 ]; do
+        response="$(clash_api set_group_proxy "$selector_tag" "$urltest_tag" 2>/dev/null || true)"
+        if printf '%s' "$response" | jq -e '.success == true' >/dev/null 2>&1; then
+            log "Selected URLTest outbound '$urltest_tag' for selector '$selector_tag'"
+            return 0
+        fi
+
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+
+    log "Failed to select URLTest outbound '$urltest_tag' for selector '$selector_tag'" "warn"
+}
+
+apply_pending_urltest_selector_switches() {
+    local selector_tag urltest_tag
+
+    [ -n "$PODKOP_URLTEST_SELECTOR_SWITCHES" ] || return 0
+
+    printf '%s' "$PODKOP_URLTEST_SELECTOR_SWITCHES" | while read -r selector_tag urltest_tag; do
+        [ -n "$selector_tag" ] || continue
+        [ -n "$urltest_tag" ] || continue
+        apply_urltest_selector_switch "$selector_tag" "$urltest_tag"
+    done
 }
 
 get_rule_action() {
@@ -2264,6 +2365,7 @@ start_main() {
     refresh_list_update_cron
     start_byedpi_runtime
     /etc/init.d/sing-box start
+    apply_pending_urltest_selector_switches
     start_zapret_runtime
 
     (close_inherited_service_lock_fd; list_update) &
@@ -2382,7 +2484,7 @@ reload() {
     local force_runtime_reload=0
     local previous_service_trigger_signature previous_dnsmasq_signature previous_sing_box_signature previous_nft_signature
     local previous_zapret_queue_signature previous_zapret_runtime_signature previous_byedpi_runtime_signature previous_list_signature previous_cron_signature
-    local previous_dont_touch_dhcp needs_sing_box_reload needs_nft_rebuild needs_zapret_restart needs_byedpi_restart
+    local previous_urltest_enabled_sections previous_urltest_enabled_sections_known previous_dont_touch_dhcp needs_sing_box_reload needs_nft_rebuild needs_zapret_restart needs_byedpi_restart
     local needs_dnsmasq_configure needs_dnsmasq_restore needs_cron_refresh needs_list_update
     local changed_service_triggers changed_dnsmasq changed_sing_box changed_nft changed_zapret_queue changed_zapret_runtime changed_byedpi_runtime changed_cron changed_list
 
@@ -2422,8 +2524,22 @@ reload() {
     previous_byedpi_runtime_signature="$(read_reload_state_value "byedpi_runtime_signature")"
     previous_list_signature="$(read_reload_state_value "list_signature")"
     previous_cron_signature="$(read_reload_state_value "cron_signature")"
+    previous_urltest_enabled_sections_known=0
+    if reload_state_has_key "urltest_enabled_sections"; then
+        previous_urltest_enabled_sections_known=1
+        previous_urltest_enabled_sections="$(read_reload_state_value "urltest_enabled_sections")"
+    else
+        previous_urltest_enabled_sections=""
+    fi
     previous_dont_touch_dhcp="$(read_reload_state_value "dont_touch_dhcp")"
     capture_reload_state
+    if [ "$previous_urltest_enabled_sections_known" -eq 1 ]; then
+        PODKOP_URLTEST_NEW_ENABLED_SECTIONS="$(
+            build_new_urltest_enabled_sections "$previous_urltest_enabled_sections" "$RELOAD_STATE_URLTEST_ENABLED_SECTIONS"
+        )"
+    else
+        PODKOP_URLTEST_NEW_ENABLED_SECTIONS=""
+    fi
 
     needs_sing_box_reload=0
     needs_nft_rebuild=0
@@ -2547,6 +2663,7 @@ reload() {
         sing_box_init_config
         PODKOP_NFT_POPULATE_ENABLED=1
         reload_sing_box_runtime
+        apply_pending_urltest_selector_switches
     elif [ "$needs_nft_rebuild" -eq 1 ]; then
         populate_nft_runtime_sets
     fi
@@ -4340,6 +4457,7 @@ sing_box_configure_service() {
 sing_box_init_config() {
     local config='{"log":{},"dns":{},"ntp":{},"certificate":{},"endpoints":[],"inbounds":[],"outbounds":[],"route":{},"services":[],"experimental":{}}'
 
+    PODKOP_URLTEST_SELECTOR_SWITCHES=""
     configured_rulesets=""
     sing_box_configure_log
     sing_box_configure_inbounds
@@ -5203,6 +5321,9 @@ configure_outbound_handler() {
 
                 config="$(sing_box_cm_add_urltest_outbound "$config" "$urltest_tag" "$urltest_outbounds" \
                     "$urltest_testing_url" "$urltest_check_interval" "$urltest_tolerance" "$urltest_idle_timeout")"
+                if list_has_word "$PODKOP_URLTEST_NEW_ENABLED_SECTIONS" "$section"; then
+                    schedule_urltest_selector_switch "$selector_tag" "$urltest_tag"
+                fi
                 config="$(sing_box_cm_add_selector_outbound "$config" "$selector_tag" "$selector_outbounds" "$urltest_tag" "true")"
             else
                 selector_default="$(printf '%s' "$PROXY_GROUP_OUTBOUND_TAGS_JSON" | jq -r '.[0] // empty' 2>/dev/null)"
