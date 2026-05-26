@@ -6774,30 +6774,19 @@ show_sing_box_version() {
 }
 
 fetch_latest_podkop_version() {
-    local releases_file tag best_tag
+    local owner repo response tag
 
-    command -v curl >/dev/null 2>&1 || return 1
+    owner="${PODKOP_RELEASE_REPO%%/*}"
+    repo="${PODKOP_RELEASE_REPO#*/}"
+    [ -n "$owner" ] || return 1
+    [ -n "$repo" ] || return 1
+    [ "$owner" != "$repo" ] || return 1
 
-    releases_file="$(mktemp)"
-    if curl --connect-timeout 2 -m 5 -fsSL "https://api.github.com/repos/$PODKOP_RELEASE_REPO/releases?per_page=50" > "$releases_file" 2>/dev/null; then
-        best_tag=""
-        for tag in $(json_utils_ucode github-release-tags "$releases_file" 2>/dev/null); do
-            is_podkop_release_version "$tag" || continue
+    response="$(updates_fetch_github_release_json "$owner" "$repo")" || return 1
+    tag="$(printf '%s' "$response" | json_utils_ucode object-get-default tag_name "" 2>/dev/null)"
 
-            if [ -z "$best_tag" ] || [ "$(podkop_release_version_compare "$best_tag" "$tag" 2>/dev/null)" -lt 0 ]; then
-                best_tag="$tag"
-            fi
-        done
-
-        rm -f "$releases_file"
-        [ -n "$best_tag" ] && echo "$best_tag"
-        return 0
-    fi
-    rm -f "$releases_file"
-
-    curl --connect-timeout 2 -m 5 -fsSL "https://api.github.com/repos/$PODKOP_RELEASE_REPO/releases/latest" 2>/dev/null |
-        sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' |
-        head -n 1
+    [ -n "$tag" ] || return 1
+    echo "$tag"
 }
 
 normalize_podkop_release_version() {

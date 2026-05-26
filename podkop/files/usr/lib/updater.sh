@@ -951,7 +951,7 @@ updates_select_release_asset_url() {
 
 updates_resolve_podkop_plus_release() {
     local latest_version="$1"
-    local owner repo asset_ext response release_json
+    local owner repo asset_ext release_json release_tag
 
     UPDATES_PODKOP_BACKEND_URL=""
     UPDATES_PODKOP_BACKEND_NAME=""
@@ -969,9 +969,10 @@ updates_resolve_podkop_plus_release() {
     asset_ext="ipk"
     updates_is_apk && asset_ext="apk"
 
-    response="$(updates_fetch_github_releases_json "$owner" "$repo" 50)" || return 1
-    release_json="$(printf '%s' "$response" | json_utils_ucode release-by-tag "$latest_version" | sed -n '1p')"
+    release_json="$(updates_fetch_github_release_json "$owner" "$repo")" || return 1
     [ -n "$release_json" ] || return 1
+    release_tag="$(printf '%s' "$release_json" | json_utils_ucode object-get-default tag_name "" 2>/dev/null)"
+    [ "$release_tag" = "$latest_version" ] || return 1
 
     UPDATES_PODKOP_BACKEND_NAME="$(updates_select_release_asset_name "$release_json" "podkop-plus" "$asset_ext")"
     UPDATES_PODKOP_APP_NAME="$(updates_select_release_asset_name "$release_json" "luci-app-podkop-plus" "$asset_ext")"

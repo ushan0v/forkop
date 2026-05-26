@@ -144,15 +144,6 @@ function read_stdin() {
     return data == null ? "" : data;
 }
 
-function read_json_file(path) {
-    try {
-        return json(fs.readfile(path));
-    }
-    catch (e) {
-        return null;
-    }
-}
-
 function read_stdin_json() {
     try {
         return json(read_stdin());
@@ -188,44 +179,12 @@ function asset_matches(name, kind, ext) {
     return false;
 }
 
-function release_has_asset(release, kind, ext) {
-    if (type(release) != "object" || type(release.assets) != "array")
-        return false;
-    for (let asset in release.assets)
-        if (type(asset) == "object" && asset_matches(asset.name, kind, ext))
-            return true;
-    return false;
-}
-
 function github_message() {
     let value = read_stdin_json();
     if (value == null)
         exit(2);
     if (type(value) == "object" && value.message != null)
         print(as_string(value.message), "\n");
-}
-
-function release_tags(path, ext) {
-    for (let release in (read_json_file(path) || [])) {
-        if (type(release) != "object")
-            continue;
-        if (release.draft === true || release.prerelease === true)
-            continue;
-        if (!release_has_asset(release, "backend", ext) || !release_has_asset(release, "app", ext))
-            continue;
-        let tag = as_string(release.tag_name || "");
-        if (tag != "")
-            print(tag, "\n");
-    }
-}
-
-function release_by_tag(path, tag) {
-    for (let release in (read_json_file(path) || [])) {
-        if (type(release) == "object" && as_string(release.tag_name || "") == tag) {
-            print(sprintf("%J", release), "\n");
-            return;
-        }
-    }
 }
 
 function release_tag() {
@@ -250,10 +209,6 @@ let mode = ARGV[0] || "";
 
 if (mode == "github-message")
     github_message();
-else if (mode == "release-tags")
-    release_tags(ARGV[1], ARGV[2]);
-else if (mode == "release-by-tag")
-    release_by_tag(ARGV[1], ARGV[2]);
 else if (mode == "release-tag")
     release_tag();
 else if (mode == "release-asset-url")
@@ -519,66 +474,6 @@ version_ge() {
     [ "$lhs_patch" -ge "$rhs_patch" ]
 }
 
-normalize_podkop_plus_release_version() {
-    printf '%s\n' "$1" | sed 's/^v//;s/-r\([0-9][0-9]*\)$/-\1/'
-}
-
-podkop_plus_release_version_parts() {
-    version="$(normalize_podkop_plus_release_version "$1")"
-    release=0
-
-    case "$version" in
-        *-*)
-            release="${version##*-}"
-            version="${version%-*}"
-            ;;
-        *.*.*.*)
-            release="${version##*.}"
-            version="${version%.*}"
-            ;;
-    esac
-
-    case "$version" in ''|*[!0-9.]*|.*|*.) return 1 ;; esac
-    case "$release" in ''|*[!0-9]*) return 1 ;; esac
-
-    old_ifs="$IFS"
-    IFS='.'
-    set -- $version
-    IFS="$old_ifs"
-
-    [ -n "$1" ] || return 1
-    case "$1" in *[!0-9]*) return 1 ;; esac
-    case "${2:-0}" in *[!0-9]*) return 1 ;; esac
-    case "${3:-0}" in *[!0-9]*) return 1 ;; esac
-
-    printf '%s %s %s %s\n' "$1" "${2:-0}" "${3:-0}" "$release"
-}
-
-podkop_plus_release_version_lt() {
-    lhs_parts="$(podkop_plus_release_version_parts "$1")" || return 1
-    rhs_parts="$(podkop_plus_release_version_parts "$2")" || return 1
-
-    set -- $lhs_parts
-    lhs_major="$1"
-    lhs_minor="$2"
-    lhs_patch="$3"
-    lhs_release="$4"
-
-    set -- $rhs_parts
-    rhs_major="$1"
-    rhs_minor="$2"
-    rhs_patch="$3"
-    rhs_release="$4"
-
-    [ "$lhs_major" -lt "$rhs_major" ] && return 0
-    [ "$lhs_major" -gt "$rhs_major" ] && return 1
-    [ "$lhs_minor" -lt "$rhs_minor" ] && return 0
-    [ "$lhs_minor" -gt "$rhs_minor" ] && return 1
-    [ "$lhs_patch" -lt "$rhs_patch" ] && return 0
-    [ "$lhs_patch" -gt "$rhs_patch" ] && return 1
-    [ "$lhs_release" -lt "$rhs_release" ]
-}
-
 extract_package_version() {
     package_name="$1"
 
@@ -625,52 +520,28 @@ extract_package_version() {
     esac
 }
 
-fetch_github_releases_json() {
+fetch_github_latest_release_json() {
     owner="$1"
     repo="$2"
     response=""
     message=""
-    url="https://api.github.com/repos/${owner}/${repo}/releases?per_page=50"
+    url="https://api.github.com/repos/${owner}/${repo}/releases/latest"
 
     response="$(http_get "$url" 2>/dev/null || true)"
-    [ -n "$response" ] || fail "Failed to query GitHub releases metadata for ${owner}/${repo}"
+    [ -n "$response" ] || fail "Failed to query GitHub latest release metadata for ${owner}/${repo}"
 
     message="$(printf '%s' "$response" | install_json_ucode github-message 2>/dev/null)" ||
-        fail "GitHub returned an invalid response for ${owner}/${repo}"
+        fail "GitHub returned an invalid latest release response for ${owner}/${repo}"
     case "$message" in
         *"API rate limit"*|*"rate limit exceeded"*)
             fail "GitHub API rate limit reached. Try again later."
             ;;
         "Not Found")
-            fail "No published releases found for ${owner}/${repo}"
+            fail "No published latest release found for ${owner}/${repo}"
             ;;
     esac
 
     printf '%s' "$response"
-}
-
-select_latest_podkop_plus_release_json() {
-    asset_ext="$1"
-    releases_file=""
-    best_tag=""
-    tag=""
-
-    releases_file="$(mktemp)"
-    cat > "$releases_file"
-
-    for tag in $(install_json_ucode release-tags "$releases_file" "$asset_ext"); do
-        podkop_plus_release_version_parts "$tag" >/dev/null 2>&1 || continue
-
-        if [ -z "$best_tag" ] || podkop_plus_release_version_lt "$best_tag" "$tag"; then
-            best_tag="$tag"
-        fi
-    done
-
-    if [ -n "$best_tag" ]; then
-        install_json_ucode release-by-tag "$releases_file" "$best_tag" | sed -n '1p'
-    fi
-
-    rm -f "$releases_file"
 }
 
 resolve_podkop_plus_release() {
@@ -678,7 +549,7 @@ resolve_podkop_plus_release() {
 
     [ "$PKG_IS_APK" -eq 1 ] && asset_ext="apk"
 
-    PODKOP_PLUS_RELEASE_JSON="$(fetch_github_releases_json "$REPO_OWNER" "$REPO_NAME" | select_latest_podkop_plus_release_json "$asset_ext")"
+    PODKOP_PLUS_RELEASE_JSON="$(fetch_github_latest_release_json "$REPO_OWNER" "$REPO_NAME")"
     PODKOP_PLUS_RELEASE_TAG="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | install_json_ucode release-tag 2>/dev/null)"
     [ -n "$PODKOP_PLUS_RELEASE_TAG" ] || fail "Failed to detect the Podkop Plus release tag"
 
