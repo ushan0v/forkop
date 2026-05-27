@@ -1317,6 +1317,32 @@ function analyzeIpCidrText(value) {
   );
 }
 
+function validatePortCondition(_section_id, value) {
+  const normalized = value ? `${value}`.trim() : "";
+
+  if (!normalized.length) {
+    return true;
+  }
+
+  const match = normalized.match(/^(\d+)(?:-(\d+))?$/);
+  if (!match) {
+    return _("Invalid port or range. Use 80 or 1000-2000");
+  }
+
+  const start = Number.parseInt(match[1], 10);
+  const end = match[2] ? Number.parseInt(match[2], 10) : start;
+
+  if (start < 1 || start > 65535 || end < 1 || end > 65535) {
+    return _("Port must be between 1 and 65535");
+  }
+
+  if (start > end) {
+    return _("Port range start must be less than or equal to end");
+  }
+
+  return true;
+}
+
 function getNfqwsOptionArgumentMode(option) {
   if (NFQWS_REQUIRED_ARG_OPTIONS.has(option)) {
     return "required";
@@ -2236,6 +2262,9 @@ function addDynamicConditionField(section, config) {
   );
 
   o.modalonly = true;
+  if (config.placeholder) {
+    o.placeholder = config.placeholder;
+  }
   if (config.dynamicValidate) {
     o.validate = config.dynamicValidate;
   }
@@ -3424,6 +3453,13 @@ function createSectionContent(section) {
   domainIpListsOption.validate = function (_section_id, value) {
     return validatePlainListReference(value);
   };
+
+  addDynamicConditionField(section, {
+    key: "ports",
+    label: _("Ports"),
+    description: _("Match destination ports. Use a single port or a range"),
+    dynamicValidate: validatePortCondition,
+  });
 }
 
 const EntryPoint = {

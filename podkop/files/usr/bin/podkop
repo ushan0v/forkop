@@ -978,7 +978,7 @@ build_dnsmasq_signature() {
 append_sing_box_rule_signature() {
     local section="$1"
     local action domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr fully_routed_ips \
-        community_lists rule_set rule_set_with_subnets domain_ip_lists mixed_proxy_enabled mixed_proxy_port \
+        ports community_lists rule_set rule_set_with_subnets domain_ip_lists mixed_proxy_enabled mixed_proxy_port \
         mixed_proxy_auth_enabled mixed_proxy_username mixed_proxy_password resolve_real_ip_for_routing
 
     rule_is_enabled "$section" || return 0
@@ -1148,6 +1148,7 @@ append_sing_box_rule_signature() {
     domain_regex="$(get_rule_condition_commas_string "$section" "domain_regex" "generic")"
     ip_cidr="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
     source_ip_cidr="$(get_rule_condition_commas_string "$section" "source_ip_cidr" "subnets")"
+    ports="$(get_rule_ports_commas_string "$section")"
     config_get fully_routed_ips "$section" "fully_routed_ips"
     config_get community_lists "$section" "community_lists"
     config_get rule_set "$section" "rule_set"
@@ -1160,6 +1161,7 @@ append_sing_box_rule_signature() {
     signature_add "rule.$section.domain_regex" "$domain_regex"
     signature_add "rule.$section.ip_cidr" "$ip_cidr"
     signature_add "rule.$section.source_ip_cidr" "$source_ip_cidr"
+    signature_add "rule.$section.ports" "$ports"
     signature_add "rule.$section.fully_routed_ips" "$fully_routed_ips"
     signature_add "rule.$section.community_lists" "$community_lists"
     signature_add "rule.$section.rule_set" "$rule_set"
@@ -1226,20 +1228,24 @@ build_sing_box_signature() {
 
 append_nft_rule_signature() {
     local section="$1"
-    local ip_cidr community_lists community_subnet_lists remote_subnet_lists rule_set_with_subnets
+    local ip_cidr ports community_lists community_subnet_lists remote_subnet_lists rule_set_with_subnets domain_ip_lists
 
     rule_is_enabled "$section" || return 0
 
     ip_cidr="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
+    ports="$(get_rule_ports_commas_string "$section")"
     config_get community_lists "$section" "community_lists"
     community_subnet_lists="$(filter_community_subnet_lists "$community_lists")"
     config_get remote_subnet_lists "$section" "remote_subnet_lists"
     config_get rule_set_with_subnets "$section" "rule_set_with_subnets"
+    config_get domain_ip_lists "$section" "domain_ip_lists"
 
     signature_add "rule.$section.ip_cidr" "$ip_cidr"
+    signature_add "rule.$section.ports" "$ports"
     signature_add "rule.$section.community_subnet_lists" "$community_subnet_lists"
     signature_add "rule.$section.remote_subnet_lists" "$remote_subnet_lists"
     signature_add "rule.$section.rule_set_with_subnets" "$rule_set_with_subnets"
+    signature_add "rule.$section.domain_ip_lists" "$domain_ip_lists"
 }
 
 build_nft_signature() {
@@ -1331,10 +1337,11 @@ build_byedpi_runtime_signature() {
 
 append_list_update_signature() {
     local section="$1"
-    local community_lists community_subnet_lists remote_domain_lists remote_subnet_lists rule_set_with_subnets domain_ip_lists
+    local ports community_lists community_subnet_lists remote_domain_lists remote_subnet_lists rule_set_with_subnets domain_ip_lists
 
     rule_is_enabled "$section" || return 0
 
+    ports="$(get_rule_ports_commas_string "$section")"
     config_get community_lists "$section" "community_lists"
     community_subnet_lists="$(filter_community_subnet_lists "$community_lists")"
     config_get remote_domain_lists "$section" "remote_domain_lists"
@@ -1342,6 +1349,7 @@ append_list_update_signature() {
     config_get rule_set_with_subnets "$section" "rule_set_with_subnets"
     config_get domain_ip_lists "$section" "domain_ip_lists"
 
+    signature_add "lists.$section.ports" "$ports"
     signature_add "lists.$section.community_subnet_lists" "$community_subnet_lists"
     signature_add "lists.$section.remote_domain_lists" "$remote_domain_lists"
     signature_add "lists.$section.remote_subnet_lists" "$remote_subnet_lists"
@@ -1700,7 +1708,8 @@ populate_nft_runtime_sets_from_rule() {
     rule_is_enabled "$section" || return 0
 
     ip_values="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
-    [ -n "$ip_values" ] && nft_add_set_elements "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME" "$ip_values"
+    add_section_ip_cidr_to_nft_sets "$section" "$ip_values"
+    add_section_ports_to_nft_set_if_needed "$section"
 }
 
 populate_nft_runtime_sets() {
@@ -3092,6 +3101,16 @@ validate_outbound_json_rule() {
     fi
 }
 
+validate_port_condition() {
+    local value="$1"
+    local section="$2"
+
+    if ! is_port_condition "$value"; then
+        log "Invalid port condition '$value' in rule '$section'. Use a single port or range like 80 or 1000-2000. Aborted." "fatal"
+        exit 1
+    fi
+}
+
 process_validate_rule() {
     local section="$1"
     local action urltest_check_interval subscription_update_interval
@@ -3103,6 +3122,8 @@ process_validate_rule() {
         log "Enabled rule '$section' has no action. Aborted." "fatal"
         exit 1
     fi
+
+    config_list_foreach "$section" "ports" validate_port_condition "$section"
 
     if [ "$action" = "zapret" ]; then
         if ! is_zapret_installed; then
@@ -3241,6 +3262,149 @@ get_rule_condition_json_array() {
 
     values="$(get_rule_condition_commas_string "$section" "$key" "$kind")"
     comma_string_to_json_array "$values"
+}
+
+append_comma_value() {
+    local current="$1"
+    local value="$2"
+
+    if [ -z "$current" ]; then
+        printf '%s\n' "$value"
+    else
+        printf '%s,%s\n' "$current" "$value"
+    fi
+}
+
+comma_string_has_value() {
+    local values="$1"
+    local value="$2"
+
+    case ",$values," in
+    *",$value,"*) return 0 ;;
+    esac
+
+    return 1
+}
+
+get_rule_ports_commas_string() {
+    local section="$1"
+    local values text_value item normalized result
+
+    config_get values "$section" "ports"
+
+    for item in $values; do
+        normalized="$(normalize_port_condition_for_nft "$item" 2> /dev/null)" || continue
+        comma_string_has_value "$result" "$normalized" && continue
+        result="$(append_comma_value "$result" "$normalized")"
+    done
+
+    config_get text_value "$section" "ports_text"
+    if [ -n "$text_value" ]; then
+        for item in $(printf "%s\n" "$text_value" | sed -e 's/[[:space:]]*\/\/.*$//' -e 's/[[:space:]]*#.*$//' | tr ', ' '\n' | grep -v '^$'); do
+            normalized="$(normalize_port_condition_for_nft "$item" 2> /dev/null)" || continue
+            comma_string_has_value "$result" "$normalized" && continue
+            result="$(append_comma_value "$result" "$normalized")"
+        done
+    fi
+
+    printf '%s\n' "$result"
+}
+
+get_rule_port_values_json_array() {
+    local section="$1"
+    local ports item normalized result
+
+    ports="$(get_rule_ports_commas_string "$section")"
+
+    for item in $(printf '%s\n' "$ports" | tr ',' ' '); do
+        case "$item" in
+        *-*) continue ;;
+        esac
+
+        normalized="$(normalize_port_number "$item" 2> /dev/null)" || continue
+        result="$(append_comma_value "$result" "$normalized")"
+    done
+
+    port_numbers_to_json_array "$result"
+}
+
+get_rule_port_ranges_json_array() {
+    local section="$1"
+    local ports item normalized result
+
+    ports="$(get_rule_ports_commas_string "$section")"
+
+    for item in $(printf '%s\n' "$ports" | tr ',' ' '); do
+        case "$item" in
+        *-*) ;;
+        *) continue ;;
+        esac
+
+        normalized="$(normalize_port_range_for_sing_box "$item" 2> /dev/null)" || continue
+        result="$(append_comma_value "$result" "$normalized")"
+    done
+
+    comma_string_to_json_array "$result"
+}
+
+section_has_destination_matchers() {
+    local section="$1"
+    local domain domain_suffix domain_keyword domain_regex ip_cidr community_lists rule_set rule_set_with_subnets domain_ip_lists
+
+    domain="$(get_rule_condition_commas_string "$section" "domain" "domains")"
+    domain_suffix="$(get_rule_condition_commas_string "$section" "domain_suffix" "domains")"
+    domain_keyword="$(get_rule_condition_commas_string "$section" "domain_keyword" "generic")"
+    domain_regex="$(get_rule_condition_commas_string "$section" "domain_regex" "generic")"
+    ip_cidr="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
+    config_get community_lists "$section" "community_lists"
+    config_get rule_set "$section" "rule_set"
+    config_get rule_set_with_subnets "$section" "rule_set_with_subnets"
+    config_get domain_ip_lists "$section" "domain_ip_lists"
+
+    [ -n "$domain" ] ||
+        [ -n "$domain_suffix" ] ||
+        [ -n "$domain_keyword" ] ||
+        [ -n "$domain_regex" ] ||
+        [ -n "$ip_cidr" ] ||
+        [ -n "$community_lists" ] ||
+        [ -n "$rule_set" ] ||
+        [ -n "$rule_set_with_subnets" ] ||
+        [ -n "$domain_ip_lists" ]
+}
+
+add_section_ip_cidr_to_nft_sets() {
+    local section="$1"
+    local ip_values="$2"
+    local ports
+
+    [ -n "$ip_values" ] || return 0
+
+    ports="$(get_rule_ports_commas_string "$section")"
+    if [ -n "$ports" ]; then
+        local tmpfile status
+        tmpfile="$(mktemp)"
+        printf '%s\n' "$ip_values" | tr ',' '\n' > "$tmpfile"
+        nft_add_ip_port_set_elements_from_ip_file_chunked "$tmpfile" "$NFT_TABLE_NAME" "$NFT_IP_PORT_SET_NAME" "$ports"
+        status=$?
+        rm -f "$tmpfile"
+        return "$status"
+    else
+        nft_add_set_elements "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME" "$ip_values"
+    fi
+}
+
+add_section_ports_to_nft_set_if_needed() {
+    local section="$1"
+    local ports
+
+    ports="$(get_rule_ports_commas_string "$section")"
+    [ -n "$ports" ] || return 0
+
+    if section_has_destination_matchers "$section"; then
+        return 0
+    fi
+
+    nft_add_set_elements "$NFT_TABLE_NAME" "$NFT_PORT_SET_NAME" "$ports"
 }
 
 ruleset_registered() {
@@ -3436,6 +3600,12 @@ create_nft_rules() {
     log "Create common set"
     nft_create_ipv4_set "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"
 
+    log "Create port set"
+    nft_create_inet_service_set "$NFT_TABLE_NAME" "$NFT_PORT_SET_NAME"
+
+    log "Create IP and port set"
+    nft_create_ipv4_port_set "$NFT_TABLE_NAME" "$NFT_IP_PORT_SET_NAME"
+
     log "Create interface set"
     nft_init_interfaces_set
 
@@ -3446,6 +3616,10 @@ create_nft_rules() {
 
     nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr "@$NFT_COMMON_SET_NAME" meta l4proto tcp meta mark set "$NFT_FAKEIP_MARK" counter
     nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr "@$NFT_COMMON_SET_NAME" meta l4proto udp meta mark set "$NFT_FAKEIP_MARK" counter
+    nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr . tcp dport "@$NFT_IP_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter
+    nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr . udp dport "@$NFT_IP_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter
+    nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr != "@$NFT_LOCALV4_SET_NAME" tcp dport "@$NFT_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter
+    nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr != "@$NFT_LOCALV4_SET_NAME" udp dport "@$NFT_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter
     nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr "$SB_FAKEIP_INET4_RANGE" meta l4proto tcp meta mark set "$NFT_FAKEIP_MARK" counter
     nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr "$SB_FAKEIP_INET4_RANGE" meta l4proto udp meta mark set "$NFT_FAKEIP_MARK" counter
 
@@ -3457,6 +3631,10 @@ create_nft_rules() {
     create_zapret_nft_rules
     nft add rule inet "$NFT_TABLE_NAME" mangle_output ip daddr "@$NFT_COMMON_SET_NAME" meta l4proto tcp meta mark set "$NFT_FAKEIP_MARK" counter
     nft add rule inet "$NFT_TABLE_NAME" mangle_output ip daddr "@$NFT_COMMON_SET_NAME" meta l4proto udp meta mark set "$NFT_FAKEIP_MARK" counter
+    nft add rule inet "$NFT_TABLE_NAME" mangle_output ip daddr . tcp dport "@$NFT_IP_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter
+    nft add rule inet "$NFT_TABLE_NAME" mangle_output ip daddr . udp dport "@$NFT_IP_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter
+    nft add rule inet "$NFT_TABLE_NAME" mangle_output tcp dport "@$NFT_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter
+    nft add rule inet "$NFT_TABLE_NAME" mangle_output udp dport "@$NFT_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter
     nft add rule inet "$NFT_TABLE_NAME" mangle_output ip daddr "$SB_FAKEIP_INET4_RANGE" meta l4proto tcp meta mark set "$NFT_FAKEIP_MARK" counter
     nft add rule inet "$NFT_TABLE_NAME" mangle_output ip daddr "$SB_FAKEIP_INET4_RANGE" meta l4proto udp meta mark set "$NFT_FAKEIP_MARK" counter
 
@@ -5674,7 +5852,7 @@ import_domain_ip_list_file_into_rulesets() {
     split_domain_or_subnet_file "$filepath" "$domains_tmpfile" "$subnets_tmpfile"
     import_plain_domain_list_to_local_source_ruleset_chunked "$domains_tmpfile" "$domain_ruleset_filepath"
     import_plain_subnet_list_to_local_source_ruleset_chunked "$subnets_tmpfile" "$subnet_ruleset_filepath"
-    nft_add_set_elements_from_file_chunked "$subnets_tmpfile" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"
+    add_plain_subnet_file_to_nft_for_section "$section" "$subnets_tmpfile"
 
     rm -f "$domains_tmpfile" "$subnets_tmpfile"
 }
@@ -5724,6 +5902,65 @@ configure_domain_ip_lists_reference_handler() {
     import_domain_ip_list_reference_into_rulesets "$reference" "$section"
 }
 
+add_plain_subnet_file_to_nft_for_section() {
+    local section="$1"
+    local filepath="$2"
+    local ports
+
+    [ -s "$filepath" ] || return 0
+
+    ports="$(get_rule_ports_commas_string "$section")"
+    if [ -n "$ports" ]; then
+        nft_add_ip_port_set_elements_from_ip_file_chunked "$filepath" "$NFT_TABLE_NAME" "$NFT_IP_PORT_SET_NAME" "$ports"
+    else
+        nft_add_set_elements_from_file_chunked "$filepath" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"
+    fi
+}
+
+extract_json_ruleset_nft_files_for_section() {
+    local json_file="$1"
+    local unscoped_output_file="$2"
+    local scoped_output_file="$3"
+    local section="$4"
+    local port_values_json port_ranges_json
+
+    port_values_json="[]"
+    port_ranges_json="[]"
+    if [ -n "$section" ]; then
+        port_values_json="$(get_rule_port_values_json_array "$section")"
+        port_ranges_json="$(get_rule_port_ranges_json_array "$section")"
+    fi
+
+    extract_ip_cidr_nft_elements_from_json_ruleset_to_files \
+        "$json_file" "$unscoped_output_file" "$scoped_output_file" "$port_values_json" "$port_ranges_json"
+}
+
+add_extracted_ruleset_subnets_to_nft_for_section() {
+    local section="$1"
+    local unscoped_file="$2"
+    local scoped_file="$3"
+    local label="$4"
+    local has_entries
+
+    has_entries=0
+
+    if [ -s "$unscoped_file" ]; then
+        nft_add_set_elements_from_file_chunked "$unscoped_file" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME" || return 1
+        has_entries=1
+    fi
+
+    if [ -s "$scoped_file" ]; then
+        nft_add_ip_port_set_elements_from_file_chunked "$scoped_file" "$NFT_TABLE_NAME" "$NFT_IP_PORT_SET_NAME" || return 1
+        has_entries=1
+    fi
+
+    if [ "$has_entries" -eq 0 ]; then
+        log "$label has no ip_cidr entries for nftables" "warn"
+    fi
+
+    return 0
+}
+
 rebuild_domain_ip_lists_from_rule() {
     local section="$1"
     local references
@@ -5738,7 +5975,7 @@ rebuild_domain_ip_lists_from_rule() {
 
 rule_has_primary_matchers() {
     local section="$1"
-    local domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr community_lists rule_set rule_set_with_subnets domain_ip_lists
+    local domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr ports community_lists rule_set rule_set_with_subnets domain_ip_lists
 
     domain="$(get_rule_condition_commas_string "$section" "domain" "domains")"
     domain_suffix="$(get_rule_condition_commas_string "$section" "domain_suffix" "domains")"
@@ -5746,6 +5983,7 @@ rule_has_primary_matchers() {
     domain_regex="$(get_rule_condition_commas_string "$section" "domain_regex" "generic")"
     ip_cidr="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
     source_ip_cidr="$(get_rule_condition_commas_string "$section" "source_ip_cidr" "subnets")"
+    ports="$(get_rule_ports_commas_string "$section")"
     config_get community_lists "$section" "community_lists"
     config_get rule_set "$section" "rule_set"
     config_get rule_set_with_subnets "$section" "rule_set_with_subnets"
@@ -5757,6 +5995,7 @@ rule_has_primary_matchers() {
         [ -n "$domain_regex" ] ||
         [ -n "$ip_cidr" ] ||
         [ -n "$source_ip_cidr" ] ||
+        [ -n "$ports" ] ||
         [ -n "$community_lists" ] ||
         [ -n "$rule_set" ] ||
         [ -n "$rule_set_with_subnets" ] ||
@@ -5769,7 +6008,7 @@ rule_has_primary_matchers() {
 
 configure_route_rule_handler() {
     local section="$1"
-    local action route_rule_tag ip_values_json ip_values
+    local action route_rule_tag ip_values_json ip_values port_values_json port_ranges_json
 
     rule_is_enabled "$section" || return 0
 
@@ -5820,8 +6059,18 @@ configure_route_rule_handler() {
         config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "ip_cidr" "$ip_values_json")
         if [ "$PODKOP_NFT_POPULATE_ENABLED" = "1" ]; then
             ip_values="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
-            [ -n "$ip_values" ] && nft_add_set_elements "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME" "$ip_values"
+            add_section_ip_cidr_to_nft_sets "$section" "$ip_values"
         fi
+    fi
+
+    port_values_json="$(get_rule_port_values_json_array "$section")"
+    [ "$port_values_json" != "[]" ] && config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "port" "$port_values_json")
+
+    port_ranges_json="$(get_rule_port_ranges_json_array "$section")"
+    [ "$port_ranges_json" != "[]" ] && config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "port_range" "$port_ranges_json")
+
+    if [ "$PODKOP_NFT_POPULATE_ENABLED" = "1" ]; then
+        add_section_ports_to_nft_set_if_needed "$section"
     fi
 
     local source_ip_values_json
@@ -6066,14 +6315,15 @@ import_builtin_subnets_from_rule() {
     local section="$1"
 
     rule_is_enabled "$section" || return 0
-    config_list_foreach "$section" "community_lists" import_builtin_subnets_reference_handler
+    config_list_foreach "$section" "community_lists" import_builtin_subnets_reference_handler "$section"
 }
 
 import_builtin_subnets_reference_handler() {
     local reference="$1"
+    local section="$2"
 
     if printf '%s\n' "$COMMUNITY_SERVICES" | tr ' ' '\n' | grep -Fxq "$reference"; then
-        import_community_service_subnet_list_handler "$reference"
+        import_community_service_subnet_list_handler "$reference" "$section"
     fi
 }
 
@@ -6099,27 +6349,27 @@ import_rule_set_with_subnets_reference_handler() {
 
     case "$reference" in
     /*.srs)
-        import_custom_ruleset_subnets_from_local "$reference" "binary" || \
+        import_custom_ruleset_subnets_from_local "$reference" "binary" "$section" || \
             log "Failed to import subnets from local SRS rule set: $reference" "error"
         ;;
     /*.json)
-        import_custom_ruleset_subnets_from_local "$reference" "source" || \
+        import_custom_ruleset_subnets_from_local "$reference" "source" "$section" || \
             log "Failed to import subnets from local JSON rule set: $reference" "error"
         ;;
     http://* | https://*)
         extension="$(url_get_file_extension "$reference")"
         case "$extension" in
         srs)
-            import_custom_ruleset_subnets_from_remote "$reference" "binary" || \
+            import_custom_ruleset_subnets_from_remote "$reference" "binary" "$section" || \
                 log "Failed to import subnets from remote SRS rule set: $reference" "error"
             ;;
         json)
-            import_custom_ruleset_subnets_from_remote "$reference" "source" || \
+            import_custom_ruleset_subnets_from_remote "$reference" "source" "$section" || \
                 log "Failed to import subnets from remote JSON rule set: $reference" "error"
             ;;
         *)
             format="$(get_inline_remote_ruleset_format "$reference")"
-            import_custom_ruleset_subnets_from_remote "$reference" "$format" || \
+            import_custom_ruleset_subnets_from_remote "$reference" "$format" "$section" || \
                 log "Failed to import subnets from remote rule set: $reference" "error"
             ;;
         esac
@@ -6135,7 +6385,8 @@ import_rule_set_with_subnets_reference_handler() {
 import_custom_ruleset_subnets_from_local() {
     local path="$1"
     local format="$2"
-    local json_tmpfile subnets_tmpfile
+    local section="$3"
+    local json_tmpfile unscoped_tmpfile scoped_tmpfile
 
     if [ ! -f "$path" ]; then
         log "Local rule set file $path not found" "error"
@@ -6143,92 +6394,83 @@ import_custom_ruleset_subnets_from_local() {
     fi
 
     json_tmpfile="$(mktemp)"
-    subnets_tmpfile="$(mktemp)"
+    unscoped_tmpfile="$(mktemp)"
+    scoped_tmpfile="$(mktemp)"
 
     if [ "$format" = "binary" ]; then
         if ! decompile_binary_ruleset "$path" "$json_tmpfile"; then
-            rm -f "$json_tmpfile" "$subnets_tmpfile"
+            rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
             return 1
         fi
     else
         if ! cp "$path" "$json_tmpfile"; then
             log "Failed to copy source rule set file $path" "error"
-            rm -f "$json_tmpfile" "$subnets_tmpfile"
+            rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
             return 1
         fi
     fi
 
-    if ! extract_ip_cidr_from_json_ruleset_to_file "$json_tmpfile" "$subnets_tmpfile"; then
+    if ! extract_json_ruleset_nft_files_for_section "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile" "$section"; then
         log "Failed to extract ip_cidr entries from rule set $path" "error"
-        rm -f "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    if [ ! -s "$subnets_tmpfile" ]; then
-        log "Rule set $path has no ip_cidr entries; nothing to add to nftables" "warn"
-        rm -f "$json_tmpfile" "$subnets_tmpfile"
-        return 0
-    fi
-
-    if ! nft_add_set_elements_from_file_chunked "$subnets_tmpfile" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"; then
+    if ! add_extracted_ruleset_subnets_to_nft_for_section "$section" "$unscoped_tmpfile" "$scoped_tmpfile" "Rule set $path"; then
         log "Failed to add subnets from rule set $path to nftables" "error"
-        rm -f "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    rm -f "$json_tmpfile" "$subnets_tmpfile"
+    rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
 }
 
 import_custom_ruleset_subnets_from_remote() {
     local url="$1"
     local format="$2"
-    local remote_tmpfile json_tmpfile subnets_tmpfile http_proxy_address
+    local section="$3"
+    local remote_tmpfile json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address
 
     remote_tmpfile="$(mktemp)"
     json_tmpfile="$(mktemp)"
-    subnets_tmpfile="$(mktemp)"
+    unscoped_tmpfile="$(mktemp)"
+    scoped_tmpfile="$(mktemp)"
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$url" "$remote_tmpfile" "$http_proxy_address"
 
     if [ $? -ne 0 ] || [ ! -s "$remote_tmpfile" ]; then
         log "Download $url rule set failed" "error"
-        rm -f "$remote_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$remote_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
     if [ "$format" = "binary" ]; then
         if ! decompile_binary_ruleset "$remote_tmpfile" "$json_tmpfile"; then
-            rm -f "$remote_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+            rm -f "$remote_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
             return 1
         fi
     else
         if ! cp "$remote_tmpfile" "$json_tmpfile"; then
             log "Failed to copy downloaded source rule set $url" "error"
-            rm -f "$remote_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+            rm -f "$remote_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
             return 1
         fi
     fi
 
-    if ! extract_ip_cidr_from_json_ruleset_to_file "$json_tmpfile" "$subnets_tmpfile"; then
+    if ! extract_json_ruleset_nft_files_for_section "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile" "$section"; then
         log "Failed to extract ip_cidr entries from rule set $url" "error"
-        rm -f "$remote_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$remote_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    if [ ! -s "$subnets_tmpfile" ]; then
-        log "Rule set $url has no ip_cidr entries; nothing to add to nftables" "warn"
-        rm -f "$remote_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
-        return 0
-    fi
-
-    if ! nft_add_set_elements_from_file_chunked "$subnets_tmpfile" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"; then
+    if ! add_extracted_ruleset_subnets_to_nft_for_section "$section" "$unscoped_tmpfile" "$scoped_tmpfile" "Rule set $url"; then
         log "Failed to add subnets from rule set $url to nftables" "error"
-        rm -f "$remote_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$remote_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    rm -f "$remote_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+    rm -f "$remote_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
 }
 
 ensure_discord_udp_fakeip_rule() {
@@ -6245,6 +6487,10 @@ ensure_discord_udp_fakeip_rule() {
 
 import_community_service_subnet_list_handler() {
     local service="$1"
+    local section="$2"
+    local ports
+
+    ports="$(get_rule_ports_commas_string "$section")"
 
     case "$service" in
     "twitter")
@@ -6273,7 +6519,7 @@ import_community_service_subnet_list_handler() {
         ;;
     "discord")
         URL=$SUBNETS_DISCORD
-        ensure_discord_udp_fakeip_rule
+        [ -n "$ports" ] || ensure_discord_udp_fakeip_rule
         ;;
     "roblox")
         URL=$SUBNETS_ROBLOX
@@ -6292,10 +6538,10 @@ import_community_service_subnet_list_handler() {
         return 1
     fi
 
-    if [ "$service" = "discord" ]; then
+    if [ "$service" = "discord" ] && [ -z "$ports" ]; then
         nft_add_set_elements_from_file_chunked "$tmpfile" "$NFT_TABLE_NAME" "$NFT_DISCORD_SET_NAME"
     else
-        nft_add_set_elements_from_file_chunked "$tmpfile" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"
+        add_plain_subnet_file_to_nft_for_section "$section" "$tmpfile"
     fi
 
     rm -f "$tmpfile"
@@ -6382,11 +6628,11 @@ import_subnets_from_remote_subnet_list_handler() {
     case "$file_extension" in
     json)
         log "Import subnets from a remote JSON list" "info"
-        import_subnets_from_remote_json_file "$url"
+        import_subnets_from_remote_json_file "$url" "$section"
         ;;
     srs)
         log "Import subnets from a remote SRS list" "info"
-        import_subnets_from_remote_srs_file "$url"
+        import_subnets_from_remote_srs_file "$url" "$section"
         ;;
     *)
         log "Import subnets from a remote plain-text list" "info"
@@ -6397,82 +6643,74 @@ import_subnets_from_remote_subnet_list_handler() {
 
 import_subnets_from_remote_json_file() {
     local url="$1"
-    local json_tmpfile subnets_tmpfile http_proxy_address
+    local section="$2"
+    local json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address
     json_tmpfile="$(mktemp)"
-    subnets_tmpfile="$(mktemp)"
+    unscoped_tmpfile="$(mktemp)"
+    scoped_tmpfile="$(mktemp)"
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$url" "$json_tmpfile" "$http_proxy_address"
 
     if [ $? -ne 0 ] || [ ! -s "$json_tmpfile" ]; then
         log "Download $url list failed" "error"
-        rm -f "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    if ! extract_ip_cidr_from_json_ruleset_to_file "$json_tmpfile" "$subnets_tmpfile"; then
+    if ! extract_json_ruleset_nft_files_for_section "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile" "$section"; then
         log "Failed to extract ip_cidr entries from remote JSON list $url" "error"
-        rm -f "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    if [ ! -s "$subnets_tmpfile" ]; then
-        log "Remote JSON rule set $url has no ip_cidr entries; nothing to add to nftables" "warn"
-        rm -f "$json_tmpfile" "$subnets_tmpfile"
-        return 0
-    fi
-
-    if ! nft_add_set_elements_from_file_chunked "$subnets_tmpfile" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"; then
+    if ! add_extracted_ruleset_subnets_to_nft_for_section "$section" "$unscoped_tmpfile" "$scoped_tmpfile" "Remote JSON rule set $url"; then
         log "Failed to add subnets from remote JSON list $url to nftables" "error"
-        rm -f "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    rm -f "$json_tmpfile" "$subnets_tmpfile"
+    rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
 }
 
 import_subnets_from_remote_srs_file() {
     local url="$1"
+    local section="$2"
 
-    local binary_tmpfile json_tmpfile subnets_tmpfile http_proxy_address
+    local binary_tmpfile json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address
     binary_tmpfile="$(mktemp)"
     json_tmpfile="$(mktemp)"
-    subnets_tmpfile="$(mktemp)"
+    unscoped_tmpfile="$(mktemp)"
+    scoped_tmpfile="$(mktemp)"
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$url" "$binary_tmpfile" "$http_proxy_address"
 
     if [ $? -ne 0 ] || [ ! -s "$binary_tmpfile" ]; then
         log "Download $url list failed" "error"
-        rm -f "$binary_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$binary_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
     if ! decompile_binary_ruleset "$binary_tmpfile" "$json_tmpfile"; then
         log "Failed to decompile binary rule set file" "error"
-        rm -f "$binary_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$binary_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    if ! extract_ip_cidr_from_json_ruleset_to_file "$json_tmpfile" "$subnets_tmpfile"; then
+    if ! extract_json_ruleset_nft_files_for_section "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile" "$section"; then
         log "Failed to extract ip_cidr entries from remote SRS list $url" "error"
-        rm -f "$binary_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$binary_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    if [ ! -s "$subnets_tmpfile" ]; then
-        log "Remote SRS rule set $url has no ip_cidr entries; nothing to add to nftables" "warn"
-        rm -f "$binary_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
-        return 0
-    fi
-
-    if ! nft_add_set_elements_from_file_chunked "$subnets_tmpfile" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"; then
+    if ! add_extracted_ruleset_subnets_to_nft_for_section "$section" "$unscoped_tmpfile" "$scoped_tmpfile" "Remote SRS rule set $url"; then
         log "Failed to add subnets from remote SRS list $url to nftables" "error"
-        rm -f "$binary_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+        rm -f "$binary_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
         return 1
     fi
 
-    rm -f "$binary_tmpfile" "$json_tmpfile" "$subnets_tmpfile"
+    rm -f "$binary_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
 }
 
 import_subnets_from_remote_plain_file() {
@@ -6495,7 +6733,7 @@ import_subnets_from_remote_plain_file() {
     ruleset_tag=$(get_ruleset_tag "$section" "remote" "subnets")
     ruleset_filepath="$TMP_RULESET_FOLDER/$ruleset_tag.json"
     import_plain_subnet_list_to_local_source_ruleset_chunked "$tmpfile" "$ruleset_filepath"
-    nft_add_set_elements_from_file_chunked "$tmpfile" "$NFT_TABLE_NAME" "$NFT_COMMON_SET_NAME"
+    add_plain_subnet_file_to_nft_for_section "$section" "$tmpfile"
 
     rm -f "$tmpfile"
 }

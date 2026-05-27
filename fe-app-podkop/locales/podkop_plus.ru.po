@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-27 03:04+0300\n"
-"PO-Revision-Date: 2026-05-27 03:04+0300\n"
+"POT-Creation-Date: 2026-05-27 04:42+0300\n"
+"PO-Revision-Date: 2026-05-27 04:42+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -527,6 +527,9 @@ msgstr "Неверный формат пути. Путь должен начин
 msgid "Invalid port number. Must be between 1 and 65535"
 msgstr "Неверный номер порта. Допустимо от 1 до 65535"
 
+msgid "Invalid port or range. Use 80 or 1000-2000"
+msgstr "Неверный порт или диапазон. Используйте 80 или 1000-2000"
+
 msgid "Invalid regular expression"
 msgstr "Неверное регулярное выражение"
 
@@ -637,6 +640,9 @@ msgstr "Основной DNS"
 
 msgid "Match destination IPs or subnets"
 msgstr "Совпадение по IP-адресам или подсетям назначения"
+
+msgid "Match destination ports. Use a single port or a range"
+msgstr "Совпадение по портам назначения. Используйте одиночный порт или диапазон"
 
 msgid "Match domains containing a substring"
 msgstr "Совпадение по доменам, содержащим подстроку"
@@ -823,6 +829,15 @@ msgstr "Порт не может быть пустым"
 
 msgid "Port for the local mixed proxy of this section"
 msgstr "Порт локального смешанного прокси для этой секции"
+
+msgid "Port must be between 1 and 65535"
+msgstr "Порт должен быть от 1 до 65535"
+
+msgid "Port range start must be less than or equal to end"
+msgstr "Начало диапазона портов должно быть меньше или равно концу"
+
+msgid "Ports"
+msgstr "Порты"
 
 msgid "Proxy link is unavailable"
 msgstr "Ссылка прокси недоступна"

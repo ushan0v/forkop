@@ -20,16 +20,45 @@ function read_json_file(path) {
     return data == null ? null : json_decode_text(data);
 }
 
+function write_text_file(path, text) {
+    let result = fs.writefile(path, text);
+    if (result == null)
+        return false;
+    if (type(result) == "boolean" && !result)
+        return false;
+    return true;
+}
+
 function write_json_file(path, value) {
-    return fs.writefile(path, sprintf("%J", value) + "\n");
+    return write_text_file(path, sprintf("%J", value) + "\n");
 }
 
 function array_or_empty(value) {
     return type(value) == "array" ? value : [];
 }
 
+function array_from_value(value) {
+    if (value == null)
+        return [];
+    if (type(value) == "array")
+        return value;
+    return [ value ];
+}
+
 function object_or_empty(value) {
     return type(value) == "object" ? value : {};
+}
+
+function trim_string(value) {
+    let text = as_string(value);
+    let start_match = match(text, /^[ \t\r\n]*/);
+    let start = start_match ? length(start_match[0]) : 0;
+    let end = length(text);
+
+    while (end > start && match(substr(text, end - 1, 1), /[ \t\r\n]/))
+        end--;
+
+    return substr(text, start, end - start);
 }
 
 function sort_values(values) {
@@ -106,8 +135,259 @@ function extract_ip_cidr(json_path, output_path) {
             push(lines, as_string(ip));
     }
 
-    if (!fs.writefile(output_path, length(lines) > 0 ? join("\n", lines) + "\n" : ""))
+    if (!write_text_file(output_path, length(lines) > 0 ? join("\n", lines) + "\n" : ""))
         exit(1);
+}
+
+function parse_port_number(value) {
+    let text = trim_string(value);
+    if (text == "" || match(text, /[^0-9]/))
+        return null;
+
+    let number = int(text);
+    if (number < 1 || number > 65535)
+        return null;
+
+    return number;
+}
+
+function parse_port_interval(value, allow_open) {
+    let text = trim_string(value);
+    if (text == "")
+        return null;
+
+    let separator = index(text, ":") >= 0 ? ":" : (index(text, "-") >= 0 ? "-" : "");
+    if (separator == "") {
+        let port = parse_port_number(text);
+        return port == null ? null : { start: port, end: port };
+    }
+
+    let parts = split(text, separator);
+    if (length(parts) != 2)
+        return null;
+
+    let start = parts[0] == "" && allow_open ? 1 : parse_port_number(parts[0]);
+    let end = parts[1] == "" && allow_open ? 65535 : parse_port_number(parts[1]);
+
+    if (start == null || end == null || start > end)
+        return null;
+
+    return { start, end };
+}
+
+function normalize_port_intervals(intervals) {
+    let sorted = [];
+    for (let interval in array_or_empty(intervals)) {
+        if (type(interval) == "object" && interval.start != null && interval.end != null)
+            push(sorted, { start: int(interval.start), end: int(interval.end) });
+    }
+
+    sort(sorted, function(first, second) {
+        if (first.start == second.start)
+            return first.end - second.end;
+        return first.start - second.start;
+    });
+
+    let result = [];
+    for (let interval in sorted) {
+        if (length(result) == 0) {
+            push(result, interval);
+            continue;
+        }
+
+        let last = result[length(result) - 1];
+        if (interval.start <= last.end + 1) {
+            if (interval.end > last.end)
+                last.end = interval.end;
+        }
+        else {
+            push(result, interval);
+        }
+    }
+
+    return result;
+}
+
+function direct_port_filter(rule) {
+    if (type(rule) != "object")
+        return null;
+
+    let intervals = [];
+    for (let port in array_from_value(rule.port)) {
+        let interval = parse_port_interval(port, false);
+        if (interval != null)
+            push(intervals, interval);
+    }
+
+    for (let port_range in array_from_value(rule.port_range)) {
+        let interval = parse_port_interval(port_range, true);
+        if (interval != null)
+            push(intervals, interval);
+    }
+
+    return length(intervals) == 0 ? null : normalize_port_intervals(intervals);
+}
+
+function filter_is_empty(filter) {
+    return type(filter) == "array" && length(filter) == 0;
+}
+
+function intersect_port_filters(first, second) {
+    if (first == null)
+        return second;
+    if (second == null)
+        return first;
+    if (filter_is_empty(first) || filter_is_empty(second))
+        return [];
+
+    let result = [];
+    for (let left in first) {
+        for (let right in second) {
+            let start = left.start > right.start ? left.start : right.start;
+            let end = left.end < right.end ? left.end : right.end;
+            if (start <= end)
+                push(result, { start, end });
+        }
+    }
+
+    return normalize_port_intervals(result);
+}
+
+function union_port_filters(first, second) {
+    if (first == null || second == null)
+        return null;
+
+    let result = [];
+    for (let item in first)
+        push(result, item);
+    for (let item in second)
+        push(result, item);
+
+    return normalize_port_intervals(result);
+}
+
+function extract_port_filter(rule) {
+    if (type(rule) != "object")
+        return null;
+
+    let own_filter = direct_port_filter(rule);
+    if (rule.type != "logical" || type(rule.rules) != "array")
+        return own_filter;
+
+    let mode = as_string(rule.mode);
+    if (mode == "or") {
+        let result = null;
+        let initialized = false;
+
+        for (let child in rule.rules) {
+            let child_filter = extract_port_filter(child);
+            if (!initialized) {
+                result = child_filter;
+                initialized = true;
+            }
+            else {
+                result = union_port_filters(result, child_filter);
+            }
+
+            if (result == null)
+                break;
+        }
+
+        return intersect_port_filters(own_filter, result);
+    }
+
+    let result = own_filter;
+    for (let child in rule.rules) {
+        result = intersect_port_filters(result, extract_port_filter(child));
+        if (filter_is_empty(result))
+            return result;
+    }
+
+    return result;
+}
+
+function nft_port_value(interval) {
+    return interval.start == interval.end ? "" + interval.start : interval.start + "-" + interval.end;
+}
+
+function add_line(lines, value) {
+    if (value != "")
+        lines[value] = true;
+}
+
+function add_ip_cidr_values_to_nft_outputs(rule, port_filter, unscoped_lines, scoped_lines) {
+    for (let ip in array_from_value(rule.ip_cidr)) {
+        ip = trim_string(ip);
+        if (ip == "")
+            continue;
+
+        if (port_filter == null) {
+            add_line(unscoped_lines, ip);
+            continue;
+        }
+
+        if (filter_is_empty(port_filter))
+            continue;
+
+        for (let interval in port_filter)
+            add_line(scoped_lines, ip + " . " + nft_port_value(interval));
+    }
+}
+
+function collect_ip_cidr_nft_outputs(rule, inherited_filter, unscoped_lines, scoped_lines) {
+    if (type(rule) != "object")
+        return;
+
+    let own_filter = direct_port_filter(rule);
+    let filter = intersect_port_filters(inherited_filter, own_filter);
+
+    if (filter_is_empty(filter))
+        return;
+
+    if (rule.type == "logical" && type(rule.rules) == "array") {
+        if (as_string(rule.mode) == "and") {
+            for (let child in rule.rules) {
+                filter = intersect_port_filters(filter, extract_port_filter(child));
+                if (filter_is_empty(filter))
+                    return;
+            }
+        }
+
+        add_ip_cidr_values_to_nft_outputs(rule, filter, unscoped_lines, scoped_lines);
+
+        for (let child in rule.rules)
+            collect_ip_cidr_nft_outputs(child, filter, unscoped_lines, scoped_lines);
+
+        return;
+    }
+
+    add_ip_cidr_values_to_nft_outputs(rule, filter, unscoped_lines, scoped_lines);
+}
+
+function write_lines(path, lines_object) {
+    let lines = keys(lines_object);
+    sort(lines, function(first, second) {
+        return first == second ? 0 : (first < second ? -1 : 1);
+    });
+
+    if (!write_text_file(path, length(lines) > 0 ? join("\n", lines) + "\n" : ""))
+        exit(1);
+}
+
+function extract_ip_cidr_nft_elements(json_path, unscoped_output_path, scoped_output_path, ports_text, port_ranges_text) {
+    let ruleset = object_or_empty(read_json_file(json_path));
+    let unscoped_lines = {};
+    let scoped_lines = {};
+    let outer_filter = direct_port_filter({
+        port: array_or_empty(json_decode_text(ports_text)),
+        port_range: array_or_empty(json_decode_text(port_ranges_text))
+    });
+
+    for (let rule in array_or_empty(ruleset.rules))
+        collect_ip_cidr_nft_outputs(rule, outer_filter, unscoped_lines, scoped_lines);
+
+    write_lines(unscoped_output_path, unscoped_lines);
+    write_lines(scoped_output_path, scoped_lines);
 }
 
 function value_has_domain_matchers(value) {
@@ -149,9 +429,11 @@ else if (mode == "patch-source")
     patch_source(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "extract-ip-cidr")
     extract_ip_cidr(ARGV[1], ARGV[2]);
+else if (mode == "extract-ip-cidr-nft")
+    extract_ip_cidr_nft_elements(ARGV[1], ARGV[2], ARGV[3], ARGV[4] || "[]", ARGV[5] || "[]");
 else if (mode == "has-domain-matchers")
     exit(has_domain_matchers(ARGV[1]) ? 0 : 1);
 else {
-    warn("Usage: rulesets.uc <create-source|patch-source|extract-ip-cidr> ...\n");
+    warn("Usage: rulesets.uc <create-source|patch-source|extract-ip-cidr|extract-ip-cidr-nft> ...\n");
     exit(1);
 }

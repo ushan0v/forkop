@@ -159,3 +159,15 @@ extract_ip_cidr_from_json_ruleset_to_file() {
     log "Extracting ip_cidr entries from $json_file to $output_file" "debug"
     ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/rulesets.uc" extract-ip-cidr "$json_file" "$output_file"
 }
+
+extract_ip_cidr_nft_elements_from_json_ruleset_to_files() {
+    local json_file="$1"
+    local unscoped_output_file="$2"
+    local scoped_output_file="$3"
+    local ports_json="${4:-[]}"
+    local port_ranges_json="${5:-[]}"
+
+    log "Extracting ip_cidr nft elements from $json_file to $unscoped_output_file and $scoped_output_file" "debug"
+    ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/rulesets.uc" extract-ip-cidr-nft \
+        "$json_file" "$unscoped_output_file" "$scoped_output_file" "$ports_json" "$port_ranges_json"
+}

@@ -566,7 +566,7 @@ function add_route_rule(config, args) {
 
 function copy_rule_matchers(rule) {
     let copied = {};
-    for (let key in ["inbound", "source_ip_cidr", "domain", "domain_suffix", "domain_keyword", "domain_regex", "rule_set"]) {
+    for (let key in ["inbound", "source_ip_cidr", "domain", "domain_suffix", "domain_keyword", "domain_regex", "rule_set", "port", "port_range"]) {
         if (rule[key] != null)
             copied[key] = rule[key];
     }

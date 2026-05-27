@@ -166,6 +166,7 @@ export namespace Podkop {
     rule_set?: string[];
     rule_set_with_subnets?: string[];
     domain_ip_lists?: string[];
+    ports?: string[];
     update_interval?: string;
     proxy_string?: string;
     nfqws_opt?: string;

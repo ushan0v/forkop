@@ -144,6 +144,92 @@ comma_string_to_json_array() {
     echo "[\"$replaced\"]"
 }
 
+normalize_port_number() {
+    local value="$1"
+
+    value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [ -n "$value" ] || return 1
+
+    case "$value" in
+    *[!0-9]*) return 1 ;;
+    esac
+
+    awk -v value="$value" 'BEGIN {
+        if (value ~ /^[0-9]+$/) {
+            number = value + 0
+            if (number >= 1 && number <= 65535) {
+                print number
+                exit 0
+            }
+        }
+        exit 1
+    }'
+}
+
+normalize_port_condition_for_nft() {
+    local value="$1"
+    local start end
+
+    value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [ -n "$value" ] || return 1
+
+    case "$value" in
+    *-*)
+        start="${value%%-*}"
+        end="${value#*-}"
+        [ "$start-$end" = "$value" ] || return 1
+        start="$(normalize_port_number "$start")" || return 1
+        end="$(normalize_port_number "$end")" || return 1
+        [ "$start" -le "$end" ] || return 1
+
+        if [ "$start" = "$end" ]; then
+            printf '%s\n' "$start"
+        else
+            printf '%s-%s\n' "$start" "$end"
+        fi
+        ;;
+    *)
+        normalize_port_number "$value"
+        ;;
+    esac
+}
+
+normalize_port_range_for_sing_box() {
+    local value="$1"
+    local start end
+
+    value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    case "$value" in
+    *-*)
+        start="${value%%-*}"
+        end="${value#*-}"
+        [ "$start-$end" = "$value" ] || return 1
+        start="$(normalize_port_number "$start")" || return 1
+        end="$(normalize_port_number "$end")" || return 1
+        [ "$start" -le "$end" ] || return 1
+        printf '%s:%s\n' "$start" "$end"
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+is_port_condition() {
+    normalize_port_condition_for_nft "$1" > /dev/null 2>&1
+}
+
+port_numbers_to_json_array() {
+    local input="$1"
+
+    if [ -z "$input" ]; then
+        echo "[]"
+        return
+    fi
+
+    printf '[%s]\n' "$input"
+}
+
 # Decodes a URL-encoded string
 url_decode() {
     local encoded="$1"
