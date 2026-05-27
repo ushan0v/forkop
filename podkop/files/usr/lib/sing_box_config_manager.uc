@@ -276,12 +276,21 @@ function add_direct_inbound(config, args) {
 }
 
 function add_mixed_inbound(config, args) {
-    push(ensure_array(config, "inbounds"), {
+    let inbound = {
         type: "mixed",
         tag: as_string(args[0]),
         listen: as_string(args[1]),
         listen_port: number_arg(args[2])
-    });
+    };
+    let username = as_string(args[3]);
+    let password = as_string(args[4]);
+    if (username != "" && password != "") {
+        inbound.users = [{
+            username,
+            password
+        }];
+    }
+    push(ensure_array(config, "inbounds"), inbound);
 }
 
 function add_direct_outbound(config, args) {

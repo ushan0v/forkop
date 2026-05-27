@@ -978,7 +978,8 @@ build_dnsmasq_signature() {
 append_sing_box_rule_signature() {
     local section="$1"
     local action domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr fully_routed_ips \
-        community_lists rule_set rule_set_with_subnets domain_ip_lists mixed_proxy_enabled mixed_proxy_port resolve_real_ip_for_routing
+        community_lists rule_set rule_set_with_subnets domain_ip_lists mixed_proxy_enabled mixed_proxy_port \
+        mixed_proxy_auth_enabled mixed_proxy_username mixed_proxy_password resolve_real_ip_for_routing
 
     rule_is_enabled "$section" || return 0
 
@@ -1034,6 +1035,14 @@ append_sing_box_rule_signature() {
         if [ "$mixed_proxy_enabled" -eq 1 ]; then
             config_get mixed_proxy_port "$section" "mixed_proxy_port"
             signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
+            config_get_bool mixed_proxy_auth_enabled "$section" "mixed_proxy_auth_enabled" 0
+            signature_add "rule.$section.mixed_proxy_auth_enabled" "$mixed_proxy_auth_enabled"
+            if [ "$mixed_proxy_auth_enabled" -eq 1 ]; then
+                config_get mixed_proxy_username "$section" "mixed_proxy_username"
+                config_get mixed_proxy_password "$section" "mixed_proxy_password"
+                signature_add "rule.$section.mixed_proxy_username" "$mixed_proxy_username"
+                signature_add "rule.$section.mixed_proxy_password" "$mixed_proxy_password"
+            fi
         fi
 
         config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 0
@@ -1049,6 +1058,14 @@ append_sing_box_rule_signature() {
         if [ "$mixed_proxy_enabled" -eq 1 ]; then
             config_get mixed_proxy_port "$section" "mixed_proxy_port"
             signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
+            config_get_bool mixed_proxy_auth_enabled "$section" "mixed_proxy_auth_enabled" 0
+            signature_add "rule.$section.mixed_proxy_auth_enabled" "$mixed_proxy_auth_enabled"
+            if [ "$mixed_proxy_auth_enabled" -eq 1 ]; then
+                config_get mixed_proxy_username "$section" "mixed_proxy_username"
+                config_get mixed_proxy_password "$section" "mixed_proxy_password"
+                signature_add "rule.$section.mixed_proxy_username" "$mixed_proxy_username"
+                signature_add "rule.$section.mixed_proxy_password" "$mixed_proxy_password"
+            fi
         fi
 
         config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 0
@@ -1064,6 +1081,14 @@ append_sing_box_rule_signature() {
         if [ "$mixed_proxy_enabled" -eq 1 ]; then
             config_get mixed_proxy_port "$section" "mixed_proxy_port"
             signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
+            config_get_bool mixed_proxy_auth_enabled "$section" "mixed_proxy_auth_enabled" 0
+            signature_add "rule.$section.mixed_proxy_auth_enabled" "$mixed_proxy_auth_enabled"
+            if [ "$mixed_proxy_auth_enabled" -eq 1 ]; then
+                config_get mixed_proxy_username "$section" "mixed_proxy_username"
+                config_get mixed_proxy_password "$section" "mixed_proxy_password"
+                signature_add "rule.$section.mixed_proxy_username" "$mixed_proxy_username"
+                signature_add "rule.$section.mixed_proxy_password" "$mixed_proxy_password"
+            fi
         fi
 
         signature_add "rule.$section.resolve_real_ip_for_routing" "1"
@@ -1074,6 +1099,14 @@ append_sing_box_rule_signature() {
         if [ "$mixed_proxy_enabled" -eq 1 ]; then
             config_get mixed_proxy_port "$section" "mixed_proxy_port"
             signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
+            config_get_bool mixed_proxy_auth_enabled "$section" "mixed_proxy_auth_enabled" 0
+            signature_add "rule.$section.mixed_proxy_auth_enabled" "$mixed_proxy_auth_enabled"
+            if [ "$mixed_proxy_auth_enabled" -eq 1 ]; then
+                config_get mixed_proxy_username "$section" "mixed_proxy_username"
+                config_get mixed_proxy_password "$section" "mixed_proxy_password"
+                signature_add "rule.$section.mixed_proxy_username" "$mixed_proxy_username"
+                signature_add "rule.$section.mixed_proxy_password" "$mixed_proxy_password"
+            fi
         fi
         ;;
     vpn)
@@ -1094,6 +1127,14 @@ append_sing_box_rule_signature() {
         if [ "$mixed_proxy_enabled" -eq 1 ]; then
             config_get mixed_proxy_port "$section" "mixed_proxy_port"
             signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
+            config_get_bool mixed_proxy_auth_enabled "$section" "mixed_proxy_auth_enabled" 0
+            signature_add "rule.$section.mixed_proxy_auth_enabled" "$mixed_proxy_auth_enabled"
+            if [ "$mixed_proxy_auth_enabled" -eq 1 ]; then
+                config_get mixed_proxy_username "$section" "mixed_proxy_username"
+                config_get mixed_proxy_password "$section" "mixed_proxy_password"
+                signature_add "rule.$section.mixed_proxy_username" "$mixed_proxy_username"
+                signature_add "rule.$section.mixed_proxy_password" "$mixed_proxy_password"
+            fi
         fi
 
         config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 0
@@ -5955,7 +5996,8 @@ configure_section_mixed_proxy() {
         return 0
     fi
 
-    local mixed_inbound_enabled mixed_proxy_port mixed_inbound_tag mixed_outbound_tag mixed_proxy_address
+    local mixed_inbound_enabled mixed_proxy_port mixed_inbound_tag mixed_outbound_tag mixed_proxy_address \
+        mixed_proxy_auth_enabled mixed_proxy_username mixed_proxy_password
     config_get_bool mixed_inbound_enabled "$section" "mixed_proxy_enabled" 0
     mixed_proxy_address="$(get_service_listen_address)"
     if [ -z "$mixed_proxy_address" ]; then
@@ -5964,6 +6006,15 @@ configure_section_mixed_proxy() {
     fi
     config_get mixed_proxy_port "$section" "mixed_proxy_port"
     if [ "$mixed_inbound_enabled" -eq 1 ]; then
+        config_get_bool mixed_proxy_auth_enabled "$section" "mixed_proxy_auth_enabled" 0
+        if [ "$mixed_proxy_auth_enabled" -eq 1 ]; then
+            config_get mixed_proxy_username "$section" "mixed_proxy_username"
+            config_get mixed_proxy_password "$section" "mixed_proxy_password"
+            if [ -z "$mixed_proxy_username" ] || [ -z "$mixed_proxy_password" ]; then
+                log "Mixed Proxy authentication for '$section' is enabled, but username or password is empty. The proxy will not be created." "warn"
+                return 1
+            fi
+        fi
         mixed_inbound_tag="$(get_inbound_tag_by_section "$section-mixed")"
         mixed_outbound_tag="$(get_outbound_tag_by_section "$section")"
         config=$(
@@ -5972,7 +6023,9 @@ configure_section_mixed_proxy() {
                 "$mixed_inbound_tag" \
                 "$mixed_proxy_address" \
                 "$mixed_proxy_port" \
-                "$mixed_outbound_tag"
+                "$mixed_outbound_tag" \
+                "$mixed_proxy_username" \
+                "$mixed_proxy_password"
         )
     fi
 }

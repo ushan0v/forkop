@@ -3103,6 +3103,104 @@ function createSectionContent(section) {
   o = section.taboption(
     "settings",
     form.Flag,
+    "mixed_proxy_auth_enabled",
+    _("Enable Mixed Proxy Authentication"),
+    _("Require a username and password for the local mixed proxy"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+  o.depends({ action: "proxy", mixed_proxy_enabled: "1" });
+  o.depends({ action: "outbound", mixed_proxy_enabled: "1" });
+  o.depends({ action: "vpn", mixed_proxy_enabled: "1" });
+  o.depends({ action: "byedpi", mixed_proxy_enabled: "1" });
+  o.depends({ action: "zapret", mixed_proxy_enabled: "1" });
+  o.modalonly = true;
+
+  o = section.taboption(
+    "settings",
+    form.Value,
+    "mixed_proxy_username",
+    _("Mixed Proxy Username"),
+  );
+  o.rmempty = false;
+  o.depends({
+    action: "proxy",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.depends({
+    action: "outbound",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.depends({
+    action: "vpn",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.depends({
+    action: "byedpi",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.depends({
+    action: "zapret",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.modalonly = true;
+  o.validate = function (_section_id, value) {
+    if (!value || value.length === 0) {
+      return _("Username cannot be empty");
+    }
+
+    return true;
+  };
+
+  o = section.taboption(
+    "settings",
+    form.Value,
+    "mixed_proxy_password",
+    _("Mixed Proxy Password"),
+  );
+  o.rmempty = false;
+  o.depends({
+    action: "proxy",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.depends({
+    action: "outbound",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.depends({
+    action: "vpn",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.depends({
+    action: "byedpi",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.depends({
+    action: "zapret",
+    mixed_proxy_enabled: "1",
+    mixed_proxy_auth_enabled: "1",
+  });
+  o.modalonly = true;
+  o.validate = function (_section_id, value) {
+    if (!value || value.length === 0) {
+      return _("Password cannot be empty");
+    }
+
+    return true;
+  };
+
+  o = section.taboption(
+    "settings",
+    form.Flag,
     "resolve_real_ip_for_routing",
     _("Resolve real IP for routing"),
     _(

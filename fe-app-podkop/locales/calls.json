@@ -805,6 +805,13 @@
     ]
   },
   {
+    "call": "Enable Mixed Proxy Authentication",
+    "key": "Enable Mixed Proxy Authentication",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3107"
+    ]
+  },
+  {
     "call": "Enable Output Network Interface",
     "key": "Enable Output Network Interface",
     "places": [
@@ -1558,10 +1565,24 @@
     ]
   },
   {
+    "call": "Mixed Proxy Password",
+    "key": "Mixed Proxy Password",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3164"
+    ]
+  },
+  {
     "call": "Mixed Proxy Port",
     "key": "Mixed Proxy Port",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3080"
+    ]
+  },
+  {
+    "call": "Mixed Proxy Username",
+    "key": "Mixed Proxy Username",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3123"
     ]
   },
   {
@@ -1776,6 +1797,13 @@
     ]
   },
   {
+    "call": "Password cannot be empty",
+    "key": "Password cannot be empty",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3196"
+    ]
+  },
+  {
     "call": "Path cannot be empty",
     "key": "Path cannot be empty",
     "places": [
@@ -1975,17 +2003,24 @@
     ]
   },
   {
+    "call": "Require a username and password for the local mixed proxy",
+    "key": "Require a username and password for the local mixed proxy",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3108"
+    ]
+  },
+  {
     "call": "Resolve domain names before routing so sing-box can use real destination IPs.",
     "key": "Resolve domain names before routing so sing-box can use real destination IPs.",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3108"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3207"
     ]
   },
   {
     "call": "Resolve real IP for routing",
     "key": "Resolve real IP for routing",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3107"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3206"
     ]
   },
   {
@@ -2870,6 +2905,13 @@
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:295",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:317",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:324"
+    ]
+  },
+  {
+    "call": "Username cannot be empty",
+    "key": "Username cannot be empty",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3154"
     ]
   },
   {

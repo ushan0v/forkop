@@ -62,7 +62,7 @@ sing_box_cm_add_direct_inbound() {
 }
 
 sing_box_cm_add_mixed_inbound() {
-    sing_box_cm_ucode add-mixed-inbound "$1" "$2" "$3" "$4"
+    sing_box_cm_ucode add-mixed-inbound "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 sing_box_cm_add_direct_outbound() {

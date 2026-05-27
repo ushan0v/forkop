@@ -494,6 +494,10 @@ msgstr ""
 msgid "Enable Mixed Proxy"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3107
+msgid "Enable Mixed Proxy Authentication"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:133
 msgid "Enable Output Network Interface"
 msgstr ""
@@ -935,8 +939,16 @@ msgstr ""
 msgid "Memory Usage"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3164
+msgid "Mixed Proxy Password"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3080
 msgid "Mixed Proxy Port"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3123
+msgid "Mixed Proxy Username"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:203
@@ -1063,6 +1075,10 @@ msgstr ""
 msgid "Output Network Interface"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3196
+msgid "Password cannot be empty"
+msgstr ""
+
 #: src/validators/validatePath.ts:7
 msgid "Path cannot be empty"
 msgstr ""
@@ -1179,10 +1195,14 @@ msgid "Remove"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3108
+msgid "Require a username and password for the local mixed proxy"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3207
 msgid "Resolve domain names before routing so sing-box can use real destination IPs."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3107
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3206
 msgid "Resolve real IP for routing"
 msgstr ""
 
@@ -1702,6 +1722,10 @@ msgstr ""
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:317
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:324
 msgid "Use sing-box duration format like 1d, 12h or 30m"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3154
+msgid "Username cannot be empty"
 msgstr ""
 
 #: src/validators/validateDns.ts:14
