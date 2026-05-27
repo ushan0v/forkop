@@ -437,6 +437,8 @@ function serialize_hysteria2(outbound) {
         add_query(params, "sni", tls.server_name);
         if (tls.insecure === true)
             add_query(params, "insecure", "1");
+        if (type(tls.utls) == "object" && tls.utls.enabled !== false)
+            add_query(params, "fp", tls.utls.fingerprint);
         if (type(tls.alpn) == "array" && length(tls.alpn) > 0)
             add_query(params, "alpn", join(",", tls.alpn));
     }

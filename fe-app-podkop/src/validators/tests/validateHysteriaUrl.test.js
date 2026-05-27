@@ -28,6 +28,11 @@ const validUrls = [
 
   // Explicit obfs=none (valid)
   ['obfs none = ok', 'hysteria2://pw@example.com:443/?obfs=none#hy2-none'],
+
+  [
+    '3x-ui style TLS params',
+    'hysteria2://password@xxx.xxx.xxx.xxx:443?alpn=h3&fp=chrome&security=tls&sni=xxx.my.to#ROUTER%20AX3000T',
+  ],
 ];
 
 const invalidUrls = [

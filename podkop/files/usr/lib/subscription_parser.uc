@@ -612,6 +612,9 @@ function process_hysteria2(raw, url) {
         tls.insecure = true;
     if ((url.query.alpn || "") != "")
         tls.alpn = split_csv(url.query.alpn);
+    let fingerprint = normalize_utls_fingerprint(url.query.fp || url.query.fingerprint || "");
+    if (fingerprint != "")
+        tls.utls = { enabled: true, fingerprint: fingerprint };
 
     let outbound = {
         type: "hysteria2",
@@ -1106,6 +1109,8 @@ function parse_clash_record(record) {
             outbound.tls.insecure = true;
         if (options.alpn != "")
             outbound.tls.alpn = split_csv(options.alpn);
+        if (options.fingerprint != "")
+            outbound.tls.utls = { enabled: true, fingerprint: options.fingerprint };
         let obfs = as_string(record.obfs);
         let obfs_password = as_string(record["obfs-password"] || record["obfs-opts.password"]);
         if (obfs != "" && obfs != "none") {
