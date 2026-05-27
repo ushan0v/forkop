@@ -2785,6 +2785,32 @@ function createSectionContent(section) {
 
   o = section.taboption(
     "settings",
+    form.Flag,
+    "urltest_hide_filtered_outbounds",
+    _("Hide filtered servers"),
+    _("Show only servers participating in URLTest on the dashboard."),
+  );
+  o.default = "0";
+  o.rmempty = false;
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "exclude",
+  });
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "include",
+  });
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "mixed",
+  });
+  o.modalonly = true;
+
+  o = section.taboption(
+    "settings",
     form.DynamicList,
     "urltest_include_countries",
     _("Include country in URLTest"),

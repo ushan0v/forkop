@@ -106,6 +106,7 @@ export namespace Podkop {
     code: string;
     sectionName: string;
     displayName: string;
+    latencyTestCode?: string;
     proxyConfigType?: ProxyConfigType;
     subscriptionSourceCount?: number;
     subscriptionMetadata?: SubscriptionMetadata[];
@@ -182,6 +183,7 @@ export namespace Podkop {
     urltest_check_interval_disabled?: '0' | '1';
     detect_server_country?: '0' | '1';
     urltest_filter_mode?: 'disabled' | 'exclude' | 'include' | 'mixed';
+    urltest_hide_filtered_outbounds?: '0' | '1';
     urltest_exclude_countries?: string[];
     urltest_exclude_outbounds?: string[];
     urltest_exclude_regex?: string[];

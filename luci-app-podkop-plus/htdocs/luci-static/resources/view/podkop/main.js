@@ -1654,7 +1654,7 @@ function renderDefaultState({
 }) {
   function testLatency() {
     if (section.withTagSelect) {
-      return onTestLatency(section.code);
+      return onTestLatency(section.latencyTestCode || section.code);
     }
     if (section.outbounds.length) {
       return onTestLatency(section.outbounds[0].code);
@@ -2366,6 +2366,14 @@ function getSubscriptionSourceCount(section) {
 function isUrlTestEnabled(section) {
   return section.urltest_enabled === "1";
 }
+function isUrlTestFilteringEnabled(section) {
+  return ["exclude", "include", "mixed"].includes(
+    section.urltest_filter_mode || "disabled"
+  );
+}
+function shouldHideFilteredUrlTestOutbounds(section) {
+  return isUrlTestEnabled(section) && isUrlTestFilteringEnabled(section) && section.urltest_hide_filtered_outbounds === "1";
+}
 function shouldUseProxyGroup(section) {
   return getManualProxyLinks(section).length > 0 || hasSubscriptionSources(section);
 }
@@ -2468,7 +2476,9 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
   const fallbackUrltest = proxyByCode.get(`${sectionName}-urltest-out`);
   const manualLinkByCode = buildManualLinkByCode(section);
   const selectorCodes = selector?.value?.all ?? [];
-  const groupCodes = selectorCodes.length ? selectorCodes : [fallbackUrltest?.code || "", ...fallbackUrltest?.value?.all ?? []];
+  const urltestCodes = fallbackUrltest?.value?.all ?? [];
+  const hideFilteredUrlTestOutbounds = shouldHideFilteredUrlTestOutbounds(section) && Boolean(fallbackUrltest?.code) && urltestCodes.length > 0;
+  const groupCodes = hideFilteredUrlTestOutbounds ? [fallbackUrltest?.code || "", ...urltestCodes] : selectorCodes.length ? selectorCodes : [fallbackUrltest?.code || "", ...urltestCodes];
   const outbounds = uniqueCodes(groupCodes).flatMap((code) => {
     const item = proxyByCode.get(code);
     if (!item) {
@@ -2492,6 +2502,7 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
   });
   return {
     selector,
+    latencyTestCode: hideFilteredUrlTestOutbounds ? fallbackUrltest?.code : selector?.code,
     outbounds: sortOutboundsForDashboard(outbounds)
   };
 }
@@ -2661,7 +2672,7 @@ async function getDashboardSections(options = {}) {
           dashboardCache
         ) : void 0;
         const subscriptionCopyableCodes = includeSubscriptionCopyState ? getSubscriptionCopyableCodes(dashboardCache) : /* @__PURE__ */ new Set();
-        const { selector, outbounds } = buildProxyGroupOutbounds(
+        const { selector, latencyTestCode, outbounds } = buildProxyGroupOutbounds(
           section,
           proxies,
           outboundMetadata,
@@ -2672,6 +2683,7 @@ async function getDashboardSections(options = {}) {
           code: selector?.code || sectionName,
           sectionName,
           displayName,
+          latencyTestCode,
           proxyConfigType,
           subscriptionSourceCount,
           subscriptionMetadata,

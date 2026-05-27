@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-26 18:04+0300\n"
-"PO-Revision-Date: 2026-05-26 18:04+0300\n"
+"POT-Creation-Date: 2026-05-27 03:04+0300\n"
+"PO-Revision-Date: 2026-05-27 03:04+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -418,6 +418,9 @@ msgstr "Получить глобальную проверку"
 
 msgid "Global check"
 msgstr "Глобальная проверка"
+
+msgid "Hide filtered servers"
+msgstr "Скрывать отфильтрованные серверы"
 
 msgid "Host"
 msgstr "Хост"
@@ -941,6 +944,9 @@ msgstr "Выберите сетевой интерфейс, на который 
 msgid "Select the WAN interfaces to be monitored"
 msgstr "Выберите WAN интерфейсы для мониторинга"
 
+msgid "Server filtering for URLTest"
+msgstr "Фильтрация серверов для URLTest"
+
 msgid "Servers from selected countries will not be tested by URLTest"
 msgstr "Серверы из выбранных стран не будут проверяться через URLTest"
 
@@ -955,6 +961,9 @@ msgstr "Информация о сервисах"
 
 msgid "Settings"
 msgstr "Настройки"
+
+msgid "Show only servers participating in URLTest on the dashboard."
+msgstr "Показывать в дашборде только серверы, участвующие в URLTest."
 
 msgid "Show sing-box config"
 msgstr "Показать sing-box конфигурацию"
@@ -1180,9 +1189,6 @@ msgstr "URL должен использовать один из следующи
 
 msgid "URLTest interval"
 msgstr "Интервал URLTest"
-
-msgid "Server filtering for URLTest"
-msgstr "Фильтрация серверов для URLTest"
 
 msgid "URLTest tolerance"
 msgstr "Допуск URLTest"

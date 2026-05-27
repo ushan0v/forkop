@@ -69,6 +69,20 @@ function isUrlTestEnabled(section: Podkop.ConfigSection) {
   return section.urltest_enabled === '1';
 }
 
+function isUrlTestFilteringEnabled(section: Podkop.ConfigSection) {
+  return ['exclude', 'include', 'mixed'].includes(
+    section.urltest_filter_mode || 'disabled',
+  );
+}
+
+function shouldHideFilteredUrlTestOutbounds(section: Podkop.ConfigSection) {
+  return (
+    isUrlTestEnabled(section) &&
+    isUrlTestFilteringEnabled(section) &&
+    section.urltest_hide_filtered_outbounds === '1'
+  );
+}
+
 function shouldUseProxyGroup(section: Podkop.ConfigSection) {
   return (
     getManualProxyLinks(section).length > 0 || hasSubscriptionSources(section)
@@ -216,9 +230,16 @@ function buildProxyGroupOutbounds(
   const fallbackUrltest = proxyByCode.get(`${sectionName}-urltest-out`);
   const manualLinkByCode = buildManualLinkByCode(section);
   const selectorCodes = selector?.value?.all ?? [];
-  const groupCodes = selectorCodes.length
-    ? selectorCodes
-    : [fallbackUrltest?.code || '', ...(fallbackUrltest?.value?.all ?? [])];
+  const urltestCodes = fallbackUrltest?.value?.all ?? [];
+  const hideFilteredUrlTestOutbounds =
+    shouldHideFilteredUrlTestOutbounds(section) &&
+    Boolean(fallbackUrltest?.code) &&
+    urltestCodes.length > 0;
+  const groupCodes = hideFilteredUrlTestOutbounds
+    ? [fallbackUrltest?.code || '', ...urltestCodes]
+    : selectorCodes.length
+      ? selectorCodes
+      : [fallbackUrltest?.code || '', ...urltestCodes];
 
   const outbounds = uniqueCodes(groupCodes).flatMap((code) => {
     const item = proxyByCode.get(code);
@@ -252,6 +273,9 @@ function buildProxyGroupOutbounds(
 
   return {
     selector,
+    latencyTestCode: hideFilteredUrlTestOutbounds
+      ? fallbackUrltest?.code
+      : selector?.code,
     outbounds: sortOutboundsForDashboard(outbounds),
   };
 }
@@ -488,18 +512,20 @@ export async function getDashboardSections(
           const subscriptionCopyableCodes = includeSubscriptionCopyState
             ? getSubscriptionCopyableCodes(dashboardCache)
             : new Set<string>();
-          const { selector, outbounds } = buildProxyGroupOutbounds(
-            section,
-            proxies,
-            outboundMetadata,
-            subscriptionCopyableCodes,
-          );
+          const { selector, latencyTestCode, outbounds } =
+            buildProxyGroupOutbounds(
+              section,
+              proxies,
+              outboundMetadata,
+              subscriptionCopyableCodes,
+            );
 
           return {
             withTagSelect: true,
             code: selector?.code || sectionName,
             sectionName,
             displayName,
+            latencyTestCode,
             proxyConfigType,
             subscriptionSourceCount,
             subscriptionMetadata,

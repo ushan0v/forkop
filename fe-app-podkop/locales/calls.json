@@ -3,8 +3,8 @@
     "call": "-- Select --",
     "key": "-- Select --",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2820",
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2892"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2846",
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2918"
     ]
   },
   {
@@ -57,21 +57,21 @@
     "call": "Add URLs or local paths to .lst lists",
     "key": "Add URLs or local paths to .lst lists",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3294"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3320"
     ]
   },
   {
     "call": "Add URLs or local paths to .srs / .json lists. Subnet rules are ignored",
     "key": "Add URLs or local paths to .srs / .json lists. Subnet rules are ignored",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3260"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3286"
     ]
   },
   {
     "call": "Add URLs or local paths to .srs / .json lists. Subnets from the list will be extracted and added to nftables",
     "key": "Add URLs or local paths to .srs / .json lists. Subnets from the list will be extracted and added to nftables",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3277"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3303"
     ]
   },
   {
@@ -121,7 +121,7 @@
     "call": "Applicable for SOCKS and Shadowsocks links",
     "key": "Applicable for SOCKS and Shadowsocks links",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2937"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2963"
     ]
   },
   {
@@ -199,7 +199,7 @@
     "call": "Built-in rule sets",
     "key": "Built-in rule sets",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3165"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3191"
     ]
   },
   {
@@ -585,7 +585,7 @@
     "call": "DNS over HTTPS (DoH)",
     "key": "DNS over HTTPS (DoH)",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3002",
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3028",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:22"
     ]
   },
@@ -593,7 +593,7 @@
     "call": "DNS over TLS (DoT)",
     "key": "DNS over TLS (DoT)",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3003",
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3029",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:23"
     ]
   },
@@ -601,7 +601,7 @@
     "call": "DNS protocol",
     "key": "DNS protocol",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3000"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3026"
     ]
   },
   {
@@ -622,7 +622,7 @@
     "call": "DNS server",
     "key": "DNS server",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3017"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3043"
     ]
   },
   {
@@ -650,35 +650,35 @@
     "call": "Domain and IP Lists",
     "key": "Domain and IP Lists",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3293"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3319"
     ]
   },
   {
     "call": "Domain keyword",
     "key": "Domain keyword",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3135"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3161"
     ]
   },
   {
     "call": "Domain regex",
     "key": "Domain regex",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3142"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3168"
     ]
   },
   {
     "call": "Domain Resolver",
     "key": "Domain Resolver",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2988"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3014"
     ]
   },
   {
     "call": "Domains",
     "key": "Domains",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3107"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3133"
     ]
   },
   {
@@ -787,7 +787,7 @@
     "call": "Enable built-in DNS resolver for domains handled by this section",
     "key": "Enable built-in DNS resolver for domains handled by this section",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2989"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3015"
     ]
   },
   {
@@ -801,7 +801,7 @@
     "call": "Enable Mixed Proxy",
     "key": "Enable Mixed Proxy",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3038"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3064"
     ]
   },
   {
@@ -843,14 +843,14 @@
     "call": "Exact full domain",
     "key": "Exact full domain",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3121"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3147"
     ]
   },
   {
     "call": "Exclude country from URLTest",
     "key": "Exclude country from URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2864"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2890"
     ]
   },
   {
@@ -871,14 +871,14 @@
     "call": "Exclude server by regular expression from URLTest",
     "key": "Exclude server by regular expression from URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2913"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2939"
     ]
   },
   {
     "call": "Exclude server from URLTest",
     "key": "Exclude server from URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2889"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2915"
     ]
   },
   {
@@ -899,7 +899,7 @@
     "call": "Expose this section as a local HTTP+SOCKS proxy",
     "key": "Expose this section as a local HTTP+SOCKS proxy",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3039"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3065"
     ]
   },
   {
@@ -967,7 +967,7 @@
     "call": "Fastest",
     "key": "Fastest",
     "places": [
-      "src/podkop/methods/custom/getDashboardSections.ts:238",
+      "src/podkop/methods/custom/getDashboardSections.ts:259",
       "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:93"
     ]
   },
@@ -975,7 +975,7 @@
     "call": "Fully Routed IPs",
     "key": "Fully Routed IPs",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3155"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3181"
     ]
   },
   {
@@ -990,6 +990,13 @@
     "key": "Global check",
     "places": [
       "src/podkop/tabs/diagnostic/initController.ts:428"
+    ]
+  },
+  {
+    "call": "Hide filtered servers",
+    "key": "Hide filtered servers",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2790"
     ]
   },
   {
@@ -1011,21 +1018,21 @@
     "call": "Include country in URLTest",
     "key": "Include country in URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2790"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2816"
     ]
   },
   {
     "call": "Include server by regular expression in URLTest",
     "key": "Include server by regular expression in URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2841"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2867"
     ]
   },
   {
     "call": "Include server in URLTest",
     "key": "Include server in URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2815"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2841"
     ]
   },
   {
@@ -1231,7 +1238,7 @@
     "call": "Invalid port number. Must be between 1 and 65535",
     "key": "Invalid port number. Must be between 1 and 65535",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3074",
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3100",
       "src/validators/validateShadowsocksUrl.ts:85"
     ]
   },
@@ -1415,7 +1422,7 @@
     "call": "IPs",
     "key": "IPs",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3114"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3140"
     ]
   },
   {
@@ -1498,42 +1505,42 @@
     "call": "Match destination IPs or subnets",
     "key": "Match destination IPs or subnets",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3115"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3141"
     ]
   },
   {
     "call": "Match domains containing a substring",
     "key": "Match domains containing a substring",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3136"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3162"
     ]
   },
   {
     "call": "Match domains including all subdomains",
     "key": "Match domains including all subdomains",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3108"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3134"
     ]
   },
   {
     "call": "Match domains using a regular expression",
     "key": "Match domains using a regular expression",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3143"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3169"
     ]
   },
   {
     "call": "Match only one exact full domain name",
     "key": "Match only one exact full domain name",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3122"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3148"
     ]
   },
   {
     "call": "Match source IPs or subnets",
     "key": "Match source IPs or subnets",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3150"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3176"
     ]
   },
   {
@@ -1554,7 +1561,7 @@
     "call": "Mixed Proxy Port",
     "key": "Mixed Proxy Port",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3054"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3080"
     ]
   },
   {
@@ -1582,7 +1589,7 @@
     "call": "Network Interface",
     "key": "Network Interface",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2948"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2974"
     ]
   },
   {
@@ -1701,14 +1708,14 @@
     "call": "Only servers from selected countries will be tested by URLTest",
     "key": "Only servers from selected countries will be tested by URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2791"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2817"
     ]
   },
   {
     "call": "Only servers whose names match these regular expressions will be checked through URLTest",
     "key": "Only servers whose names match these regular expressions will be checked through URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2842"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2868"
     ]
   },
   {
@@ -1914,14 +1921,14 @@
     "call": "Port cannot be empty",
     "key": "Port cannot be empty",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3066"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3092"
     ]
   },
   {
     "call": "Port for the local mixed proxy of this section",
     "key": "Port for the local mixed proxy of this section",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3055"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3081"
     ]
   },
   {
@@ -1956,7 +1963,7 @@
     "call": "Regional options cannot be used together",
     "key": "Regional options cannot be used together",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3204"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3230"
     ]
   },
   {
@@ -1971,14 +1978,14 @@
     "call": "Resolve domain names before routing so sing-box can use real destination IPs.",
     "key": "Resolve domain names before routing so sing-box can use real destination IPs.",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3082"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3108"
     ]
   },
   {
     "call": "Resolve real IP for routing",
     "key": "Resolve real IP for routing",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3081"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3107"
     ]
   },
   {
@@ -2042,14 +2049,14 @@
     "call": "Rule sets (domains and subnets)",
     "key": "Rule sets (domains and subnets)",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3276"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3302"
     ]
   },
   {
     "call": "Rule sets (domains)",
     "key": "Rule sets (domains)",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3259"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3285"
     ]
   },
   {
@@ -2105,7 +2112,7 @@
     "call": "Russia inside restrictions",
     "key": "Russia inside restrictions",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3223"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3249"
     ]
   },
   {
@@ -2147,14 +2154,14 @@
     "call": "Select a loaded server or enter an exact server name",
     "key": "Select a loaded server or enter an exact server name",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2890"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2916"
     ]
   },
   {
     "call": "Select a predefined list for routing",
     "key": "Select a predefined list for routing",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3166"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3192"
     ]
   },
   {
@@ -2175,7 +2182,7 @@
     "call": "Select network interface for VPN connection",
     "key": "Select network interface for VPN connection",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2949"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2975"
     ]
   },
   {
@@ -2203,7 +2210,7 @@
     "call": "Select servers that will participate in URLTest checks. Other servers will be ignored.",
     "key": "Select servers that will participate in URLTest checks. Other servers will be ignored.",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2816"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2842"
     ]
   },
   {
@@ -2235,24 +2242,31 @@
     ]
   },
   {
+    "call": "Server filtering for URLTest",
+    "key": "Server filtering for URLTest",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2774"
+    ]
+  },
+  {
     "call": "Servers from selected countries will not be tested by URLTest",
     "key": "Servers from selected countries will not be tested by URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2865"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2891"
     ]
   },
   {
     "call": "Servers with names matching these regular expressions will not be tested by URLTest",
     "key": "Servers with names matching these regular expressions will not be tested by URLTest",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2914"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2940"
     ]
   },
   {
     "call": "Service list",
     "key": "Service list",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3169"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3195"
     ]
   },
   {
@@ -2268,6 +2282,13 @@
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:126",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2450"
+    ]
+  },
+  {
+    "call": "Show only servers participating in URLTest on the dashboard.",
+    "key": "Show only servers participating in URLTest on the dashboard.",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2791"
     ]
   },
   {
@@ -2346,7 +2367,7 @@
     "call": "Source IPs",
     "key": "Source IPs",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3149"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3175"
     ]
   },
   {
@@ -2360,7 +2381,7 @@
     "call": "Specify local IP addresses or subnets whose traffic will always be routed through the configured route",
     "key": "Specify local IP addresses or subnets whose traffic will always be routed through the configured route",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3156"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3182"
     ]
   },
   {
@@ -2658,7 +2679,7 @@
     "call": "UDP over TCP",
     "key": "UDP over TCP",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2936"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2962"
     ]
   },
   {
@@ -2816,13 +2837,6 @@
     ]
   },
   {
-    "call": "Server filtering for URLTest",
-    "key": "Server filtering for URLTest",
-    "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2774"
-    ]
-  },
-  {
     "call": "URLTest tolerance",
     "key": "URLTest tolerance",
     "places": [
@@ -2920,14 +2934,14 @@
     "call": "Warning: %s cannot be used together with %s. Previous selections have been removed.",
     "key": "Warning: %s cannot be used together with %s. Previous selections have been removed.",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3206"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3232"
     ]
   },
   {
     "call": "Warning: Russia inside can only be used with %s. %s already in Russia inside and have been removed from selection.",
     "key": "Warning: Russia inside can only be used with %s. %s already in Russia inside and have been removed from selection.",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3225"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3251"
     ]
   },
   {

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-26 15:04+0300\n"
-"PO-Revision-Date: 2026-05-26 15:04+0300\n"
+"POT-Creation-Date: 2026-05-27 00:04+0300\n"
+"PO-Revision-Date: 2026-05-27 00:04+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -16,8 +16,8 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2820
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2892
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2846
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2918
 msgid "-- Select --"
 msgstr ""
 
@@ -49,15 +49,15 @@ msgstr ""
 msgid "Add a section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3294
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3320
 msgid "Add URLs or local paths to .lst lists"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3260
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3286
 msgid "Add URLs or local paths to .srs / .json lists. Subnet rules are ignored"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3277
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3303
 msgid "Add URLs or local paths to .srs / .json lists. Subnets from the list will be extracted and added to nftables"
 msgstr ""
 
@@ -86,7 +86,7 @@ msgstr ""
 msgid "Allows limiting the list of servers for URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2937
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2963
 msgid "Applicable for SOCKS and Shadowsocks links"
 msgstr ""
 
@@ -131,7 +131,7 @@ msgstr ""
 msgid "Browser is using FakeIP correctly"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3165
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3191
 msgid "Built-in rule sets"
 msgstr ""
 
@@ -364,17 +364,17 @@ msgstr ""
 msgid "DNS on router"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3002
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3028
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:22
 msgid "DNS over HTTPS (DoH)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3003
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3029
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:23
 msgid "DNS over TLS (DoT)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3000
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3026
 msgid "DNS protocol"
 msgstr ""
 
@@ -386,7 +386,7 @@ msgstr ""
 msgid "DNS Rewrite TTL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3017
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3043
 msgid "DNS server"
 msgstr ""
 
@@ -402,23 +402,23 @@ msgstr ""
 msgid "Do not panic, everything can be fixed, just..."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3293
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3319
 msgid "Domain and IP Lists"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3135
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3161
 msgid "Domain keyword"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3142
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3168
 msgid "Domain regex"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2988
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3014
 msgid "Domain Resolver"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3107
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3133
 msgid "Domains"
 msgstr ""
 
@@ -482,7 +482,7 @@ msgstr ""
 msgid "Enable autostart"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2989
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3015
 msgid "Enable built-in DNS resolver for domains handled by this section"
 msgstr ""
 
@@ -490,7 +490,7 @@ msgstr ""
 msgid "Enable list updates"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3038
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3064
 msgid "Enable Mixed Proxy"
 msgstr ""
 
@@ -514,11 +514,11 @@ msgstr ""
 msgid "Enter the subscription URL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3121
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3147
 msgid "Exact full domain"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2864
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2890
 msgid "Exclude country from URLTest"
 msgstr ""
 
@@ -530,11 +530,11 @@ msgstr ""
 msgid "Exclude NTP protocol traffic from the tunnel to prevent it from being routed through the proxy or VPN"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2913
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2939
 msgid "Exclude server by regular expression from URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2889
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2915
 msgid "Exclude server from URLTest"
 msgstr ""
 
@@ -546,7 +546,7 @@ msgstr ""
 msgid "Expires"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3039
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3065
 msgid "Expose this section as a local HTTP+SOCKS proxy"
 msgstr ""
 
@@ -590,12 +590,12 @@ msgstr ""
 msgid "Failed to update subscriptions"
 msgstr ""
 
-#: src/podkop/methods/custom/getDashboardSections.ts:238
+#: src/podkop/methods/custom/getDashboardSections.ts:259
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:93
 msgid "Fastest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3155
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3181
 msgid "Fully Routed IPs"
 msgstr ""
 
@@ -607,6 +607,10 @@ msgstr ""
 msgid "Global check"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2790
+msgid "Hide filtered servers"
+msgstr ""
+
 #: src/podkop/tabs/monitoring/initController.ts:628
 #: src/podkop/tabs/monitoring/initController.ts:688
 msgid "Host"
@@ -616,15 +620,15 @@ msgstr ""
 msgid "HTTP error"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2790
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2816
 msgid "Include country in URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2841
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2867
 msgid "Include server by regular expression in URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2815
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2841
 msgid "Include server in URLTest"
 msgstr ""
 
@@ -743,7 +747,7 @@ msgstr ""
 msgid "Invalid path format. Path must start with \"/\" and contain valid characters"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3074
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3100
 #: src/validators/validateShadowsocksUrl.ts:85
 msgid "Invalid port number. Must be between 1 and 65535"
 msgstr ""
@@ -849,7 +853,7 @@ msgstr ""
 msgid "IP address 0.0.0.0 is not allowed"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3114
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3140
 msgid "IPs"
 msgstr ""
 
@@ -899,27 +903,27 @@ msgstr ""
 msgid "Main DNS"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3115
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3141
 msgid "Match destination IPs or subnets"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3136
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3162
 msgid "Match domains containing a substring"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3108
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3134
 msgid "Match domains including all subdomains"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3143
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3169
 msgid "Match domains using a regular expression"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3122
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3148
 msgid "Match only one exact full domain name"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3150
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3176
 msgid "Match source IPs or subnets"
 msgstr ""
 
@@ -931,7 +935,7 @@ msgstr ""
 msgid "Memory Usage"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3054
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3080
 msgid "Mixed Proxy Port"
 msgstr ""
 
@@ -947,7 +951,7 @@ msgstr ""
 msgid "Must be a number in the range of 50 - 1000"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2948
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2974
 msgid "Network Interface"
 msgstr ""
 
@@ -1018,11 +1022,11 @@ msgstr ""
 msgid "Only selected except exclusions"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2791
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2817
 msgid "Only servers from selected countries will be tested by URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2842
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2868
 msgid "Only servers whose names match these regular expressions will be checked through URLTest"
 msgstr ""
 
@@ -1141,11 +1145,11 @@ msgstr ""
 msgid "Podkop Plus-managed nfqws runtime is ready"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3066
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3092
 msgid "Port cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3055
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3081
 msgid "Port for the local mixed proxy of this section"
 msgstr ""
 
@@ -1165,7 +1169,7 @@ msgstr ""
 msgid "Refill"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3204
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3230
 msgid "Regional options cannot be used together"
 msgstr ""
 
@@ -1174,11 +1178,11 @@ msgstr ""
 msgid "Remove"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3082
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3108
 msgid "Resolve domain names before routing so sing-box can use real destination IPs."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3081
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3107
 msgid "Resolve real IP for routing"
 msgstr ""
 
@@ -1215,11 +1219,11 @@ msgstr ""
 msgid "Rule set must be an HTTP(S) URL or a local .srs / .json path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3276
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3302
 msgid "Rule sets (domains and subnets)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3259
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3285
 msgid "Rule sets (domains)"
 msgstr ""
 
@@ -1251,7 +1255,7 @@ msgstr ""
 msgid "Run Diagnostic"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3223
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3249
 msgid "Russia inside restrictions"
 msgstr ""
 
@@ -1275,11 +1279,11 @@ msgstr ""
 msgid "Sections"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2890
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2916
 msgid "Select a loaded server or enter an exact server name"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3166
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3192
 msgid "Select a predefined list for routing"
 msgstr ""
 
@@ -1291,7 +1295,7 @@ msgstr ""
 msgid "Select local devices or enter IP addresses/subnets to be excluded from routing"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2949
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2975
 msgid "Select network interface for VPN connection"
 msgstr ""
 
@@ -1307,7 +1311,7 @@ msgstr ""
 msgid "Select path for sing-box config file. Change this ONLY if you know what you are doing"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2816
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2842
 msgid "Select servers that will participate in URLTest checks. Other servers will be ignored."
 msgstr ""
 
@@ -1327,15 +1331,19 @@ msgstr ""
 msgid "Select the WAN interfaces to be monitored"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2865
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2774
+msgid "Server filtering for URLTest"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2891
 msgid "Servers from selected countries will not be tested by URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2914
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2940
 msgid "Servers with names matching these regular expressions will not be tested by URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3169
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3195
 msgid "Service list"
 msgstr ""
 
@@ -1346,6 +1354,10 @@ msgstr ""
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:126
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2450
 msgid "Settings"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2791
+msgid "Show only servers participating in URLTest on the dashboard."
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/initController.ts:490
@@ -1390,7 +1402,7 @@ msgstr ""
 msgid "Source"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3149
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3175
 msgid "Source IPs"
 msgstr ""
 
@@ -1398,7 +1410,7 @@ msgstr ""
 msgid "Source Network Interface"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3156
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3182
 msgid "Specify local IP addresses or subnets whose traffic will always be routed through the configured route"
 msgstr ""
 
@@ -1570,7 +1582,7 @@ msgstr ""
 msgid "UDP (Unprotected DNS)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2936
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2962
 msgid "UDP over TCP"
 msgstr ""
 
@@ -1668,10 +1680,6 @@ msgstr ""
 msgid "URLTest interval"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2774
-msgid "Server filtering for URLTest"
-msgstr ""
-
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2712
 msgid "URLTest tolerance"
 msgstr ""
@@ -1736,11 +1744,11 @@ msgstr ""
 msgid "vless://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3206
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3232
 msgid "Warning: %s cannot be used together with %s. Previous selections have been removed."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3225
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3251
 msgid "Warning: Russia inside can only be used with %s. %s already in Russia inside and have been removed from selection."
 msgstr ""
 

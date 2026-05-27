@@ -330,7 +330,7 @@ function renderDefaultState({
 }: IRenderSectionsProps) {
   function testLatency() {
     if (section.withTagSelect) {
-      return onTestLatency(section.code);
+      return onTestLatency(section.latencyTestCode || section.code);
     }
 
     if (section.outbounds.length) {
