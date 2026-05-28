@@ -448,16 +448,98 @@ updates_read_openwrt_release_value() {
     sed -n "s/^${key}='\(.*\)'/\1/p" /etc/openwrt_release 2>/dev/null | head -n 1
 }
 
-updates_http_get() {
+updates_get_service_proxy_address() {
+    local service_proxy_address
+
+    if ! command -v get_service_proxy_address >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if command -v sing_box_service_is_running >/dev/null 2>&1 && ! sing_box_service_is_running; then
+        return 0
+    fi
+
+    service_proxy_address="$(get_service_proxy_address 2>/dev/null || true)"
+    printf '%s' "$service_proxy_address"
+}
+
+updates_http_get_once() {
     local url="$1"
+    local output_path="$2"
+    local service_proxy_address="${3:-}"
 
     if updates_command_exists curl; then
-        curl --connect-timeout 5 -m 30 -fsSL "$url"
+        if [ -n "$service_proxy_address" ]; then
+            curl --connect-timeout 5 -m 30 -fsSL -x "http://$service_proxy_address" "$url" -o "$output_path"
+        else
+            curl --connect-timeout 5 -m 30 -fsSL "$url" -o "$output_path"
+        fi
         return $?
     fi
 
     if updates_command_exists wget; then
-        wget -T 30 -qO- "$url"
+        if [ -n "$service_proxy_address" ]; then
+            http_proxy="http://$service_proxy_address" https_proxy="http://$service_proxy_address" \
+                wget -T 30 -q -O "$output_path" "$url"
+        else
+            wget -T 30 -q -O "$output_path" "$url"
+        fi
+        return $?
+    fi
+
+    return 1
+}
+
+updates_http_get() {
+    local url="$1"
+    local service_proxy_address output_path
+
+    output_path="$(mktemp /tmp/podkop-plus-updates-http.XXXXXX 2>/dev/null || true)"
+    [ -n "$output_path" ] || return 1
+
+    service_proxy_address="$(updates_get_service_proxy_address)"
+    if [ -n "$service_proxy_address" ]; then
+        if updates_http_get_once "$url" "$output_path" "$service_proxy_address"; then
+            cat "$output_path"
+            rm -f "$output_path"
+            return 0
+        fi
+
+        rm -f "$output_path"
+        updates_log "HTTP request via service proxy failed for $url; retrying directly" "warn"
+    fi
+
+    if updates_http_get_once "$url" "$output_path" ""; then
+        cat "$output_path"
+        rm -f "$output_path"
+        return 0
+    fi
+
+    rm -f "$output_path"
+    return 1
+}
+
+updates_download_file_once_with_proxy() {
+    local url="$1"
+    local output_path="$2"
+    local service_proxy_address="${3:-}"
+
+    if updates_command_exists curl; then
+        if [ -n "$service_proxy_address" ]; then
+            curl --connect-timeout 5 -m 120 -fsSL -x "http://$service_proxy_address" "$url" -o "$output_path"
+        else
+            curl --connect-timeout 5 -m 120 -fsSL "$url" -o "$output_path"
+        fi
+        return $?
+    fi
+
+    if updates_command_exists wget; then
+        if [ -n "$service_proxy_address" ]; then
+            http_proxy="http://$service_proxy_address" https_proxy="http://$service_proxy_address" \
+                wget -T 120 -q -O "$output_path" "$url"
+        else
+            wget -T 120 -q -O "$output_path" "$url"
+        fi
         return $?
     fi
 
@@ -467,18 +549,19 @@ updates_http_get() {
 updates_download_file_once() {
     local url="$1"
     local output_path="$2"
+    local service_proxy_address
 
-    if updates_command_exists curl; then
-        curl --connect-timeout 5 -m 120 -fsSL "$url" -o "$output_path"
-        return $?
+    service_proxy_address="$(updates_get_service_proxy_address)"
+    if [ -n "$service_proxy_address" ]; then
+        if updates_download_file_once_with_proxy "$url" "$output_path" "$service_proxy_address"; then
+            return 0
+        fi
+
+        rm -f "$output_path"
+        updates_log "Download via service proxy failed for $url; retrying directly" "warn"
     fi
 
-    if updates_command_exists wget; then
-        wget -T 120 -q -O "$output_path" "$url"
-        return $?
-    fi
-
-    return 1
+    updates_download_file_once_with_proxy "$url" "$output_path" ""
 }
 
 updates_download_with_retry() {

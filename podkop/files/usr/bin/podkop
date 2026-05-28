@@ -457,6 +457,39 @@ subscription_cache_is_usable() {
     validate_subscription_file "$subscription_json_path"
 }
 
+get_subscription_download_proxy_address() {
+    local section="$1"
+    local had_usable_cache="${2:-0}"
+    local phase="${3:-runtime}"
+    local service_proxy_address download_lists_via_proxy_section selector_proxy_links
+
+    service_proxy_address="$(get_service_proxy_address)"
+    [ -n "$service_proxy_address" ] || return 0
+
+    if ! sing_box_service_is_running; then
+        if [ "$phase" = "startup" ]; then
+            log "download_lists_via_proxy is enabled, but sing-box is not running yet; bootstrapping subscription for rule '$section' directly" "info"
+        else
+            log "download_lists_via_proxy is enabled, but sing-box service proxy is not running; downloading subscription for rule '$section' directly" "warn"
+        fi
+        return 0
+    fi
+
+    config_get download_lists_via_proxy_section "settings" "download_lists_via_proxy_section"
+    if [ -n "$download_lists_via_proxy_section" ] &&
+        [ "$section" = "$download_lists_via_proxy_section" ] &&
+        [ "$had_usable_cache" -eq 0 ]; then
+        config_get selector_proxy_links "$section" "selector_proxy_links"
+        if [ -z "$selector_proxy_links" ]; then
+            log "Rule '$section' is selected for Download Lists via Proxy/VPN but has no usable subscription cache; downloading it directly to avoid a bootstrap loop" "warn"
+            return 0
+        fi
+    fi
+
+    log "Downloading subscription for rule '$section' via service proxy $service_proxy_address" "debug"
+    printf '%s\n' "$service_proxy_address"
+}
+
 download_subscription_into_cache() {
     local section="$1"
     local subscription_url="$2"
@@ -484,7 +517,7 @@ download_subscription_into_cache() {
         return 1
     }
 
-    if ! download_subscription "$subscription_url" "$raw_tmpfile" "$service_proxy_address" 3 2 10 "$headers_tmpfile" "$subscription_user_agent"; then
+    if ! download_subscription "$subscription_url" "$raw_tmpfile" "$service_proxy_address" 3 2 15 "$headers_tmpfile" "$subscription_user_agent"; then
         [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
         rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile"
         return 1
@@ -559,9 +592,10 @@ ensure_subscription_cache_for_source() {
     local subscription_user_agent="$4"
     local fatal_on_error="${5:-0}"
     local source_index="${6:-0}"
+    local download_phase="${7:-runtime}"
     local subscription_json_path subscription_url_cache_path subscription_user_agent_cache_path metadata_output_path \
         cached_subscription_url cached_subscription_user_agent
-    local had_usable_cache cache_needs_refresh update_result
+    local had_usable_cache cache_needs_refresh service_proxy_address update_result
 
     if [ -z "$subscription_url" ]; then
         log "Subscription URL is not set for rule '$section'. Aborted." "fatal"
@@ -614,8 +648,10 @@ ensure_subscription_cache_for_source() {
         metadata_output_path="$(mktemp "$TMP_SUBSCRIPTION_FOLDER/${source_section}.metadata-output.XXXXXX" 2>/dev/null || true)"
     fi
 
+    service_proxy_address="$(get_subscription_download_proxy_address "$section" "$had_usable_cache" "$download_phase")"
+
     download_subscription_into_cache \
-        "$section" "$subscription_url" "$subscription_json_path" "$subscription_url_cache_path" "" "$subscription_user_agent" "$source_section" "$metadata_output_path"
+        "$section" "$subscription_url" "$subscription_json_path" "$subscription_url_cache_path" "$service_proxy_address" "$subscription_user_agent" "$source_section" "$metadata_output_path"
     update_result="$?"
     case "$update_result" in
     0 | 2)
@@ -660,7 +696,7 @@ prepare_subscription_cache_source() {
 
     source_section="$(subscription_source_id "$section" "$index")"
     if ensure_subscription_cache_for_source \
-        "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 0 "$index"; then
+        "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 0 "$index" "startup"; then
         SUBSCRIPTION_SECTION_SOURCE_READY=$((SUBSCRIPTION_SECTION_SOURCE_READY + 1))
     else
         SUBSCRIPTION_SECTION_SOURCE_FAILED=$((SUBSCRIPTION_SECTION_SOURCE_FAILED + 1))
@@ -4375,7 +4411,8 @@ subscription_update_source_handler() {
     local section="$1"
     local index="$2"
     local entry="$3"
-    local source_section subscription_json_path subscription_url_cache_path metadata_output_path update_result
+    local source_section subscription_json_path subscription_url_cache_path metadata_output_path \
+        had_usable_cache service_proxy_address update_result
 
     SUBSCRIPTION_SECTION_UPDATE_TOTAL=$((SUBSCRIPTION_SECTION_UPDATE_TOTAL + 1))
 
@@ -4388,13 +4425,16 @@ subscription_update_source_handler() {
     source_section="$(subscription_source_id "$section" "$index")"
     subscription_json_path="$(get_subscription_json_path "$source_section")"
     subscription_url_cache_path="$(get_subscription_url_cache_path "$source_section")"
+    had_usable_cache=0
+    subscription_cache_is_usable "$subscription_json_path" && had_usable_cache=1
+    service_proxy_address="$(get_subscription_download_proxy_address "$section" "$had_usable_cache" "runtime")"
     metadata_output_path=""
     if [ -n "$SUBSCRIPTION_SECTION_METADATA_TMP" ]; then
         metadata_output_path="$(mktemp "$TMP_SUBSCRIPTION_FOLDER/${source_section}.metadata-output.XXXXXX" 2>/dev/null || true)"
     fi
 
     download_subscription_into_cache \
-        "$section" "$SUBSCRIPTION_SOURCE_URL" "$subscription_json_path" "$subscription_url_cache_path" "" \
+        "$section" "$SUBSCRIPTION_SOURCE_URL" "$subscription_json_path" "$subscription_url_cache_path" "$service_proxy_address" \
         "$SUBSCRIPTION_SOURCE_USER_AGENT" "$source_section" "$metadata_output_path"
     update_result=$?
 
@@ -4422,7 +4462,8 @@ subscription_update_selected_source_handler() {
     local section="$1"
     local index="$2"
     local entry="$3"
-    local source_section subscription_json_path subscription_url_cache_path metadata_output_path update_result
+    local source_section subscription_json_path subscription_url_cache_path metadata_output_path \
+        had_usable_cache service_proxy_address update_result
 
     [ "$index" = "$SUBSCRIPTION_SELECTED_SOURCE_INDEX" ] || return 0
 
@@ -4436,10 +4477,13 @@ subscription_update_selected_source_handler() {
     source_section="$(subscription_source_id "$section" "$index")"
     subscription_json_path="$(get_subscription_json_path "$source_section")"
     subscription_url_cache_path="$(get_subscription_url_cache_path "$source_section")"
+    had_usable_cache=0
+    subscription_cache_is_usable "$subscription_json_path" && had_usable_cache=1
+    service_proxy_address="$(get_subscription_download_proxy_address "$section" "$had_usable_cache" "runtime")"
     metadata_output_path="$(mktemp "$TMP_SUBSCRIPTION_FOLDER/${source_section}.metadata-output.XXXXXX" 2>/dev/null || true)"
 
     download_subscription_into_cache \
-        "$section" "$SUBSCRIPTION_SOURCE_URL" "$subscription_json_path" "$subscription_url_cache_path" "" \
+        "$section" "$SUBSCRIPTION_SOURCE_URL" "$subscription_json_path" "$subscription_url_cache_path" "$service_proxy_address" \
         "$SUBSCRIPTION_SOURCE_USER_AGENT" "$source_section" "$metadata_output_path"
     update_result=$?
 
