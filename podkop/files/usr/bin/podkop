@@ -968,6 +968,34 @@ dnsmasq_inherited_default_options() {
     echo "domain local expandhosts localise_queries domainneeded add_local_domain add_local_hostname add_local_fqdn"
 }
 
+dnsmasq_server_is_domain_forward() {
+    local server="$1"
+
+    case "$server" in
+    /#/* | /./* | //*)
+        return 1
+        ;;
+    /*/*)
+        return 0
+        ;;
+    esac
+
+    return 1
+}
+
+dnsmasq_default_domain_forward_servers() {
+    local server
+
+    for server in $(uci_get "dhcp" "@dnsmasq[0]" "server"); do
+        dnsmasq_server_is_domain_forward "$server" || continue
+        printf '%s\n' "$server"
+    done
+}
+
+dnsmasq_default_domain_forward_servers_signature() {
+    dnsmasq_default_domain_forward_servers | tr '\n' ' '
+}
+
 append_dnsmasq_inherited_options_signature() {
     local option value
 
@@ -986,6 +1014,7 @@ build_dnsmasq_signature() {
     signature_add "settings.dont_touch_dhcp" "$dont_touch_dhcp"
     signature_add "settings.source_network_interfaces" "$source_network_interfaces"
     append_dnsmasq_inherited_options_signature
+    signature_add "dhcp.@dnsmasq[0].domain_forward_servers" "$(dnsmasq_default_domain_forward_servers_signature)"
     signature_finish
 }
 
@@ -3734,6 +3763,14 @@ dnsmasq_inherit_default_options() {
     done
 }
 
+dnsmasq_inherit_default_domain_forward_servers() {
+    local server
+
+    for server in $(dnsmasq_default_domain_forward_servers); do
+        uci_add_list "dhcp" "$PODKOP_DNSMASQ_SECTION" "server" "$server"
+    done
+}
+
 dnsmasq_server_list_has_podkop_dns() {
     local server_list="$1"
     local server
@@ -3809,6 +3846,7 @@ dnsmasq_configure_split_instance() {
     uci_set "dhcp" "$PODKOP_DNSMASQ_SECTION" "cachesize" 0
     dnsmasq_inherit_default_options
     uci_add_list "dhcp" "$PODKOP_DNSMASQ_SECTION" "server" "$SB_DNS_INBOUND_ADDRESS"
+    dnsmasq_inherit_default_domain_forward_servers
     uci_add_list "dhcp" "$PODKOP_DNSMASQ_SECTION" "notinterface" "lo"
 
     for interface in $source_network_interfaces; do
@@ -7588,7 +7626,7 @@ check_dns_available() {
 
 check_dhcp_has_podkop_dns() {
     local source_network_interfaces podkop_interfaces podkop_notinterfaces default_notinterfaces server_list cachesize noresolv
-    local server server_found interface
+    local server server_found interface default_domain_forward_servers
 
     source_network_interfaces="$(uci_get "$PODKOP_CONFIG_NAME" "settings" "source_network_interfaces")"
     [ -n "$source_network_interfaces" ] || source_network_interfaces="br-lan"
@@ -7599,6 +7637,7 @@ check_dhcp_has_podkop_dns() {
     podkop_interfaces="$(uci_get "dhcp" "$PODKOP_DNSMASQ_SECTION" "interface")"
     podkop_notinterfaces="$(uci_get "dhcp" "$PODKOP_DNSMASQ_SECTION" "notinterface")"
     default_notinterfaces="$(uci_get "dhcp" "@dnsmasq[0]" "notinterface")"
+    default_domain_forward_servers="$(dnsmasq_default_domain_forward_servers)"
 
     server_found=0
 
@@ -7615,6 +7654,13 @@ check_dhcp_has_podkop_dns() {
         dhcp_config_status=0
         return 0
     fi
+
+    for server in $default_domain_forward_servers; do
+        if ! list_has_item "$server_list" "$server"; then
+            dhcp_config_status=0
+            return 0
+        fi
+    done
 
     if ! list_has_item "$podkop_notinterfaces" "lo"; then
         dhcp_config_status=0
