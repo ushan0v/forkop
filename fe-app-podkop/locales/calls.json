@@ -704,24 +704,24 @@
     ]
   },
   {
-    "call": "Download external rule sets through one of the enabled proxy/VPN/JSON outbound sections",
-    "key": "Download external rule sets through one of the enabled proxy/VPN/JSON outbound sections",
+    "call": "Download external lists/updates/subscriptions via one of the enabled proxy/VPN sections",
+    "key": "Download external lists/updates/subscriptions via one of the enabled proxy/VPN sections",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:340"
     ]
   },
   {
-    "call": "Download Lists via Proxy/VPN",
-    "key": "Download Lists via Proxy/VPN",
+    "call": "Download external lists/updates/subscriptions via the selected section",
+    "key": "Download external lists/updates/subscriptions via the selected section",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:330"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:331"
     ]
   },
   {
-    "call": "Download Lists via specific proxy/VPN/JSON outbound section",
-    "key": "Download Lists via specific proxy/VPN/JSON outbound section",
+    "call": "Download lists/updates/subscriptions via Proxy/VPN",
+    "key": "Download lists/updates/subscriptions via Proxy/VPN",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:339"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:330"
     ]
   },
   {
@@ -730,13 +730,6 @@
     "places": [
       "src/podkop/tabs/monitoring/initController.ts:638",
       "src/podkop/tabs/monitoring/initController.ts:692"
-    ]
-  },
-  {
-    "call": "Downloading all lists via specific Proxy/VPN",
-    "key": "Downloading all lists via specific Proxy/VPN",
-    "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:331"
     ]
   },
   {
@@ -950,19 +943,6 @@
     ]
   },
   {
-    "call": "Failed to execute!",
-    "key": "Failed to execute!",
-    "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:353",
-      "src/podkop/tabs/diagnostic/initController.ts:433",
-      "src/podkop/tabs/diagnostic/initController.ts:437",
-      "src/podkop/tabs/diagnostic/initController.ts:472",
-      "src/podkop/tabs/diagnostic/initController.ts:476",
-      "src/podkop/tabs/diagnostic/initController.ts:502",
-      "src/podkop/tabs/diagnostic/initController.ts:506"
-    ]
-  },
-  {
     "call": "Failed to update subscriptions",
     "key": "Failed to update subscriptions",
     "places": [
@@ -996,7 +976,7 @@
     "call": "Global check",
     "key": "Global check",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:428"
+      "src/podkop/tabs/diagnostic/initController.ts:415"
     ]
   },
   {
@@ -1720,9 +1700,9 @@
     "key": "Not running",
     "places": [
       "src/podkop/tabs/diagnostic/diagnostic.store.ts:111",
-      "src/podkop/tabs/diagnostic/initController.ts:61",
-      "src/podkop/tabs/diagnostic/initController.ts:210",
-      "src/podkop/tabs/diagnostic/initController.ts:260"
+      "src/podkop/tabs/diagnostic/initController.ts:60",
+      "src/podkop/tabs/diagnostic/initController.ts:209",
+      "src/podkop/tabs/diagnostic/initController.ts:259"
     ]
   },
   {
@@ -2235,6 +2215,13 @@
     ]
   },
   {
+    "call": "Select a specific section for downloading external resources",
+    "key": "Select a specific section for downloading external resources",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:339"
+    ]
+  },
+  {
     "call": "Select DNS protocol to use",
     "key": "Select DNS protocol to use",
     "places": [
@@ -2365,7 +2352,7 @@
     "call": "Show sing-box config",
     "key": "Show sing-box config",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:490",
+      "src/podkop/tabs/diagnostic/initController.ts:473",
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:116"
     ]
   },
@@ -2989,7 +2976,7 @@
     "call": "View logs",
     "key": "View logs",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:461",
+      "src/podkop/tabs/diagnostic/initController.ts:446",
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:107"
     ]
   },

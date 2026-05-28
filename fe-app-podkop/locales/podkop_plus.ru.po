@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-27 04:42+0300\n"
-"PO-Revision-Date: 2026-05-27 04:42+0300\n"
+"POT-Creation-Date: 2026-05-28 18:25+0300\n"
+"PO-Revision-Date: 2026-05-28 18:25+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -302,20 +302,17 @@ msgstr "Входящий"
 msgid "Download"
 msgstr "Скачать"
 
-msgid "Download external rule sets through one of the enabled proxy/VPN/JSON outbound sections"
-msgstr "Скачивать внешние наборы правил через одну из включенных секций proxy/VPN/JSON outbound"
+msgid "Download external lists/updates/subscriptions via one of the enabled proxy/VPN sections"
+msgstr "Скачивать внешние списки/обновления/подписки через одну из включенных секций proxy/VPN"
 
-msgid "Download Lists via Proxy/VPN"
-msgstr "Скачивать списки через Proxy/VPN"
+msgid "Download external lists/updates/subscriptions via the selected section"
+msgstr "Скачивать внешние списки/обновления/подписки через выбранную секцию"
 
-msgid "Download Lists via specific proxy/VPN/JSON outbound section"
-msgstr "Скачивать списки через конкретную секцию proxy/VPN/JSON outbound"
+msgid "Download lists/updates/subscriptions via Proxy/VPN"
+msgstr "Скачивать списки/обновления/подписки через Proxy/VPN"
 
 msgid "Downloaded"
 msgstr "Загружено"
-
-msgid "Downloading all lists via specific Proxy/VPN"
-msgstr "Загрузка всех списков через указанный прокси/VPN"
 
 msgid "Drag rows to change priority. The rule at the top is checked first."
 msgstr "Перетаскивайте строки, чтобы изменить приоритет. Правило сверху проверяется первым."
@@ -403,9 +400,6 @@ msgstr "Не удалось скопировать!"
 
 msgid "Failed to execute"
 msgstr "Не удалось выполнить"
-
-msgid "Failed to execute!"
-msgstr "Не удалось выполнить!"
 
 msgid "Failed to update subscriptions"
 msgstr "Не удалось обновить подписки"
@@ -940,6 +934,9 @@ msgstr "Выберите загруженный сервер или введит
 
 msgid "Select a predefined list for routing"
 msgstr "Выберите предустановленный набор правил для маршрутизации"
+
+msgid "Select a specific section for downloading external resources"
+msgstr "Выберите конкретную секцию для скачки внешних ресурсов"
 
 msgid "Select DNS protocol to use"
 msgstr "Выберите протокол DNS"

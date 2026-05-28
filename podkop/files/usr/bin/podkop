@@ -58,6 +58,7 @@ PODKOP_SUBSCRIPTION_METADATA_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-metadat
 PODKOP_OUTBOUND_METADATA_DIR="$PODKOP_RUNTIME_STATE_DIR/outbound-metadata"
 PODKOP_SECTION_CACHE_DIR="$PODKOP_RUNTIME_STATE_DIR/section-cache"
 PODKOP_RUNTIME_CACHE_FORMAT_FILE="$PODKOP_RUNTIME_STATE_DIR/cache-format"
+PODKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE="$PODKOP_RUNTIME_STATE_DIR/subscription-bootstrap-retry.pid"
 PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-update.lock"
 PODKOP_RELOAD_LOCK_DIR="/var/run/podkop-plus.reload.lock"
 PODKOP_LIST_UPDATE_CRON_MARKER="# podkop-plus-list-update"
@@ -75,6 +76,8 @@ PODKOP_ZAPRET_MISSING_WARNING_EMITTED=0
 PODKOP_BYEDPI_MISSING_WARNING_EMITTED=0
 PODKOP_URLTEST_NEW_ENABLED_SECTIONS=""
 PODKOP_URLTEST_SELECTOR_SWITCHES=""
+SUBSCRIPTION_DEFERRED_SECTIONS=""
+SUBSCRIPTION_STARTUP_BLOCKED_SECTIONS=""
 
 config_load "$PODKOP_CONFIG_NAME"
 
@@ -457,6 +460,148 @@ subscription_cache_is_usable() {
     validate_subscription_file "$subscription_json_path"
 }
 
+subscription_append_word_once() {
+    local list="$1"
+    local word="$2"
+
+    [ -n "$word" ] || {
+        printf '%s\n' "$list"
+        return 0
+    }
+
+    list_has_word "$list" "$word" && {
+        printf '%s\n' "$list"
+        return 0
+    }
+
+    printf '%s\n' "${list}${list:+ }${word}"
+}
+
+subscription_mark_startup_blocked_section() {
+    local section="$1"
+
+    SUBSCRIPTION_STARTUP_BLOCKED_SECTIONS="$(subscription_append_word_once "$SUBSCRIPTION_STARTUP_BLOCKED_SECTIONS" "$section")"
+}
+
+subscription_startup_blocked_section_is_marked() {
+    local section="$1"
+
+    list_has_word "$SUBSCRIPTION_STARTUP_BLOCKED_SECTIONS" "$section"
+}
+
+subscription_mark_deferred_section() {
+    local section="$1"
+
+    SUBSCRIPTION_DEFERRED_SECTIONS="$(subscription_append_word_once "$SUBSCRIPTION_DEFERRED_SECTIONS" "$section")"
+}
+
+subscription_section_is_deferred() {
+    local section="$1"
+
+    list_has_word "$SUBSCRIPTION_DEFERRED_SECTIONS" "$section"
+}
+
+subscription_section_usable_cache_handler() {
+    local section="$1"
+    local index="$2"
+    local entry="$3"
+    local source_section subscription_json_path subscription_url_cache_path subscription_user_agent_cache_path \
+        cached_subscription_url cached_subscription_user_agent
+
+    [ "$SUBSCRIPTION_SECTION_USABLE_CACHE_FOUND" -eq 0 ] || return 0
+    parse_subscription_source_entry "$entry" >/dev/null 2>&1 || return 0
+
+    source_section="$(subscription_source_id "$section" "$index")"
+    subscription_json_path="$(get_subscription_json_path "$source_section")"
+    subscription_url_cache_path="$(get_subscription_url_cache_path "$source_section")"
+    subscription_user_agent_cache_path="$(get_subscription_user_agent_cache_path "$source_section")"
+
+    subscription_cache_is_usable "$subscription_json_path" || return 0
+    cached_subscription_url="$(cat "$subscription_url_cache_path" 2>/dev/null)"
+    cached_subscription_user_agent="$(cat "$subscription_user_agent_cache_path" 2>/dev/null)"
+
+    if [ "$cached_subscription_url" = "$SUBSCRIPTION_SOURCE_URL" ] &&
+        [ "$cached_subscription_user_agent" = "$SUBSCRIPTION_SOURCE_USER_AGENT" ]; then
+        SUBSCRIPTION_SECTION_USABLE_CACHE_FOUND=1
+    fi
+}
+
+subscription_section_has_current_usable_cache() {
+    local section="$1"
+
+    rule_has_subscription_urls "$section" || return 1
+
+    SUBSCRIPTION_SECTION_USABLE_CACHE_FOUND=0
+    for_each_subscription_source "$section" subscription_section_usable_cache_handler
+    [ "$SUBSCRIPTION_SECTION_USABLE_CACHE_FOUND" -eq 1 ]
+}
+
+subscription_bootstrap_download_section_is_ready() {
+    local download_lists_via_proxy download_lists_via_proxy_section action selector_proxy_links outbound_json interface_name
+
+    config_get_bool download_lists_via_proxy "settings" "download_lists_via_proxy" 0
+    [ "$download_lists_via_proxy" -eq 1 ] || {
+        log "Subscription startup cannot be deferred because Download lists/updates/subscriptions via Proxy/VPN is disabled" "error"
+        return 1
+    }
+
+    config_get download_lists_via_proxy_section "settings" "download_lists_via_proxy_section"
+    [ -n "$download_lists_via_proxy_section" ] || return 1
+
+    if subscription_startup_blocked_section_is_marked "$download_lists_via_proxy_section"; then
+        log "Subscription startup cannot be deferred because selected download rule '$download_lists_via_proxy_section' is also waiting for an unavailable subscription cache" "error"
+        return 1
+    fi
+
+    rule_is_enabled "$download_lists_via_proxy_section" || return 1
+
+    action="$(get_rule_action "$download_lists_via_proxy_section")"
+    case "$action" in
+    proxy)
+        config_get selector_proxy_links "$download_lists_via_proxy_section" "selector_proxy_links"
+        if [ -n "$selector_proxy_links" ]; then
+            return 0
+        fi
+
+        if subscription_section_has_current_usable_cache "$download_lists_via_proxy_section"; then
+            return 0
+        fi
+
+        log "Subscription startup cannot be deferred because selected proxy rule '$download_lists_via_proxy_section' has no manual proxy links and no usable subscription cache" "error"
+        return 1
+        ;;
+    outbound)
+        config_get outbound_json "$download_lists_via_proxy_section" "outbound_json"
+        [ -n "$outbound_json" ] || return 1
+        return 0
+        ;;
+    vpn)
+        config_get interface_name "$download_lists_via_proxy_section" "interface"
+        [ -n "$interface_name" ] || return 1
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+subscription_defer_startup_blocked_sections() {
+    local section
+
+    for section in $SUBSCRIPTION_STARTUP_BLOCKED_SECTIONS; do
+        subscription_mark_deferred_section "$section"
+    done
+}
+
+subscription_log_startup_blocked_sections() {
+    local section
+
+    for section in $SUBSCRIPTION_STARTUP_BLOCKED_SECTIONS; do
+        log "No usable subscription cache for rule '$section' and no manual proxy links are configured; startup cannot continue" "error"
+    done
+}
+
 get_subscription_download_proxy_address() {
     local section="$1"
     local had_usable_cache="${2:-0}"
@@ -481,7 +626,7 @@ get_subscription_download_proxy_address() {
         [ "$had_usable_cache" -eq 0 ]; then
         config_get selector_proxy_links "$section" "selector_proxy_links"
         if [ -z "$selector_proxy_links" ]; then
-            log "Rule '$section' is selected for Download Lists via Proxy/VPN but has no usable subscription cache; downloading it directly to avoid a bootstrap loop" "warn"
+            log "Rule '$section' is selected for downloading external resources but has no usable subscription cache; downloading it directly to avoid a bootstrap loop" "warn"
             return 0
         fi
     fi
@@ -730,8 +875,8 @@ prepare_subscription_cache_for_startup() {
         if [ -n "$selector_proxy_links" ]; then
             log "All subscription sources for rule '$section' are unavailable; starting with manual proxy links only" "warn"
         else
-            log "No usable subscription cache for rule '$section' and no manual proxy links are configured; startup cannot continue" "error"
-            subscription_startup_blocked=1
+            log "No usable subscription cache for rule '$section' and no manual proxy links are configured; checking whether startup can be bootstrapped through the selected proxy/VPN rule" "warn"
+            subscription_mark_startup_blocked_section "$section"
         fi
     elif [ "$SUBSCRIPTION_SECTION_SOURCE_FAILED" -gt 0 ]; then
         log "Skipping unavailable subscription source(s) for rule '$section'; using available outbounds" "warn"
@@ -752,9 +897,205 @@ prepare_subscription_cache_for_startup() {
 prepare_subscription_caches_for_startup() {
     subscription_startup_blocked=0
     SUBSCRIPTION_UNAVAILABLE_SOURCES=""
+    SUBSCRIPTION_DEFERRED_SECTIONS=""
+    SUBSCRIPTION_STARTUP_BLOCKED_SECTIONS=""
     config_foreach prepare_subscription_cache_for_startup "section"
 
-    [ "$subscription_startup_blocked" -eq 0 ]
+    [ "$subscription_startup_blocked" -eq 0 ] || return 1
+    [ -n "$SUBSCRIPTION_STARTUP_BLOCKED_SECTIONS" ] || return 0
+
+    if subscription_bootstrap_download_section_is_ready; then
+        subscription_defer_startup_blocked_sections
+        log "Starting temporarily without subscription-only rule(s): $SUBSCRIPTION_DEFERRED_SECTIONS. They will be retried through the service proxy after sing-box starts" "warn"
+        return 0
+    fi
+
+    subscription_log_startup_blocked_sections
+    return 1
+}
+
+wait_for_subscription_bootstrap_service_proxy() {
+    local attempt
+
+    attempt=1
+    while [ "$attempt" -le 10 ]; do
+        if sing_box_service_is_running; then
+            return 0
+        fi
+
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+
+    return 1
+}
+
+retry_deferred_subscription_section() {
+    local section="$1"
+    local result
+
+    if ! rule_is_subscription_proxy "$section"; then
+        log "Deferred subscription rule '$section' no longer has subscription proxy sources; removing it from bootstrap retry list" "warn"
+        return 0
+    fi
+
+    log "Retrying deferred subscription rule '$section' through the service proxy" "info"
+    subscription_update_section "$section" 1
+    result="$?"
+
+    case "$result" in
+    0 | 2)
+        return 0
+        ;;
+    esac
+
+    if subscription_section_has_current_usable_cache "$section"; then
+        log "Deferred subscription rule '$section' has a usable cache after retry despite partial update errors" "warn"
+        return 0
+    fi
+
+    return 1
+}
+
+rebuild_runtime_after_deferred_subscription_recovery() {
+    local recovered_sections="$1"
+
+    log "Recovered deferred subscription rule(s): $recovered_sections; rebuilding sing-box runtime" "info"
+    config_load "$PODKOP_CONFIG_NAME"
+    validate_runtime_settings
+    sing_box_configure_service
+    rebuild_nft_runtime
+    PODKOP_NFT_POPULATE_ENABLED=1
+    sing_box_init_config
+    reload_sing_box_runtime
+    apply_pending_urltest_selector_switches
+    capture_reload_state
+    write_reload_state
+}
+
+deferred_subscription_bootstrap_retry_pass() {
+    local section remaining_deferred recovered_sections
+
+    [ -n "$SUBSCRIPTION_DEFERRED_SECTIONS" ] || return 0
+
+    remaining_deferred=""
+    recovered_sections=""
+    for section in $SUBSCRIPTION_DEFERRED_SECTIONS; do
+        if retry_deferred_subscription_section "$section"; then
+            recovered_sections="${recovered_sections}${recovered_sections:+ }$section"
+        else
+            remaining_deferred="${remaining_deferred}${remaining_deferred:+ }$section"
+            log "Deferred subscription rule '$section' is still unavailable; keeping it disabled for this startup" "warn"
+        fi
+    done
+
+    [ -n "$recovered_sections" ] || {
+        SUBSCRIPTION_DEFERRED_SECTIONS="$remaining_deferred"
+        return 1
+    }
+
+    SUBSCRIPTION_DEFERRED_SECTIONS="$remaining_deferred"
+    SUBSCRIPTION_UNAVAILABLE_SOURCES=""
+    rebuild_runtime_after_deferred_subscription_recovery "$recovered_sections"
+
+    if [ -n "$SUBSCRIPTION_DEFERRED_SECTIONS" ]; then
+        log "Some deferred subscription rule(s) are still disabled for this startup: $SUBSCRIPTION_DEFERRED_SECTIONS" "warn"
+        return 1
+    fi
+
+    return 0
+}
+
+subscription_bootstrap_retry_worker_cleanup() {
+    local status="${1:-0}"
+
+    trap - EXIT INT TERM
+    rm -f "$PODKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE"
+    release_runtime_dir_lock "$PODKOP_RELOAD_LOCK_DIR"
+    release_runtime_dir_lock "$PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR"
+    exit "$status"
+}
+
+deferred_subscription_bootstrap_retry_worker() {
+    local remaining_sections="$1"
+
+    trap 'subscription_bootstrap_retry_worker_cleanup "$?"' EXIT INT TERM
+
+    while [ -n "$remaining_sections" ]; do
+        sleep 30
+
+        if ! sing_box_service_is_running; then
+            log "Stopping subscription bootstrap retry worker because sing-box is not running" "warn"
+            break
+        fi
+
+        config_load "$PODKOP_CONFIG_NAME"
+        ensure_runtime_dirs
+
+        if ! acquire_runtime_dir_lock "$PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR"; then
+            log "Subscription bootstrap retry skipped because another subscription update is running" "debug"
+            continue
+        fi
+
+        if ! acquire_runtime_dir_lock "$PODKOP_RELOAD_LOCK_DIR"; then
+            release_runtime_dir_lock "$PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR"
+            log "Subscription bootstrap retry skipped because Podkop Plus reload is running" "debug"
+            continue
+        fi
+
+        SUBSCRIPTION_DEFERRED_SECTIONS="$remaining_sections"
+        SUBSCRIPTION_UNAVAILABLE_SOURCES=""
+
+        if deferred_subscription_bootstrap_retry_pass; then
+            release_runtime_dir_lock "$PODKOP_RELOAD_LOCK_DIR"
+            release_runtime_dir_lock "$PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR"
+            break
+        fi
+
+        remaining_sections="$SUBSCRIPTION_DEFERRED_SECTIONS"
+        release_runtime_dir_lock "$PODKOP_RELOAD_LOCK_DIR"
+        release_runtime_dir_lock "$PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR"
+    done
+}
+
+start_deferred_subscription_bootstrap_retry_worker() {
+    local existing_pid
+
+    [ -n "$SUBSCRIPTION_DEFERRED_SECTIONS" ] || return 0
+
+    existing_pid="$(sed -n '1p' "$PODKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE" 2>/dev/null)"
+    if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
+        log "Subscription bootstrap retry worker is already running with PID $existing_pid" "debug"
+        return 0
+    fi
+
+    (close_inherited_service_lock_fd; deferred_subscription_bootstrap_retry_worker "$SUBSCRIPTION_DEFERRED_SECTIONS") &
+    printf '%s\n' "$!" > "$PODKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE"
+    log "Started subscription bootstrap retry worker for rule(s): $SUBSCRIPTION_DEFERRED_SECTIONS" "info"
+}
+
+stop_deferred_subscription_bootstrap_retry_worker() {
+    local pid
+
+    pid="$(sed -n '1p' "$PODKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE" 2>/dev/null)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        kill "$pid" 2>/dev/null || true
+        log "Stopped subscription bootstrap retry worker"
+    fi
+    rm -f "$PODKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE"
+}
+
+run_deferred_subscription_bootstrap() {
+    [ -n "$SUBSCRIPTION_DEFERRED_SECTIONS" ] || return 0
+
+    log "Waiting for sing-box service proxy before retrying deferred subscription rule(s): $SUBSCRIPTION_DEFERRED_SECTIONS" "info"
+    if ! wait_for_subscription_bootstrap_service_proxy; then
+        log "sing-box service proxy did not become ready in time; deferred subscription rule(s) will remain disabled until the next successful subscription update" "warn"
+        start_deferred_subscription_bootstrap_retry_worker
+        return 0
+    fi
+
+    deferred_subscription_bootstrap_retry_pass || start_deferred_subscription_bootstrap_retry_worker
 }
 
 close_inherited_service_lock_fd() {
@@ -1785,6 +2126,7 @@ populate_nft_runtime_sets_from_rule() {
     local ip_values
 
     rule_is_enabled "$section" || return 0
+    subscription_section_is_deferred "$section" && return 0
 
     ip_values="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
     add_section_ip_cidr_to_nft_sets "$section" "$ip_values"
@@ -1926,7 +2268,7 @@ validate_download_lists_via_proxy_section() {
 
     config_get download_lists_via_proxy_section "settings" "download_lists_via_proxy_section"
     if [ -z "$download_lists_via_proxy_section" ]; then
-        log "Download Lists via Proxy/VPN is enabled, but no proxy/VPN/JSON outbound rule is selected. Aborted." "fatal"
+        log "Download lists/updates/subscriptions via Proxy/VPN is enabled, but no proxy/VPN/JSON outbound rule is selected. Aborted." "fatal"
         exit 1
     fi
 
@@ -1937,17 +2279,17 @@ validate_download_lists_via_proxy_section() {
     config_foreach _validate_download_lists_via_proxy_section_handler "section"
 
     if [ "$PODKOP_VALIDATE_DOWNLOAD_SECTION_FOUND" -eq 0 ]; then
-        log "Download Lists via Proxy/VPN references missing rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
+        log "Download lists/updates/subscriptions via Proxy/VPN references missing rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
         exit 1
     fi
 
     if [ "$PODKOP_VALIDATE_DOWNLOAD_SECTION_ENABLED" -eq 0 ]; then
-        log "Download Lists via Proxy/VPN references disabled rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
+        log "Download lists/updates/subscriptions via Proxy/VPN references disabled rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
         exit 1
     fi
 
     if [ "$PODKOP_VALIDATE_DOWNLOAD_SECTION_OUTBOUND" -eq 0 ]; then
-        log "Download Lists via Proxy/VPN references rule '$download_lists_via_proxy_section', but it is not a proxy/VPN/JSON outbound rule. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
+        log "Download lists/updates/subscriptions via Proxy/VPN references rule '$download_lists_via_proxy_section', but it is not a proxy/VPN/JSON outbound rule. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
         exit 1
     fi
 }
@@ -2491,6 +2833,7 @@ start_main() {
     start_byedpi_runtime
     /etc/init.d/sing-box start
     apply_pending_urltest_selector_switches
+    run_deferred_subscription_bootstrap
     start_zapret_runtime
 
     (close_inherited_service_lock_fd; list_update) &
@@ -2498,6 +2841,8 @@ start_main() {
 
 stop_main() {
     log "Stopping Podkop Plus"
+
+    stop_deferred_subscription_bootstrap_retry_worker
 
     if [ -f /var/run/podkop_list_update.pid ]; then
         pid=$(cat /var/run/podkop_list_update.pid)
@@ -5546,6 +5891,13 @@ configure_outbound_handler() {
     local action
 
     rule_is_enabled "$section" || return 0
+    if subscription_section_is_deferred "$section"; then
+        log "Skipping outbound for deferred subscription rule '$section' until its cache is recovered" "warn"
+        write_subscription_metadata_json "$section" ""
+        write_subscription_outbound_link_cache "$section" "{}" "{}"
+        write_outbound_metadata "$section" "{}" "{}" "{}"
+        return 0
+    fi
 
     action="$(get_rule_action "$section")"
 
@@ -6134,6 +6486,10 @@ configure_route_rule_handler() {
     local action route_rule_tag ip_values_json ip_values port_values_json port_ranges_json
 
     rule_is_enabled "$section" || return 0
+    if subscription_section_is_deferred "$section"; then
+        log "Skipping route rule '$section' until its subscription cache is recovered" "warn"
+        return 0
+    fi
 
     action="$(get_rule_action "$section")"
     [ -n "$action" ] || return 0
@@ -6234,6 +6590,7 @@ include_source_ips_in_routing_handler() {
     local section="$1"
 
     rule_is_enabled "$section" || return 0
+    subscription_section_is_deferred "$section" && return 0
 
     local action fully_routed_ips rule_tag
     action="$(get_rule_action "$section")"
@@ -6358,6 +6715,7 @@ configure_section_mixed_proxy() {
     local action
 
     rule_is_enabled "$section" || return 0
+    subscription_section_is_deferred "$section" && return 0
 
     action="$(get_rule_action "$section")"
     [ "$action" = "proxy" ] || [ "$action" = "outbound" ] || [ "$action" = "vpn" ] || [ "$action" = "byedpi" ] || [ "$action" = "zapret" ] || return 0
@@ -6889,6 +7247,7 @@ _determine_first_outbound_section() {
     local action
 
     rule_is_enabled "$section" || return 0
+    subscription_section_is_deferred "$section" && return 0
 
     action="$(get_rule_action "$section")"
     if [ "$action" = "proxy" ] || [ "$action" = "outbound" ] || [ "$action" = "vpn" ] || { [ "$action" = "byedpi" ] && is_byedpi_installed; }; then

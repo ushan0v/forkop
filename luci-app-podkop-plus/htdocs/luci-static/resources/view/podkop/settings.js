@@ -327,8 +327,8 @@ function createSettingsContent(section) {
   o = section.option(
     form.Flag,
     "download_lists_via_proxy",
-    _("Download Lists via Proxy/VPN"),
-    _("Downloading all lists via specific Proxy/VPN"),
+    _("Download lists/updates/subscriptions via Proxy/VPN"),
+    _("Download external lists/updates/subscriptions via the selected section"),
   );
   o.default = "0";
   o.rmempty = false;
@@ -336,9 +336,9 @@ function createSettingsContent(section) {
   o = section.option(
     form.ListValue,
     "download_lists_via_proxy_section",
-    _("Download Lists via specific proxy/VPN/JSON outbound section"),
+    _("Select a specific section for downloading external resources"),
     _(
-      "Download external rule sets through one of the enabled proxy/VPN/JSON outbound sections",
+      "Download external lists/updates/subscriptions via one of the enabled proxy/VPN sections",
     ),
   );
 

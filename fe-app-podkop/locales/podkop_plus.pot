@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-27 01:42+0300\n"
-"PO-Revision-Date: 2026-05-27 01:42+0300\n"
+"POT-Creation-Date: 2026-05-28 15:25+0300\n"
+"PO-Revision-Date: 2026-05-28 15:25+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -436,24 +436,20 @@ msgid "Download"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:340
-msgid "Download external rule sets through one of the enabled proxy/VPN/JSON outbound sections"
+msgid "Download external lists/updates/subscriptions via one of the enabled proxy/VPN sections"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:331
+msgid "Download external lists/updates/subscriptions via the selected section"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:330
-msgid "Download Lists via Proxy/VPN"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:339
-msgid "Download Lists via specific proxy/VPN/JSON outbound section"
+msgid "Download lists/updates/subscriptions via Proxy/VPN"
 msgstr ""
 
 #: src/podkop/tabs/monitoring/initController.ts:638
 #: src/podkop/tabs/monitoring/initController.ts:692
 msgid "Downloaded"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:331
-msgid "Downloading all lists via specific Proxy/VPN"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:113
@@ -579,16 +575,6 @@ msgstr ""
 msgid "Failed to execute"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:353
-#: src/podkop/tabs/diagnostic/initController.ts:433
-#: src/podkop/tabs/diagnostic/initController.ts:437
-#: src/podkop/tabs/diagnostic/initController.ts:472
-#: src/podkop/tabs/diagnostic/initController.ts:476
-#: src/podkop/tabs/diagnostic/initController.ts:502
-#: src/podkop/tabs/diagnostic/initController.ts:506
-msgid "Failed to execute!"
-msgstr ""
-
 #: src/podkop/tabs/dashboard/initController.ts:362
 #: src/podkop/tabs/dashboard/initController.ts:373
 msgid "Failed to update subscriptions"
@@ -607,7 +593,7 @@ msgstr ""
 msgid "Get global check"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:428
+#: src/podkop/tabs/diagnostic/initController.ts:415
 msgid "Global check"
 msgstr ""
 
@@ -1028,9 +1014,9 @@ msgid "Not responding"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/diagnostic.store.ts:111
-#: src/podkop/tabs/diagnostic/initController.ts:61
-#: src/podkop/tabs/diagnostic/initController.ts:210
-#: src/podkop/tabs/diagnostic/initController.ts:260
+#: src/podkop/tabs/diagnostic/initController.ts:60
+#: src/podkop/tabs/diagnostic/initController.ts:209
+#: src/podkop/tabs/diagnostic/initController.ts:259
 msgid "Not running"
 msgstr ""
 
@@ -1327,6 +1313,10 @@ msgstr ""
 msgid "Select a predefined list for routing"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:339
+msgid "Select a specific section for downloading external resources"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:20
 msgid "Select DNS protocol to use"
 msgstr ""
@@ -1400,7 +1390,7 @@ msgstr ""
 msgid "Show only servers participating in URLTest on the dashboard."
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:490
+#: src/podkop/tabs/diagnostic/initController.ts:473
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:116
 msgid "Show sing-box config"
 msgstr ""
@@ -1775,7 +1765,7 @@ msgstr ""
 msgid "Version"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:461
+#: src/podkop/tabs/diagnostic/initController.ts:446
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:107
 msgid "View logs"
 msgstr ""
