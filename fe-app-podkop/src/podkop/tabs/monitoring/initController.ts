@@ -8,6 +8,7 @@ import {
   renderXIcon24,
 } from '../../../icons';
 import { CustomPodkopMethods, PodkopShellMethods } from '../../methods';
+import { getOutboundTagBySection } from '../../runtimeTags';
 import { getClashApiSecret } from '../../methods/custom/getClashApiSecret';
 import { logger, socket, store, StoreType } from '../../services';
 import { Podkop } from '../../types';
@@ -117,7 +118,7 @@ function getDisplayName(section: Podkop.ConfigSection) {
 
 function buildRouteDisplayNames(sections: Podkop.ConfigSection[]) {
   const map: Record<string, string> = {
-    'direct-out': _('Direct'),
+    'direct-out': 'bypass',
   };
   const serverMap: Record<string, string> = {};
   const routeSectionItems: Array<{ sectionName: string; displayName: string }> =
@@ -135,8 +136,8 @@ function buildRouteDisplayNames(sections: Podkop.ConfigSection[]) {
       }
 
       routeSectionItems.push({ sectionName, displayName });
-      map[`${sectionName}-out`] = displayName;
-      map[`${sectionName}-urltest-out`] = displayName;
+      map[getOutboundTagBySection(sectionName)] = displayName;
+      map[getOutboundTagBySection(`${sectionName}-urltest`)] = displayName;
     });
 
   sections
@@ -175,7 +176,7 @@ function getRouteDisplayNameByTag(tag: string): string {
     }
 
     const middle = tag.slice(sectionName.length + 1, -4);
-    return /^\d+$/.test(middle);
+    return /^\d+(?:-\d+)?$/.test(middle);
   });
 
   return manualSection?.displayName || '';

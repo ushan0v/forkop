@@ -146,6 +146,37 @@ describe('getDashboardSections', () => {
     expect(section.outbounds.map((item) => item.code)).toContain('main-2-out');
   });
 
+  it('uses allocated tags for section names that collide with system tags', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({ '.name': 'direct', urltest_enabled: '0' }),
+    ]);
+    mocks.getClashApiProxies.mockResolvedValue({
+      success: true,
+      data: {
+        proxies: {
+          'direct-1-out': proxy('Selector', {
+            name: 'direct-1-out',
+            now: 'direct-1-1-out',
+            all: ['direct-1-1-out'],
+          }),
+          'direct-1-1-out': proxy('VLESS', {
+            name: 'Direct manual',
+            history: [{ time: '2026-05-27T00:00:00Z', delay: 100 }],
+          }),
+        },
+      },
+    });
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(section.code).toBe('direct-1-out');
+    expect(section.outbounds.map((item) => item.code)).toEqual([
+      'direct-1-1-out',
+    ]);
+  });
+
   it('fetches Clash API proxies directly in the browser to avoid rpcd output limits', async () => {
     mocks.getConfigSections.mockResolvedValue([
       { '.name': 'settings', '.type': 'settings', yacd_secret_key: 'secret' },

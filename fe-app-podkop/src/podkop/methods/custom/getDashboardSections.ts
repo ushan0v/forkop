@@ -5,6 +5,7 @@ import {
   getProxyUrlName,
   isCopyableProxyLink,
 } from '../../../helpers';
+import { getOutboundTagBySection } from '../../runtimeTags';
 import { PodkopShellMethods } from '../shell';
 
 interface IGetDashboardSectionsResponse {
@@ -164,7 +165,7 @@ function buildManualLinkByCode(section: Podkop.ConfigSection) {
 
   return new Map(
     getManualProxyLinks(section).map((link, index) => [
-      `${sectionName}-${index + 1}-out`,
+      getOutboundTagBySection(`${sectionName}-${index + 1}`),
       link,
     ]),
   );
@@ -271,8 +272,10 @@ function buildProxyGroupOutbounds(
 ) {
   const sectionName = section['.name'];
   const proxyByCode = getProxyEntryByCode(proxies);
-  const selector = proxyByCode.get(`${sectionName}-out`);
-  const fallbackUrltest = proxyByCode.get(`${sectionName}-urltest-out`);
+  const selectorTag = getOutboundTagBySection(sectionName);
+  const urltestTag = getOutboundTagBySection(`${sectionName}-urltest`);
+  const selector = proxyByCode.get(selectorTag);
+  const fallbackUrltest = proxyByCode.get(urltestTag);
   const manualLinkByCode = buildManualLinkByCode(section);
   const selectorCodes = selector?.value?.all ?? [];
   const urltestCodes = fallbackUrltest?.value?.all ?? [];
@@ -292,7 +295,7 @@ function buildProxyGroupOutbounds(
       return [];
     }
 
-    const isFastest = item.code === `${sectionName}-urltest-out`;
+    const isFastest = item.code === urltestTag;
     const link = manualLinkByCode.get(item.code) || '';
     const canCopyLink =
       isCopyableProxyLink(link) || subscriptionCopyableCodes.has(item.code);
@@ -471,8 +474,9 @@ export async function getDashboardSections(
         const proxyConfigType = getSectionProxyConfigType(section);
 
         if (sectionAction === 'vpn') {
+          const outboundTag = getOutboundTagBySection(sectionName);
           const outbound = proxies.find(
-            (proxy) => proxy.code === `${sectionName}-out`,
+            (proxy) => proxy.code === outboundTag,
           );
 
           return {
@@ -494,8 +498,9 @@ export async function getDashboardSections(
         }
 
         if (sectionAction === 'byedpi') {
+          const outboundTag = getOutboundTagBySection(sectionName);
           const outbound = proxies.find(
-            (proxy) => proxy.code === `${sectionName}-out`,
+            (proxy) => proxy.code === outboundTag,
           );
 
           return {
@@ -517,8 +522,9 @@ export async function getDashboardSections(
         }
 
         if (sectionAction === 'outbound') {
+          const outboundTag = getOutboundTagBySection(sectionName);
           const outbound = proxies.find(
-            (proxy) => proxy.code === `${sectionName}-out`,
+            (proxy) => proxy.code === outboundTag,
           );
 
           return {

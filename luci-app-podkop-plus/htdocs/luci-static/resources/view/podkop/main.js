@@ -1970,6 +1970,36 @@ async function getConfigSections() {
   return uci.load(PODKOP_UCI_PACKAGE).then(() => uci.sections(PODKOP_UCI_PACKAGE));
 }
 
+// src/podkop/runtimeTags.ts
+var RESERVED_RUNTIME_TAGS = /* @__PURE__ */ new Set([
+  "dns-server",
+  "fakeip-server",
+  "bootstrap-dns-server",
+  "fakeip-dns-rule-tag",
+  "fakeip-ruleset-dns-rule-tag",
+  "service-fakeip-dns-rule-tag",
+  "tproxy-in",
+  "dns-in",
+  "service-mixed-in",
+  "direct-out"
+]);
+function hasReservedNumberedParent(base, postfix) {
+  const match = base.match(/^(.*)-\d+$/);
+  return Boolean(match && RESERVED_RUNTIME_TAGS.has(`${match[1]}-${postfix}`));
+}
+function allocateRuntimeTag(base, postfix) {
+  let suffix = hasReservedNumberedParent(base, postfix) ? 1 : 0;
+  let candidate = suffix > 0 ? `${base}-${suffix}-${postfix}` : `${base}-${postfix}`;
+  while (RESERVED_RUNTIME_TAGS.has(candidate)) {
+    suffix += 1;
+    candidate = `${base}-${suffix}-${postfix}`;
+  }
+  return candidate;
+}
+function getOutboundTagBySection(sectionName) {
+  return allocateRuntimeTag(sectionName, "out");
+}
+
 // src/podkop/methods/shell/callBaseMethod.ts
 async function callBaseMethod(method, args = [], command = "/usr/bin/podkop-plus", options = {}) {
   try {
@@ -2432,7 +2462,7 @@ function buildManualLinkByCode(section) {
   const sectionName = section[".name"];
   return new Map(
     getManualProxyLinks(section).map((link, index) => [
-      `${sectionName}-${index + 1}-out`,
+      getOutboundTagBySection(`${sectionName}-${index + 1}`),
       link
     ])
   );
@@ -2503,8 +2533,10 @@ async function readDashboardSectionCache(sectionName) {
 function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscriptionCopyableCodes = /* @__PURE__ */ new Set()) {
   const sectionName = section[".name"];
   const proxyByCode = getProxyEntryByCode(proxies);
-  const selector = proxyByCode.get(`${sectionName}-out`);
-  const fallbackUrltest = proxyByCode.get(`${sectionName}-urltest-out`);
+  const selectorTag = getOutboundTagBySection(sectionName);
+  const urltestTag = getOutboundTagBySection(`${sectionName}-urltest`);
+  const selector = proxyByCode.get(selectorTag);
+  const fallbackUrltest = proxyByCode.get(urltestTag);
   const manualLinkByCode = buildManualLinkByCode(section);
   const selectorCodes = selector?.value?.all ?? [];
   const urltestCodes = fallbackUrltest?.value?.all ?? [];
@@ -2515,7 +2547,7 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
     if (!item) {
       return [];
     }
-    const isFastest = item.code === `${sectionName}-urltest-out`;
+    const isFastest = item.code === urltestTag;
     const link = manualLinkByCode.get(item.code) || "";
     const canCopyLink = isCopyableProxyLink(link) || subscriptionCopyableCodes.has(item.code);
     return [
@@ -2630,8 +2662,9 @@ async function getDashboardSections(options = {}) {
       const sectionAction = getSectionAction(section);
       const proxyConfigType = getSectionProxyConfigType(section);
       if (sectionAction === "vpn") {
+        const outboundTag = getOutboundTagBySection(sectionName);
         const outbound = proxies.find(
-          (proxy) => proxy.code === `${sectionName}-out`
+          (proxy) => proxy.code === outboundTag
         );
         return {
           withTagSelect: false,
@@ -2651,8 +2684,9 @@ async function getDashboardSections(options = {}) {
         };
       }
       if (sectionAction === "byedpi") {
+        const outboundTag = getOutboundTagBySection(sectionName);
         const outbound = proxies.find(
-          (proxy) => proxy.code === `${sectionName}-out`
+          (proxy) => proxy.code === outboundTag
         );
         return {
           withTagSelect: false,
@@ -2672,8 +2706,9 @@ async function getDashboardSections(options = {}) {
         };
       }
       if (sectionAction === "outbound") {
+        const outboundTag = getOutboundTagBySection(sectionName);
         const outbound = proxies.find(
-          (proxy) => proxy.code === `${sectionName}-out`
+          (proxy) => proxy.code === outboundTag
         );
         return {
           withTagSelect: false,
@@ -6909,7 +6944,7 @@ function getDisplayName2(section) {
 }
 function buildRouteDisplayNames(sections) {
   const map = {
-    "direct-out": _("Direct")
+    "direct-out": "bypass"
   };
   const serverMap = {};
   const routeSectionItems = [];
@@ -6920,8 +6955,8 @@ function buildRouteDisplayNames(sections) {
       return;
     }
     routeSectionItems.push({ sectionName, displayName });
-    map[`${sectionName}-out`] = displayName;
-    map[`${sectionName}-urltest-out`] = displayName;
+    map[getOutboundTagBySection(sectionName)] = displayName;
+    map[getOutboundTagBySection(`${sectionName}-urltest`)] = displayName;
   });
   sections.filter((section) => section[".type"] === "server").filter((section) => section.enabled !== "0").forEach((section) => {
     const sectionName = section[".name"];
@@ -6949,7 +6984,7 @@ function getRouteDisplayNameByTag(tag) {
       return false;
     }
     const middle = tag.slice(sectionName.length + 1, -4);
-    return /^\d+$/.test(middle);
+    return /^\d+(?:-\d+)?$/.test(middle);
   });
   return manualSection?.displayName || "";
 }

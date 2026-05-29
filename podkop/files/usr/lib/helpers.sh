@@ -106,34 +106,76 @@ service_exists() {
     fi
 }
 
+runtime_tag_is_reserved() {
+    local tag="$1"
+    local reserved
+
+    for reserved in \
+        "${SB_DNS_SERVER_TAG:-dns-server}" \
+        "${SB_FAKEIP_DNS_SERVER_TAG:-fakeip-server}" \
+        "${SB_BOOTSTRAP_SERVER_TAG:-bootstrap-dns-server}" \
+        "${SB_FAKEIP_DNS_RULE_TAG:-fakeip-dns-rule-tag}" \
+        "${SB_FAKEIP_RULESET_DNS_RULE_TAG:-fakeip-ruleset-dns-rule-tag}" \
+        "${SB_SERVICE_FAKEIP_DNS_RULE_TAG:-service-fakeip-dns-rule-tag}" \
+        "${SB_TPROXY_INBOUND_TAG:-tproxy-in}" \
+        "${SB_DNS_INBOUND_TAG:-dns-in}" \
+        "${SB_SERVICE_MIXED_INBOUND_TAG:-service-mixed-in}" \
+        "${SB_DIRECT_OUTBOUND_TAG:-direct-out}"; do
+        [ "$tag" = "$reserved" ] && return 0
+    done
+
+    return 1
+}
+
+allocate_runtime_tag() {
+    local base="$1"
+    local postfix="$2"
+    local candidate="$base-$postfix"
+    local suffix=1
+    local parent
+
+    case "$base" in
+    *-[0-9]*)
+        parent="${base%-*}"
+        if runtime_tag_is_reserved "$parent-$postfix"; then
+            candidate="$base-$suffix-$postfix"
+            suffix=$((suffix + 1))
+        fi
+        ;;
+    esac
+    while runtime_tag_is_reserved "$candidate"; do
+        candidate="$base-$suffix-$postfix"
+        suffix=$((suffix + 1))
+    done
+
+    echo "$candidate"
+}
+
 # Returns the inbound tag name by appending the postfix to the given section
 get_inbound_tag_by_section() {
     local section="$1"
-    local postfix="in"
 
-    echo "$section-$postfix"
+    allocate_runtime_tag "$section" "in"
 }
 
 get_server_inbound_tag_by_section() {
     local section="$1"
 
-    echo "server-$section-in"
+    allocate_runtime_tag "server-$section" "in"
 }
 
 # Returns the outbound tag name by appending the postfix to the given section
 get_outbound_tag_by_section() {
     local section="$1"
-    local postfix="out"
 
-    echo "$section-$postfix"
+    allocate_runtime_tag "$section" "out"
 }
 
 # Constructs and returns a domain resolver tag by appending a fixed postfix to the given section
 get_domain_resolver_tag() {
     local section="$1"
-    local postfix="domain-resolver"
 
-    echo "$section-$postfix"
+    allocate_runtime_tag "$section" "domain-resolver"
 }
 
 # Converts a comma-separated string into a JSON array string
