@@ -1343,7 +1343,11 @@ build_service_trigger_signature() {
 }
 
 dnsmasq_inherited_default_options() {
-    echo "domain local expandhosts localise_queries domainneeded add_local_domain add_local_hostname add_local_fqdn"
+    echo "domain local expandhosts localise_queries domainneeded add_local_domain add_local_hostname add_local_fqdn rebind_protection rebind_localhost"
+}
+
+dnsmasq_inherited_default_list_options() {
+    echo "rebind_domain"
 }
 
 dnsmasq_server_is_domain_forward() {
@@ -1378,6 +1382,11 @@ append_dnsmasq_inherited_options_signature() {
     local option value
 
     for option in $(dnsmasq_inherited_default_options); do
+        value="$(uci_get "dhcp" "@dnsmasq[0]" "$option")"
+        signature_add "dhcp.@dnsmasq[0].$option" "$value"
+    done
+
+    for option in $(dnsmasq_inherited_default_list_options); do
         value="$(uci_get "dhcp" "@dnsmasq[0]" "$option")"
         signature_add "dhcp.@dnsmasq[0].$option" "$value"
     done
@@ -4257,6 +4266,16 @@ dnsmasq_inherit_default_options() {
     done
 }
 
+dnsmasq_inherit_default_list_options() {
+    local option value
+
+    for option in $(dnsmasq_inherited_default_list_options); do
+        for value in $(uci_get "dhcp" "@dnsmasq[0]" "$option"); do
+            uci_add_list "dhcp" "$PODKOP_DNSMASQ_SECTION" "$option" "$value"
+        done
+    done
+}
+
 dnsmasq_inherit_default_domain_forward_servers() {
     local server
 
@@ -4339,6 +4358,7 @@ dnsmasq_configure_split_instance() {
     uci_set "dhcp" "$PODKOP_DNSMASQ_SECTION" "noresolv" 1
     uci_set "dhcp" "$PODKOP_DNSMASQ_SECTION" "cachesize" 0
     dnsmasq_inherit_default_options
+    dnsmasq_inherit_default_list_options
     uci_add_list "dhcp" "$PODKOP_DNSMASQ_SECTION" "server" "$SB_DNS_INBOUND_ADDRESS"
     dnsmasq_inherit_default_domain_forward_servers
     uci_add_list "dhcp" "$PODKOP_DNSMASQ_SECTION" "notinterface" "lo"
