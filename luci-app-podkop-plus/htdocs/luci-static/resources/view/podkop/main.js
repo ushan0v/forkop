@@ -6841,6 +6841,7 @@ var searchQuery = "";
 var localDeviceChoices = {};
 var routeDisplayNames = {};
 var routeSections = [];
+var serverDisplayNames = {};
 var lastDeviceFilterSignature = "";
 var loading = true;
 var failed = false;
@@ -6877,6 +6878,7 @@ function buildRouteDisplayNames(sections) {
   const map = {
     "direct-out": _("Direct")
   };
+  const serverMap = {};
   const routeSectionItems = [];
   sections.filter((section) => section[".type"] === "section").filter((section) => section.enabled !== "0").forEach((section) => {
     const sectionName = section[".name"];
@@ -6888,7 +6890,16 @@ function buildRouteDisplayNames(sections) {
     map[`${sectionName}-out`] = displayName;
     map[`${sectionName}-urltest-out`] = displayName;
   });
+  sections.filter((section) => section[".type"] === "server").filter((section) => section.enabled !== "0").forEach((section) => {
+    const sectionName = section[".name"];
+    const displayName = getDisplayName2(section);
+    if (!sectionName || !displayName) {
+      return;
+    }
+    serverMap[`server-${sectionName}-in`] = displayName;
+  });
   routeDisplayNames = map;
+  serverDisplayNames = serverMap;
   routeSections = routeSectionItems.sort(
     (a, b) => b.sectionName.length - a.sectionName.length
   );
@@ -6939,6 +6950,23 @@ function formatBytes2(value) {
 function getConnectionSourceIp(connection) {
   return normalizeString(connection.metadata?.sourceIP);
 }
+function getConnectionInboundTag(connection) {
+  const metadataType = normalizeString(connection.metadata?.type);
+  const metadataTypeParts = metadataType.split("/");
+  const metadataTag = normalizeString(
+    metadataTypeParts.length > 1 ? metadataTypeParts[metadataTypeParts.length - 1] : metadataType
+  );
+  if (metadataTag) {
+    return metadataTag;
+  }
+  const ruleInbound = normalizeString(connection.rule).match(
+    /(?:^|\s)inbound=([^\s]+)/
+  );
+  return normalizeString(ruleInbound?.[1]);
+}
+function getServerDisplayNameByInboundTag(tag) {
+  return normalizeString(serverDisplayNames[tag]);
+}
 function getDeviceName(ip) {
   return normalizeString(localDeviceChoices[ip]);
 }
@@ -6948,6 +6976,16 @@ function getDeviceFilterLabel(ip) {
 }
 function getSourceCellParts(connection) {
   const ip = getConnectionSourceIp(connection);
+  const inboundTag = getConnectionInboundTag(connection);
+  const serverName = getServerDisplayNameByInboundTag(inboundTag);
+  if (serverName) {
+    return {
+      primary: serverName,
+      ip: "",
+      copyValue: serverName,
+      searchValue: [serverName, ip, inboundTag].filter(Boolean).join(" ")
+    };
+  }
   const deviceName = getDeviceName(ip);
   if (deviceName) {
     return {

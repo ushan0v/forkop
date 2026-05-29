@@ -45,7 +45,8 @@ function write_json(value) {
 }
 
 function bool_arg(value) {
-    return as_string(value) == "true";
+    value = as_string(value);
+    return value == "true" || value == "1" || value == "yes" || value == "on";
 }
 
 function number_arg(value) {
@@ -139,12 +140,25 @@ function patch_outbound(config, tag, patch) {
     }
 }
 
+function patch_inbound(config, tag, patch) {
+    for (let inbound in ensure_array(config, "inbounds")) {
+        if (type(inbound) == "object" && inbound.tag == tag) {
+            for (let key, value in patch)
+                inbound[key] = value;
+        }
+    }
+}
+
 function add_dns_server(config, server) {
     push(ensure_array(ensure_object(config, "dns"), "servers"), server);
 }
 
 function add_outbound(config, outbound) {
     push(ensure_array(config, "outbounds"), outbound);
+}
+
+function add_endpoint(config, endpoint) {
+    push(ensure_array(config, "endpoints"), endpoint);
 }
 
 function add_rule(config, section, rule) {
@@ -291,6 +305,180 @@ function add_mixed_inbound(config, args) {
         }];
     }
     push(ensure_array(config, "inbounds"), inbound);
+}
+
+function add_vless_inbound_file(config, args) {
+    push(ensure_array(config, "inbounds"), {
+        type: "vless",
+        tag: as_string(args[0]),
+        listen: as_string(args[1]),
+        listen_port: number_arg(args[2]),
+        users: array_file_arg(args[3])
+    });
+}
+
+function add_trojan_inbound_file(config, args) {
+    push(ensure_array(config, "inbounds"), {
+        type: "trojan",
+        tag: as_string(args[0]),
+        listen: as_string(args[1]),
+        listen_port: number_arg(args[2]),
+        users: array_file_arg(args[3])
+    });
+}
+
+function add_vmess_inbound_file(config, args) {
+    push(ensure_array(config, "inbounds"), {
+        type: "vmess",
+        tag: as_string(args[0]),
+        listen: as_string(args[1]),
+        listen_port: number_arg(args[2]),
+        users: array_file_arg(args[3])
+    });
+}
+
+function add_socks_inbound_file(config, args) {
+    let inbound = {
+        type: "socks",
+        tag: as_string(args[0]),
+        listen: as_string(args[1]),
+        listen_port: number_arg(args[2])
+    };
+    let users = array_file_arg(args[3]);
+    if (length(users) > 0)
+        inbound.users = users;
+    push(ensure_array(config, "inbounds"), inbound);
+}
+
+function add_shadowsocks_inbound(config, args) {
+    push(ensure_array(config, "inbounds"), {
+        type: "shadowsocks",
+        tag: as_string(args[0]),
+        listen: as_string(args[1]),
+        listen_port: number_arg(args[2]),
+        method: as_string(args[3]),
+        password: as_string(args[4])
+    });
+}
+
+function add_hysteria2_inbound_file(config, args) {
+    let inbound = {
+        type: "hysteria2",
+        tag: as_string(args[0]),
+        listen: as_string(args[1]),
+        listen_port: number_arg(args[2]),
+        users: array_file_arg(args[3])
+    };
+
+    optional_number(inbound, "up_mbps", args[4]);
+    optional_number(inbound, "down_mbps", args[5]);
+
+    let obfs_type = as_string(args[6]);
+    let obfs_password = as_string(args[7]);
+    if (obfs_type != "" && obfs_password != "") {
+        inbound.obfs = {
+            type: obfs_type,
+            password: obfs_password
+        };
+    }
+
+    push(ensure_array(config, "inbounds"), inbound);
+}
+
+function add_tailscale_endpoint(config, args) {
+    let endpoint = {
+        type: "tailscale",
+        tag: as_string(args[0])
+    };
+
+    optional_string(endpoint, "state_directory", args[1]);
+    optional_string(endpoint, "auth_key", args[2]);
+    optional_string(endpoint, "control_url", args[3]);
+    if (bool_arg(args[4]))
+        endpoint.ephemeral = true;
+    optional_string(endpoint, "hostname", args[5]);
+    if (bool_arg(args[6]))
+        endpoint.accept_routes = true;
+    optional_string(endpoint, "exit_node", args[7]);
+    if (bool_arg(args[8]))
+        endpoint.exit_node_allow_lan_access = true;
+
+    let advertise_routes = json_arg(args[9]);
+    if (type(advertise_routes) == "array" && length(advertise_routes) > 0)
+        endpoint.advertise_routes = advertise_routes;
+    if (bool_arg(args[10]))
+        endpoint.advertise_exit_node = true;
+    optional_string(endpoint, "udp_timeout", args[11]);
+
+    add_endpoint(config, endpoint);
+}
+
+function set_tls_for_inbound(config, args) {
+    let tag = as_string(args[0]);
+    let security = as_string(args[1]);
+    if (security == "" || security == "none")
+        return;
+
+    let tls = { enabled: true };
+    optional_string(tls, "server_name", args[2]);
+
+    let alpn = json_arg(args[3]);
+    if (type(alpn) == "array" && length(alpn) > 0)
+        tls.alpn = alpn;
+
+    if (security == "tls") {
+        optional_string(tls, "certificate_path", args[4]);
+        optional_string(tls, "key_path", args[5]);
+    }
+    else if (security == "reality") {
+        let handshake = {
+            server: as_string(args[6]),
+            server_port: number_arg(args[7])
+        };
+        let reality = {
+            enabled: true,
+            handshake,
+            private_key: as_string(args[8])
+        };
+
+        let short_id = json_arg(args[9]);
+        if (type(short_id) == "array" && length(short_id) > 0)
+            reality.short_id = short_id;
+        optional_string(reality, "max_time_difference", args[10]);
+        tls.reality = reality;
+    }
+
+    patch_inbound(config, tag, { tls });
+}
+
+function set_transport_for_inbound(config, args) {
+    let tag = as_string(args[0]);
+    let transport_type = as_string(args[1]);
+    if (transport_type == "" || transport_type == "tcp" || transport_type == "raw")
+        return;
+
+    let transport = { type: transport_type };
+
+    if (transport_type == "ws") {
+        optional_string(transport, "path", args[2]);
+        if (as_string(args[3]) != "")
+            transport.headers = { Host: as_string(args[3]) };
+    }
+    else if (transport_type == "grpc") {
+        optional_string(transport, "service_name", args[4]);
+    }
+    else if (transport_type == "http") {
+        optional_string(transport, "path", args[2]);
+        let hosts = json_arg(args[5]);
+        if (type(hosts) == "array" && length(hosts) > 0)
+            transport.host = hosts;
+    }
+    else if (transport_type == "httpupgrade") {
+        optional_string(transport, "path", args[2]);
+        optional_string(transport, "host", args[3]);
+    }
+
+    patch_inbound(config, tag, { transport });
 }
 
 function add_direct_outbound(config, args) {
@@ -552,6 +740,7 @@ function configure_route(config, args) {
         default_domain_resolver: as_string(args[2])
     };
     optional_string(config.route, "default_interface", args[3]);
+    optional_number(config.route, "default_mark", args[4]);
 }
 
 function add_route_rule(config, args) {
@@ -598,9 +787,9 @@ function patch_route_rule(config, args) {
 
 function add_reject_route_rule(config, args) {
     let rule = {
-        action: "reject",
-        inbound: as_string(args[1])
+        action: "reject"
     };
+    optional_string(rule, "inbound", args[1]);
     rule[SERVICE_TAG] = as_string(args[0]);
     add_rule(config, "route", rule);
 }
@@ -621,6 +810,57 @@ function sniff_route_rule(config, args) {
     let rule = { action: "sniff" };
     rule[as_string(args[0])] = json_arg(args[1]);
     add_rule(config, "route", rule);
+}
+
+function clone(value) {
+    try {
+        return json(sprintf("%J", value));
+    }
+    catch (e) {
+        return null;
+    }
+}
+
+function value_contains(value, item) {
+    if (type(value) == "array") {
+        for (let entry in value) {
+            if (entry == item)
+                return true;
+        }
+        return false;
+    }
+    return value == item;
+}
+
+function clone_route_rules_for_inbound(config, args) {
+    let source_inbound = as_string(args[0]);
+    let target_inbound = as_string(args[1]);
+    let skip_domain = as_string(args[2]);
+    let route = ensure_object(config, "route");
+    let rules = ensure_array(route, "rules");
+    let cloned_rules = [];
+
+    for (let rule in rules) {
+        if (type(rule) != "object")
+            continue;
+        if (rule.action != "route" && rule.action != "reject")
+            continue;
+        if (!value_contains(rule.inbound, source_inbound))
+            continue;
+        if (skip_domain != "" && value_contains(rule.domain, skip_domain))
+            continue;
+        if (rule.source_ip_cidr != null)
+            continue;
+
+        let cloned = clone(rule);
+        if (type(cloned) != "object")
+            continue;
+        cloned.inbound = target_inbound;
+        push(cloned_rules, cloned);
+    }
+
+    for (let cloned_rule in cloned_rules)
+        push(rules, cloned_rule);
 }
 
 function add_inline_ruleset(config, args) {
@@ -697,6 +937,15 @@ let handlers = {
     "add-tproxy-inbound": add_tproxy_inbound,
     "add-direct-inbound": add_direct_inbound,
     "add-mixed-inbound": add_mixed_inbound,
+    "add-vless-inbound-file": add_vless_inbound_file,
+    "add-trojan-inbound-file": add_trojan_inbound_file,
+    "add-vmess-inbound-file": add_vmess_inbound_file,
+    "add-socks-inbound-file": add_socks_inbound_file,
+    "add-shadowsocks-inbound": add_shadowsocks_inbound,
+    "add-hysteria2-inbound-file": add_hysteria2_inbound_file,
+    "add-tailscale-endpoint": add_tailscale_endpoint,
+    "set-inbound-tls": set_tls_for_inbound,
+    "set-inbound-transport": set_transport_for_inbound,
     "add-direct-outbound": add_direct_outbound,
     "add-socks-outbound": add_socks_outbound,
     "add-shadowsocks-outbound": add_shadowsocks_outbound,
@@ -723,6 +972,7 @@ let handlers = {
     "add-hijack-dns-route-rule": add_hijack_dns_route_rule,
     "add-options-route-rule": add_options_route_rule,
     "sniff-route-rule": sniff_route_rule,
+    "clone-route-rules-for-inbound": clone_route_rules_for_inbound,
     "add-inline-ruleset": add_inline_ruleset,
     "add-inline-ruleset-rule": add_inline_ruleset_rule,
     "add-local-ruleset": add_local_ruleset,

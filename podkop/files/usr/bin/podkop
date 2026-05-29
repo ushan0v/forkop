@@ -962,6 +962,7 @@ rebuild_runtime_after_deferred_subscription_recovery() {
 
     log "Recovered deferred subscription rule(s): $recovered_sections; rebuilding sing-box runtime" "info"
     config_load "$PODKOP_CONFIG_NAME"
+    prepare_all_server_defaults
     validate_runtime_settings
     sing_box_configure_service
     rebuild_nft_runtime
@@ -1589,6 +1590,107 @@ append_sing_box_rule_signature() {
     signature_add "rule.$section.domain_ip_lists" "$domain_ip_lists"
 }
 
+append_sing_box_server_signature() {
+    local section="$1"
+    local enabled label protocol listen listen_port public_host routing_mode routing_section security \
+        users tls_server_name tls_alpn tls_certificate_path tls_key_path reality_handshake_server \
+        reality_handshake_server_port reality_private_key reality_public_key reality_short_id \
+        reality_max_time_difference transport transport_path transport_host transport_service_name transport_hosts \
+        client_fingerprint server_uuid server_username server_password vless_flow vmess_alter_id \
+        shadowsocks_method hysteria2_up_mbps hysteria2_down_mbps hysteria2_obfs_type hysteria2_obfs_password \
+        tailscale_auth_key tailscale_control_url tailscale_hostname \
+        tailscale_accept_routes tailscale_advertise_routes \
+        tailscale_advertise_exit_node
+
+    config_get_bool enabled "$section" "enabled" 0
+    signature_add "server.$section.enabled" "$enabled"
+    [ "$enabled" -eq 1 ] || return 0
+
+    config_get label "$section" "label" "$section"
+    config_get protocol "$section" "protocol" "vless"
+    config_get listen "$section" "listen" "0.0.0.0"
+    config_get listen_port "$section" "listen_port"
+    config_get public_host "$section" "public_host"
+    config_get routing_mode "$section" "routing_mode" "rules"
+    config_get routing_section "$section" "routing_section"
+    config_get security "$section" "security" "reality"
+    config_get users "$section" "server_users"
+    config_get tls_server_name "$section" "tls_server_name"
+    config_get tls_alpn "$section" "tls_alpn"
+    config_get tls_certificate_path "$section" "tls_certificate_path"
+    config_get tls_key_path "$section" "tls_key_path"
+    config_get reality_handshake_server "$section" "reality_handshake_server"
+    config_get reality_handshake_server_port "$section" "reality_handshake_server_port"
+    config_get reality_private_key "$section" "reality_private_key"
+    config_get reality_public_key "$section" "reality_public_key"
+    config_get reality_short_id "$section" "reality_short_id"
+    config_get reality_max_time_difference "$section" "reality_max_time_difference"
+    config_get transport "$section" "transport" "tcp"
+    config_get transport_path "$section" "transport_path"
+    config_get transport_host "$section" "transport_host"
+    config_get transport_service_name "$section" "transport_service_name"
+    config_get transport_hosts "$section" "transport_hosts"
+    config_get client_fingerprint "$section" "client_fingerprint"
+    config_get server_uuid "$section" "server_uuid"
+    config_get server_username "$section" "server_username"
+    config_get server_password "$section" "server_password"
+    config_get vless_flow "$section" "vless_flow"
+    config_get vmess_alter_id "$section" "vmess_alter_id"
+    config_get shadowsocks_method "$section" "shadowsocks_method"
+    config_get hysteria2_up_mbps "$section" "hysteria2_up_mbps"
+    config_get hysteria2_down_mbps "$section" "hysteria2_down_mbps"
+    config_get hysteria2_obfs_type "$section" "hysteria2_obfs_type"
+    config_get hysteria2_obfs_password "$section" "hysteria2_obfs_password"
+    config_get tailscale_auth_key "$section" "tailscale_auth_key"
+    config_get tailscale_control_url "$section" "tailscale_control_url"
+    config_get tailscale_hostname "$section" "tailscale_hostname"
+    config_get tailscale_accept_routes "$section" "tailscale_accept_routes"
+    config_get tailscale_advertise_routes "$section" "tailscale_advertise_routes"
+    config_get tailscale_advertise_exit_node "$section" "tailscale_advertise_exit_node"
+
+    signature_add "server.$section.label" "$label"
+    signature_add "server.$section.protocol" "$protocol"
+    signature_add "server.$section.listen" "$listen"
+    signature_add "server.$section.listen_port" "$listen_port"
+    signature_add "server.$section.public_host" "$public_host"
+    signature_add "server.$section.routing_mode" "$routing_mode"
+    signature_add "server.$section.routing_section" "$routing_section"
+    signature_add "server.$section.security" "$security"
+    signature_add "server.$section.server_users" "$users"
+    signature_add "server.$section.tls_server_name" "$tls_server_name"
+    signature_add "server.$section.tls_alpn" "$tls_alpn"
+    signature_add "server.$section.tls_certificate_path" "$tls_certificate_path"
+    signature_add "server.$section.tls_key_path" "$tls_key_path"
+    signature_add "server.$section.reality_handshake_server" "$reality_handshake_server"
+    signature_add "server.$section.reality_handshake_server_port" "$reality_handshake_server_port"
+    signature_add "server.$section.reality_private_key" "$reality_private_key"
+    signature_add "server.$section.reality_public_key" "$reality_public_key"
+    signature_add "server.$section.reality_short_id" "$reality_short_id"
+    signature_add "server.$section.reality_max_time_difference" "$reality_max_time_difference"
+    signature_add "server.$section.transport" "$transport"
+    signature_add "server.$section.transport_path" "$transport_path"
+    signature_add "server.$section.transport_host" "$transport_host"
+    signature_add "server.$section.transport_service_name" "$transport_service_name"
+    signature_add "server.$section.transport_hosts" "$transport_hosts"
+    signature_add "server.$section.client_fingerprint" "$client_fingerprint"
+    signature_add "server.$section.server_uuid" "$server_uuid"
+    signature_add "server.$section.server_username" "$server_username"
+    signature_add "server.$section.server_password" "$server_password"
+    signature_add "server.$section.vless_flow" "$vless_flow"
+    signature_add "server.$section.vmess_alter_id" "$vmess_alter_id"
+    signature_add "server.$section.shadowsocks_method" "$shadowsocks_method"
+    signature_add "server.$section.hysteria2_up_mbps" "$hysteria2_up_mbps"
+    signature_add "server.$section.hysteria2_down_mbps" "$hysteria2_down_mbps"
+    signature_add "server.$section.hysteria2_obfs_type" "$hysteria2_obfs_type"
+    signature_add "server.$section.hysteria2_obfs_password" "$hysteria2_obfs_password"
+    signature_add "server.$section.tailscale_auth_key" "$tailscale_auth_key"
+    signature_add "server.$section.tailscale_control_url" "$tailscale_control_url"
+    signature_add "server.$section.tailscale_hostname" "$tailscale_hostname"
+    signature_add "server.$section.tailscale_accept_routes" "$tailscale_accept_routes"
+    signature_add "server.$section.tailscale_advertise_routes" "$tailscale_advertise_routes"
+    signature_add "server.$section.tailscale_advertise_exit_node" "$tailscale_advertise_exit_node"
+}
+
 build_sing_box_signature() {
     local dns_type dns_server bootstrap_dns_server rewrite_ttl output_network_interface disable_quic routing_excluded_ips \
         update_interval cache_path config_path log_level enable_yacd enable_yacd_wan_access yacd_secret_key \
@@ -1643,6 +1745,7 @@ build_sing_box_signature() {
     fi
 
     config_foreach append_sing_box_rule_signature "section"
+    config_foreach append_sing_box_server_signature "server"
     signature_finish
 }
 
@@ -2242,6 +2345,14 @@ rule_is_enabled() {
     [ "$enabled" -eq 1 ]
 }
 
+server_is_enabled() {
+    local section="$1"
+    local enabled
+
+    config_get_bool enabled "$section" "enabled" 0
+    [ "$enabled" -eq 1 ]
+}
+
 _validate_download_lists_via_proxy_section_handler() {
     local section="$1"
     local action
@@ -2806,6 +2917,7 @@ start_main() {
 
     check_requirements
 
+    prepare_all_server_defaults
     config_foreach process_validate_rule "section"
     validate_runtime_settings
 
@@ -2965,6 +3077,7 @@ reload() {
     migration
     config_load "$PODKOP_CONFIG_NAME"
     check_requirements
+    prepare_all_server_defaults
     config_foreach process_validate_rule "section"
     validate_runtime_settings
     ensure_runtime_dirs
@@ -5004,6 +5117,7 @@ subscription_update_common_locked() {
 
     echolog "Reloading sing-box to apply updated subscriptions..."
     config_load "$PODKOP_CONFIG_NAME"
+    prepare_all_server_defaults
     validate_runtime_settings
     sing_box_configure_service
     PODKOP_NFT_POPULATE_ENABLED=0
@@ -5148,6 +5262,198 @@ sing_box_configure_inbounds() {
     config=$(
         sing_box_cm_add_direct_inbound "$config" "$SB_DNS_INBOUND_TAG" "$SB_DNS_INBOUND_ADDRESS" "$SB_DNS_INBOUND_PORT"
     )
+
+    config_foreach configure_server_inbound "server"
+}
+
+configure_server_inbound() {
+    local section="$1"
+    local protocol listen listen_port public_host inbound_tag users_tmp status \
+        shadowsocks_method server_password hysteria2_up_mbps hysteria2_down_mbps \
+        hysteria2_obfs_type hysteria2_obfs_password
+
+    server_is_enabled "$section" || return 0
+
+    config_get protocol "$section" "protocol" "vless"
+    case "$protocol" in
+    shadowsocks | socks | vmess | vless | trojan | hysteria2 | tailscale) ;;
+    *)
+        log "Server '$section' has unsupported protocol '$protocol'. Aborted." "fatal"
+        exit 1
+        ;;
+    esac
+
+    if [ "$protocol" = "tailscale" ]; then
+        configure_tailscale_server_endpoint "$section"
+        return 0
+    fi
+
+    config_get listen "$section" "listen" "0.0.0.0"
+    config_get listen_port "$section" "listen_port"
+    config_get public_host "$section" "public_host"
+
+    if ! is_ipv4 "$listen"; then
+        log "Server '$section' has invalid listen address '$listen'. Use an IPv4 address. Aborted." "fatal"
+        exit 1
+    fi
+    if ! server_port_is_valid "$listen_port"; then
+        log "Server '$section' has invalid listen port '$listen_port'. Aborted." "fatal"
+        exit 1
+    fi
+    if [ -n "$public_host" ] && ! server_host_is_valid "$public_host"; then
+        log "Server '$section' has invalid public host '$public_host'. Use a domain name or IPv4 address. Aborted." "fatal"
+        exit 1
+    fi
+
+    inbound_tag="$(get_server_inbound_tag_by_section "$section")"
+
+    case "$protocol" in
+    shadowsocks)
+        config_get shadowsocks_method "$section" "shadowsocks_method" "aes-128-gcm"
+        config_get server_password "$section" "server_password"
+        case "$shadowsocks_method" in
+        aes-128-gcm | aes-256-gcm | chacha20-ietf-poly1305) ;;
+        *)
+            log "Server '$section' has unsupported Shadowsocks method '$shadowsocks_method'. Aborted." "fatal"
+            exit 1
+            ;;
+        esac
+        if [ -z "$server_password" ]; then
+            log "Server '$section' has no client password. Aborted." "fatal"
+            exit 1
+        fi
+        if ! server_client_value_is_valid "$server_password"; then
+            log "Server '$section' has invalid Shadowsocks password. It must not contain control characters. Aborted." "fatal"
+            exit 1
+        fi
+        config=$(sing_box_cm_add_shadowsocks_inbound "$config" "$inbound_tag" "$listen" "$listen_port" "$shadowsocks_method" "$server_password")
+        status=$?
+        ;;
+    socks | vmess | vless | trojan | hysteria2)
+        users_tmp="$(server_write_users_json "$section" "$protocol")" || {
+            log "Failed to prepare users for server '$section'. Aborted." "fatal"
+            exit 1
+        }
+
+        case "$protocol" in
+        socks)
+            config=$(sing_box_cm_add_socks_inbound "$config" "$inbound_tag" "$listen" "$listen_port" "$users_tmp")
+            ;;
+        vmess)
+            config=$(sing_box_cm_add_vmess_inbound "$config" "$inbound_tag" "$listen" "$listen_port" "$users_tmp")
+            ;;
+        vless)
+            config=$(sing_box_cm_add_vless_inbound "$config" "$inbound_tag" "$listen" "$listen_port" "$users_tmp")
+            ;;
+        trojan)
+            config=$(sing_box_cm_add_trojan_inbound "$config" "$inbound_tag" "$listen" "$listen_port" "$users_tmp")
+            ;;
+        hysteria2)
+            config_get hysteria2_up_mbps "$section" "hysteria2_up_mbps"
+            config_get hysteria2_down_mbps "$section" "hysteria2_down_mbps"
+            config_get hysteria2_obfs_type "$section" "hysteria2_obfs_type"
+            config_get hysteria2_obfs_password "$section" "hysteria2_obfs_password"
+            case "$hysteria2_obfs_type" in
+            '' | salamander) ;;
+            *)
+                log "Server '$section' has unsupported Hysteria2 obfuscation '$hysteria2_obfs_type'. Aborted." "fatal"
+                exit 1
+                ;;
+            esac
+            if [ "$hysteria2_obfs_type" = "salamander" ] && [ -z "$hysteria2_obfs_password" ]; then
+                log "Server '$section' uses Hysteria2 salamander obfuscation but password is not set. Aborted." "fatal"
+                exit 1
+            fi
+            config=$(
+                sing_box_cm_add_hysteria2_inbound \
+                    "$config" "$inbound_tag" "$listen" "$listen_port" "$users_tmp" \
+                    "$hysteria2_up_mbps" "$hysteria2_down_mbps" "$hysteria2_obfs_type" "$hysteria2_obfs_password"
+            )
+            ;;
+        esac
+        status=$?
+        rm -f "$users_tmp"
+        ;;
+    esac
+    [ "$status" -eq 0 ] || {
+        log "Failed to configure server inbound '$section'. Aborted." "fatal"
+        exit 1
+    }
+
+    server_apply_tls "$section" "$inbound_tag"
+    server_apply_transport "$section" "$inbound_tag"
+}
+
+configure_tailscale_server_endpoint() {
+    local section="$1"
+    local endpoint_tag safe_name state_directory auth_key control_url hostname accept_routes \
+        advertise_routes advertise_exit_node status
+
+    endpoint_tag="$(get_server_inbound_tag_by_section "$section")"
+    safe_name="$(server_safe_filename "$section")"
+
+    state_directory="/etc/podkop-plus/tailscale/$safe_name"
+    config_get auth_key "$section" "tailscale_auth_key"
+    config_get control_url "$section" "tailscale_control_url" "https://controlplane.tailscale.com"
+    config_get hostname "$section" "tailscale_hostname" "podkop-$safe_name"
+    config_get_bool accept_routes "$section" "tailscale_accept_routes" 0
+    config_list_foreach "$section" "tailscale_advertise_routes" validate_tailscale_advertise_route_handler "$section"
+    advertise_routes="$(config_list_to_json "$section" "tailscale_advertise_routes")"
+    config_get_bool advertise_exit_node "$section" "tailscale_advertise_exit_node" 0
+
+    if ! server_absolute_path_is_valid "$state_directory"; then
+        log "Server '$section' has invalid Tailscale state directory '$state_directory'. Use an absolute path. Aborted." "fatal"
+        exit 1
+    fi
+    if [ -z "$auth_key" ]; then
+        log "Server '$section' uses Tailscale but auth key is empty. Aborted." "fatal"
+        exit 1
+    fi
+    if ! server_http_url_is_valid "$control_url"; then
+        log "Server '$section' has invalid Tailscale control URL '$control_url'. Use an HTTP or HTTPS URL. Aborted." "fatal"
+        exit 1
+    fi
+    if ! server_host_is_valid "$hostname"; then
+        log "Server '$section' has invalid Tailscale hostname '$hostname'. Aborted." "fatal"
+        exit 1
+    fi
+
+    mkdir -p "$state_directory" || {
+        log "Failed to create Tailscale state directory for server '$section'. Aborted." "fatal"
+        exit 1
+    }
+
+    config=$(
+        sing_box_cm_add_tailscale_endpoint \
+            "$config" \
+            "$endpoint_tag" \
+            "$state_directory" \
+            "$auth_key" \
+            "$control_url" \
+            "0" \
+            "$hostname" \
+            "$accept_routes" \
+            "" \
+            "0" \
+            "$advertise_routes" \
+            "$advertise_exit_node" \
+            ""
+    )
+    status=$?
+    [ "$status" -eq 0 ] || {
+        log "Failed to configure Tailscale endpoint '$section'. Aborted." "fatal"
+        exit 1
+    }
+}
+
+validate_tailscale_advertise_route_handler() {
+    local value="$1"
+    local section="$2"
+
+    if ! server_cidr_is_valid "$value"; then
+        log "Server '$section' has invalid Tailscale advertised route '$value'. Use CIDR prefixes like 192.168.1.0/24. Aborted." "fatal"
+        exit 1
+    fi
 }
 
 sing_box_configure_outbounds() {
@@ -5266,10 +5572,791 @@ config_list_append_json() {
 config_list_to_json() {
     local section="$1"
     local option="$2"
+    local value
 
     CONFIG_LIST_VALUES_JSON="[]"
     config_list_foreach "$section" "$option" config_list_append_json
+    if [ "$CONFIG_LIST_VALUES_JSON" = "[]" ]; then
+        config_get value "$section" "$option"
+        if [ -n "$value" ]; then
+            config_list_append_json "$value"
+        fi
+    fi
     printf '%s\n' "$CONFIG_LIST_VALUES_JSON"
+}
+
+server_port_is_valid() {
+    local port="$1"
+
+    case "$port" in
+    '' | *[!0-9]*) return 1 ;;
+    esac
+
+    [ "$port" -ge 1 ] && [ "$port" -le 65535 ]
+}
+
+server_normalize_host() {
+    local value="$1"
+
+    value="${value#[}"
+    value="${value%]}"
+    printf '%s\n' "$value" | tr 'A-Z' 'a-z'
+}
+
+server_host_is_valid() {
+    local host
+
+    host="$(server_normalize_host "$1")"
+    [ -n "$host" ] || return 1
+    is_ipv4 "$host" || is_domain "$host"
+}
+
+server_absolute_path_is_valid() {
+    case "$1" in
+    /*) return 0 ;;
+    *) return 1 ;;
+    esac
+}
+
+server_file_path_is_valid() {
+    local path="$1"
+
+    [ -n "$path" ] || return 1
+
+    case "$path" in
+    / | */) return 1 ;;
+    esac
+
+    printf '%s\n' "$path" | grep -Eq '^/[A-Za-z0-9_./-]+$'
+}
+
+server_client_value_is_valid() {
+    local value="$1"
+
+    [ -n "$value" ] || return 1
+    ! printf '%s' "$value" | grep -q '[[:cntrl:]]'
+}
+
+server_http_url_is_valid() {
+    local value="$1" rest host
+
+    case "$value" in
+    http://* | https://*) ;;
+    *) return 1 ;;
+    esac
+
+    rest="${value#*://}"
+    host="${rest%%/*}"
+    host="${host%%:*}"
+    server_host_is_valid "$host"
+}
+
+server_duration_is_valid() {
+    local value="$1"
+
+    [ -n "$value" ] || return 1
+    printf '%s\n' "$value" | grep -Eq '^([0-9]+(ns|us|ms|s|m|h))+$'
+}
+
+server_default_security_for_protocol() {
+    case "$1" in
+    vless) printf '%s\n' "reality" ;;
+    trojan | hysteria2) printf '%s\n' "tls" ;;
+    *) printf '%s\n' "none" ;;
+    esac
+}
+
+server_effective_security() {
+    local section="$1"
+    local protocol="$2"
+    local security
+
+    config_get security "$section" "security"
+    [ -n "$security" ] || security="$(server_default_security_for_protocol "$protocol")"
+
+    case "$protocol" in
+    shadowsocks | socks | tailscale)
+        security="none"
+        ;;
+    hysteria2)
+        security="tls"
+        ;;
+    vmess | trojan)
+        [ "$security" != "reality" ] || security="$(server_default_security_for_protocol "$protocol")"
+        ;;
+    esac
+
+    printf '%s\n' "$security"
+}
+
+server_default_set_option() {
+    local section="$1"
+    local option="$2"
+    local value="$3"
+    local current
+
+    [ -n "$value" ] || return 0
+    current="$(uci -q get "$PODKOP_CONFIG_NAME.$section.$option" 2>/dev/null)"
+    [ -n "$current" ] && return 0
+
+    uci set "$PODKOP_CONFIG_NAME.$section.$option=$value"
+    SERVER_DEFAULTS_CHANGED=1
+}
+
+server_set_option() {
+    local section="$1"
+    local option="$2"
+    local value="$3"
+    local current
+
+    [ -n "$value" ] || return 0
+    current="$(uci -q get "$PODKOP_CONFIG_NAME.$section.$option" 2>/dev/null)"
+    [ "$current" = "$value" ] && return 0
+
+    uci set "$PODKOP_CONFIG_NAME.$section.$option=$value"
+    SERVER_DEFAULTS_CHANGED=1
+}
+
+server_default_add_list() {
+    local section="$1"
+    local option="$2"
+    local value="$3"
+    local current quoted_value
+
+    [ -n "$value" ] || return 0
+    current="$(uci -q get "$PODKOP_CONFIG_NAME.$section.$option" 2>/dev/null)"
+    [ -n "$current" ] && return 0
+
+    quoted_value="$(printf "%s" "$value" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/'/")"
+    printf 'add_list %s.%s.%s=%s\n' "$PODKOP_CONFIG_NAME" "$section" "$option" "$quoted_value" | uci -q batch
+    SERVER_DEFAULTS_CHANGED=1
+}
+
+server_generate_uuid() {
+    sing-box generate uuid 2>/dev/null | awk 'NF { print; exit }'
+}
+
+server_generate_password() {
+    sing-box generate rand --base64 18 2>/dev/null | tr -d '\n'
+}
+
+server_generate_short_id() {
+    sing-box generate rand --hex 4 2>/dev/null | tr -d '\n'
+}
+
+server_generate_reality_keypair() {
+    local output
+
+    SERVER_REALITY_PRIVATE_KEY=""
+    SERVER_REALITY_PUBLIC_KEY=""
+    output="$(sing-box generate reality-keypair 2>/dev/null)" || return 1
+    SERVER_REALITY_PRIVATE_KEY="$(printf '%s\n' "$output" | sed -n 's/^PrivateKey:[[:space:]]*//p' | head -n 1)"
+    SERVER_REALITY_PUBLIC_KEY="$(printf '%s\n' "$output" | sed -n 's/^PublicKey:[[:space:]]*//p' | head -n 1)"
+
+    [ -n "$SERVER_REALITY_PRIVATE_KEY" ] && [ -n "$SERVER_REALITY_PUBLIC_KEY" ]
+}
+
+generate_reality_keypair() {
+    if ! server_generate_reality_keypair; then
+        printf '{"success":false,"message":"Failed to generate Reality key pair"}\n'
+        return 1
+    fi
+
+    printf '{"success":true,"private_key":"%s","public_key":"%s"}\n' \
+        "$SERVER_REALITY_PRIVATE_KEY" \
+        "$SERVER_REALITY_PUBLIC_KEY"
+}
+
+server_safe_filename() {
+    printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'
+}
+
+server_generate_tls_keypair_files() {
+    local server_name="$1"
+    local certificate_path="$2"
+    local key_path="$3"
+    local output key cert key_dir cert_dir
+
+    output="$(sing-box generate tls-keypair "$server_name" 2>/dev/null)" || return 1
+    key="$(printf '%s\n' "$output" | sed -n '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/p')"
+    cert="$(printf '%s\n' "$output" | sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p')"
+    [ -n "$key" ] && [ -n "$cert" ] || return 1
+
+    key_dir="${key_path%/*}"
+    cert_dir="${certificate_path%/*}"
+    mkdir -p "$key_dir" "$cert_dir" || return 1
+
+    printf '%s\n' "$key" > "$key_path" || return 1
+    chmod 600 "$key_path" 2>/dev/null || true
+    printf '%s\n' "$cert" > "$certificate_path" || return 1
+}
+
+server_is_public_ipv4() {
+    local ip="$1" a b c d
+
+    printf '%s' "$ip" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' || return 1
+    IFS=. read -r a b c d <<EOF
+$ip
+EOF
+    [ "$a" -le 255 ] && [ "$b" -le 255 ] && [ "$c" -le 255 ] && [ "$d" -le 255 ] || return 1
+
+    case "$ip" in
+    0.* | 10.* | 127.* | 169.254.* | 192.168.* | 192.0.* | 192.2.* | 198.18.* | 198.19.* | 198.51.* | 203.0.*)
+        return 1
+        ;;
+    esac
+
+    [ "$a" -ge 224 ] && return 1
+    [ "$a" -eq 100 ] && [ "$b" -ge 64 ] && [ "$b" -le 127 ] && return 1
+    [ "$a" -eq 172 ] && [ "$b" -ge 16 ] && [ "$b" -le 31 ] && return 1
+
+    return 0
+}
+
+server_cidr_is_valid() {
+    local value="$1" address prefix extra
+
+    case "$value" in
+    */*) ;;
+    *) return 1 ;;
+    esac
+
+    address="${value%%/*}"
+    prefix="${value#*/}"
+    extra="${prefix#*/}"
+    [ "$extra" = "$prefix" ] || return 1
+
+    case "$prefix" in
+    '' | *[!0-9]*) return 1 ;;
+    esac
+
+    if is_ipv4 "$address"; then
+        [ "$prefix" -ge 0 ] && [ "$prefix" -le 32 ]
+        return
+    fi
+
+    if is_ipv6_literal "$address"; then
+        [ "$prefix" -ge 0 ] && [ "$prefix" -le 128 ]
+        return
+    fi
+
+    return 1
+}
+
+server_detect_default_public_host() {
+    local interface ip lan_ip
+
+    for interface in wan wwan; do
+        ip="$(ubus -S call "network.interface.$interface" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)"
+        if server_is_public_ipv4 "$ip"; then
+            printf '%s\n' "$ip"
+            return 0
+        fi
+    done
+
+    lan_ip="$(uci -q get network.lan.ipaddr 2>/dev/null)"
+    if printf '%s' "$lan_ip" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+        printf '%s\n' "$lan_ip"
+    fi
+}
+
+server_first_user_entry_handler() {
+    local entry="$1"
+
+    [ -n "$SERVER_FIRST_USER_ENTRY" ] && return 0
+    SERVER_FIRST_USER_ENTRY="$entry"
+}
+
+server_prepare_legacy_user_defaults() {
+    local section="$1"
+    local protocol="$2"
+    local entry name rest credential extra
+
+    SERVER_FIRST_USER_ENTRY=""
+    config_list_foreach "$section" "server_users" server_first_user_entry_handler
+    entry="$SERVER_FIRST_USER_ENTRY"
+    SERVER_FIRST_USER_ENTRY=""
+    [ -n "$entry" ] || return 0
+
+    name="${entry%%|*}"
+    if [ "$entry" = "$name" ]; then
+        credential="$entry"
+        name="client"
+        extra=""
+    else
+        rest="${entry#*|}"
+        credential="${rest%%|*}"
+        if [ "$rest" = "$credential" ]; then
+            extra=""
+        else
+            extra="${rest#*|}"
+        fi
+    fi
+
+    case "$protocol" in
+    vless | vmess)
+        server_default_set_option "$section" "server_uuid" "$credential"
+        ;;
+    shadowsocks | socks | trojan | hysteria2)
+        server_default_set_option "$section" "server_password" "$credential"
+        ;;
+    esac
+    if [ "$protocol" = "socks" ] && [ -n "$name" ]; then
+        server_default_set_option "$section" "server_username" "$name"
+    fi
+    if [ "$protocol" = "vless" ] && [ -n "$extra" ]; then
+        server_default_set_option "$section" "vless_flow" "$extra"
+    fi
+}
+
+server_prepare_tls_defaults() {
+    local section="$1"
+    local protocol="$2"
+    local security="$3"
+    local enabled tls_server_name certificate_path key_path safe_name default_dir
+
+    [ "$security" = "tls" ] || return 0
+    config_get_bool enabled "$section" "enabled" 1
+    [ "$enabled" -eq 1 ] || return 0
+
+    config_get tls_server_name "$section" "tls_server_name"
+    [ -n "$tls_server_name" ] || tls_server_name="www.microsoft.com"
+    server_default_set_option "$section" "tls_server_name" "$tls_server_name"
+
+    config_get certificate_path "$section" "tls_certificate_path"
+    config_get key_path "$section" "tls_key_path"
+    if [ -z "$certificate_path" ] || [ -z "$key_path" ]; then
+        safe_name="$(server_safe_filename "$section")"
+        default_dir="/etc/podkop-plus/server-certs"
+        certificate_path="${certificate_path:-$default_dir/$safe_name.crt}"
+        key_path="${key_path:-$default_dir/$safe_name.key}"
+        server_set_option "$section" "tls_certificate_path" "$certificate_path"
+        server_set_option "$section" "tls_key_path" "$key_path"
+    fi
+
+    if ! server_file_path_is_valid "$certificate_path"; then
+        log "Server '$section' has invalid TLS certificate path. Specify a file path. Aborted." "fatal"
+        exit 1
+    fi
+    if ! server_file_path_is_valid "$key_path"; then
+        log "Server '$section' has invalid TLS key path. Specify a file path. Aborted." "fatal"
+        exit 1
+    fi
+    if [ "$certificate_path" = "$key_path" ]; then
+        log "Server '$section' has the same TLS certificate and key path. Specify different files. Aborted." "fatal"
+        exit 1
+    fi
+
+    if [ ! -s "$certificate_path" ] || [ ! -s "$key_path" ]; then
+        log "Generating self-signed TLS certificate for server '$section'" "info"
+        if ! server_generate_tls_keypair_files "$tls_server_name" "$certificate_path" "$key_path"; then
+            log "Failed to generate TLS certificate for server '$section'. Aborted." "fatal"
+            exit 1
+        fi
+    fi
+}
+
+prepare_server_defaults() {
+    local section="$1"
+    local protocol security uuid password server_username label short_id reality_private_key reality_public_key safe_name
+
+    config_get protocol "$section" "protocol" "vless"
+    case "$protocol" in
+    shadowsocks | socks | vmess | vless | trojan | hysteria2 | tailscale) ;;
+    *)
+        log "Server '$section' has unsupported protocol '$protocol'. Aborted." "fatal"
+        exit 1
+        ;;
+    esac
+
+    server_default_set_option "$section" "protocol" "$protocol"
+    server_default_set_option "$section" "label" "$section"
+    server_default_set_option "$section" "enabled" "1"
+    server_default_set_option "$section" "listen" "0.0.0.0"
+    server_default_set_option "$section" "listen_port" "443"
+    server_default_set_option "$section" "public_host" "$(server_detect_default_public_host)"
+    server_default_set_option "$section" "routing_mode" "rules"
+
+    security="$(server_effective_security "$section" "$protocol")"
+    server_set_option "$section" "security" "$security"
+
+    server_prepare_legacy_user_defaults "$section" "$protocol"
+
+    case "$protocol" in
+    vless | vmess)
+        uuid="$(uci -q get "$PODKOP_CONFIG_NAME.$section.server_uuid" 2>/dev/null)"
+        if [ -z "$uuid" ]; then
+            uuid="$(server_generate_uuid)"
+            server_default_set_option "$section" "server_uuid" "$uuid"
+        fi
+        ;;
+    shadowsocks | socks | trojan | hysteria2)
+        password="$(uci -q get "$PODKOP_CONFIG_NAME.$section.server_password" 2>/dev/null)"
+        if [ -z "$password" ]; then
+            password="$(server_generate_password)"
+            server_default_set_option "$section" "server_password" "$password"
+        fi
+        ;;
+    esac
+
+    if [ "$protocol" = "socks" ]; then
+        server_username="$(uci -q get "$PODKOP_CONFIG_NAME.$section.server_username" 2>/dev/null)"
+        if [ -z "$server_username" ]; then
+            config_get label "$section" "label" "$section"
+            server_default_set_option "$section" "server_username" "$label"
+        fi
+    fi
+
+    if [ "$protocol" = "vless" ]; then
+        server_default_set_option "$section" "vless_flow" "none"
+    fi
+    if [ "$protocol" = "vmess" ]; then
+        server_default_set_option "$section" "vmess_alter_id" "0"
+    fi
+    if [ "$protocol" = "shadowsocks" ]; then
+        server_default_set_option "$section" "shadowsocks_method" "aes-128-gcm"
+    fi
+    if [ "$protocol" = "tailscale" ]; then
+        safe_name="$(server_safe_filename "$section")"
+        server_default_set_option "$section" "tailscale_control_url" "https://controlplane.tailscale.com"
+        server_default_set_option "$section" "tailscale_hostname" "podkop-$safe_name"
+        server_default_set_option "$section" "tailscale_advertise_exit_node" "1"
+    fi
+
+    if [ "$security" = "reality" ]; then
+        server_default_set_option "$section" "tls_server_name" "www.microsoft.com"
+        server_default_set_option "$section" "client_fingerprint" "chrome"
+        server_default_set_option "$section" "reality_handshake_server" "www.microsoft.com"
+        server_default_set_option "$section" "reality_handshake_server_port" "443"
+        short_id="$(uci -q get "$PODKOP_CONFIG_NAME.$section.reality_short_id" 2>/dev/null)"
+        if [ -z "$short_id" ]; then
+            server_default_set_option "$section" "reality_short_id" "$(server_generate_short_id)"
+        fi
+        server_default_set_option "$section" "reality_max_time_difference" "1m"
+
+        reality_private_key="$(uci -q get "$PODKOP_CONFIG_NAME.$section.reality_private_key" 2>/dev/null)"
+        reality_public_key="$(uci -q get "$PODKOP_CONFIG_NAME.$section.reality_public_key" 2>/dev/null)"
+        if [ -z "$reality_private_key" ] || [ -z "$reality_public_key" ]; then
+            log "Generating Reality key pair for server '$section'" "info"
+            if ! server_generate_reality_keypair; then
+                log "Failed to generate Reality key pair for server '$section'. Aborted." "fatal"
+                exit 1
+            fi
+            server_set_option "$section" "reality_private_key" "$SERVER_REALITY_PRIVATE_KEY"
+            server_set_option "$section" "reality_public_key" "$SERVER_REALITY_PUBLIC_KEY"
+        fi
+    fi
+
+    server_prepare_tls_defaults "$section" "$protocol" "$security"
+}
+
+prepare_server_defaults_handler() {
+    prepare_server_defaults "$1"
+}
+
+prepare_all_server_defaults() {
+    SERVER_DEFAULTS_CHANGED=0
+    config_foreach prepare_server_defaults_handler "server"
+    if [ "$SERVER_DEFAULTS_CHANGED" -eq 1 ]; then
+        commit_podkop_config
+    fi
+}
+
+server_write_users_json() {
+    local section="$1"
+    local protocol="$2"
+    local tsv_tmp users_tmp user_count server_user_name server_uuid server_password vless_flow vmess_alter_id credential extra
+
+    tsv_tmp="$(mktemp)" || return 1
+    users_tmp="$(mktemp)" || {
+        rm -f "$tsv_tmp"
+        return 1
+    }
+
+    config_get server_user_name "$section" "label" "$section"
+    [ -n "$server_user_name" ] || server_user_name="$section"
+
+    case "$protocol" in
+    vless | vmess)
+        config_get server_uuid "$section" "server_uuid"
+        credential="$server_uuid"
+        if ! printf '%s\n' "$credential" | grep -Eq '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'; then
+            rm -f "$tsv_tmp" "$users_tmp"
+            log "Server '$section' has an invalid client UUID. Aborted." "fatal"
+            exit 1
+        fi
+        if [ "$protocol" = "vless" ]; then
+            config_get vless_flow "$section" "vless_flow"
+            [ "$vless_flow" != "none" ] || vless_flow=""
+            if [ -n "$vless_flow" ] && [ "$vless_flow" != "xtls-rprx-vision" ]; then
+                rm -f "$tsv_tmp" "$users_tmp"
+                log "Server '$section' has unsupported VLESS flow '$vless_flow'. Aborted." "fatal"
+                exit 1
+            fi
+            extra="$vless_flow"
+        else
+            config_get vmess_alter_id "$section" "vmess_alter_id" "0"
+            case "$vmess_alter_id" in
+            '' | *[!0-9]*)
+                rm -f "$tsv_tmp" "$users_tmp"
+                log "Server '$section' has invalid VMess alter_id '$vmess_alter_id'. Use a non-negative integer. Aborted." "fatal"
+                exit 1
+                ;;
+            esac
+            extra="$vmess_alter_id"
+        fi
+        ;;
+    socks)
+        config_get server_user_name "$section" "server_username"
+        if [ -z "$server_user_name" ]; then
+            config_get server_user_name "$section" "label" "$section"
+        fi
+        [ -n "$server_user_name" ] || server_user_name="$section"
+        config_get server_password "$section" "server_password"
+        credential="$server_password"
+        extra=""
+        ;;
+    trojan | hysteria2)
+        config_get server_password "$section" "server_password"
+        credential="$server_password"
+        extra=""
+        ;;
+    *)
+        rm -f "$tsv_tmp" "$users_tmp"
+        return 1
+        ;;
+    esac
+
+    if ! server_client_value_is_valid "$server_user_name"; then
+        rm -f "$tsv_tmp" "$users_tmp"
+        log "Server '$section' has invalid client name. It must not contain control characters. Aborted." "fatal"
+        exit 1
+    fi
+
+    if [ -z "$credential" ]; then
+        rm -f "$tsv_tmp" "$users_tmp"
+        log "Server '$section' has no client credential. Aborted." "fatal"
+        exit 1
+    fi
+    if ! server_client_value_is_valid "$credential"; then
+        rm -f "$tsv_tmp" "$users_tmp"
+        log "Server '$section' has invalid client credential. It must not contain control characters. Aborted." "fatal"
+        exit 1
+    fi
+
+    printf '%s\t%s\t%s\n' "$server_user_name" "$credential" "$extra" > "$tsv_tmp"
+
+    if ! json_utils_ucode server-users-from-tsv "$protocol" "$tsv_tmp" > "$users_tmp"; then
+        rm -f "$tsv_tmp" "$users_tmp"
+        return 1
+    fi
+
+    rm -f "$tsv_tmp"
+
+    user_count="$(json_utils_ucode length "$users_tmp" 2>/dev/null)"
+    case "$user_count" in
+    '' | *[!0-9]*) user_count=0 ;;
+    esac
+    if [ "$user_count" -eq 0 ]; then
+        rm -f "$users_tmp"
+        log "Server '$section' has no valid users configured. Aborted." "fatal"
+        exit 1
+    fi
+
+    printf '%s\n' "$users_tmp"
+}
+
+validate_server_reality_short_id() {
+    local value="$1"
+    local section="$2"
+
+    if ! printf '%s\n' "$value" | grep -Eq '^[0-9a-fA-F]{1,8}$'; then
+        log "Server '$section' has invalid Reality short_id '$value'. Use 1-8 hex digits. Aborted." "fatal"
+        exit 1
+    fi
+}
+
+validate_server_reality_short_id_counted() {
+    SERVER_REALITY_SHORT_ID_COUNT=$((SERVER_REALITY_SHORT_ID_COUNT + 1))
+    validate_server_reality_short_id "$@"
+}
+
+validate_server_reality_short_ids() {
+    local section="$1"
+    local value
+
+    SERVER_REALITY_SHORT_ID_COUNT=0
+    config_list_foreach "$section" "reality_short_id" validate_server_reality_short_id_counted "$section"
+    if [ "$SERVER_REALITY_SHORT_ID_COUNT" -eq 0 ]; then
+        config_get value "$section" "reality_short_id"
+        if [ -n "$value" ]; then
+            SERVER_REALITY_SHORT_ID_COUNT=1
+            validate_server_reality_short_id "$value" "$section"
+        fi
+    fi
+}
+
+validate_server_transport_host_handler() {
+    local value="$1"
+    local section="$2"
+
+    [ -n "$value" ] || return 0
+    if ! server_host_is_valid "$value"; then
+        log "Server '$section' has invalid HTTP transport host '$value'. Use a domain name or IPv4 address. Aborted." "fatal"
+        exit 1
+    fi
+}
+
+server_apply_tls() {
+    local section="$1"
+    local inbound_tag="$2"
+    local protocol security tls_server_name tls_alpn tls_certificate_path tls_key_path \
+        reality_handshake_server reality_handshake_server_port reality_private_key \
+        reality_short_id reality_max_time_difference
+
+    config_get protocol "$section" "protocol" "vless"
+    security="$(server_effective_security "$section" "$protocol")"
+    case "$security" in
+    none | tls | reality) ;;
+    *)
+        log "Server '$section' has unsupported security '$security'. Aborted." "fatal"
+        exit 1
+        ;;
+    esac
+
+    [ "$security" != "none" ] || return 0
+
+    config_get tls_server_name "$section" "tls_server_name"
+    tls_alpn="$(config_list_to_json "$section" "tls_alpn")"
+    config_get tls_certificate_path "$section" "tls_certificate_path"
+    config_get tls_key_path "$section" "tls_key_path"
+    config_get reality_handshake_server "$section" "reality_handshake_server" "www.microsoft.com"
+    config_get reality_handshake_server_port "$section" "reality_handshake_server_port" "443"
+    config_get reality_private_key "$section" "reality_private_key"
+    reality_short_id="$(config_list_to_json "$section" "reality_short_id")"
+    config_get reality_max_time_difference "$section" "reality_max_time_difference" "1m"
+
+    if ! server_host_is_valid "$tls_server_name"; then
+        log "Server '$section' has invalid TLS server name/SNI '$tls_server_name'. Use a domain name or IPv4 address. Aborted." "fatal"
+        exit 1
+    fi
+
+    if [ "$security" = "tls" ]; then
+        if [ -z "$tls_certificate_path" ] || [ -z "$tls_key_path" ]; then
+            log "Server '$section' uses TLS but certificate/key paths are empty. Aborted." "fatal"
+            exit 1
+        fi
+        if ! server_file_path_is_valid "$tls_certificate_path"; then
+            log "Server '$section' has invalid TLS certificate path. Specify a file path. Aborted." "fatal"
+            exit 1
+        fi
+        if ! server_file_path_is_valid "$tls_key_path"; then
+            log "Server '$section' has invalid TLS key path. Specify a file path. Aborted." "fatal"
+            exit 1
+        fi
+        if [ "$tls_certificate_path" = "$tls_key_path" ]; then
+            log "Server '$section' has the same TLS certificate and key path. Specify different files. Aborted." "fatal"
+            exit 1
+        fi
+    fi
+
+    if [ "$security" = "reality" ]; then
+        if [ -z "$reality_handshake_server" ] || ! server_host_is_valid "$reality_handshake_server" || ! server_port_is_valid "$reality_handshake_server_port"; then
+            log "Server '$section' has invalid Reality handshake target. Aborted." "fatal"
+            exit 1
+        fi
+        if [ -z "$reality_private_key" ]; then
+            log "Server '$section' uses Reality but private key is not set. Aborted." "fatal"
+            exit 1
+        fi
+        if ! server_duration_is_valid "$reality_max_time_difference"; then
+            log "Server '$section' has invalid Reality max time difference '$reality_max_time_difference'. Use a duration like 30s, 5m, or 1h30m. Aborted." "fatal"
+            exit 1
+        fi
+        validate_server_reality_short_ids "$section"
+        if [ "$reality_short_id" = "[]" ]; then
+            log "Server '$section' uses Reality but short_id is not set. Aborted." "fatal"
+            exit 1
+        fi
+    fi
+
+    config=$(
+        sing_box_cm_set_tls_for_inbound \
+            "$config" \
+            "$inbound_tag" \
+            "$security" \
+            "$tls_server_name" \
+            "$tls_alpn" \
+            "$tls_certificate_path" \
+            "$tls_key_path" \
+            "$reality_handshake_server" \
+            "$reality_handshake_server_port" \
+            "$reality_private_key" \
+            "$reality_short_id" \
+            "$reality_max_time_difference"
+    )
+}
+
+server_apply_transport() {
+    local section="$1"
+    local inbound_tag="$2"
+    local protocol transport transport_path transport_host transport_service_name transport_hosts
+
+    config_get protocol "$section" "protocol" "vless"
+    case "$protocol" in
+    vless | vmess | trojan) ;;
+    *) return 0 ;;
+    esac
+
+    config_get transport "$section" "transport" "tcp"
+    case "$transport" in
+    tcp | raw | ws | grpc | http | httpupgrade) ;;
+    *)
+        log "Server '$section' has unsupported transport '$transport'. Aborted." "fatal"
+        exit 1
+        ;;
+    esac
+
+    [ "$transport" != "tcp" ] && [ "$transport" != "raw" ] || return 0
+
+    config_get transport_path "$section" "transport_path"
+    config_get transport_host "$section" "transport_host"
+    config_get transport_service_name "$section" "transport_service_name"
+    transport_hosts="$(config_list_to_json "$section" "transport_hosts")"
+
+    case "$transport" in
+    ws | http | httpupgrade)
+        if [ -n "$transport_path" ]; then
+            case "$transport_path" in
+            /*) ;;
+            *)
+                log "Server '$section' has invalid transport path '$transport_path'. It must start with /. Aborted." "fatal"
+                exit 1
+                ;;
+            esac
+        fi
+        ;;
+    esac
+    if [ -n "$transport_host" ] && ! server_host_is_valid "$transport_host"; then
+        log "Server '$section' has invalid transport host '$transport_host'. Use a domain name or IPv4 address. Aborted." "fatal"
+        exit 1
+    fi
+    config_list_foreach "$section" "transport_hosts" validate_server_transport_host_handler "$section"
+    if [ -n "$transport_service_name" ] && ! printf '%s\n' "$transport_service_name" | grep -Eq '^[A-Za-z0-9_.-]+$'; then
+        log "Server '$section' has invalid gRPC service name '$transport_service_name'. Aborted." "fatal"
+        exit 1
+    fi
+
+    config=$(
+        sing_box_cm_set_transport_for_inbound \
+            "$config" \
+            "$inbound_tag" \
+            "$transport" \
+            "$transport_path" \
+            "$transport_host" \
+            "$transport_service_name" \
+            "$transport_hosts"
+    )
 }
 
 get_urltest_regex_matching_tags_json() {
@@ -6141,6 +7228,7 @@ sing_box_configure_dns() {
     service_domains=$(comma_string_to_json_array "$FAKEIP_TEST_DOMAIN,$CHECK_PROXY_IP_DOMAIN")
 
     config=$(sing_box_cm_add_dns_reject_rule "$config" "query_type" "HTTPS")
+    config=$(sing_box_cm_add_dns_reject_rule "$config" "query_type" "AAAA")
     config=$(sing_box_cm_add_dns_reject_rule "$config" "domain_suffix" '"use-application-dns.net"')
     config=$(sing_box_cm_add_dns_route_rule "$config" "$SB_FAKEIP_DNS_SERVER_TAG" "$SB_SERVICE_FAKEIP_DNS_RULE_TAG")
     config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_SERVICE_FAKEIP_DNS_RULE_TAG" "rewrite_ttl" "$rewrite_ttl")
@@ -6150,28 +7238,33 @@ sing_box_configure_dns() {
 sing_box_configure_route() {
     log "Configure the route section of a sing-box JSON configuration"
 
-    local output_network_interface
+    local output_network_interface outbound_mark
+    outbound_mark="$((NFT_OUTBOUND_MARK))"
     config_get output_network_interface "settings" "output_network_interface"
     if [ -z "$output_network_interface" ]; then
         if mwan3_is_active; then
             log "mwan3 is active; disabling sing-box auto_detect_interface so mwan3 can control egress routing" "warn"
-            config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" false "$SB_DNS_SERVER_TAG")
+            config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" false "$SB_DNS_SERVER_TAG" "" "$outbound_mark")
         else
-            config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" true "$SB_DNS_SERVER_TAG")
+            config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" true "$SB_DNS_SERVER_TAG" "" "$outbound_mark")
         fi
     else
         if mwan3_is_active; then
             log "mwan3 is active and Output Network Interface is set to '$output_network_interface'; sing-box egress is pinned to this interface" "warn"
         fi
         config=$(sing_box_cm_configure_route "$config" "$SB_DIRECT_OUTBOUND_TAG" false "$SB_DNS_SERVER_TAG" \
-            "$output_network_interface")
+            "$output_network_interface" "$outbound_mark")
     fi
 
     local sniff_inbounds
     sniff_inbounds=$(comma_string_to_json_array "$SB_TPROXY_INBOUND_TAG,$SB_DNS_INBOUND_TAG")
     config=$(sing_box_cm_sniff_route_rule "$config" "inbound" "$sniff_inbounds")
+    config_foreach add_server_sniff_route_rule "server"
 
+    config=$(sing_box_cm_add_hijack_dns_route_rule "$config" "port" "53")
     config=$(sing_box_cm_add_hijack_dns_route_rule "$config" "protocol" "dns")
+
+    config=$(sing_box_cf_add_single_key_reject_rule "$config" "" "ip_version" 6)
 
     local disable_quic
     config_get_bool disable_quic "settings" "disable_quic" 0
@@ -6197,29 +7290,89 @@ sing_box_configure_route() {
 
     config_foreach include_source_ips_in_routing_handler "section"
     config_foreach configure_route_rule_handler "section"
+    config_foreach configure_server_route "server"
+}
+
+add_server_sniff_route_rule() {
+    local section="$1"
+    local inbound_tag
+
+    server_is_enabled "$section" || return 0
+
+    inbound_tag="$(get_server_inbound_tag_by_section "$section")"
+    config=$(sing_box_cm_sniff_route_rule "$config" "inbound" "\"$inbound_tag\"")
+}
+
+configure_server_route() {
+    local section="$1"
+    local routing_mode routing_section inbound_tag action route_rule_tag
+
+    server_is_enabled "$section" || return 0
+
+    inbound_tag="$(get_server_inbound_tag_by_section "$section")"
+    config_get routing_mode "$section" "routing_mode" "rules"
+
+    case "$routing_mode" in
+    rules)
+        config=$(
+            sing_box_cm_clone_route_rules_for_inbound \
+                "$config" \
+                "$SB_TPROXY_INBOUND_TAG" \
+                "$inbound_tag" \
+                "$CHECK_PROXY_IP_DOMAIN"
+        )
+        ;;
+    direct)
+        route_rule_tag="$(gen_id)"
+        config=$(sing_box_cm_add_route_rule "$config" "$route_rule_tag" "$inbound_tag" "$SB_DIRECT_OUTBOUND_TAG")
+        ;;
+    section)
+        config_get routing_section "$section" "routing_section"
+        if [ -z "$routing_section" ]; then
+            log "Server '$section' routing mode is section, but routing_section is empty. Aborted." "fatal"
+            exit 1
+        fi
+        action="$(get_rule_action "$routing_section")"
+        if [ -z "$action" ]; then
+            log "Server '$section' references missing routing section '$routing_section'. Aborted." "fatal"
+            exit 1
+        fi
+        if ! rule_is_enabled "$routing_section"; then
+            log "Server '$section' references disabled routing section '$routing_section'. Aborted." "fatal"
+            exit 1
+        fi
+        route_rule_tag="$(gen_id)"
+        create_route_rule_for_action "$routing_section" "$action" "$route_rule_tag" "$inbound_tag"
+        ;;
+    *)
+        log "Server '$section' has unsupported routing mode '$routing_mode'. Aborted." "fatal"
+        exit 1
+        ;;
+    esac
 }
 
 create_route_rule_for_action() {
     local section="$1"
     local action="$2"
     local rule_tag="$3"
+    local inbound_tag="${4:-$SB_TPROXY_INBOUND_TAG}"
 
     case "$action" in
     proxy | outbound | vpn | byedpi)
         local outbound_tag
         outbound_tag="$(get_outbound_tag_by_section "$section")"
-        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$SB_TPROXY_INBOUND_TAG" "$outbound_tag")
+        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$inbound_tag" "$outbound_tag")
         ;;
     zapret)
         local zapret_outbound_tag
         zapret_outbound_tag="$(get_outbound_tag_by_section "$section")"
-        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$SB_TPROXY_INBOUND_TAG" "$zapret_outbound_tag")
+        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$inbound_tag" "$zapret_outbound_tag")
         ;;
     direct)
-        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$SB_TPROXY_INBOUND_TAG" "$SB_DIRECT_OUTBOUND_TAG")
+        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$inbound_tag" "$SB_DIRECT_OUTBOUND_TAG")
         ;;
     block)
-        config=$(sing_box_cm_add_reject_route_rule "$config" "$rule_tag" "$SB_TPROXY_INBOUND_TAG")
+        config=$(sing_box_cm_add_reject_route_rule "$config" "$rule_tag" "$inbound_tag")
         ;;
     *)
         log "Unsupported action '$action' for rule '$section'. Aborted." "fatal"
@@ -7549,6 +8702,42 @@ show_config() {
         -e '/option outbound_json/,/^}/c\	option outbound_json '\''MASKED'\''' \
         -e 's/\(list urltest_proxy_links\).*/\1 '\''MASKED'\''/g' \
         -e 's/\(list selector_proxy_links\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(list domain[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list domain_suffix[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list domain_keyword[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list domain_regex[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list ip_cidr[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list source_ip_cidr[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list fully_routed_ips[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list server_users\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option dns_server[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option bootstrap_dns_server[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option domain_resolver_dns_server[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option listen[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option listen_port[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option public_host[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option server_uuid\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option server_username\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option server_password\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option tls_server_name[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option reality_handshake_server[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option reality_handshake_server_port[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option transport_host[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list transport_hosts[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option tailscale_auth_key[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option tailscale_control_url[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option tailscale_hostname[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(list tailscale_advertise_routes[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e '/option tailscale_ephemeral[[:space:]]/d' \
+        -e '/option tailscale_exit_node[[:space:]]/d' \
+        -e '/option tailscale_exit_node_allow_lan_access[[:space:]]/d' \
+        -e 's/\(option hysteria2_obfs_password\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option reality_private_key\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option reality_public_key\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option reality_short_id\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(list reality_short_id\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option mixed_proxy_username[[:space:]]\).*/\1'\''MASKED'\''/g' \
+        -e 's/\(option mixed_proxy_password[[:space:]]\).*/\1'\''MASKED'\''/g' \
         -e "s@\\(option dns_server '[^/]*\\)/[^']*'@\\1/MASKED'@g" \
         -e "s@\\(option domain_resolver_dns_server '[^/]*\\)/[^']*'@\\1/MASKED'@g" \
         -e 's/\(option yacd_secret_key\).*/\1 '\''MASKED'\''/g' \
@@ -8890,6 +10079,8 @@ Available commands:
     get_zapret_status       Get zapret provider and Podkop Plus-managed nfqws status
     get_byedpi_status       Get ByeDPI provider and Podkop Plus-managed ciadpi status
     get_system_info         Get system information in JSON format
+    generate_reality_keypair
+                            Generate a sing-box Reality key pair in JSON format
     component_action        Manage Podkop Plus, sing-box, zapret, and ByeDPI components
     component_action_async  Start a component action in the background
     component_action_status Get background component action status
@@ -9010,6 +10201,9 @@ get_byedpi_status)
     ;;
 get_system_info)
     get_system_info
+    ;;
+generate_reality_keypair)
+    generate_reality_keypair
     ;;
 component_action)
     component_action "$2" "$3"

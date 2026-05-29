@@ -729,15 +729,87 @@ function outbound_server_by_tag(tag) {
     }
 }
 
+function server_users_from_tsv(protocol, path) {
+    let result = [];
+    let data = fs.readfile(path);
+
+    if (data != null) {
+        for (let line in split(data, "\n")) {
+            if (line == "")
+                continue;
+
+            let parts = split(line, "\t");
+            let name = as_string(parts[0] || "");
+            let credential = as_string(parts[1] || "");
+            let flow = as_string(parts[2] || "");
+
+            if (credential == "")
+                continue;
+
+            if (protocol == "vless") {
+                let user = { uuid: credential };
+                if (name != "")
+                    user.name = name;
+                if (flow != "")
+                    user.flow = flow;
+                push(result, user);
+            }
+            else if (protocol == "vmess") {
+                let user = { uuid: credential, alterId: int(flow || "0", 10) || 0 };
+                if (name != "")
+                    user.name = name;
+                push(result, user);
+            }
+            else if (protocol == "trojan") {
+                let user = { password: credential };
+                if (name != "")
+                    user.name = name;
+                push(result, user);
+            }
+            else if (protocol == "hysteria2") {
+                let user = { password: credential };
+                if (name != "")
+                    user.name = name;
+                push(result, user);
+            }
+            else if (protocol == "socks") {
+                let user = {
+                    username: name != "" ? name : "user",
+                    password: credential
+                };
+                push(result, user);
+            }
+        }
+    }
+
+    write_json(result);
+}
+
 let masked_sing_box_keys = {
+    auth_key: true,
+    control_url: true,
+    exit_node: true,
+    hostname: true,
+    listen: true,
+    listen_port: true,
+    username: true,
     uuid: true,
     server: true,
     server_name: true,
+    secret: true,
     password: true,
+    private_key: true,
     public_key: true,
     short_id: true,
     fingerprint: true,
-    server_port: true
+    server_port: true,
+    advertise_routes: true,
+    domain: true,
+    domain_suffix: true,
+    domain_keyword: true,
+    domain_regex: true,
+    ip_cidr: true,
+    source_ip_cidr: true
 };
 
 function mask_sing_box_value(value) {
@@ -911,6 +983,8 @@ else if (mode == "resolved-countries-from-tsv")
     resolved_countries_from_tsv(ARGV[1], ARGV[2]);
 else if (mode == "outbound-server-by-tag")
     outbound_server_by_tag(ARGV[1]);
+else if (mode == "server-users-from-tsv")
+    server_users_from_tsv(ARGV[1], ARGV[2]);
 else if (mode == "mask-sing-box-config")
     mask_sing_box_config(ARGV[1]);
 else if (mode == "prepare-check-proxy-config")

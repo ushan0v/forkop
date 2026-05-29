@@ -65,6 +65,42 @@ sing_box_cm_add_mixed_inbound() {
     sing_box_cm_ucode add-mixed-inbound "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
+sing_box_cm_add_vless_inbound() {
+    sing_box_cm_ucode add-vless-inbound-file "$1" "$2" "$3" "$4" "$5"
+}
+
+sing_box_cm_add_trojan_inbound() {
+    sing_box_cm_ucode add-trojan-inbound-file "$1" "$2" "$3" "$4" "$5"
+}
+
+sing_box_cm_add_vmess_inbound() {
+    sing_box_cm_ucode add-vmess-inbound-file "$1" "$2" "$3" "$4" "$5"
+}
+
+sing_box_cm_add_socks_inbound() {
+    sing_box_cm_ucode add-socks-inbound-file "$1" "$2" "$3" "$4" "$5"
+}
+
+sing_box_cm_add_shadowsocks_inbound() {
+    sing_box_cm_ucode add-shadowsocks-inbound "$1" "$2" "$3" "$4" "$5" "$6"
+}
+
+sing_box_cm_add_hysteria2_inbound() {
+    sing_box_cm_ucode add-hysteria2-inbound-file "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
+}
+
+sing_box_cm_add_tailscale_endpoint() {
+    sing_box_cm_ucode add-tailscale-endpoint "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}"
+}
+
+sing_box_cm_set_tls_for_inbound() {
+    sing_box_cm_ucode set-inbound-tls "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}"
+}
+
+sing_box_cm_set_transport_for_inbound() {
+    sing_box_cm_ucode set-inbound-transport "$1" "$2" "$3" "$4" "$5" "$6" "$7"
+}
+
 sing_box_cm_add_direct_outbound() {
     sing_box_cm_ucode add-direct-outbound "$1" "$2" "$3"
 }
@@ -172,7 +208,7 @@ sing_box_cm_add_selector_outbound() {
 }
 
 sing_box_cm_configure_route() {
-    sing_box_cm_ucode configure-route "$1" "$2" "$3" "$4" "$5"
+    sing_box_cm_ucode configure-route "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 sing_box_cm_add_route_rule() {
@@ -201,6 +237,10 @@ sing_box_cm_add_options_route_rule() {
 
 sing_box_cm_sniff_route_rule() {
     sing_box_cm_ucode sniff-route-rule "$1" "$2" "$3"
+}
+
+sing_box_cm_clone_route_rules_for_inbound() {
+    sing_box_cm_ucode clone-route-rules-for-inbound "$1" "$2" "$3" "$4"
 }
 
 sing_box_cm_add_inline_ruleset() {

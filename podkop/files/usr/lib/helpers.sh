@@ -114,6 +114,12 @@ get_inbound_tag_by_section() {
     echo "$section-$postfix"
 }
 
+get_server_inbound_tag_by_section() {
+    local section="$1"
+
+    echo "server-$section-in"
+}
+
 # Returns the outbound tag name by appending the postfix to the given section
 get_outbound_tag_by_section() {
     local section="$1"

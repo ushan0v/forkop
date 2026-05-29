@@ -156,7 +156,7 @@ export namespace Podkop {
 
   export interface ConfigSection {
     '.name': string;
-    '.type': 'settings' | 'rule' | 'node' | 'ruleset' | 'section';
+    '.type': 'settings' | 'rule' | 'node' | 'ruleset' | 'section' | 'server';
     label?: string;
     enabled?: string;
     action?: RuleAction;

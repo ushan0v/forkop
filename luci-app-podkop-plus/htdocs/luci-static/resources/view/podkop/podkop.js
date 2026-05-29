@@ -12,6 +12,9 @@
 // Sections
 "require view.podkop_plus.section as section";
 
+// Server
+"require view.podkop_plus.server as server";
+
 // Dashboard
 "require view.podkop_plus.dashboard as dashboard";
 
@@ -119,6 +122,21 @@ const EntryPoint = {
       _("Add a section"),
     );
     section.createSectionContent(rulesSection);
+
+    const serverSection = podkopMap.section(
+      form.GridSection,
+      "server",
+      _("Servers"),
+      _("Accept external proxy connections and route them with sing-box."),
+    );
+    configureGridSection(
+      serverSection,
+      "server",
+      _("Server"),
+      _("Add a server inbound"),
+    );
+    server.configureServerSection(serverSection);
+    server.createServerContent(serverSection);
 
     const settingsSection = podkopMap.section(
       form.TypedSection,
