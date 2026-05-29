@@ -150,7 +150,7 @@ sing_box_cm_set_tls_for_outbound() {
 }
 
 sing_box_cm_add_interface_outbound() {
-    sing_box_cm_ucode add-interface-outbound "$1" "$2" "$3" "$4"
+    sing_box_cm_ucode add-interface-outbound "$1" "$2" "$3" "$4" "$5"
 }
 
 sing_box_cm_add_raw_outbound() {

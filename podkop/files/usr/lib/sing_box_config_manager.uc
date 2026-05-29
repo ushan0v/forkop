@@ -665,6 +665,7 @@ function add_interface_outbound(config, args) {
         bind_interface: as_string(args[1])
     };
     optional_string(outbound, "domain_resolver", args[2]);
+    optional_number(outbound, "routing_mark", args[3]);
     add_outbound(config, outbound);
 }
 

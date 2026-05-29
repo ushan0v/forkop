@@ -7159,7 +7159,7 @@ configure_outbound_handler() {
 
     if [ "$action" = "vpn" ]; then
         local interface_name domain_resolver_enabled domain_resolver_dns_type domain_resolver_dns_server \
-            domain_resolver_dns_server_address outbound_tag domain_resolver_tag dns_domain_resolver
+            domain_resolver_dns_server_address outbound_tag domain_resolver_tag dns_domain_resolver outbound_mark
 
         config_get interface_name "$section" "interface"
         config_get_bool domain_resolver_enabled "$section" "domain_resolver_enabled" 0
@@ -7183,7 +7183,8 @@ configure_outbound_handler() {
                 "$domain_resolver_dns_server" "$dns_domain_resolver" "$outbound_tag")
         fi
 
-        config=$(sing_box_cm_add_interface_outbound "$config" "$outbound_tag" "$interface_name" "$domain_resolver_tag")
+        outbound_mark="$((NFT_OUTBOUND_MARK))"
+        config=$(sing_box_cm_add_interface_outbound "$config" "$outbound_tag" "$interface_name" "$domain_resolver_tag" "$outbound_mark")
         write_subscription_metadata_json "$section" ""
         return 0
     fi
