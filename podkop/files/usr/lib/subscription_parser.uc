@@ -202,13 +202,18 @@ function parse_query(query) {
     return params;
 }
 
+function parse_port_value(value) {
+    value = as_string(value);
+    return is_integer_string(value) ? int(value, 10) : value;
+}
+
 function parse_host_port(value) {
     value = as_string(value);
     if (length(value) > 0 && substr(value, length(value) - 1) == "/")
         value = substr(value, 0, length(value) - 1);
     if (starts_with(value, "[")) {
-        let m = match(value, /^\[([^\]]+)\]:(\d+)$/);
-        return m ? [m[1], int(m[2])] : ["", null];
+        let m = match(value, /^\[([^\]]+)\]:(.+)$/);
+        return m ? [m[1], parse_port_value(m[2])] : ["", null];
     }
 
     let colon = rindex(value, ":");
@@ -217,9 +222,7 @@ function parse_host_port(value) {
 
     let host = substr(value, 0, colon);
     let port = substr(value, colon + 1);
-    if (!is_integer_string(port))
-        return ["", null];
-    return [host, int(port)];
+    return [host, parse_port_value(port)];
 }
 
 function parse_url(url) {
@@ -404,6 +407,53 @@ function add_transport(url) {
 function valid_port(port) {
     let port_type = type(port);
     return (port_type == "int" || port_type == "double") && port >= 1 && port <= 65535 && int(port) == port;
+}
+
+function normalize_port_number(value) {
+    value = trim(value);
+    if (!is_integer_string(value))
+        return "";
+
+    let port = int(value, 10);
+    if (port < 1 || port > 65535)
+        return "";
+
+    return "" + port;
+}
+
+function parse_hysteria2_server_ports(value) {
+    value = as_string(value);
+    if (index(value, ",") < 0 && index(value, "-") < 0)
+        return null;
+
+    let result = [];
+    for (let entry in split(value, ",")) {
+        entry = trim(entry);
+        if (entry == "")
+            return null;
+
+        let dash = index(entry, "-");
+        if (dash >= 0) {
+            if (index(substr(entry, dash + 1), "-") >= 0)
+                return null;
+
+            let start = normalize_port_number(substr(entry, 0, dash));
+            let end = normalize_port_number(substr(entry, dash + 1));
+            if (start == "" || end == "" || int(start, 10) > int(end, 10))
+                return null;
+
+            push(result, start + ":" + end);
+        }
+        else {
+            let port = normalize_port_number(entry);
+            if (port == "")
+                return null;
+
+            push(result, port + ":" + port);
+        }
+    }
+
+    return length(result) > 0 ? result : null;
 }
 
 function process_vless(raw, url) {
@@ -595,7 +645,8 @@ function process_shadowsocks(raw) {
 }
 
 function process_hysteria2(raw, url) {
-    if (url.host == "" || !valid_port(url.port) || url.userinfo == "")
+    let server_ports = parse_hysteria2_server_ports(url.port);
+    if (url.host == "" || (!valid_port(url.port) && server_ports == null) || url.userinfo == "")
         return null;
 
     let password = url.userinfo;
@@ -615,13 +666,17 @@ function process_hysteria2(raw, url) {
 
     let outbound = {
         type: "hysteria2",
-        tag: url.fragment != "" ? url.fragment : (url.host + ":" + url.port),
+        tag: url.fragment != "" ? url.fragment : (url.host + ":" + as_string(url.port)),
         share_link: raw,
         server: url.host,
-        server_port: url.port,
         password: password,
         tls: tls
     };
+    if (server_ports != null)
+        outbound.server_ports = server_ports;
+    else
+        outbound.server_port = url.port;
+
     if ((url.query.network || "") != "")
         outbound.network = url.query.network;
     if (is_integer_string(url.query.upmbps || ""))

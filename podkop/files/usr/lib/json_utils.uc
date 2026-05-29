@@ -803,6 +803,7 @@ let masked_sing_box_keys = {
     short_id: true,
     fingerprint: true,
     server_port: true,
+    server_ports: true,
     advertise_routes: true,
     domain: true,
     domain_suffix: true,

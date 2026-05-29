@@ -54,6 +54,53 @@ function number_arg(value) {
     return value == "" ? null : int(value, 10);
 }
 
+function normalize_port_number(value) {
+    value = trim(as_string(value));
+    if (!match(value, /^\d+$/))
+        return "";
+
+    let port = int(value, 10);
+    if (port < 1 || port > 65535)
+        return "";
+
+    return "" + port;
+}
+
+function parse_hysteria2_server_ports(value) {
+    value = as_string(value);
+    if (index(value, ",") < 0 && index(value, "-") < 0)
+        return null;
+
+    let result = [];
+    for (let entry in split(value, ",")) {
+        entry = trim(as_string(entry));
+        if (entry == "")
+            return null;
+
+        let dash = index(entry, "-");
+        if (dash >= 0) {
+            if (index(substr(entry, dash + 1), "-") >= 0)
+                return null;
+
+            let start = normalize_port_number(substr(entry, 0, dash));
+            let end = normalize_port_number(substr(entry, dash + 1));
+            if (start == "" || end == "" || int(start, 10) > int(end, 10))
+                return null;
+
+            push(result, start + ":" + end);
+        }
+        else {
+            let port = normalize_port_number(entry);
+            if (port == "")
+                return null;
+
+            push(result, port + ":" + port);
+        }
+    }
+
+    return length(result) > 0 ? result : null;
+}
+
 function json_arg(value) {
     value = as_string(value);
     try {
@@ -558,13 +605,21 @@ function add_trojan_outbound(config, args) {
 }
 
 function add_hysteria2_outbound(config, args) {
+    let server_port = as_string(args[2]);
     let outbound = {
         type: "hysteria2",
         tag: as_string(args[0]),
         server: as_string(args[1]),
-        server_port: number_arg(args[2]),
         password: as_string(args[3])
     };
+    let server_ports = parse_hysteria2_server_ports(server_port);
+    if (server_ports != null)
+        outbound.server_ports = server_ports;
+    else if (index(server_port, ",") >= 0 || index(server_port, "-") >= 0)
+        outbound.server_ports = [ server_port ];
+    else
+        outbound.server_port = number_arg(server_port);
+
     if (as_string(args[4]) != "" && as_string(args[5]) != "") {
         outbound.obfs = {
             type: as_string(args[4]),

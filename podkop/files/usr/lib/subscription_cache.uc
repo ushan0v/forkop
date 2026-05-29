@@ -306,6 +306,35 @@ function host_port(server, port) {
     return server + ":" + as_string(port);
 }
 
+function hysteria2_server_port_entry(value) {
+    value = as_string(value);
+    let colon = index(value, ":");
+    if (colon < 0)
+        return value;
+
+    let start = substr(value, 0, colon);
+    let end = substr(value, colon + 1);
+    if (start == "" || end == "")
+        return "";
+
+    return start == end ? start : (start + "-" + end);
+}
+
+function hysteria2_server_ports_uri(outbound) {
+    let server_ports = array_or_empty(outbound.server_ports);
+    if (length(server_ports) == 0)
+        return "";
+
+    let result = [];
+    for (let item in server_ports) {
+        let port = hysteria2_server_port_entry(item);
+        if (port != "")
+            push(result, port);
+    }
+
+    return join(",", result);
+}
+
 function add_query(params, key, value) {
     value = as_string(value);
     if (value != "")
@@ -428,7 +457,11 @@ function serialize_socks(outbound) {
 }
 
 function serialize_hysteria2(outbound) {
-    if (as_string(outbound.password) == "" || as_string(outbound.server) == "" || outbound.server_port == null)
+    let port = hysteria2_server_ports_uri(outbound);
+    if (port == "" && outbound.server_port != null)
+        port = as_string(outbound.server_port);
+
+    if (as_string(outbound.password) == "" || as_string(outbound.server) == "" || port == "")
         return "";
 
     let params = [];
@@ -446,7 +479,7 @@ function serialize_hysteria2(outbound) {
     }
 
     return "hysteria2://" + uri_encode(outbound.password) + "@" +
-        host_port(outbound.server, outbound.server_port) + query_string(params) + fragment(outbound);
+        host_port(outbound.server, port) + query_string(params) + fragment(outbound);
 }
 
 function serialize_vmess(outbound) {

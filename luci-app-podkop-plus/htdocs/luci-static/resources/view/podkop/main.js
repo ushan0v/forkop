@@ -491,8 +491,29 @@ function validateHysteria2Url(url) {
       return { valid: false, message: _("Invalid HY2 URL: missing port") };
     }
     const cleanedPort = port.replace("/", "");
-    const portNum = Number(cleanedPort);
-    if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+    const portEntries = cleanedPort.split(",");
+    const isValidPortNumber = (value) => {
+      if (!/^\d+$/.test(value)) {
+        return false;
+      }
+      const portNum = Number(value);
+      return Number.isInteger(portNum) && portNum >= 1 && portNum <= 65535;
+    };
+    const isValidPortEntry = (entry) => {
+      if (!entry) {
+        return false;
+      }
+      if (!entry.includes("-")) {
+        return isValidPortNumber(entry);
+      }
+      const rangeParts = entry.split("-");
+      if (rangeParts.length !== 2) {
+        return false;
+      }
+      const [start, end] = rangeParts;
+      return isValidPortNumber(start) && isValidPortNumber(end) && Number(start) <= Number(end);
+    };
+    if (!portEntries.every(isValidPortEntry)) {
       return {
         valid: false,
         message: _("Invalid HY2 URL: invalid port number")

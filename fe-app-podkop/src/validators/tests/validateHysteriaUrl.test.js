@@ -28,6 +28,11 @@ const validUrls = [
 
   // Explicit obfs=none (valid)
   ['obfs none = ok', 'hysteria2://pw@example.com:443/?obfs=none#hy2-none'],
+
+  [
+    'port range 123,5000-6000',
+    'hysteria2://letmein@example.com:123,5000-6000/?insecure=1&obfs=salamander&obfs-password=gawrgura&pinSHA256=deadbeef&sni=real.example.com',
+  ],
 ];
 
 const invalidUrls = [
@@ -37,6 +42,8 @@ const invalidUrls = [
   ['Missing port', 'hysteria2://pw@example.com/'],
   ['Non-numeric port', 'hysteria2://pw@example.com:port/'],
   ['Port out of range', 'hysteria2://pw@example.com:99999/'],
+  ['Invalid port range order', 'hysteria2://pw@example.com:6000-5000/'],
+  ['Invalid port range end', 'hysteria2://pw@example.com:5000-/'],
 
   // Obfuscation errors
   ['Unknown obfs type', 'hysteria2://pw@example.com:443/?obfs=weird'],
