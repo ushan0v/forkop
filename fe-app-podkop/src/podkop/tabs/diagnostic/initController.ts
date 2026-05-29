@@ -1,6 +1,7 @@
 import { onMount, preserveScrollForPage } from '../../../helpers';
 import { runDnsCheck } from './checks/runDnsCheck';
 import { runSingBoxCheck } from './checks/runSingBoxCheck';
+import { runInboundsCheck } from './checks/runInboundsCheck';
 import { runNftCheck } from './checks/runNftCheck';
 import { runFakeIPCheck } from './checks/runFakeIPCheck';
 import { runZapretCheck } from './checks/runZapretCheck';
@@ -677,6 +678,7 @@ async function runChecks() {
     const runners = [
       runDnsCheck,
       runSingBoxCheck,
+      runInboundsCheck,
       runNftCheck,
       ...(providerOptions.includeZapret ? [runZapretCheck] : []),
       ...(providerOptions.includeByedpi ? [runByedpiCheck] : []),

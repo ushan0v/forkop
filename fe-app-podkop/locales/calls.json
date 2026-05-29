@@ -379,6 +379,7 @@
     "places": [
       "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:27",
       "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:27",
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:140",
       "src/podkop/tabs/diagnostic/checks/runNftCheck.ts:28",
       "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:48",
       "src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:25",
@@ -413,6 +414,7 @@
       "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:15",
       "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:15",
       "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:15",
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:128",
       "src/podkop/tabs/diagnostic/checks/runNftCheck.ts:13",
       "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:34",
       "src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:13",
@@ -754,6 +756,13 @@
     ]
   },
   {
+    "call": "Does not resolve",
+    "key": "Does not resolve",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:34"
+    ]
+  },
+  {
     "call": "Domain and IP Lists",
     "key": "Domain and IP Lists",
     "places": [
@@ -1046,8 +1055,8 @@
     "call": "Failed to execute",
     "key": "Failed to execute",
     "places": [
-      "src/podkop/methods/shell/index.ts:97",
-      "src/podkop/methods/shell/index.ts:273",
+      "src/podkop/methods/shell/index.ts:94",
+      "src/podkop/methods/shell/index.ts:270",
       "src/podkop/tabs/updates/initController.ts:254",
       "src/podkop/tabs/updates/initController.ts:303"
     ]
@@ -1069,6 +1078,13 @@
     ]
   },
   {
+    "call": "Firewall WAN port",
+    "key": "Firewall WAN port",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:104"
+    ]
+  },
+  {
     "call": "Fix the highlighted fields and save again.",
     "key": "Fix the highlighted fields and save again.",
     "places": [
@@ -1083,6 +1099,13 @@
     ]
   },
   {
+    "call": "Generated inbound",
+    "key": "Generated inbound",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:69"
+    ]
+  },
+  {
     "call": "Get global check",
     "key": "Get global check",
     "places": [
@@ -1093,7 +1116,7 @@
     "call": "Global check",
     "key": "Global check",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:415"
+      "src/podkop/tabs/diagnostic/initController.ts:416"
     ]
   },
   {
@@ -1640,6 +1663,13 @@
     ]
   },
   {
+    "call": "Listening port",
+    "key": "Listening port",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:94"
+    ]
+  },
+  {
     "call": "Loading connections",
     "key": "Loading connections",
     "places": [
@@ -1823,10 +1853,24 @@
     ]
   },
   {
+    "call": "No enabled server inbounds configured",
+    "key": "No enabled server inbounds configured",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:155"
+    ]
+  },
+  {
     "call": "No other marking rules found",
     "key": "No other marking rules found",
     "places": [
       "src/podkop/tabs/diagnostic/checks/runNftCheck.ts:105"
+    ]
+  },
+  {
+    "call": "No public firewall port required",
+    "key": "No public firewall port required",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:79"
     ]
   },
   {
@@ -1854,6 +1898,21 @@
     ]
   },
   {
+    "call": "Not configured",
+    "key": "Not configured",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:26"
+    ]
+  },
+  {
+    "call": "Not detected",
+    "key": "Not detected",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:50",
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:167"
+    ]
+  },
+  {
     "call": "Not implement yet",
     "key": "Not implement yet",
     "places": [
@@ -1870,6 +1929,20 @@
     ]
   },
   {
+    "call": "Not public",
+    "key": "Not public",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:42"
+    ]
+  },
+  {
+    "call": "Not required for this listen address",
+    "key": "Not required for this listen address",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:107"
+    ]
+  },
+  {
     "call": "Not responding",
     "key": "Not responding",
     "places": [
@@ -1882,10 +1955,10 @@
     "call": "Not running",
     "key": "Not running",
     "places": [
-      "src/podkop/tabs/diagnostic/diagnostic.store.ts:111",
-      "src/podkop/tabs/diagnostic/initController.ts:60",
-      "src/podkop/tabs/diagnostic/initController.ts:209",
-      "src/podkop/tabs/diagnostic/initController.ts:259"
+      "src/podkop/tabs/diagnostic/diagnostic.store.ts:112",
+      "src/podkop/tabs/diagnostic/initController.ts:61",
+      "src/podkop/tabs/diagnostic/initController.ts:210",
+      "src/podkop/tabs/diagnostic/initController.ts:260"
     ]
   },
   {
@@ -1942,7 +2015,7 @@
     "key": "Operation timed out",
     "places": [
       "src/helpers/withTimeout.ts:7",
-      "src/podkop/methods/shell/index.ts:353"
+      "src/podkop/methods/shell/index.ts:347"
     ]
   },
   {
@@ -2042,7 +2115,7 @@
     "call": "Pending",
     "key": "Pending",
     "places": [
-      "src/podkop/tabs/diagnostic/diagnostic.store.ts:55"
+      "src/podkop/tabs/diagnostic/diagnostic.store.ts:56"
     ]
   },
   {
@@ -2056,7 +2129,7 @@
     "call": "Podkop Plus has been installed",
     "key": "Podkop Plus has been installed",
     "places": [
-      "src/podkop/methods/shell/index.ts:325"
+      "src/podkop/methods/shell/index.ts:319"
     ]
   },
   {
@@ -2219,7 +2292,8 @@
     "call": "Public host",
     "key": "Public host",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1974"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1974",
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:20"
     ]
   },
   {
@@ -2376,6 +2450,14 @@
     "key": "Routing mode",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1986"
+    ]
+  },
+  {
+    "call": "Routing rules",
+    "key": "Routing rules",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:83",
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:112"
     ]
   },
   {
@@ -2699,7 +2781,7 @@
     "call": "Show sing-box config",
     "key": "Show sing-box config",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:473",
+      "src/podkop/tabs/diagnostic/initController.ts:474",
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:116"
     ]
   },
@@ -2891,7 +2973,7 @@
     "call": "Subscription update failed",
     "key": "Subscription update failed",
     "places": [
-      "src/podkop/methods/shell/index.ts:371"
+      "src/podkop/methods/shell/index.ts:365"
     ]
   },
   {
@@ -2956,6 +3038,13 @@
     "key": "Tailscale control URL",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2333"
+    ]
+  },
+  {
+    "call": "Tailscale endpoint",
+    "key": "Tailscale endpoint",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:78"
     ]
   },
   {
@@ -3473,7 +3562,7 @@
     "call": "View logs",
     "key": "View logs",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:446",
+      "src/podkop/tabs/diagnostic/initController.ts:447",
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:107"
     ]
   },
@@ -3496,6 +3585,20 @@
     "key": "vless://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2620"
+    ]
+  },
+  {
+    "call": "WAN",
+    "key": "WAN",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:50"
+    ]
+  },
+  {
+    "call": "WAN public IP",
+    "key": "WAN public IP",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:166"
     ]
   },
   {

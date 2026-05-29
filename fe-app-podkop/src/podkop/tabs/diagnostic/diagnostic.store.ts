@@ -32,6 +32,7 @@ export function getDiagnosticsChecks(
   const checks = [
     DIAGNOSTICS_CHECKS.DNS,
     DIAGNOSTICS_CHECKS.SINGBOX,
+    DIAGNOSTICS_CHECKS.INBOUNDS,
     DIAGNOSTICS_CHECKS.NFT,
   ];
 

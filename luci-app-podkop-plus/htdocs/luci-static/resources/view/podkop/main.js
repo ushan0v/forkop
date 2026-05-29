@@ -2077,6 +2077,7 @@ var Podkop;
     AvailableMethods2["GET_OUTBOUND_METADATA"] = "get_outbound_metadata";
     AvailableMethods2["GET_SUBSCRIPTION_METADATA"] = "get_subscription_metadata";
     AvailableMethods2["CHECK_SING_BOX"] = "check_sing_box";
+    AvailableMethods2["CHECK_INBOUNDS"] = "check_inbounds";
     AvailableMethods2["GET_SING_BOX_STATUS"] = "get_sing_box_status";
     AvailableMethods2["GET_ZAPRET_STATUS"] = "get_zapret_status";
     AvailableMethods2["GET_BYEDPI_STATUS"] = "get_byedpi_status";
@@ -2213,6 +2214,9 @@ var PodkopShellMethods = {
   ),
   checkSingBox: async () => callBaseMethod(
     Podkop.AvailableMethods.CHECK_SING_BOX
+  ),
+  checkInbounds: async () => callBaseMethod(
+    Podkop.AvailableMethods.CHECK_INBOUNDS
   ),
   getSingBoxStatus: async () => callBaseMethod(
     Podkop.AvailableMethods.GET_SING_BOX_STATUS
@@ -2944,29 +2948,34 @@ var DIAGNOSTICS_CHECKS_MAP = {
     code: "SINGBOX" /* SINGBOX */
   },
   ["NFT" /* NFT */]: {
-    order: 3,
+    order: 4,
     title: getCheckTitle("Nftables"),
     code: "NFT" /* NFT */
   },
   ["ZAPRET" /* ZAPRET */]: {
-    order: 4,
+    order: 5,
     title: getCheckTitle("Zapret"),
     code: "ZAPRET" /* ZAPRET */
   },
   ["BYEDPI" /* BYEDPI */]: {
-    order: 5,
+    order: 6,
     title: getCheckTitle("ByeDPI"),
     code: "BYEDPI" /* BYEDPI */
   },
   ["OUTBOUNDS" /* OUTBOUNDS */]: {
-    order: 6,
+    order: 7,
     title: getCheckTitle("Outbounds"),
     code: "OUTBOUNDS" /* OUTBOUNDS */
   },
   ["FAKEIP" /* FAKEIP */]: {
-    order: 7,
+    order: 8,
     title: getCheckTitle("FakeIP"),
     code: "FAKEIP" /* FAKEIP */
+  },
+  ["INBOUNDS" /* INBOUNDS */]: {
+    order: 3,
+    title: getCheckTitle("Inbounds"),
+    code: "INBOUNDS" /* INBOUNDS */
   }
 };
 
@@ -2986,6 +2995,7 @@ function getDiagnosticsChecks(description, options = {}) {
   const checks = [
     "DNS" /* DNS */,
     "SINGBOX" /* SINGBOX */,
+    "INBOUNDS" /* INBOUNDS */,
     "NFT" /* NFT */
   ];
   if (options.includeZapret) {
@@ -4783,6 +4793,153 @@ async function runSingBoxCheck() {
   }
 }
 
+// src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts
+function serverPrefix(item) {
+  return `${item.label}:`;
+}
+function formatListen(item) {
+  return `${item.listen}:${Number(item.listen_port || 0)} [${item.required_proto}]`;
+}
+function getPublicHostItem(item, wanIp) {
+  const key = `${serverPrefix(item)} ${_("Public host")}`;
+  if (!item.public_host) {
+    return {
+      state: "warning",
+      key,
+      value: _("Not configured")
+    };
+  }
+  if (item.public_host_resolved === 0) {
+    return {
+      state: "warning",
+      key,
+      value: `${item.public_host} (${_("Does not resolve")})`
+    };
+  }
+  if (item.public_host_public === 0) {
+    return {
+      state: "warning",
+      key,
+      value: `${item.public_host} (${_("Not public")})`
+    };
+  }
+  if (item.public_host_matches_wan === 0) {
+    return {
+      state: "warning",
+      key,
+      value: `${item.public_host_ips || item.public_host} / ${_("WAN")}: ${wanIp || _("Not detected")}`
+    };
+  }
+  return {
+    state: "success",
+    key,
+    value: item.public_host
+  };
+}
+function getServerItems(item, wanIp) {
+  const prefix = serverPrefix(item);
+  const items = [
+    {
+      state: item.runtime_ok ? "success" : "error",
+      key: `${prefix} ${_("Generated inbound")}`,
+      value: `${item.tag} [${item.protocol}]`
+    }
+  ];
+  if (item.protocol === "tailscale") {
+    items.push(
+      {
+        state: "success",
+        key: `${prefix} ${_("Tailscale endpoint")}`,
+        value: _("No public firewall port required")
+      },
+      {
+        state: item.routes_configured ? "success" : "warning",
+        key: `${prefix} ${_("Routing rules")}`,
+        value: item.routing_mode
+      }
+    );
+    return items;
+  }
+  items.push(
+    {
+      state: item.listening === 1 ? "success" : "error",
+      key: `${prefix} ${_("Listening port")}`,
+      value: formatListen(item)
+    },
+    {
+      state: item.firewall_required === 0 ? "warning" : item.firewall_open === 1 ? "success" : "error",
+      key: `${prefix} ${_("Firewall WAN port")}`,
+      value: item.firewall_required === 0 ? _("Not required for this listen address") : `${item.required_proto}/${Number(item.listen_port || 0)}`
+    },
+    {
+      state: item.routes_configured ? "success" : "warning",
+      key: `${prefix} ${_("Routing rules")}`,
+      value: item.routing_mode
+    },
+    getPublicHostItem(item, wanIp)
+  );
+  return items;
+}
+async function runInboundsCheck() {
+  const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.INBOUNDS;
+  updateCheckStore({
+    order,
+    code,
+    title,
+    description: _("Checking, please wait"),
+    state: "loading",
+    items: []
+  });
+  const inboundsChecks = await PodkopShellMethods.checkInbounds();
+  if (!inboundsChecks.success) {
+    updateCheckStore({
+      order,
+      code,
+      title,
+      description: _("Cannot receive checks result"),
+      state: "error",
+      items: []
+    });
+    throw new Error("Inbounds checks failed");
+  }
+  const data = inboundsChecks.data;
+  if (!data.enabled_count) {
+    updateCheckStore({
+      order,
+      code,
+      title,
+      description: _("No enabled server inbounds configured"),
+      state: "skipped",
+      items: []
+    });
+    return;
+  }
+  const items = [
+    {
+      state: data.wan_public ? "success" : "warning",
+      key: _("WAN public IP"),
+      value: data.wan_ip || _("Not detected")
+    }
+  ];
+  data.items.forEach((item) => {
+    items.push(...getServerItems(item, data.wan_ip));
+  });
+  const allGood = items.every((item) => item.state === "success");
+  const atLeastOneGood = items.some((item) => item.state !== "error");
+  const { state, description } = getMeta({ atLeastOneGood, allGood });
+  updateCheckStore({
+    order,
+    code,
+    title,
+    description,
+    state,
+    items
+  });
+  if (!atLeastOneGood) {
+    throw new Error("Inbounds checks failed");
+  }
+}
+
 // src/podkop/tabs/diagnostic/checks/runNftCheck.ts
 async function runNftCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.NFT;
@@ -6510,6 +6667,7 @@ async function runChecks() {
     const runners = [
       runDnsCheck,
       runSingBoxCheck,
+      runInboundsCheck,
       runNftCheck,
       ...providerOptions.includeZapret ? [runZapretCheck] : [],
       ...providerOptions.includeByedpi ? [runByedpiCheck] : [],

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-29 19:21+0300\n"
-"PO-Revision-Date: 2026-05-29 19:21+0300\n"
+"POT-Creation-Date: 2026-05-29 19:54+0300\n"
+"PO-Revision-Date: 2026-05-29 19:54+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -236,6 +236,7 @@ msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:27
 #: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:27
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:140
 #: src/podkop/tabs/diagnostic/checks/runNftCheck.ts:28
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:48
 #: src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:25
@@ -258,6 +259,7 @@ msgstr ""
 #: src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:15
 #: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:15
 #: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:15
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:128
 #: src/podkop/tabs/diagnostic/checks/runNftCheck.ts:13
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:34
 #: src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:13
@@ -464,6 +466,10 @@ msgstr ""
 msgid "Do not panic, everything can be fixed, just..."
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:34
+msgid "Does not resolve"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3446
 msgid "Domain and IP Lists"
 msgstr ""
@@ -633,8 +639,8 @@ msgstr ""
 msgid "Failed to copy!"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:97
-#: src/podkop/methods/shell/index.ts:273
+#: src/podkop/methods/shell/index.ts:94
+#: src/podkop/methods/shell/index.ts:270
 #: src/podkop/tabs/updates/initController.ts:254
 #: src/podkop/tabs/updates/initController.ts:303
 msgid "Failed to execute"
@@ -650,6 +656,10 @@ msgstr ""
 msgid "Fastest"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:104
+msgid "Firewall WAN port"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1742
 msgid "Fix the highlighted fields and save again."
 msgstr ""
@@ -658,11 +668,15 @@ msgstr ""
 msgid "Fully Routed IPs"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:69
+msgid "Generated inbound"
+msgstr ""
+
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:98
 msgid "Get global check"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:415
+#: src/podkop/tabs/diagnostic/initController.ts:416
 msgid "Global check"
 msgstr ""
 
@@ -981,6 +995,10 @@ msgstr ""
 msgid "Listen port"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:94
+msgid "Listening port"
+msgstr ""
+
 #: src/podkop/tabs/monitoring/initController.ts:792
 #: src/podkop/tabs/monitoring/render.ts:88
 msgid "Loading connections"
@@ -1086,8 +1104,16 @@ msgstr ""
 msgid "No closed connections"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:155
+msgid "No enabled server inbounds configured"
+msgstr ""
+
 #: src/podkop/tabs/diagnostic/checks/runNftCheck.ts:105
 msgid "No other marking rules found"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:79
+msgid "No public firewall port required"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:105
@@ -1105,6 +1131,15 @@ msgstr ""
 msgid "None"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:26
+msgid "Not configured"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:50
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:167
+msgid "Not detected"
+msgstr ""
+
 #: src/podkop/tabs/diagnostic/partials/renderCheckSection.ts:189
 msgid "Not implement yet"
 msgstr ""
@@ -1115,16 +1150,24 @@ msgstr ""
 msgid "Not installed"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:42
+msgid "Not public"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:107
+msgid "Not required for this listen address"
+msgstr ""
+
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:109
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:115
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:134
 msgid "Not responding"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/diagnostic.store.ts:111
-#: src/podkop/tabs/diagnostic/initController.ts:60
-#: src/podkop/tabs/diagnostic/initController.ts:209
-#: src/podkop/tabs/diagnostic/initController.ts:259
+#: src/podkop/tabs/diagnostic/diagnostic.store.ts:112
+#: src/podkop/tabs/diagnostic/initController.ts:61
+#: src/podkop/tabs/diagnostic/initController.ts:210
+#: src/podkop/tabs/diagnostic/initController.ts:260
 msgid "Not running"
 msgstr ""
 
@@ -1157,7 +1200,7 @@ msgid "Open Project Page"
 msgstr ""
 
 #: src/helpers/withTimeout.ts:7
-#: src/podkop/methods/shell/index.ts:353
+#: src/podkop/methods/shell/index.ts:347
 msgid "Operation timed out"
 msgstr ""
 
@@ -1215,7 +1258,7 @@ msgstr ""
 msgid "Pause updates"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/diagnostic.store.ts:55
+#: src/podkop/tabs/diagnostic/diagnostic.store.ts:56
 msgid "Pending"
 msgstr ""
 
@@ -1223,7 +1266,7 @@ msgstr ""
 msgid "Podkop Plus Error"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:325
+#: src/podkop/methods/shell/index.ts:319
 msgid "Podkop Plus has been installed"
 msgstr ""
 
@@ -1318,6 +1361,7 @@ msgid "Proxy traffic is routed via FakeIP"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1974
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:20
 msgid "Public host"
 msgstr ""
 
@@ -1409,6 +1453,11 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1986
 msgid "Routing mode"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:83
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:112
+msgid "Routing rules"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1995
@@ -1593,7 +1642,7 @@ msgstr ""
 msgid "Show only servers participating in URLTest on the dashboard."
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:473
+#: src/podkop/tabs/diagnostic/initController.ts:474
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:116
 msgid "Show sing-box config"
 msgstr ""
@@ -1704,7 +1753,7 @@ msgstr ""
 msgid "Subscription update completed"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:371
+#: src/podkop/methods/shell/index.ts:365
 msgid "Subscription update failed"
 msgstr ""
 
@@ -1743,6 +1792,10 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2333
 msgid "Tailscale control URL"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:78
+msgid "Tailscale endpoint"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2341
@@ -2058,7 +2111,7 @@ msgstr ""
 msgid "Version"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:446
+#: src/podkop/tabs/diagnostic/initController.ts:447
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:107
 msgid "View logs"
 msgstr ""
@@ -2073,6 +2126,14 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2620
 msgid "vless://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:50
+msgid "WAN"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:166
+msgid "WAN public IP"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3359

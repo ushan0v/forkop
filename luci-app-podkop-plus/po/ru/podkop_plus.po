@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-29 22:21+0300\n"
-"PO-Revision-Date: 2026-05-29 22:21+0300\n"
+"POT-Creation-Date: 2026-05-29 22:54+0300\n"
+"PO-Revision-Date: 2026-05-29 22:54+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -323,6 +323,9 @@ msgstr "Адрес DNS-сервера не может быть пустым"
 msgid "Do not panic, everything can be fixed, just..."
 msgstr "Не паникуйте, всё можно исправить, просто..."
 
+msgid "Does not resolve"
+msgstr "Не резолвится"
+
 msgid "Domain and IP Lists"
 msgstr "Списки доменов и IPs"
 
@@ -452,11 +455,17 @@ msgstr "Не удалось обновить подписки"
 msgid "Fastest"
 msgstr "Самый быстрый"
 
+msgid "Firewall WAN port"
+msgstr "Порт в firewall для WAN"
+
 msgid "Fix the highlighted fields and save again."
 msgstr "Исправьте подсвеченные поля и сохраните снова."
 
 msgid "Fully Routed IPs"
 msgstr "Полностью маршрутизированные IP-адреса"
+
+msgid "Generated inbound"
+msgstr "Созданный inbound"
 
 msgid "Get global check"
 msgstr "Получить глобальную проверку"
@@ -692,6 +701,9 @@ msgstr "Адрес прослушивания"
 msgid "Listen port"
 msgstr "Порт прослушивания"
 
+msgid "Listening port"
+msgstr "Слушающий порт"
+
 msgid "Loading connections"
 msgstr "Загрузка подключений"
 
@@ -770,8 +782,14 @@ msgstr "Нет активных подключений"
 msgid "No closed connections"
 msgstr "Нет закрытых подключений"
 
+msgid "No enabled server inbounds configured"
+msgstr "Включённые серверные inbounds не настроены"
+
 msgid "No other marking rules found"
 msgstr "Другие правила маркировки не найдены"
+
+msgid "No public firewall port required"
+msgstr "Публичный порт в firewall не требуется"
 
 msgid "No rules use ByeDPI"
 msgstr "Нет правил, использующих ByeDPI"
@@ -782,11 +800,23 @@ msgstr "Нет правил, использующих Zapret"
 msgid "None"
 msgstr "Нет"
 
+msgid "Not configured"
+msgstr "Не настроено"
+
+msgid "Not detected"
+msgstr "Не обнаружено"
+
 msgid "Not implement yet"
 msgstr "Ещё не реализовано"
 
 msgid "Not installed"
 msgstr "Не установлено"
+
+msgid "Not public"
+msgstr "Не публичный"
+
+msgid "Not required for this listen address"
+msgstr "Не требуется для этого адреса прослушивания"
 
 msgid "Not responding"
 msgstr "Не отвечает"
@@ -1000,6 +1030,9 @@ msgstr "Исключённые из маршрутизации IP-адреса"
 
 msgid "Routing mode"
 msgstr "Режим маршрутизации"
+
+msgid "Routing rules"
+msgstr "Правила маршрутизации"
 
 msgid "Routing section"
 msgstr "Секция маршрутизации"
@@ -1247,6 +1280,9 @@ msgstr "Ключ авторизации Tailscale"
 msgid "Tailscale control URL"
 msgstr "URL control plane Tailscale"
 
+msgid "Tailscale endpoint"
+msgstr "Tailscale endpoint"
+
 msgid "Tailscale hostname"
 msgstr "Hostname Tailscale"
 
@@ -1456,6 +1492,12 @@ msgstr "VLESS flow"
 
 msgid "vless://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links"
 msgstr "ссылки vless://, ss://, trojan://, socks4/5://, hy2/hysteria2://"
+
+msgid "WAN"
+msgstr "WAN"
+
+msgid "WAN public IP"
+msgstr "Публичный WAN IP"
 
 msgid "Warning: %s cannot be used together with %s. Previous selections have been removed."
 msgstr "Предупреждение: %s нельзя использовать вместе с %s. Предыдущие варианты были удалены."

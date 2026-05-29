@@ -8575,6 +8575,370 @@ cleanup_check_proxy_dir() {
     esac
 }
 
+get_wan_ipv4_address() {
+    local interface ip
+
+    for interface in wan wwan; do
+        ip="$(
+            ubus -S call "network.interface.$interface" status 2>/dev/null |
+                jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null |
+                sed -n '1p'
+        )"
+        [ -n "$ip" ] && {
+            printf '%s\n' "$ip"
+            return 0
+        }
+    done
+
+    if network_find_wan interface >/dev/null 2>&1; then
+        network_get_ipaddr ip "$interface"
+        [ -n "$ip" ] && printf '%s\n' "$ip"
+    fi
+}
+
+firewall_port_token_contains() {
+    local token="$1"
+    local port="$2"
+    local start end
+
+    case "$token" in
+    *-*)
+        start="${token%-*}"
+        end="${token#*-}"
+        ;;
+    *:*)
+        start="${token%:*}"
+        end="${token#*:}"
+        ;;
+    *)
+        [ "$token" = "$port" ]
+        return
+        ;;
+    esac
+
+    case "$start:$end:$port" in
+    *[!0-9:]* | :* | *:)
+        return 1
+        ;;
+    esac
+
+    [ "$port" -ge "$start" ] && [ "$port" -le "$end" ]
+}
+
+firewall_port_spec_contains() {
+    local spec="$1"
+    local port="$2"
+    local token
+
+    [ -n "$spec" ] || return 0
+
+    for token in $(printf '%s' "$spec" | tr ',' ' '); do
+        firewall_port_token_contains "$token" "$port" && return 0
+    done
+
+    return 1
+}
+
+firewall_proto_spec_contains() {
+    local spec="$1"
+    local proto="$2"
+    local token
+
+    [ -n "$spec" ] || return 0
+
+    for token in $spec; do
+        case "$token" in
+        all | any | tcpudp | tcp/udp)
+            return 0
+            ;;
+        "$proto")
+            return 0
+            ;;
+        esac
+    done
+
+    return 1
+}
+
+firewall_port_open_for_proto() {
+    local port="$1"
+    local proto="$2"
+    local section enabled target src dest family dest_port rule_proto
+
+    for section in $(uci -q show firewall 2>/dev/null | sed -n "s/^\(firewall\.[^=]*\)=rule$/\1/p"); do
+        enabled="$(uci -q get "$section.enabled" 2>/dev/null)"
+        [ -z "$enabled" ] || [ "$enabled" = "1" ] || continue
+
+        target="$(uci -q get "$section.target" 2>/dev/null | tr 'a-z' 'A-Z')"
+        [ "$target" = "ACCEPT" ] || continue
+
+        src="$(uci -q get "$section.src" 2>/dev/null)"
+        [ -z "$src" ] || [ "$src" = "wan" ] || [ "$src" = "*" ] || continue
+
+        dest="$(uci -q get "$section.dest" 2>/dev/null)"
+        [ -z "$dest" ] || [ "$dest" = "*" ] || continue
+
+        family="$(uci -q get "$section.family" 2>/dev/null)"
+        [ "$family" != "ipv6" ] || continue
+
+        dest_port="$(uci -q get "$section.dest_port" 2>/dev/null)"
+        rule_proto="$(uci -q get "$section.proto" 2>/dev/null)"
+
+        firewall_proto_spec_contains "$rule_proto" "$proto" || continue
+        firewall_port_spec_contains "$dest_port" "$port" || continue
+
+        return 0
+    done
+
+    return 1
+}
+
+firewall_required_protocols_open() {
+    local port="$1"
+    local required_proto="$2"
+    local proto
+
+    for proto in $required_proto; do
+        firewall_port_open_for_proto "$port" "$proto" || return 1
+    done
+
+    return 0
+}
+
+server_required_inbound_proto() {
+    local protocol="$1"
+
+    case "$protocol" in
+    hysteria2)
+        printf 'udp\n'
+        ;;
+    *)
+        printf 'tcp\n'
+        ;;
+    esac
+}
+
+server_runtime_type_for_protocol() {
+    local protocol="$1"
+
+    case "$protocol" in
+    shadowsocks | socks | vmess | vless | trojan | hysteria2)
+        printf '%s\n' "$protocol"
+        ;;
+    tailscale)
+        printf 'tailscale\n'
+        ;;
+    *)
+        printf '%s\n' "$protocol"
+        ;;
+    esac
+}
+
+server_listen_requires_firewall() {
+    local listen="$1"
+
+    [ "$listen" = "0.0.0.0" ] && return 0
+    [ -n "$INBOUNDS_CHECK_WAN_IP" ] && [ "$listen" = "$INBOUNDS_CHECK_WAN_IP" ] && return 0
+    server_is_public_ipv4 "$listen"
+}
+
+server_port_is_listening_for_proto() {
+    local listen="$1"
+    local port="$2"
+    local proto="$3"
+
+    netstat -ln 2>/dev/null | awk -v proto="$proto" -v listen="$listen" -v port="$port" '
+        $1 ~ "^" proto {
+            local_addr = $4
+            if (listen == "0.0.0.0") {
+                if (local_addr == "0.0.0.0:" port || local_addr == ":::" port)
+                    found = 1
+            } else if (local_addr == listen ":" port) {
+                found = 1
+            }
+        }
+        END { exit(found ? 0 : 1) }
+    '
+}
+
+server_required_ports_listening() {
+    local listen="$1"
+    local port="$2"
+    local required_proto="$3"
+    local proto
+
+    for proto in $required_proto; do
+        server_port_is_listening_for_proto "$listen" "$port" "$proto" || return 1
+    done
+
+    return 0
+}
+
+resolve_public_host_ipv4s() {
+    local host="$1"
+
+    [ -n "$host" ] || return 0
+
+    if is_ipv4 "$host"; then
+        printf '%s\n' "$host"
+        return 0
+    fi
+
+    dig +short A "$host" +timeout=2 +tries=1 2>/dev/null |
+        while read -r ip; do
+            is_ipv4 "$ip" && printf '%s\n' "$ip"
+        done
+}
+
+check_inbounds_server_handler() {
+    local section="$1"
+    local label protocol listen listen_port public_host routing_mode inbound_tag expected_type required_proto
+    local runtime_json runtime_exists runtime_type runtime_listen runtime_port runtime_ok listening routes_configured
+    local firewall_required firewall_open public_host_ips public_host_resolved public_host_public public_host_matches_wan
+    local host_ip item_json separator
+
+    server_is_enabled "$section" || return 0
+    INBOUNDS_CHECK_ENABLED_COUNT=$((INBOUNDS_CHECK_ENABLED_COUNT + 1))
+
+    config_get label "$section" "label" "$section"
+    config_get protocol "$section" "protocol" "vless"
+    config_get listen "$section" "listen" "0.0.0.0"
+    config_get listen_port "$section" "listen_port"
+    config_get public_host "$section" "public_host"
+    config_get routing_mode "$section" "routing_mode" "rules"
+
+    inbound_tag="$(get_server_inbound_tag_by_section "$section")"
+    expected_type="$(server_runtime_type_for_protocol "$protocol")"
+    required_proto="$(server_required_inbound_proto "$protocol")"
+
+    if [ "$protocol" = "tailscale" ]; then
+        runtime_json="$(provider_status_ucode endpoint-summary "$INBOUNDS_CHECK_CONFIG_PATH" "$inbound_tag" 2>/dev/null)"
+    else
+        runtime_json="$(provider_status_ucode inbound-summary "$INBOUNDS_CHECK_CONFIG_PATH" "$inbound_tag" 2>/dev/null)"
+    fi
+
+    runtime_exists="$(json_get_default "$runtime_json" exists 0)"
+    runtime_type="$(json_get_default "$runtime_json" type "")"
+    runtime_listen="$(json_get_default "$runtime_json" listen "")"
+    runtime_port="$(json_get_default "$runtime_json" listen_port 0)"
+    runtime_ok=0
+
+    if [ "$runtime_exists" = "1" ] && [ "$runtime_type" = "$expected_type" ]; then
+        if [ "$protocol" = "tailscale" ] || {
+            [ "$runtime_listen" = "$listen" ] && [ "$runtime_port" = "$listen_port" ]
+        }; then
+            runtime_ok=1
+        fi
+    fi
+
+    listening=-1
+    firewall_required=0
+    firewall_open=-1
+    if [ "$protocol" != "tailscale" ]; then
+        if server_required_ports_listening "$listen" "$listen_port" "$required_proto"; then
+            listening=1
+        else
+            listening=0
+        fi
+
+        if server_listen_requires_firewall "$listen"; then
+            firewall_required=1
+            if firewall_required_protocols_open "$listen_port" "$required_proto"; then
+                firewall_open=1
+            else
+                firewall_open=0
+            fi
+        fi
+    fi
+
+    if provider_status_ucode has-route-rule-for-inbound "$INBOUNDS_CHECK_CONFIG_PATH" "$inbound_tag" >/dev/null 2>&1; then
+        routes_configured=1
+    else
+        routes_configured=0
+    fi
+
+    public_host_ips="$(resolve_public_host_ipv4s "$public_host" | sort -u | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+    public_host_resolved=-1
+    public_host_public=-1
+    public_host_matches_wan=-1
+
+    if [ -n "$public_host" ]; then
+        if [ -n "$public_host_ips" ]; then
+            public_host_resolved=1
+            public_host_public=1
+            for host_ip in $public_host_ips; do
+                server_is_public_ipv4 "$host_ip" || public_host_public=0
+            done
+
+            if [ "$INBOUNDS_CHECK_WAN_PUBLIC" = "1" ]; then
+                if list_has_item "$public_host_ips" "$INBOUNDS_CHECK_WAN_IP"; then
+                    public_host_matches_wan=1
+                else
+                    public_host_matches_wan=0
+                fi
+            fi
+        else
+            public_host_resolved=0
+        fi
+    fi
+
+    item_json="$(
+        json_utils_ucode object-json \
+            section s "$section" \
+            label s "$label" \
+            protocol s "$protocol" \
+            routing_mode s "$routing_mode" \
+            tag s "$inbound_tag" \
+            listen s "$listen" \
+            listen_port n "$listen_port" \
+            public_host s "$public_host" \
+            public_host_ips s "$public_host_ips" \
+            expected_type s "$expected_type" \
+            required_proto s "$required_proto" \
+            runtime_exists n "$runtime_exists" \
+            runtime_type s "$runtime_type" \
+            runtime_listen s "$runtime_listen" \
+            runtime_port n "$runtime_port" \
+            runtime_ok n "$runtime_ok" \
+            listening n "$listening" \
+            firewall_required n "$firewall_required" \
+            firewall_open n "$firewall_open" \
+            routes_configured n "$routes_configured" \
+            public_host_resolved n "$public_host_resolved" \
+            public_host_public n "$public_host_public" \
+            public_host_matches_wan n "$public_host_matches_wan"
+    )"
+
+    [ -n "$INBOUNDS_CHECK_ITEMS_JSON" ] && separator=","
+    INBOUNDS_CHECK_ITEMS_JSON="${INBOUNDS_CHECK_ITEMS_JSON}${separator}${item_json}"
+}
+
+check_inbounds() {
+    local sing_box_config_path wan_ip wan_public
+
+    config_get sing_box_config_path "settings" "config_path"
+    wan_ip="$(get_wan_ipv4_address | sed -n '1p')"
+    wan_public=0
+    if server_is_public_ipv4 "$wan_ip"; then
+        wan_public=1
+    fi
+
+    INBOUNDS_CHECK_CONFIG_PATH="$sing_box_config_path"
+    INBOUNDS_CHECK_WAN_IP="$wan_ip"
+    INBOUNDS_CHECK_WAN_PUBLIC="$wan_public"
+    INBOUNDS_CHECK_ENABLED_COUNT=0
+    INBOUNDS_CHECK_ITEMS_JSON=""
+
+    config_foreach check_inbounds_server_handler "server"
+
+    json_utils_ucode object-json \
+        enabled_count n "$INBOUNDS_CHECK_ENABLED_COUNT" \
+        config_path s "$sing_box_config_path" \
+        wan_ip s "$wan_ip" \
+        wan_public n "$wan_public" \
+        items j "[$INBOUNDS_CHECK_ITEMS_JSON]"
+}
+
 check_proxy() {
     local sing_box_config_path
     config_get sing_box_config_path "settings" "config_path"
@@ -9944,6 +10308,112 @@ global_check() {
         print_global "❌ Failed to get sing-box info"
     fi
 
+    print_global "---------------------------"
+    print_global "Inbounds checks"
+
+    local inbounds_check_json
+    inbounds_check_json=$(check_inbounds)
+
+    if [ -n "$inbounds_check_json" ]; then
+        local enabled_count wan_ip wan_public
+        enabled_count=$(json_get_default "$inbounds_check_json" enabled_count 0)
+        wan_ip=$(json_get_default "$inbounds_check_json" wan_ip "")
+        wan_public=$(json_get_default "$inbounds_check_json" wan_public 0)
+
+        if [ "$enabled_count" -eq 0 ]; then
+            print_global "[OK] No enabled server inbounds"
+        else
+            if [ "$wan_public" -eq 1 ]; then
+                print_global "[OK] WAN public IP: $wan_ip"
+            elif [ -n "$wan_ip" ]; then
+                print_global "[WARN] WAN IP is not public: $wan_ip"
+            else
+                print_global "[WARN] WAN IP was not detected"
+            fi
+
+            local inbounds_tmp index
+            inbounds_tmp="$(mktemp)" || inbounds_tmp=""
+            if [ -n "$inbounds_tmp" ] && printf '%s' "$inbounds_check_json" > "$inbounds_tmp"; then
+                index=0
+                while [ "$index" -lt "$enabled_count" ]; do
+                    local label protocol listen listen_port public_host tag required_proto runtime_ok listening firewall_required firewall_open routes_configured public_host_resolved public_host_public public_host_matches_wan public_host_ips
+
+                    label="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].label" 2>/dev/null)"
+                    protocol="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].protocol" 2>/dev/null)"
+                    listen="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].listen" 2>/dev/null)"
+                    listen_port="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].listen_port" 2>/dev/null)"
+                    public_host="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].public_host" 2>/dev/null)"
+                    tag="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].tag" 2>/dev/null)"
+                    required_proto="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].required_proto" 2>/dev/null)"
+                    runtime_ok="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].runtime_ok" 2>/dev/null)"
+                    listening="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].listening" 2>/dev/null)"
+                    firewall_required="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].firewall_required" 2>/dev/null)"
+                    firewall_open="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].firewall_open" 2>/dev/null)"
+                    routes_configured="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].routes_configured" 2>/dev/null)"
+                    public_host_resolved="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].public_host_resolved" 2>/dev/null)"
+                    public_host_public="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].public_host_public" 2>/dev/null)"
+                    public_host_matches_wan="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].public_host_matches_wan" 2>/dev/null)"
+                    public_host_ips="$(jsonfilter -i "$inbounds_tmp" -e "@.items[$index].public_host_ips" 2>/dev/null)"
+
+                    if [ "$runtime_ok" = "1" ]; then
+                        print_global "[OK] $label: runtime $tag [$protocol]"
+                    else
+                        print_global "[FAIL] $label: generated inbound is missing or differs from UCI"
+                    fi
+
+                    if [ "$protocol" != "tailscale" ]; then
+                        if [ "$listening" = "1" ]; then
+                            print_global "[OK] $label: listening on $listen:$listen_port [$required_proto]"
+                        else
+                            print_global "[FAIL] $label: not listening on $listen:$listen_port [$required_proto]"
+                        fi
+
+                        if [ "$firewall_required" = "1" ]; then
+                            if [ "$firewall_open" = "1" ]; then
+                                print_global "[OK] $label: firewall accepts $required_proto/$listen_port from WAN"
+                            else
+                                print_global "[FAIL] $label: firewall does not accept $required_proto/$listen_port from WAN"
+                            fi
+                        else
+                            print_global "[WARN] $label: firewall WAN check skipped for listen address $listen"
+                        fi
+                    else
+                        print_global "[OK] $label: Tailscale endpoint does not need a public firewall port"
+                    fi
+
+                    if [ "$routes_configured" = "1" ]; then
+                        print_global "[OK] $label: route rules for inbound exist"
+                    else
+                        print_global "[WARN] $label: route rules for inbound were not found"
+                    fi
+
+                    if [ "$protocol" != "tailscale" ]; then
+                        if [ -n "$public_host" ]; then
+                            if [ "$public_host_resolved" = "0" ]; then
+                                print_global "[WARN] $label: public host does not resolve: $public_host"
+                            elif [ "$public_host_public" = "0" ]; then
+                                print_global "[WARN] $label: public host is not public: $public_host"
+                            elif [ "$public_host_matches_wan" = "0" ]; then
+                                print_global "[WARN] $label: public host resolves to $public_host_ips, WAN is $wan_ip"
+                            else
+                                print_global "[OK] $label: public host $public_host"
+                            fi
+                        else
+                            print_global "[WARN] $label: public host is empty"
+                        fi
+                    fi
+
+                    index=$((index + 1))
+                done
+            else
+                print_global "[FAIL] Failed to parse inbounds check details"
+            fi
+            [ -z "$inbounds_tmp" ] || rm -f "$inbounds_tmp"
+        fi
+    else
+        print_global "[FAIL] Failed to get inbounds info"
+    fi
+
     local zapret_check_json
     zapret_check_json=$(check_zapret_runtime)
 
@@ -10156,6 +10626,7 @@ Available commands:
     check_nft               Check NFT rules
     check_nft_rules         Check NFT rules status
     check_sing_box          Check sing-box installation and status
+    check_inbounds          Check server inbounds from the Servers tab
     check_logs              Show Podkop Plus logs from system journal
     check_sing_box_logs     Show sing-box logs
     check_fakeip            Test sing-box FakeIP DNS
@@ -10239,6 +10710,9 @@ check_nft_rules)
     ;;
 check_sing_box)
     check_sing_box
+    ;;
+check_inbounds)
+    check_inbounds
     ;;
 check_logs)
     check_logs

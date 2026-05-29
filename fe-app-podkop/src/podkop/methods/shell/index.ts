@@ -145,6 +145,10 @@ export const PodkopShellMethods = {
     callBaseMethod<Podkop.SingBoxCheckResult>(
       Podkop.AvailableMethods.CHECK_SING_BOX,
     ),
+  checkInbounds: async () =>
+    callBaseMethod<Podkop.InboundsCheckResult>(
+      Podkop.AvailableMethods.CHECK_INBOUNDS,
+    ),
   getSingBoxStatus: async () =>
     callBaseMethod<Podkop.GetSingBoxStatus>(
       Podkop.AvailableMethods.GET_SING_BOX_STATUS,

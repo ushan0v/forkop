@@ -8,6 +8,7 @@ export enum DIAGNOSTICS_CHECKS {
   BYEDPI = 'BYEDPI',
   FAKEIP = 'FAKEIP',
   OUTBOUNDS = 'OUTBOUNDS',
+  INBOUNDS = 'INBOUNDS',
 }
 
 export const DIAGNOSTICS_CHECKS_MAP: Record<
@@ -25,28 +26,33 @@ export const DIAGNOSTICS_CHECKS_MAP: Record<
     code: DIAGNOSTICS_CHECKS.SINGBOX,
   },
   [DIAGNOSTICS_CHECKS.NFT]: {
-    order: 3,
+    order: 4,
     title: getCheckTitle('Nftables'),
     code: DIAGNOSTICS_CHECKS.NFT,
   },
   [DIAGNOSTICS_CHECKS.ZAPRET]: {
-    order: 4,
+    order: 5,
     title: getCheckTitle('Zapret'),
     code: DIAGNOSTICS_CHECKS.ZAPRET,
   },
   [DIAGNOSTICS_CHECKS.BYEDPI]: {
-    order: 5,
+    order: 6,
     title: getCheckTitle('ByeDPI'),
     code: DIAGNOSTICS_CHECKS.BYEDPI,
   },
   [DIAGNOSTICS_CHECKS.OUTBOUNDS]: {
-    order: 6,
+    order: 7,
     title: getCheckTitle('Outbounds'),
     code: DIAGNOSTICS_CHECKS.OUTBOUNDS,
   },
   [DIAGNOSTICS_CHECKS.FAKEIP]: {
-    order: 7,
+    order: 8,
     title: getCheckTitle('FakeIP'),
     code: DIAGNOSTICS_CHECKS.FAKEIP,
+  },
+  [DIAGNOSTICS_CHECKS.INBOUNDS]: {
+    order: 3,
+    title: getCheckTitle('Inbounds'),
+    code: DIAGNOSTICS_CHECKS.INBOUNDS,
   },
 };

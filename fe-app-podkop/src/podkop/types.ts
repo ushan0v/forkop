@@ -35,6 +35,7 @@ export namespace Podkop {
   // check_nft               Check NFT rules
   // check_nft_rules         Check NFT rules status
   // check_sing_box          Check sing-box installation and status
+  // check_inbounds          Check server inbounds from the Servers tab
   // check_logs              Show podkop logs from system journal
   // check_sing_box_logs     Show sing-box logs
   // check_fakeip            Test sing-box FakeIP DNS
@@ -60,6 +61,7 @@ export namespace Podkop {
     GET_OUTBOUND_METADATA = 'get_outbound_metadata',
     GET_SUBSCRIPTION_METADATA = 'get_subscription_metadata',
     CHECK_SING_BOX = 'check_sing_box',
+    CHECK_INBOUNDS = 'check_inbounds',
     GET_SING_BOX_STATUS = 'get_sing_box_status',
     GET_ZAPRET_STATUS = 'get_zapret_status',
     GET_BYEDPI_STATUS = 'get_byedpi_status',
@@ -238,6 +240,40 @@ export namespace Podkop {
     sing_box_autostart_disabled: 0 | 1;
     sing_box_process_running: 0 | 1;
     sing_box_ports_listening: 0 | 1;
+  }
+
+  export interface InboundCheckItem {
+    section: string;
+    label: string;
+    protocol: string;
+    routing_mode: string;
+    tag: string;
+    listen: string;
+    listen_port: number;
+    public_host: string;
+    public_host_ips: string;
+    expected_type: string;
+    required_proto: string;
+    runtime_exists: 0 | 1;
+    runtime_type: string;
+    runtime_listen: string;
+    runtime_port: number;
+    runtime_ok: 0 | 1;
+    listening: -1 | 0 | 1;
+    firewall_required: 0 | 1;
+    firewall_open: -1 | 0 | 1;
+    routes_configured: 0 | 1;
+    public_host_resolved: -1 | 0 | 1;
+    public_host_public: -1 | 0 | 1;
+    public_host_matches_wan: -1 | 0 | 1;
+  }
+
+  export interface InboundsCheckResult {
+    enabled_count: number;
+    config_path: string;
+    wan_ip: string;
+    wan_public: 0 | 1;
+    items: InboundCheckItem[];
   }
 
   export interface FakeIPCheckResult {
