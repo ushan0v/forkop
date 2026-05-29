@@ -483,7 +483,7 @@ function renderComponentCard(card: ComponentCard) {
           target: '_blank',
           rel: 'noopener noreferrer',
         },
-        _('GitHub release'),
+        _('Latest release'),
       ),
     );
   }

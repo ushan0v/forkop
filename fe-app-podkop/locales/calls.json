@@ -1090,13 +1090,6 @@
     ]
   },
   {
-    "call": "GitHub release",
-    "key": "GitHub release",
-    "places": [
-      "src/podkop/tabs/updates/initController.ts:490"
-    ]
-  },
-  {
     "call": "Global check",
     "key": "Global check",
     "places": [
@@ -1602,6 +1595,13 @@
     "key": "Latest",
     "places": [
       "src/podkop/tabs/updates/initController.ts:55"
+    ]
+  },
+  {
+    "call": "Latest release",
+    "key": "Latest release",
+    "places": [
+      "src/podkop/tabs/updates/initController.ts:486"
     ]
   },
   {

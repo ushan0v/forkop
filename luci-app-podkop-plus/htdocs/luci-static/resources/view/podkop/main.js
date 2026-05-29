@@ -8871,7 +8871,7 @@ function renderComponentCard(card) {
           target: "_blank",
           rel: "noopener noreferrer"
         },
-        _("GitHub release")
+        _("Latest release")
       )
     );
   }
@@ -9013,9 +9013,9 @@ var styles6 = `
 }
 
 .pdk_updates-page__component__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    align-items: start;
     gap: 8px;
     min-width: 0;
 }
@@ -9023,15 +9023,20 @@ var styles6 = `
 .pdk_updates-page__component__title {
     color: var(--text-color-high);
     line-height: 1.25;
-    overflow-wrap: anywhere;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .pdk_updates-page__component__status {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
-    flex: 0 0 auto;
+    min-width: 0;
+    max-width: 180px;
+    overflow: hidden;
 }
 
 .pdk_updates-page__component__version {
@@ -9081,9 +9086,15 @@ var styles6 = `
 }
 
 .pdk_updates-page__component__release-link {
+    display: inline-block;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100px;
+    overflow: hidden;
     font-size: 11px;
     line-height: 1.2;
     text-align: right;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 `;

@@ -68,7 +68,7 @@ PODKOP_SUBSCRIPTION_UPDATE_CRON_MARKER="# podkop-plus-subscription-update"
 SING_BOX_DISABLED_UPDATE_INTERVAL="876000h"
 SING_BOX_URLTEST_DEFAULT_IDLE_TIMEOUT="30m"
 PODKOP_RELOAD_STATE_FORMAT=1
-PODKOP_RUNTIME_CACHE_FORMAT=3
+PODKOP_RUNTIME_CACHE_FORMAT=4
 PODKOP_RUNTIME_STABLE_MIN_AGE=2
 PODKOP_SYSTEM_INFO_CACHE_TTL=3600
 PODKOP_NFT_POPULATE_ENABLED=1
@@ -452,6 +452,58 @@ subscription_config_is_current() {
     [ "$SUBSCRIPTION_CONFIG_MATCH_FOUND" -eq 1 ]
 }
 
+subscription_auto_user_agent_is_supported() {
+    local user_agent="$1"
+
+    [ -n "$user_agent" ] || return 1
+    [ "$user_agent" = "$(get_subscription_user_agent)" ] && return 0
+
+    case "$user_agent" in
+    Happ | v2rayN | Clash.Meta | ClashMetaForAndroid)
+        return 0
+        ;;
+    esac
+
+    return 1
+}
+
+subscription_cached_user_agent_matches_config() {
+    local configured_user_agent="${1:-}"
+    local cached_user_agent="${2:-}"
+
+    if [ -n "$configured_user_agent" ]; then
+        [ "$cached_user_agent" = "$configured_user_agent" ]
+        return $?
+    fi
+
+    subscription_auto_user_agent_is_supported "$cached_user_agent"
+}
+
+subscription_write_user_agent_candidates() {
+    local output_path="$1"
+    local configured_user_agent="${2:-}"
+    local preferred_user_agent="${3:-}"
+    local default_user_agent candidate
+
+    if [ -n "$configured_user_agent" ]; then
+        printf '%s\n' "$configured_user_agent" > "$output_path"
+        return $?
+    fi
+
+    : > "$output_path" || return 1
+
+    if subscription_auto_user_agent_is_supported "$preferred_user_agent"; then
+        printf '%s\n' "$preferred_user_agent" >> "$output_path" || return 1
+    fi
+
+    default_user_agent="$(get_subscription_user_agent)"
+    for candidate in "$default_user_agent" "Happ" "v2rayN" "Clash.Meta" "ClashMetaForAndroid"; do
+        [ -n "$candidate" ] || continue
+        [ "$candidate" = "$preferred_user_agent" ] && continue
+        printf '%s\n' "$candidate" >> "$output_path" || return 1
+    done
+}
+
 subscription_cache_is_usable() {
     local subscription_json_path="$1"
 
@@ -521,7 +573,7 @@ subscription_section_usable_cache_handler() {
     cached_subscription_user_agent="$(cat "$subscription_user_agent_cache_path" 2>/dev/null)"
 
     if [ "$cached_subscription_url" = "$SUBSCRIPTION_SOURCE_URL" ] &&
-        [ "$cached_subscription_user_agent" = "$SUBSCRIPTION_SOURCE_USER_AGENT" ]; then
+        subscription_cached_user_agent_matches_config "$SUBSCRIPTION_SOURCE_USER_AGENT" "$cached_subscription_user_agent"; then
         SUBSCRIPTION_SECTION_USABLE_CACHE_FOUND=1
     fi
 }
@@ -644,7 +696,8 @@ download_subscription_into_cache() {
     local subscription_user_agent="${6:-}"
     local cache_section="${7:-$section}"
     local metadata_output_path="${8:-}"
-    local subscription_user_agent_cache_path raw_tmpfile headers_tmpfile normalized_tmpfile metadata_tmpfile
+    local subscription_user_agent_cache_path raw_tmpfile headers_tmpfile normalized_tmpfile metadata_tmpfile \
+        user_agents_tmpfile cached_subscription_user_agent effective_user_agent
 
     mkdir -p "$TMP_SUBSCRIPTION_FOLDER"
     subscription_user_agent_cache_path="$(get_subscription_user_agent_cache_path "$cache_section")"
@@ -661,61 +714,109 @@ download_subscription_into_cache() {
         rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile"
         return 1
     }
-
-    if ! download_subscription "$subscription_url" "$raw_tmpfile" "$service_proxy_address" 3 2 15 "$headers_tmpfile" "$subscription_user_agent"; then
-        [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
-        rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile"
-        return 1
-    fi
-
-    subscription_extract_ui_metadata "$headers_tmpfile" "$raw_tmpfile" "$metadata_tmpfile" >/dev/null 2>&1 || rm -f "$metadata_tmpfile"
-    if [ -n "$metadata_output_path" ]; then
-        if [ -s "$metadata_tmpfile" ] && json_utils_ucode object-has-extra-keys "$metadata_tmpfile" >/dev/null 2>&1; then
-            cp "$metadata_tmpfile" "$metadata_output_path" || rm -f "$metadata_output_path"
-        else
-            rm -f "$metadata_output_path"
-        fi
-    fi
-
-    if ! normalize_subscription_file "$raw_tmpfile" "$normalized_tmpfile" "$section"; then
-        log "Downloaded subscription for rule '$section' is invalid" "error"
-        [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
-        rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile"
-        return 1
-    fi
-
-    if ! validate_subscription_file "$normalized_tmpfile"; then
-        log "Normalized subscription for rule '$section' is invalid" "error"
-        [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
-        rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile"
-        return 1
-    fi
-
-    if ! subscription_config_is_current "$section" "$subscription_url" "$subscription_user_agent"; then
-        log "Subscription source settings changed while updating rule '$section'; discarding superseded download" "warn"
-        [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
-        rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile"
-        return 4
-    fi
-
-    if [ -f "$subscription_json_path" ] && cmp -s "$normalized_tmpfile" "$subscription_json_path"; then
-        rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile"
-        printf '%s' "$subscription_url" > "$subscription_url_cache_path"
-        printf '%s' "$subscription_user_agent" > "$subscription_user_agent_cache_path"
-        log "Subscription for rule '$section' is unchanged" "info"
-        return 2
-    fi
-
-    mv "$normalized_tmpfile" "$subscription_json_path" || {
-        [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
+    user_agents_tmpfile="$(mktemp "$TMP_SUBSCRIPTION_FOLDER/${cache_section}.user-agents.XXXXXX")" || {
         rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile"
         return 1
     }
 
-    rm -f "$raw_tmpfile" "$headers_tmpfile" "$metadata_tmpfile"
-    printf '%s' "$subscription_url" > "$subscription_url_cache_path"
-    printf '%s' "$subscription_user_agent" > "$subscription_user_agent_cache_path"
-    return 0
+    cached_subscription_user_agent="$(sed -n '1p' "$subscription_user_agent_cache_path" 2>/dev/null)"
+    if ! subscription_write_user_agent_candidates "$user_agents_tmpfile" "$subscription_user_agent" "$cached_subscription_user_agent"; then
+        rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
+        return 1
+    fi
+
+    while IFS= read -r effective_user_agent || [ -n "$effective_user_agent" ]; do
+        [ -n "$effective_user_agent" ] || continue
+
+        rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile"
+        if [ -n "$subscription_user_agent" ]; then
+            log "Trying configured subscription User-Agent for rule '$section': $effective_user_agent" "info"
+        elif [ "$effective_user_agent" = "$cached_subscription_user_agent" ]; then
+            log "Trying cached subscription User-Agent for rule '$section': $effective_user_agent" "info"
+        else
+            log "Trying subscription User-Agent for rule '$section': $effective_user_agent" "info"
+        fi
+
+        if ! download_subscription "$subscription_url" "$raw_tmpfile" "$service_proxy_address" 3 2 15 "$headers_tmpfile" "$effective_user_agent"; then
+            [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
+            if [ -n "$subscription_user_agent" ]; then
+                log "Subscription download failed with configured User-Agent for rule '$section'" "warn"
+            else
+                log "Subscription download failed with User-Agent '$effective_user_agent' for rule '$section'; trying next fallback candidate" "warn"
+            fi
+            continue
+        fi
+
+        subscription_extract_ui_metadata "$headers_tmpfile" "$raw_tmpfile" "$metadata_tmpfile" >/dev/null 2>&1 || rm -f "$metadata_tmpfile"
+        if [ -n "$metadata_output_path" ]; then
+            if [ -s "$metadata_tmpfile" ] && json_utils_ucode object-has-extra-keys "$metadata_tmpfile" >/dev/null 2>&1; then
+                cp "$metadata_tmpfile" "$metadata_output_path" || rm -f "$metadata_output_path"
+            else
+                rm -f "$metadata_output_path"
+            fi
+        fi
+
+        if ! subscription_normalize_content_file "$raw_tmpfile" "$normalized_tmpfile"; then
+            [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
+            if [ -n "$subscription_user_agent" ]; then
+                log "Downloaded subscription for rule '$section' is invalid with configured User-Agent" "error"
+            else
+                log "Downloaded subscription for rule '$section' is invalid with User-Agent '$effective_user_agent'; trying next fallback candidate" "warn"
+            fi
+            continue
+        fi
+
+        if ! validate_subscription_file "$normalized_tmpfile"; then
+            [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
+            if [ -n "$subscription_user_agent" ]; then
+                log "Normalized subscription for rule '$section' is invalid with configured User-Agent" "error"
+            else
+                log "Normalized subscription for rule '$section' is invalid with User-Agent '$effective_user_agent'; trying next fallback candidate" "warn"
+            fi
+            continue
+        fi
+
+        if ! subscription_config_is_current "$section" "$subscription_url" "$subscription_user_agent"; then
+            log "Subscription source settings changed while updating rule '$section'; discarding superseded download" "warn"
+            [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
+            rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
+            return 4
+        fi
+
+        if [ -n "$subscription_user_agent" ]; then
+            log "Configured subscription User-Agent for rule '$section' produced valid outbounds" "info"
+        else
+            log "Selected subscription User-Agent for rule '$section': $effective_user_agent" "info"
+        fi
+
+        if [ -f "$subscription_json_path" ] && cmp -s "$normalized_tmpfile" "$subscription_json_path"; then
+            rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
+            printf '%s' "$subscription_url" > "$subscription_url_cache_path"
+            printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
+            log "Subscription for rule '$section' is unchanged" "info"
+            return 2
+        fi
+
+        mv "$normalized_tmpfile" "$subscription_json_path" || {
+            [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
+            rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
+            return 1
+        }
+
+        rm -f "$raw_tmpfile" "$headers_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
+        printf '%s' "$subscription_url" > "$subscription_url_cache_path"
+        printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
+        return 0
+    done < "$user_agents_tmpfile"
+
+    [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
+    rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
+    if [ -n "$subscription_user_agent" ]; then
+        log "Configured subscription User-Agent for rule '$section' did not produce valid outbounds" "error"
+    else
+        log "No subscription User-Agent candidate produced valid outbounds for rule '$section'" "error"
+    fi
+    return 1
 }
 
 rule_is_subscription_proxy() {
@@ -772,7 +873,7 @@ ensure_subscription_cache_for_source() {
 
     if [ "$had_usable_cache" -eq 0 ] ||
         [ "$cached_subscription_url" != "$subscription_url" ] ||
-        [ "$cached_subscription_user_agent" != "$subscription_user_agent" ]; then
+        ! subscription_cached_user_agent_matches_config "$subscription_user_agent" "$cached_subscription_user_agent"; then
         cache_needs_refresh=1
     fi
 
@@ -810,7 +911,7 @@ ensure_subscription_cache_for_source() {
 
     if [ "$had_usable_cache" -eq 1 ] &&
         [ "$cached_subscription_url" = "$subscription_url" ] &&
-        [ "$cached_subscription_user_agent" = "$subscription_user_agent" ]; then
+        subscription_cached_user_agent_matches_config "$subscription_user_agent" "$cached_subscription_user_agent"; then
         log "Keeping cached subscription for rule '$section' until a fresh download succeeds" "warn"
         subscription_metadata_append_cached_source "$SUBSCRIPTION_SECTION_METADATA_TMP" "$section" "$source_index" "$source_section" || true
         return 0

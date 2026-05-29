@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-29 21:05+0300\n"
-"PO-Revision-Date: 2026-05-29 21:05+0300\n"
+"POT-Creation-Date: 2026-05-29 22:21+0300\n"
+"PO-Revision-Date: 2026-05-29 22:21+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -461,9 +461,6 @@ msgstr "Полностью маршрутизированные IP-адреса"
 msgid "Get global check"
 msgstr "Получить глобальную проверку"
 
-msgid "GitHub release"
-msgstr "Релиз на GitHub"
-
 msgid "Global check"
 msgstr "Глобальная проверка"
 
@@ -676,6 +673,9 @@ msgstr "Ключевое слово не должно содержать про�
 
 msgid "Latest"
 msgstr "Последняя"
+
+msgid "Latest release"
+msgstr "Последний релиз"
 
 msgid "Latest version is installed"
 msgstr "Установлена последняя версия"

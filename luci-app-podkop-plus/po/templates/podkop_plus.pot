@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-29 18:05+0300\n"
-"PO-Revision-Date: 2026-05-29 18:05+0300\n"
+"POT-Creation-Date: 2026-05-29 19:21+0300\n"
+"PO-Revision-Date: 2026-05-29 19:21+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -662,10 +662,6 @@ msgstr ""
 msgid "Get global check"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:490
-msgid "GitHub release"
-msgstr ""
-
 #: src/podkop/tabs/diagnostic/initController.ts:415
 msgid "Global check"
 msgstr ""
@@ -959,6 +955,10 @@ msgstr ""
 
 #: src/podkop/tabs/updates/initController.ts:55
 msgid "Latest"
+msgstr ""
+
+#: src/podkop/tabs/updates/initController.ts:486
+msgid "Latest release"
 msgstr ""
 
 #: src/podkop/tabs/updates/initController.ts:153
