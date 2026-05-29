@@ -17,6 +17,7 @@ vi.mock('../../shell', () => ({
 }));
 
 vi.mock('../../../../helpers', () => ({
+  getClashHttpUrl: () => 'http://router.example:9090',
   getProxyUrlName: (link?: string) =>
     link?.includes('#') ? decodeURIComponent(link.split('#').pop() || '') : '',
   isCopyableProxyLink: (link?: string) => Boolean(link),
@@ -87,6 +88,8 @@ describe('getDashboardSections', () => {
     mocks.fsRead.mockReset();
     mocks.fsRead.mockRejectedValue(new Error('cache miss'));
     vi.stubGlobal('fs', { read: mocks.fsRead });
+    vi.stubGlobal('window', undefined);
+    vi.stubGlobal('fetch', undefined);
 
     mocks.getClashApiProxies.mockResolvedValue({
       success: true,
@@ -141,5 +144,27 @@ describe('getDashboardSections', () => {
     expect(result.success).toBe(true);
     expect(section.latencyTestCode).toBe('main-out');
     expect(section.outbounds.map((item) => item.code)).toContain('main-2-out');
+  });
+
+  it('fetches Clash API proxies directly in the browser to avoid rpcd output limits', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      { '.name': 'settings', '.type': 'settings', yacd_secret_key: 'secret' },
+      proxySection(),
+    ]);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ proxies: clashProxies }),
+    });
+
+    vi.stubGlobal('window', { location: { hostname: 'router.example' } });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getDashboardSections();
+
+    expect(result.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith('http://router.example:9090/proxies', {
+      headers: { Authorization: 'Bearer secret' },
+    });
+    expect(mocks.getClashApiProxies).not.toHaveBeenCalled();
   });
 });

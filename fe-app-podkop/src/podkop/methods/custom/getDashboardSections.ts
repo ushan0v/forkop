@@ -1,6 +1,10 @@
 import { getConfigSections } from './getConfigSections';
 import { ClashAPI, Podkop } from '../../types';
-import { getProxyUrlName, isCopyableProxyLink } from '../../../helpers';
+import {
+  getClashHttpUrl,
+  getProxyUrlName,
+  isCopyableProxyLink,
+} from '../../../helpers';
 import { PodkopShellMethods } from '../shell';
 
 interface IGetDashboardSectionsResponse {
@@ -36,6 +40,47 @@ function getDisplayName(section: Podkop.ConfigSection) {
 
 function getSectionAction(section: Podkop.ConfigSection) {
   return section.action || '';
+}
+
+function getSettingsSection(configSections: Podkop.ConfigSection[]) {
+  return configSections.find((section) => section['.type'] === 'settings');
+}
+
+function getClashApiSecret(configSections: Podkop.ConfigSection[]) {
+  return getSettingsSection(configSections)?.yacd_secret_key || '';
+}
+
+function canFetchClashApiDirectly() {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.location?.hostname === 'string' &&
+    typeof fetch === 'function'
+  );
+}
+
+async function getClashApiProxies(
+  configSections: Podkop.ConfigSection[],
+): Promise<Podkop.MethodResponse<ClashAPI.Proxies>> {
+  if (canFetchClashApiDirectly()) {
+    const secret = getClashApiSecret(configSections);
+
+    try {
+      const response = await fetch(`${getClashHttpUrl()}/proxies`, {
+        headers: secret ? { Authorization: `Bearer ${secret}` } : undefined,
+      });
+
+      if (response.ok) {
+        return {
+          success: true,
+          data: (await response.json()) as ClashAPI.Proxies,
+        };
+      }
+    } catch (_error) {
+      // Fall back to rpcd below for controllers unavailable from the browser.
+    }
+  }
+
+  return PodkopShellMethods.getClashApiProxies();
 }
 
 function getListValues(value?: string[] | string) {
@@ -395,7 +440,7 @@ export async function getDashboardSections(
   const includeSubscriptionCopyState =
     options.includeSubscriptionCopyState ?? true;
   const configSections = await getConfigSections();
-  const clashProxies = await PodkopShellMethods.getClashApiProxies();
+  const clashProxies = await getClashApiProxies(configSections);
 
   if (!clashProxies.success || !clashProxies.data?.proxies) {
     return {

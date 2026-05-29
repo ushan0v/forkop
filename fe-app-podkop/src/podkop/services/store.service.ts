@@ -29,7 +29,7 @@ function jsonEqual<A, B>(a: A, b: B): boolean {
 type Listener<T> = (next: T, prev: T, diff: Partial<T>) => void;
 
 // eslint-disable-next-line
-class StoreService<T extends Record<string, any>> {
+export class StoreService<T extends Record<string, any>> {
   private value: T;
   private readonly initial: T;
   private listeners = new Set<Listener<T>>();
@@ -45,17 +45,18 @@ class StoreService<T extends Record<string, any>> {
 
   set(next: Partial<T>): void {
     const prev = this.value;
-    const merged = { ...prev, ...next };
-
-    if (jsonEqual(prev, merged)) return;
-
-    this.value = merged;
-
     const diff: Partial<T> = {};
-    for (const key in merged) {
-      if (!jsonEqual(merged[key], prev[key])) diff[key] = merged[key];
+
+    for (const key in next) {
+      if (!jsonEqual(next[key], prev[key])) diff[key] = next[key];
     }
 
+    if (Object.keys(diff).length === 0) {
+      return;
+    }
+
+    const merged = { ...prev, ...next };
+    this.value = merged;
     this.listeners.forEach((cb) => cb(this.value, prev, diff));
   }
 

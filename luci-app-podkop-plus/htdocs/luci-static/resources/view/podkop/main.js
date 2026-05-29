@@ -796,6 +796,10 @@ function getClashWsUrl() {
   const { hostname } = window.location;
   return `ws://${hostname}:9090`;
 }
+function getClashHttpUrl() {
+  const { hostname } = window.location;
+  return `http://${hostname}:9090`;
+}
 function getClashUIUrl() {
   const { hostname } = window.location;
   return `http://${hostname}:9090/ui`;
@@ -2345,6 +2349,33 @@ function getDisplayName(section) {
 function getSectionAction(section) {
   return section.action || "";
 }
+function getSettingsSection(configSections) {
+  return configSections.find((section) => section[".type"] === "settings");
+}
+function getClashApiSecret(configSections) {
+  return getSettingsSection(configSections)?.yacd_secret_key || "";
+}
+function canFetchClashApiDirectly() {
+  return typeof window !== "undefined" && typeof window.location?.hostname === "string" && typeof fetch === "function";
+}
+async function getClashApiProxies(configSections) {
+  if (canFetchClashApiDirectly()) {
+    const secret = getClashApiSecret(configSections);
+    try {
+      const response = await fetch(`${getClashHttpUrl()}/proxies`, {
+        headers: secret ? { Authorization: `Bearer ${secret}` } : void 0
+      });
+      if (response.ok) {
+        return {
+          success: true,
+          data: await response.json()
+        };
+      }
+    } catch (_error) {
+    }
+  }
+  return PodkopShellMethods.getClashApiProxies();
+}
 function getListValues(value) {
   if (!value) {
     return [];
@@ -2575,7 +2606,7 @@ function getSubscriptionCopyableCodes(dashboardCache) {
 async function getDashboardSections(options = {}) {
   const includeSubscriptionCopyState = options.includeSubscriptionCopyState ?? true;
   const configSections = await getConfigSections();
-  const clashProxies = await PodkopShellMethods.getClashApiProxies();
+  const clashProxies = await getClashApiProxies(configSections);
   if (!clashProxies.success || !clashProxies.data?.proxies) {
     return {
       success: false,
@@ -2706,7 +2737,7 @@ async function getDashboardSections(options = {}) {
 }
 
 // src/podkop/methods/custom/getClashApiSecret.ts
-async function getClashApiSecret() {
+async function getClashApiSecret2() {
   const sections = await getConfigSections();
   const settings = sections.find((section) => section[".type"] === "settings");
   return settings?.yacd_secret_key || "";
@@ -2716,7 +2747,7 @@ async function getClashApiSecret() {
 var CustomPodkopMethods = {
   getConfigSections,
   getDashboardSections,
-  getClashApiSecret
+  getClashApiSecret: getClashApiSecret2
 };
 
 // src/podkop/api.ts
@@ -3015,13 +3046,15 @@ var StoreService = class {
   }
   set(next) {
     const prev = this.value;
-    const merged = { ...prev, ...next };
-    if (jsonEqual(prev, merged)) return;
-    this.value = merged;
     const diff = {};
-    for (const key in merged) {
-      if (!jsonEqual(merged[key], prev[key])) diff[key] = merged[key];
+    for (const key in next) {
+      if (!jsonEqual(next[key], prev[key])) diff[key] = next[key];
     }
+    if (Object.keys(diff).length === 0) {
+      return;
+    }
+    const merged = { ...prev, ...next };
+    this.value = merged;
     this.listeners.forEach((cb) => cb(this.value, prev, diff));
   }
   reset(keys) {
@@ -3650,7 +3683,7 @@ function setLatencyFetching(sectionName, fetching) {
   });
 }
 async function connectToClashSockets() {
-  const clashApiSecret = await getClashApiSecret();
+  const clashApiSecret = await getClashApiSecret2();
   socket.subscribe(
     `${getClashWsUrl()}/traffic?token=${clashApiSecret}`,
     (msg) => {
@@ -7709,7 +7742,7 @@ async function loadRouteDisplayNames() {
 }
 async function connectToConnectionsSocket() {
   const mountId = monitoringMountId;
-  const clashApiSecret = await getClashApiSecret();
+  const clashApiSecret = await getClashApiSecret2();
   if (!monitoringMounted || mountId !== monitoringMountId) {
     return;
   }
