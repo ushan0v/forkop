@@ -288,9 +288,9 @@ _add_outbound_security() {
     local url="$3"
 
     local security scheme
+    scheme="$(url_get_scheme "$url")"
     security=$(url_get_query_param "$url" "security")
     if [ -z "$security" ]; then
-        scheme="$(url_get_scheme "$url")"
         if [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ]; then
             security="tls"
         fi
@@ -306,6 +306,9 @@ _add_outbound_security() {
             alpn='["h2","http/1.1"]'
         fi
         fingerprint=$(url_get_query_param "$url" "fp")
+        if [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ]; then
+            fingerprint=""
+        fi
         public_key=$(url_get_query_param "$url" "pbk")
         short_id=$(url_get_query_param "$url" "sid")
 
