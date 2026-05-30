@@ -3473,6 +3473,13 @@
     ]
   },
   {
+    "call": "Use CIDR prefixes or IP addresses like 192.168.1.0/24 or 192.168.1.10",
+    "key": "Use CIDR prefixes or IP addresses like 192.168.1.0/24 or 192.168.1.10",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1615"
+    ]
+  },
+  {
     "call": "Use format: URL | User-Agent",
     "key": "Use format: URL | User-Agent",
     "places": [

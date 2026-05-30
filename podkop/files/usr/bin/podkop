@@ -5488,9 +5488,9 @@ configure_tailscale_server_endpoint() {
     config_get control_url "$section" "tailscale_control_url" "https://controlplane.tailscale.com"
     config_get hostname "$section" "tailscale_hostname" "podkop-$safe_name"
     config_get_bool accept_routes "$section" "tailscale_accept_routes" 0
-    config_list_foreach "$section" "tailscale_advertise_routes" validate_tailscale_advertise_route_handler "$section"
-    advertise_routes="$(config_list_to_json "$section" "tailscale_advertise_routes")"
     config_get_bool advertise_exit_node "$section" "tailscale_advertise_exit_node" 0
+    tailscale_collect_advertise_routes "$section"
+    advertise_routes="$TAILSCALE_ADVERTISE_ROUTES_JSON"
 
     if ! server_absolute_path_is_valid "$state_directory"; then
         log "Server '$section' has invalid Tailscale state directory '$state_directory'. Use an absolute path. Aborted." "fatal"
@@ -5506,6 +5506,10 @@ configure_tailscale_server_endpoint() {
     fi
     if ! server_host_is_valid "$hostname"; then
         log "Server '$section' has invalid Tailscale hostname '$hostname'. Aborted." "fatal"
+        exit 1
+    fi
+    if is_sing_box_extended; then
+        log "Server '$section' uses native Tailscale, but the current sing-box-extended build is incompatible with Tailscale server traffic. Install stable sing-box and retry. Aborted." "fatal"
         exit 1
     fi
 
@@ -5537,14 +5541,64 @@ configure_tailscale_server_endpoint() {
     }
 }
 
-validate_tailscale_advertise_route_handler() {
+tailscale_normalize_advertise_route() {
     local value="$1"
+
+    case "$value" in
+    */*)
+        printf '%s\n' "$value"
+        return 0
+        ;;
+    esac
+
+    if is_ipv4 "$value"; then
+        printf '%s/32\n' "$value"
+        return 0
+    fi
+
+    if is_ipv6_literal "$value"; then
+        printf '%s/128\n' "$value"
+        return 0
+    fi
+
+    printf '%s\n' "$value"
+}
+
+tailscale_collect_advertise_route_handler() {
+    local value="$1" normalized
     local section="$2"
 
-    if ! server_cidr_is_valid "$value"; then
-        log "Server '$section' has invalid Tailscale advertised route '$value'. Use CIDR prefixes like 192.168.1.0/24. Aborted." "fatal"
+    [ -n "$value" ] || return 0
+    TAILSCALE_ADVERTISE_ROUTE_SEEN=1
+    normalized="$(tailscale_normalize_advertise_route "$value")"
+
+    if ! server_cidr_is_valid "$normalized"; then
+        log "Server '$section' has invalid Tailscale advertised route '$value'. Use CIDR prefixes or IP addresses like 192.168.1.0/24 or 192.168.1.10. Aborted." "fatal"
         exit 1
     fi
+
+    TAILSCALE_ADVERTISE_ROUTES_JSON="$(json_array_append_string "$TAILSCALE_ADVERTISE_ROUTES_JSON" "$normalized")" || {
+        log "Failed to prepare Tailscale advertised routes for server '$section'. Aborted." "fatal"
+        exit 1
+    }
+}
+
+tailscale_collect_advertise_routes() {
+    local section="$1"
+    local values value
+
+    TAILSCALE_ADVERTISE_ROUTES_JSON="[]"
+    TAILSCALE_ADVERTISE_ROUTE_SEEN=0
+
+    config_list_foreach "$section" "tailscale_advertise_routes" tailscale_collect_advertise_route_handler "$section"
+    [ "$TAILSCALE_ADVERTISE_ROUTE_SEEN" -eq 1 ] && return 0
+
+    config_get values "$section" "tailscale_advertise_routes"
+    [ -n "$values" ] || return 0
+
+    for value in $values; do
+        tailscale_collect_advertise_route_handler "$value" "$section"
+    done
 }
 
 sing_box_configure_outbounds() {
@@ -7322,9 +7376,30 @@ sing_box_configure_dns() {
     config=$(sing_box_cm_add_dns_reject_rule "$config" "query_type" "HTTPS")
     config=$(sing_box_cm_add_dns_reject_rule "$config" "query_type" "AAAA")
     config=$(sing_box_cm_add_dns_reject_rule "$config" "domain_suffix" '"use-application-dns.net"')
+    configure_tailscale_server_dns_bypass
     config=$(sing_box_cm_add_dns_route_rule "$config" "$SB_FAKEIP_DNS_SERVER_TAG" "$SB_SERVICE_FAKEIP_DNS_RULE_TAG")
     config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_SERVICE_FAKEIP_DNS_RULE_TAG" "rewrite_ttl" "$rewrite_ttl")
     config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_SERVICE_FAKEIP_DNS_RULE_TAG" "domain" "$service_domains")
+}
+
+configure_tailscale_server_dns_bypass() {
+    config_foreach configure_tailscale_server_dns_bypass_handler "server"
+}
+
+configure_tailscale_server_dns_bypass_handler() {
+    local section="$1"
+    local protocol inbound_tag rule_tag
+
+    server_is_enabled "$section" || return 0
+
+    config_get protocol "$section" "protocol"
+    [ "$protocol" = "tailscale" ] || return 0
+
+    inbound_tag="$(get_server_inbound_tag_by_section "$section")"
+    rule_tag="tailscale-server-real-dns-$(server_safe_filename "$section")"
+
+    config=$(sing_box_cm_add_dns_route_rule "$config" "$SB_DNS_SERVER_TAG" "$rule_tag")
+    config=$(sing_box_cm_patch_dns_route_rule "$config" "$rule_tag" "inbound" "\"$inbound_tag\"")
 }
 
 sing_box_configure_route() {

@@ -1454,6 +1454,9 @@ msgstr "Укажите IPv4-адрес прослушивания"
 msgid "Use CIDR prefixes like 192.168.1.0/24"
 msgstr "Используйте CIDR-префиксы вроде 192.168.1.0/24"
 
+msgid "Use CIDR prefixes or IP addresses like 192.168.1.0/24 or 192.168.1.10"
+msgstr "Используйте CIDR-префиксы или IP-адреса вроде 192.168.1.0/24 или 192.168.1.10"
+
 msgid "Use format: URL | User-Agent"
 msgstr "Используйте формат: URL | User-Agent"
 

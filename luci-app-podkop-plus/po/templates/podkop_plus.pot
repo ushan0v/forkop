@@ -2052,6 +2052,10 @@ msgstr ""
 msgid "Use CIDR prefixes like 192.168.1.0/24"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1615
+msgid "Use CIDR prefixes or IP addresses like 192.168.1.0/24 or 192.168.1.10"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:702
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:712
 msgid "Use format: URL | User-Agent"

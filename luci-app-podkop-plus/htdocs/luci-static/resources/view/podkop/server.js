@@ -1568,6 +1568,22 @@ function validateGrpcServiceName(_sectionId, value) {
     : _("Use letters, digits, dots, underscores, or hyphens");
 }
 
+function isIpv6Literal(value) {
+  const normalized = `${value || ""}`.trim();
+  return /^[0-9A-Fa-f:.]+$/.test(normalized) && normalized.includes(":");
+}
+
+function normalizeCidrOrIp(value) {
+  const normalized = `${value || ""}`.trim();
+  if (!normalized.includes("/") && isIpv4(normalized)) {
+    return `${normalized}/32`;
+  }
+  if (!normalized.includes("/") && isIpv6Literal(normalized)) {
+    return `${normalized}/128`;
+  }
+  return normalized;
+}
+
 function validateOptionalCidr(value) {
   if (isEmptyValue(value)) {
     return true;
@@ -1585,13 +1601,27 @@ function validateOptionalCidr(value) {
       if (isIpv4(address)) {
         return prefixNumber < 0 || prefixNumber > 32;
       }
-      if (/^[0-9A-Fa-f:.]+$/.test(address) && address.includes(":")) {
+      if (isIpv6Literal(address)) {
         return prefixNumber < 0 || prefixNumber > 128;
       }
       return true;
     });
 
   return invalid ? _("Use CIDR prefixes like 192.168.1.0/24") : true;
+}
+
+function validateOptionalCidrOrIp(value) {
+  if (isEmptyValue(value)) {
+    return true;
+  }
+  const values = Array.isArray(value) ? value : [value];
+  const invalid = values
+    .filter((item) => item != null && item !== "")
+    .some((item) => validateOptionalCidr(normalizeCidrOrIp(item)) !== true);
+
+  return invalid
+    ? _("Use CIDR prefixes or IP addresses like 192.168.1.0/24 or 192.168.1.10")
+    : true;
 }
 
 function validateShortId(_sectionId, value) {
@@ -2370,7 +2400,7 @@ function createServerContent(section) {
   );
   o.modalonly = true;
   o.rmempty = true;
-  o.validate = (_sectionId, value) => validateOptionalCidr(value);
+  o.validate = (_sectionId, value) => validateOptionalCidrOrIp(value);
   addTailscaleDepends(o);
 
   o = section.option(form.Flag, "tailscale_accept_routes", _("Accept routes"));
