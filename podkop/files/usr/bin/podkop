@@ -10543,8 +10543,150 @@ validate_nfqws_strategy_json() {
     json_utils_ucode nfqws-strategy-validation false "$NFQWS_VALIDATE_ERROR" "$NFQWS_VALIDATE_NEEDLE" "$NFQWS_VALIDATE_NEEDLES"
 }
 
+dns_check_resolve_host() {
+    local host="$1"
+    local resolver="$2"
+    local resolved
+
+    [ -n "$host" ] || return 1
+
+    if is_ipv4 "$host"; then
+        printf '%s\n' "$host"
+        return 0
+    fi
+
+    [ -n "$resolver" ] || return 1
+
+    resolved="$(
+        dig @"$resolver" "$host" A +short +timeout=2 +tries=1 2> /dev/null |
+            awk '/^[0-9]+\./ { print; exit }'
+    )"
+    [ -n "$resolved" ] || return 1
+
+    printf '%s\n' "$resolved"
+}
+
+dns_check_dig_server_available() {
+    local dns_type="$1"
+    local dns_server="$2"
+    local bootstrap_dns_server="$3"
+    local domain="$4"
+    local dns_host server_port probe_server tls_hostname
+
+    dns_host="$(url_get_host "$dns_server")"
+    [ -n "$dns_host" ] || dns_host="$dns_server"
+    server_port="$(url_get_port "$dns_server")"
+    tls_hostname=""
+
+    if is_ipv4 "$dns_host"; then
+        probe_server="$dns_host"
+    else
+        probe_server="$(dns_check_resolve_host "$dns_host" "$bootstrap_dns_server")"
+        [ -n "$probe_server" ] || return 1
+        tls_hostname="$dns_host"
+    fi
+
+    case "$dns_type" in
+    dot)
+        if [ -n "$tls_hostname" ]; then
+            if [ -n "$server_port" ]; then
+                dig -p "$server_port" @"$probe_server" "$domain" +tls +tls-hostname="$tls_hostname" +timeout=2 +tries=1 > /dev/null 2>&1
+            else
+                dig @"$probe_server" "$domain" +tls +tls-hostname="$tls_hostname" +timeout=2 +tries=1 > /dev/null 2>&1
+            fi
+        else
+            if [ -n "$server_port" ]; then
+                dig -p "$server_port" @"$probe_server" "$domain" +tls +timeout=2 +tries=1 > /dev/null 2>&1
+            else
+                dig @"$probe_server" "$domain" +tls +timeout=2 +tries=1 > /dev/null 2>&1
+            fi
+        fi
+        ;;
+    udp)
+        if [ -n "$server_port" ]; then
+            dig -p "$server_port" @"$probe_server" "$domain" +timeout=2 +tries=1 > /dev/null 2>&1
+        else
+            dig @"$probe_server" "$domain" +timeout=2 +tries=1 > /dev/null 2>&1
+        fi
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+dns_check_doh_server_available() {
+    local dns_server="$1"
+    local bootstrap_dns_server="$2"
+    local dns_host server_port doh_path doh_query url http_code resolved_ip
+
+    dns_host="$(url_get_host "$dns_server")"
+    [ -n "$dns_host" ] || dns_host="$dns_server"
+    [ -n "$dns_host" ] || return 1
+
+    server_port="$(url_get_port "$dns_server")"
+    [ -n "$server_port" ] || server_port=443
+
+    doh_path="$(url_get_path "$dns_server")"
+    [ -n "$doh_path" ] && [ "$doh_path" != "/" ] || doh_path="/dns-query"
+
+    doh_query="AAABAAABAAAAAAAABmdvb2dsZQNjb20AAAEAAQ"
+    url="https://$dns_host:$server_port$doh_path?dns=$doh_query"
+
+    if is_ipv4 "$dns_host"; then
+        http_code="$(curl -sS --max-time 3 -o /dev/null -w "%{http_code}" \
+            -H "accept: application/dns-message" "$url" 2> /dev/null)"
+    else
+        resolved_ip="$(dns_check_resolve_host "$dns_host" "$bootstrap_dns_server")"
+        [ -n "$resolved_ip" ] || return 1
+
+        http_code="$(curl -sS --max-time 3 -o /dev/null -w "%{http_code}" \
+            --resolve "$dns_host:$server_port:$resolved_ip" \
+            -H "accept: application/dns-message" "$url" 2> /dev/null)"
+    fi
+
+    [ "$http_code" = "200" ]
+}
+
+dns_check_router_resolver_available() {
+    local domain="$1"
+    local address interface source_network_interfaces
+
+    for address in 127.0.0.1 "$SB_DNS_INBOUND_ADDRESS"; do
+        [ -n "$address" ] || continue
+        if dig @"$address" "$domain" +timeout=2 +tries=1 > /dev/null 2>&1; then
+            return 0
+        fi
+    done
+
+    address="$(get_service_listen_address 2> /dev/null | head -n 1)"
+    if [ -n "$address" ] &&
+        dig @"$address" "$domain" +timeout=2 +tries=1 > /dev/null 2>&1; then
+        return 0
+    fi
+
+    source_network_interfaces="$(uci_get "$PODKOP_CONFIG_NAME" "settings" "source_network_interfaces")"
+    [ -n "$source_network_interfaces" ] || source_network_interfaces="br-lan"
+
+    for interface in $source_network_interfaces; do
+        network_get_ipaddr address "$interface"
+        if [ -n "$address" ] &&
+            dig @"$address" "$domain" +timeout=2 +tries=1 > /dev/null 2>&1; then
+            return 0
+        fi
+
+        address="$(get_device_ipv4_address "$interface")"
+        if [ -n "$address" ] &&
+            dig @"$address" "$domain" +timeout=2 +tries=1 > /dev/null 2>&1; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 check_dns_available() {
-    local dns_type dns_server bootstrap_dns_server
+    local dns_type dns_server bootstrap_dns_server dns_server_host bootstrap_check_domain
     config_get dns_type "settings" "dns_type"
     config_get dns_server "settings" "dns_server"
     config_get bootstrap_dns_server "settings" "bootstrap_dns_server"
@@ -10567,36 +10709,35 @@ check_dns_available() {
         display_dns_server="dns.nextdns.io/$masked_path"
     fi
 
-    if [ "$dns_type" = "doh" ]; then
-        # Check if dns_server already contains a path
-        local doh_path="/dns-query"
-        if echo "$dns_server" | grep -q "/"; then
-            # Path is already present, extract it
-            doh_path="/$(echo "$dns_server" | cut -d'/' -f2-)"
-            dns_server="$(echo "$dns_server" | cut -d'/' -f1)"
-        fi
+    dns_server_host="$(url_get_host "$dns_server")"
+    [ -n "$dns_server_host" ] || dns_server_host="$dns_server"
 
-        if dig @"$dns_server" "$domain" +https="$doh_path" +timeout=2 +tries=1 > /dev/null 2>&1; then
+    case "$dns_type" in
+    doh)
+        if dns_check_doh_server_available "$dns_server" "$bootstrap_dns_server"; then
             dns_status=1
         fi
-    elif [ "$dns_type" = "dot" ]; then
-        if dig @"$dns_server" "$domain" +tls +timeout=2 +tries=1 > /dev/null 2>&1; then
+        ;;
+    dot | udp)
+        if dns_check_dig_server_available "$dns_type" "$dns_server" "$bootstrap_dns_server" "$domain"; then
             dns_status=1
         fi
-    elif [ "$dns_type" = "udp" ]; then
-        if dig @"$dns_server" "$domain" +timeout=2 +tries=1 > /dev/null 2>&1; then
-            dns_status=1
-        fi
-    fi
+        ;;
+    esac
 
     # Check if local DNS resolver is working
-    if dig @127.0.0.1 "$domain" +timeout=2 +tries=1 > /dev/null 2>&1; then
+    if dns_check_router_resolver_available "$domain"; then
         dns_on_router=1
     fi
 
     # Check bootstrap DNS server
     if [ -n "$bootstrap_dns_server" ]; then
-        if dig @"$bootstrap_dns_server" "$domain" +timeout=2 +tries=1 > /dev/null 2>&1; then
+        bootstrap_check_domain="$domain"
+        if [ -n "$dns_server_host" ] && ! is_ipv4 "$dns_server_host"; then
+            bootstrap_check_domain="$dns_server_host"
+        fi
+
+        if dns_check_resolve_host "$bootstrap_check_domain" "$bootstrap_dns_server" > /dev/null; then
             bootstrap_dns_status=1
         fi
     fi
