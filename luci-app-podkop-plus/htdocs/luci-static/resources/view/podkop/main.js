@@ -1657,6 +1657,7 @@ function renderSubscriptionUpdateAction(section, subscriptionUpdating, onUpdateS
       "aria-label": _("Update subscriptions"),
       disabled: subscriptionUpdating ? true : void 0,
       click: (event) => {
+        event.preventDefault();
         event.stopPropagation();
         if (subscriptionUpdating) {
           return;
@@ -1796,9 +1797,12 @@ function renderDefaultState({
           E(
             "button",
             {
+              type: "button",
               class: "btn dashboard-sections-grid-item-test-latency",
               disabled: latencyFetching ? true : void 0,
-              click: () => {
+              click: (event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 if (latencyFetching) {
                   return;
                 }
@@ -2097,6 +2101,8 @@ var Podkop;
     AvailableMethods2["COMPONENT_ACTION_ASYNC"] = "component_action_async";
     AvailableMethods2["COMPONENT_ACTION_STATUS"] = "component_action_status";
     AvailableMethods2["SUBSCRIPTION_UPDATE"] = "subscription_update";
+    AvailableMethods2["SUBSCRIPTION_UPDATE_ASYNC"] = "subscription_update_async";
+    AvailableMethods2["SUBSCRIPTION_UPDATE_STATUS"] = "subscription_update_status";
   })(AvailableMethods = Podkop2.AvailableMethods || (Podkop2.AvailableMethods = {}));
   let AvailableClashAPIMethods;
   ((AvailableClashAPIMethods2) => {
@@ -2112,6 +2118,8 @@ var Podkop;
 
 // src/podkop/methods/shell/index.ts
 var SUBSCRIPTION_UPDATE_TIMEOUT_MS = 10 * 60 * 1e3;
+var SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS = 15e3;
+var SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS = 1500;
 var COMPONENT_ACTION_TIMEOUT_MS = 10 * 60 * 1e3;
 var COMPONENT_ACTION_RPC_TIMEOUT_MS = 15e3;
 var COMPONENT_ACTION_POLL_INTERVAL_MS = 1500;
@@ -2120,7 +2128,7 @@ var COMPONENT_ACTION_STATE_DIR = "/var/run/podkop-plus/component-actions";
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-function parseComponentActionOutput(output) {
+function parseJsonObjectOutput(output) {
   if (!output) {
     return null;
   }
@@ -2138,6 +2146,9 @@ function parseComponentActionOutput(output) {
     }
   }
 }
+function parseComponentActionOutput(output) {
+  return parseJsonObjectOutput(output);
+}
 function parseComponentActionResult(response) {
   return parseComponentActionOutput(response.stdout);
 }
@@ -2147,6 +2158,16 @@ function parseComponentActionStartResult(response) {
     return null;
   }
   return parsedResponse;
+}
+function parseSubscriptionUpdateStartResult(response) {
+  return parseJsonObjectOutput(
+    response.stdout
+  );
+}
+function parseSubscriptionUpdateJobState(response) {
+  return parseJsonObjectOutput(
+    response.stdout
+  );
 }
 function isComponentActionJobId(jobId) {
   return /^[A-Za-z0-9._-]+$/.test(jobId) && jobId !== "." && jobId !== "..";
@@ -2294,11 +2315,7 @@ var PodkopShellMethods = {
     let selfUpdateVersionMatchedAt = 0;
     const startResponse = await executeShellCommand({
       command: "/usr/bin/podkop-plus",
-      args: [
-        Podkop.AvailableMethods.COMPONENT_ACTION_ASYNC,
-        component,
-        action
-      ],
+      args: [Podkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
     });
     const parsedStartResponse = parseComponentActionStartResult(startResponse);
@@ -2326,10 +2343,7 @@ var PodkopShellMethods = {
       }
       const statusResponse = await executeShellCommand({
         command: "/usr/bin/podkop-plus",
-        args: [
-          Podkop.AvailableMethods.COMPONENT_ACTION_STATUS,
-          jobId
-        ],
+        args: [Podkop.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
         timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
       });
       const parsedResponse = parseComponentActionResult(statusResponse);
@@ -2377,25 +2391,61 @@ var PodkopShellMethods = {
     };
   },
   subscriptionUpdate: async (section, sourceIndex) => {
-    const args = [
-      Podkop.AvailableMethods.SUBSCRIPTION_UPDATE,
+    const startedAt = Date.now();
+    const startArgs = [
+      Podkop.AvailableMethods.SUBSCRIPTION_UPDATE_ASYNC,
       ...section ? [section] : [],
       ...section && sourceIndex !== void 0 ? [String(sourceIndex)] : []
     ];
-    const response = await executeShellCommand({
+    const startResponse = await executeShellCommand({
       command: "/usr/bin/podkop-plus",
-      args,
-      timeout: SUBSCRIPTION_UPDATE_TIMEOUT_MS
+      args: startArgs,
+      timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS
     });
-    if ((response.code ?? 0) !== 0) {
+    const parsedStartResponse = parseSubscriptionUpdateStartResult(startResponse);
+    if ((startResponse.code ?? 0) !== 0 || !parsedStartResponse?.success || !parsedStartResponse.job_id) {
       return {
         success: false,
-        error: response.stderr || _("Subscription update failed")
+        error: parsedStartResponse?.message || startResponse.stderr || _("Subscription update failed")
+      };
+    }
+    while (Date.now() - startedAt < SUBSCRIPTION_UPDATE_TIMEOUT_MS) {
+      await sleep(SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS);
+      const statusResponse = await executeShellCommand({
+        command: "/usr/bin/podkop-plus",
+        args: [
+          Podkop.AvailableMethods.SUBSCRIPTION_UPDATE_STATUS,
+          parsedStartResponse.job_id
+        ],
+        timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS
+      });
+      const stateResponse = parseSubscriptionUpdateJobState(statusResponse);
+      if (!stateResponse) {
+        if ((statusResponse.code ?? 0) !== 0) {
+          return {
+            success: false,
+            error: statusResponse.stderr || _("Subscription update failed")
+          };
+        }
+        continue;
+      }
+      if (stateResponse.running) {
+        continue;
+      }
+      if (stateResponse.success === false) {
+        return {
+          success: false,
+          error: stateResponse.message || _("Subscription update failed")
+        };
+      }
+      return {
+        success: true,
+        data: stateResponse.message || parsedStartResponse.message || _("Subscription update completed")
       };
     }
     return {
-      success: true,
-      data: response.stdout
+      success: false,
+      error: _("Operation timed out")
     };
   }
 };

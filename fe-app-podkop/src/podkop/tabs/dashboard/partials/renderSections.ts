@@ -306,6 +306,7 @@ function renderSubscriptionUpdateAction(
       'aria-label': _('Update subscriptions'),
       disabled: subscriptionUpdating ? true : undefined,
       click: (event: MouseEvent) => {
+        event.preventDefault();
         event.stopPropagation();
         if (subscriptionUpdating) {
           return;
@@ -483,9 +484,12 @@ function renderDefaultState({
           E(
             'button',
             {
+              type: 'button',
               class: 'btn dashboard-sections-grid-item-test-latency',
               disabled: latencyFetching ? true : undefined,
-              click: () => {
+              click: (event: MouseEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
                 if (latencyFetching) {
                   return;
                 }

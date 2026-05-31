@@ -106,6 +106,51 @@ function write_json_file(path, value) {
     return fs.writefile(path, sprintf("%J", value) + "\n");
 }
 
+function canonical_runtime_value(value) {
+    if (type(value) == "array") {
+        let result = [];
+        for (let item in value)
+            push(result, canonical_runtime_value(item));
+        return result;
+    }
+
+    if (type(value) == "object") {
+        let result = {};
+        let names = keys(value);
+        sort(names, function(a, b) {
+            return a < b ? -1 : (a > b ? 1 : 0);
+        });
+
+        for (let name in names) {
+            if (name == "share_link")
+                continue;
+            result[name] = canonical_runtime_value(value[name]);
+        }
+
+        return result;
+    }
+
+    return value;
+}
+
+function runtime_outbounds_signature(path) {
+    let subscription = read_json_file(path);
+    if (type(subscription) != "object" || type(subscription.outbounds) != "array")
+        return null;
+
+    return canonical_runtime_value(subscription.outbounds);
+}
+
+function runtime_outbounds_equal(left_path, right_path) {
+    let left = runtime_outbounds_signature(left_path);
+    let right = runtime_outbounds_signature(right_path);
+
+    if (left == null || right == null)
+        return false;
+
+    return sprintf("%J", left) == sprintf("%J", right);
+}
+
 function array_or_empty(value) {
     return type(value) == "array" ? value : [];
 }
@@ -1487,12 +1532,15 @@ else if (mode == "normalize-clash-yaml")
     ok = normalize_clash_yaml(ARGV[1], ARGV[2]);
 else if (mode == "normalize-content")
     ok = normalize_content_file(ARGV[1], ARGV[2]);
+else if (mode == "runtime-outbounds-equal")
+    ok = runtime_outbounds_equal(ARGV[1], ARGV[2]);
 else if (ARGV[0] && ARGV[1])
     ok = normalize_uri_list(ARGV[0], ARGV[1]);
 else {
     warn("Usage: subscription_parser.uc normalize-uri-list <input> <output>\n");
     warn("       subscription_parser.uc normalize-clash-yaml <input> <output>\n");
     warn("       subscription_parser.uc normalize-content <input> <output>\n");
+    warn("       subscription_parser.uc runtime-outbounds-equal <left> <right>\n");
     exit(2);
 }
 

@@ -487,6 +487,13 @@ subscription_normalize_content_file() {
     return 1
 }
 
+subscription_runtime_outbounds_equal() {
+    local left="$1"
+    local right="$2"
+
+    subscription_parser_ucode runtime-outbounds-equal "$left" "$right" >/dev/null 2>&1
+}
+
 normalize_subscription_file() {
     local input="$1"
     local output="$2"

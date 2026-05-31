@@ -3,6 +3,8 @@ import { ClashAPI, Podkop } from '../../types';
 import { executeShellCommand } from '../../../helpers';
 
 const SUBSCRIPTION_UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
+const SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS = 15000;
+const SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS = 1500;
 const COMPONENT_ACTION_TIMEOUT_MS = 10 * 60 * 1000;
 const COMPONENT_ACTION_RPC_TIMEOUT_MS = 15000;
 const COMPONENT_ACTION_POLL_INTERVAL_MS = 1500;
@@ -13,13 +15,13 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-function parseComponentActionOutput(output: string) {
+function parseJsonObjectOutput<T>(output: string): T | null {
   if (!output) {
     return null;
   }
 
   try {
-    return JSON.parse(output) as Podkop.ComponentActionResult;
+    return JSON.parse(output) as T;
   } catch (_error) {
     const jsonMatch = output.match(/(\{[\s\S]*\})\s*$/);
 
@@ -28,11 +30,15 @@ function parseComponentActionOutput(output: string) {
     }
 
     try {
-      return JSON.parse(jsonMatch[1]) as Podkop.ComponentActionResult;
+      return JSON.parse(jsonMatch[1]) as T;
     } catch (_jsonError) {
       return null;
     }
   }
+}
+
+function parseComponentActionOutput(output: string) {
+  return parseJsonObjectOutput<Podkop.ComponentActionResult>(output);
 }
 
 function parseComponentActionResult(
@@ -51,6 +57,22 @@ function parseComponentActionStartResult(
   }
 
   return parsedResponse as unknown as Podkop.ComponentActionStartResult;
+}
+
+function parseSubscriptionUpdateStartResult(
+  response: Awaited<ReturnType<typeof executeShellCommand>>,
+) {
+  return parseJsonObjectOutput<Podkop.SubscriptionUpdateStartResult>(
+    response.stdout,
+  );
+}
+
+function parseSubscriptionUpdateJobState(
+  response: Awaited<ReturnType<typeof executeShellCommand>>,
+) {
+  return parseJsonObjectOutput<Podkop.SubscriptionUpdateJobState>(
+    response.stdout,
+  );
 }
 
 function isComponentActionJobId(jobId: string) {
@@ -91,10 +113,7 @@ function componentActionFailure(
 ) {
   return {
     success: false,
-    error:
-      parsedResponse?.message ||
-      response.stderr ||
-      _('Failed to execute'),
+    error: parsedResponse?.message || response.stderr || _('Failed to execute'),
   } as Podkop.MethodFailureResponse;
 }
 
@@ -249,11 +268,7 @@ export const PodkopShellMethods = {
     let selfUpdateVersionMatchedAt = 0;
     const startResponse = await executeShellCommand({
       command: '/usr/bin/podkop-plus',
-      args: [
-        Podkop.AvailableMethods.COMPONENT_ACTION_ASYNC,
-        component,
-        action,
-      ],
+      args: [Podkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS,
     });
 
@@ -294,10 +309,7 @@ export const PodkopShellMethods = {
 
       const statusResponse = await executeShellCommand({
         command: '/usr/bin/podkop-plus',
-        args: [
-          Podkop.AvailableMethods.COMPONENT_ACTION_STATUS,
-          jobId,
-        ],
+        args: [Podkop.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
         timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS,
       });
       const parsedResponse = parseComponentActionResult(statusResponse);
@@ -362,27 +374,81 @@ export const PodkopShellMethods = {
     } as Podkop.MethodFailureResponse;
   },
   subscriptionUpdate: async (section?: string, sourceIndex?: number) => {
-    const args = [
-      Podkop.AvailableMethods.SUBSCRIPTION_UPDATE,
+    const startedAt = Date.now();
+    const startArgs = [
+      Podkop.AvailableMethods.SUBSCRIPTION_UPDATE_ASYNC,
       ...(section ? [section] : []),
       ...(section && sourceIndex !== undefined ? [String(sourceIndex)] : []),
     ];
-    const response = await executeShellCommand({
+    const startResponse = await executeShellCommand({
       command: '/usr/bin/podkop-plus',
-      args,
-      timeout: SUBSCRIPTION_UPDATE_TIMEOUT_MS,
+      args: startArgs,
+      timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS,
     });
+    const parsedStartResponse =
+      parseSubscriptionUpdateStartResult(startResponse);
 
-    if ((response.code ?? 0) !== 0) {
+    if (
+      (startResponse.code ?? 0) !== 0 ||
+      !parsedStartResponse?.success ||
+      !parsedStartResponse.job_id
+    ) {
       return {
         success: false,
-        error: response.stderr || _('Subscription update failed'),
+        error:
+          parsedStartResponse?.message ||
+          startResponse.stderr ||
+          _('Subscription update failed'),
       } as Podkop.MethodFailureResponse;
     }
 
+    while (Date.now() - startedAt < SUBSCRIPTION_UPDATE_TIMEOUT_MS) {
+      await sleep(SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS);
+
+      const statusResponse = await executeShellCommand({
+        command: '/usr/bin/podkop-plus',
+        args: [
+          Podkop.AvailableMethods.SUBSCRIPTION_UPDATE_STATUS,
+          parsedStartResponse.job_id,
+        ],
+        timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS,
+      });
+      const stateResponse = parseSubscriptionUpdateJobState(statusResponse);
+
+      if (!stateResponse) {
+        if ((statusResponse.code ?? 0) !== 0) {
+          return {
+            success: false,
+            error: statusResponse.stderr || _('Subscription update failed'),
+          } as Podkop.MethodFailureResponse;
+        }
+
+        continue;
+      }
+
+      if (stateResponse.running) {
+        continue;
+      }
+
+      if (stateResponse.success === false) {
+        return {
+          success: false,
+          error: stateResponse.message || _('Subscription update failed'),
+        } as Podkop.MethodFailureResponse;
+      }
+
+      return {
+        success: true,
+        data:
+          stateResponse.message ||
+          parsedStartResponse.message ||
+          _('Subscription update completed'),
+      } as Podkop.MethodSuccessResponse<string>;
+    }
+
     return {
-      success: true,
-      data: response.stdout,
-    } as Podkop.MethodSuccessResponse<string>;
+      success: false,
+      error: _('Operation timed out'),
+    } as Podkop.MethodFailureResponse;
   },
 };

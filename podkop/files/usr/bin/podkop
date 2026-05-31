@@ -53,6 +53,7 @@ PODKOP_RELOAD_STATE_FILE="$PODKOP_RUNTIME_STATE_DIR/reload-state"
 PODKOP_PENDING_RELOAD_FILE="$PODKOP_RUNTIME_STATE_DIR/reload.pending"
 PODKOP_LIST_UPDATE_STATE_FILE="$PODKOP_RUNTIME_STATE_DIR/list-update.timestamp"
 PODKOP_SUBSCRIPTION_UPDATE_STATE_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-update"
+PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-update-jobs"
 PODKOP_SUBSCRIPTION_LINKS_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-links"
 PODKOP_SUBSCRIPTION_METADATA_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-metadata"
 PODKOP_OUTBOUND_METADATA_DIR="$PODKOP_RUNTIME_STATE_DIR/outbound-metadata"
@@ -71,6 +72,8 @@ PODKOP_RELOAD_STATE_FORMAT=1
 PODKOP_RUNTIME_CACHE_FORMAT=4
 PODKOP_RUNTIME_STABLE_MIN_AGE=2
 PODKOP_SYSTEM_INFO_CACHE_TTL=3600
+PODKOP_SUBSCRIPTION_UPDATE_JOB_FINISHED_TTL_MINUTES=60
+PODKOP_SUBSCRIPTION_UPDATE_JOB_ORPHAN_OUTPUT_TTL_MINUTES=60
 PODKOP_NFT_POPULATE_ENABLED=1
 PODKOP_ZAPRET_MISSING_WARNING_EMITTED=0
 PODKOP_BYEDPI_MISSING_WARNING_EMITTED=0
@@ -87,6 +90,7 @@ ensure_runtime_dirs() {
     mkdir -p "$TMP_SUBSCRIPTION_FOLDER"
     mkdir -p "$PODKOP_RUNTIME_STATE_DIR"
     mkdir -p "$PODKOP_SUBSCRIPTION_UPDATE_STATE_DIR"
+    mkdir -p "$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR"
     mkdir -p "$PODKOP_SUBSCRIPTION_LINKS_DIR"
     mkdir -p "$PODKOP_SUBSCRIPTION_METADATA_DIR"
     mkdir -p "$PODKOP_OUTBOUND_METADATA_DIR"
@@ -459,7 +463,7 @@ subscription_auto_user_agent_is_supported() {
     [ "$user_agent" = "$(get_subscription_user_agent)" ] && return 0
 
     case "$user_agent" in
-    Happ | v2rayN | Clash.Meta | ClashMetaForAndroid)
+    Happ | v2rayN | Hiddify | Clash.Meta | ClashMetaForAndroid)
         return 0
         ;;
     esac
@@ -492,14 +496,11 @@ subscription_write_user_agent_candidates() {
 
     : > "$output_path" || return 1
 
-    if subscription_auto_user_agent_is_supported "$preferred_user_agent"; then
-        printf '%s\n' "$preferred_user_agent" >> "$output_path" || return 1
-    fi
-
     default_user_agent="$(get_subscription_user_agent)"
-    for candidate in "$default_user_agent" "Happ" "v2rayN" "Clash.Meta" "ClashMetaForAndroid"; do
+    for candidate in "$default_user_agent" "v2rayN" "$preferred_user_agent" "Happ" "Hiddify" "Clash.Meta" "ClashMetaForAndroid"; do
         [ -n "$candidate" ] || continue
-        [ "$candidate" = "$preferred_user_agent" ] && continue
+        subscription_auto_user_agent_is_supported "$candidate" || continue
+        grep -Fxq -- "$candidate" "$output_path" 2>/dev/null && continue
         printf '%s\n' "$candidate" >> "$output_path" || return 1
     done
 }
@@ -794,6 +795,21 @@ download_subscription_into_cache() {
             printf '%s' "$subscription_url" > "$subscription_url_cache_path"
             printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
             log "Subscription for rule '$section' is unchanged" "info"
+            return 2
+        fi
+
+        if [ -f "$subscription_json_path" ] &&
+            subscription_runtime_outbounds_equal "$normalized_tmpfile" "$subscription_json_path"; then
+            mv "$normalized_tmpfile" "$subscription_json_path" || {
+                [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
+                rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
+                return 1
+            }
+
+            rm -f "$raw_tmpfile" "$headers_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
+            printf '%s' "$subscription_url" > "$subscription_url_cache_path"
+            printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
+            log "Subscription runtime outbounds for rule '$section' are unchanged" "info"
             return 2
         fi
 
@@ -5287,6 +5303,251 @@ subscription_update() {
         echolog "Starting subscription update..."
     fi
     subscription_update_common 1 "$target_section" "$target_source_index"
+}
+
+subscription_update_job_json_response() {
+    local success="$1"
+    local job_id="$2"
+    local message="${3:-}"
+
+    json_utils_ucode object-json \
+        success b "$success" \
+        job_id s "$job_id" \
+        message s "$message"
+}
+
+subscription_update_job_state_path() {
+    local job_id="$1"
+
+    case "$job_id" in
+    *[!A-Za-z0-9._-]* | "" | "." | "..")
+        return 1
+        ;;
+    esac
+
+    printf '%s/%s.json\n' "$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR" "$job_id"
+}
+
+subscription_update_job_tmp_file() {
+    local target_file="$1"
+    local tmp_file
+
+    tmp_file="$(mktemp "${target_file}.XXXXXX" 2>/dev/null || true)"
+    if [ -z "$tmp_file" ]; then
+        tmp_file="${target_file}.$$.$(date +%s 2>/dev/null).tmp"
+        : >"$tmp_file" || return 1
+    fi
+
+    printf '%s\n' "$tmp_file"
+}
+
+subscription_update_write_running_job_state() {
+    local state_file="$1"
+    local section="${2:-}"
+    local source_index="${3:-}"
+    local tmp_file started_at
+
+    started_at="$(date +%s 2>/dev/null)"
+    case "$started_at" in
+    "" | *[!0-9]*) started_at=0 ;;
+    esac
+
+    mkdir -p "$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR" || return 1
+    tmp_file="$(subscription_update_job_tmp_file "$state_file")" || return 1
+
+    json_utils_ucode object-json \
+        success b true \
+        running b true \
+        message s "Subscription update is running" \
+        section s "$section" \
+        source_index s "$source_index" \
+        pid j null \
+        started_at n "$started_at" \
+        exit_code j null >"$tmp_file" && mv "$tmp_file" "$state_file"
+
+    local rc=$?
+    rm -f "$tmp_file" 2>/dev/null
+    return "$rc"
+}
+
+subscription_update_update_running_job_pid() {
+    local state_file="$1"
+    local pid="$2"
+    local tmp_file
+
+    case "$pid" in
+    "" | *[!0-9]*) return 1 ;;
+    esac
+
+    tmp_file="$(subscription_update_job_tmp_file "$state_file")" || return 1
+    json_utils_ucode updates-set-running-job-pid "$state_file" "$pid" >"$tmp_file" && mv "$tmp_file" "$state_file"
+
+    local rc=$?
+    rm -f "$tmp_file" 2>/dev/null
+    return "$rc"
+}
+
+subscription_update_cleanup_jobs() {
+    local state_file
+
+    [ -d "$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR" ] || return 0
+
+    find "$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR" -type f -name '*.out' -mmin "+$PODKOP_SUBSCRIPTION_UPDATE_JOB_ORPHAN_OUTPUT_TTL_MINUTES" -delete 2>/dev/null || true
+
+    find "$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR" -type f -name '*.json' -mmin "+$PODKOP_SUBSCRIPTION_UPDATE_JOB_FINISHED_TTL_MINUTES" 2>/dev/null |
+        while IFS= read -r state_file; do
+            [ -f "$state_file" ] || continue
+            if json_utils_ucode job-running-is "$state_file" false >/dev/null 2>&1; then
+                rm -f "$state_file" 2>/dev/null || true
+            fi
+        done
+}
+
+subscription_update_output_message() {
+    local output_file="$1"
+    local fallback="$2"
+    local message
+
+    message="$(sed '/^[[:space:]]*$/d' "$output_file" 2>/dev/null | tail -n 1 | cut -c1-240)"
+    [ -n "$message" ] || message="$fallback"
+    printf '%s\n' "$message"
+}
+
+subscription_update_write_finished_job_state() {
+    local state_file="$1"
+    local exit_code="$2"
+    local output_file="$3"
+    local tmp_file updated_at success message
+
+    updated_at="$(date +%s 2>/dev/null)"
+    case "$updated_at" in
+    "" | *[!0-9]*) updated_at=0 ;;
+    esac
+
+    success=false
+    message="$(subscription_update_output_message "$output_file" "Subscription update failed")"
+    if [ "$exit_code" -eq 0 ]; then
+        success=true
+        message="$(subscription_update_output_message "$output_file" "Subscription update completed")"
+    fi
+
+    tmp_file="$(subscription_update_job_tmp_file "$state_file")" || return 1
+    json_utils_ucode object-json \
+        success b "$success" \
+        running b false \
+        message s "$message" \
+        exit_code n "$exit_code" \
+        updated_at n "$updated_at" >"$tmp_file" && mv "$tmp_file" "$state_file"
+
+    local rc=$?
+    rm -f "$tmp_file" "$output_file" 2>/dev/null
+    return "$rc"
+}
+
+subscription_update_mark_stale_job_state() {
+    local state_file="$1"
+    local tmp_file updated_at
+
+    updated_at="$(date +%s 2>/dev/null)"
+    case "$updated_at" in
+    "" | *[!0-9]*) updated_at=0 ;;
+    esac
+
+    tmp_file="$(subscription_update_job_tmp_file "$state_file")" || return 1
+    json_utils_ucode object-json \
+        success b false \
+        running b false \
+        message s "Subscription update worker exited unexpectedly" \
+        exit_code j null \
+        updated_at n "$updated_at" >"$tmp_file" && mv "$tmp_file" "$state_file"
+
+    local rc=$?
+    rm -f "$tmp_file" 2>/dev/null
+    return "$rc"
+}
+
+subscription_update_refresh_running_job_state() {
+    local state_file="$1"
+    local pid
+
+    json_utils_ucode job-running-is "$state_file" true >/dev/null 2>&1 || return 0
+
+    pid="$(json_utils_ucode json-file-field "$state_file" pid "" 2>/dev/null)"
+    case "$pid" in
+    "" | *[!0-9]*)
+        subscription_update_mark_stale_job_state "$state_file"
+        return 0
+        ;;
+    esac
+
+    kill -0 "$pid" 2>/dev/null && return 0
+    sleep 1
+    json_utils_ucode job-running-is "$state_file" true >/dev/null 2>&1 || return 0
+    kill -0 "$pid" 2>/dev/null && return 0
+    json_utils_ucode job-running-is "$state_file" true >/dev/null 2>&1 || return 0
+    subscription_update_mark_stale_job_state "$state_file"
+}
+
+subscription_update_async() {
+    local target_section="${1:-}"
+    local target_source_index="${2:-}"
+    local job_id state_file output_file job_pid
+
+    ensure_runtime_dirs
+    mkdir -p "$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR" || {
+        subscription_update_job_json_response false "" "Failed to create subscription update state directory"
+        exit 1
+    }
+    subscription_update_cleanup_jobs
+
+    job_id="$(date +%s 2>/dev/null)-$$"
+    state_file="$(subscription_update_job_state_path "$job_id")" || {
+        subscription_update_job_json_response false "" "Failed to prepare subscription update job"
+        exit 1
+    }
+    output_file="$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR/$job_id.out"
+
+    subscription_update_write_running_job_state "$state_file" "$target_section" "$target_source_index" || {
+        subscription_update_job_json_response false "" "Failed to write subscription update state"
+        exit 1
+    }
+
+    (
+        trap '' HUP
+        /usr/bin/podkop-plus subscription_update "$target_section" "$target_source_index" >"$output_file" 2>&1
+        subscription_update_write_finished_job_state "$state_file" "$?" "$output_file"
+    ) >/dev/null 2>&1 &
+    job_pid="$!"
+
+    subscription_update_update_running_job_pid "$state_file" "$job_pid" || {
+        kill "$job_pid" 2>/dev/null || true
+        subscription_update_job_json_response false "" "Failed to write subscription update worker pid"
+        exit 1
+    }
+
+    subscription_update_job_json_response true "$job_id" "Subscription update started"
+}
+
+subscription_update_status() {
+    local job_id="$1"
+    local state_file
+
+    mkdir -p "$PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR" 2>/dev/null || true
+    subscription_update_cleanup_jobs
+
+    state_file="$(subscription_update_job_state_path "$job_id")" || {
+        json_utils_ucode object-json success b false running b false message s "Invalid subscription update job id" exit_code j null
+        exit 1
+    }
+
+    if [ ! -f "$state_file" ]; then
+        json_utils_ucode object-json success b false running b false message s "Subscription update job was not found" exit_code j null
+        exit 1
+    fi
+
+    subscription_update_refresh_running_job_state "$state_file"
+
+    cat "$state_file"
 }
 
 # sing-box funcs
@@ -10722,6 +10983,10 @@ Available commands:
     list_update_if_due      Update remote lists only when the configured interval has elapsed
     subscription_update [rule] [source_index]
                             Update all subscription proxies, one rule, or one source in a rule
+    subscription_update_async [rule] [source_index]
+                            Start forced subscription update in the background
+    subscription_update_status [job_id]
+                            Get background subscription update status
     subscription_update_if_due
                             Update subscription proxies only when per-rule intervals have elapsed
     check_proxy             Check proxy connectivity
@@ -10798,6 +11063,12 @@ list_update_if_due)
     ;;
 subscription_update)
     subscription_update "$2" "$3"
+    ;;
+subscription_update_async)
+    subscription_update_async "$2" "$3"
+    ;;
+subscription_update_status)
+    subscription_update_status "$2"
     ;;
 subscription_update_if_due)
     subscription_update_if_due

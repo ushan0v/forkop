@@ -440,7 +440,7 @@ get_subscription_user_agent() {
     sing_box_version="$(get_sing_box_version)"
     [ -n "$sing_box_version" ] || sing_box_version="unknown"
 
-    printf 'clash.meta; sing-box/%s; PodkopPlus/OpenWrt' "$sing_box_version"
+    printf 'sing-box/%s' "$sing_box_version"
 }
 
 generate_hwid() {

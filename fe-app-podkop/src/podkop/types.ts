@@ -82,6 +82,8 @@ export namespace Podkop {
     COMPONENT_ACTION_ASYNC = 'component_action_async',
     COMPONENT_ACTION_STATUS = 'component_action_status',
     SUBSCRIPTION_UPDATE = 'subscription_update',
+    SUBSCRIPTION_UPDATE_ASYNC = 'subscription_update_async',
+    SUBSCRIPTION_UPDATE_STATUS = 'subscription_update_status',
   }
 
   export enum AvailableClashAPIMethods {
@@ -353,6 +355,20 @@ export namespace Podkop {
     success: boolean;
     job_id: string;
     message: string;
+  }
+
+  export interface SubscriptionUpdateStartResult {
+    success: boolean;
+    job_id: string;
+    message: string;
+  }
+
+  export interface SubscriptionUpdateJobState {
+    success: boolean;
+    running?: boolean;
+    message?: string;
+    exit_code?: number | null;
+    updated_at?: number;
   }
 
   export interface GetZapretStatus {
