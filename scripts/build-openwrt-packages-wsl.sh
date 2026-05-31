@@ -373,6 +373,18 @@ EOF
 grep -q "105 podkopplus" /etc/iproute2/rt_tables && sed -i "/105 podkopplus/d" /etc/iproute2/rt_tables
 
 /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
+/usr/bin/podkop-plus restore_dnsmasq >/dev/null 2>&1 || true
+if [ -r /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh ]; then
+	sh /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh >/dev/null 2>&1 || true
+else
+	uci -q delete dhcp.podkop_plus >/dev/null 2>&1 || true
+	uci -q del_list 'dhcp.@dnsmasq[0].notinterface=br-lan' >/dev/null 2>&1 || true
+	uci -q del_list 'dhcp.@dnsmasq[0].server=127.0.0.42' >/dev/null 2>&1 || true
+	uci -q set 'dhcp.@dnsmasq[0].noresolv=0' >/dev/null 2>&1 || true
+	uci -q set 'dhcp.@dnsmasq[0].cachesize=150' >/dev/null 2>&1 || true
+	uci -q commit dhcp >/dev/null 2>&1 || true
+	[ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+fi
 
 exit 0
 EOF
@@ -531,6 +543,18 @@ EOF
 #!/bin/sh
 grep -q "105 podkopplus" /etc/iproute2/rt_tables && sed -i "/105 podkopplus/d" /etc/iproute2/rt_tables
 /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
+/usr/bin/podkop-plus restore_dnsmasq >/dev/null 2>&1 || true
+if [ -r /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh ]; then
+	sh /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh >/dev/null 2>&1 || true
+else
+	uci -q delete dhcp.podkop_plus >/dev/null 2>&1 || true
+	uci -q del_list 'dhcp.@dnsmasq[0].notinterface=br-lan' >/dev/null 2>&1 || true
+	uci -q del_list 'dhcp.@dnsmasq[0].server=127.0.0.42' >/dev/null 2>&1 || true
+	uci -q set 'dhcp.@dnsmasq[0].noresolv=0' >/dev/null 2>&1 || true
+	uci -q set 'dhcp.@dnsmasq[0].cachesize=150' >/dev/null 2>&1 || true
+	uci -q commit dhcp >/dev/null 2>&1 || true
+	[ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+fi
 exit 0
 EOF
 

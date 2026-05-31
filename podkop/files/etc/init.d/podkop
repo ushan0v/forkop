@@ -14,7 +14,23 @@ PODKOP_RUNTIME_STATE_DIR="/var/run/podkop-plus"
 PODKOP_PENDING_RELOAD_FILE="$PODKOP_RUNTIME_STATE_DIR/reload.pending"
 PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD="/var/run/podkop-plus.internal-config-change"
 PODKOP_CONFIG_CHANGE_REASON="on_config_change"
+PODKOP_DNSMASQ_FAILSAFE="/usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh"
 config_load "$CONFIG_NAME"
+
+restore_dnsmasq_failsafe() {
+    if [ -r "$PODKOP_DNSMASQ_FAILSAFE" ]; then
+        sh "$PODKOP_DNSMASQ_FAILSAFE" >/dev/null 2>&1 || true
+        return 0
+    fi
+
+    uci -q delete dhcp.podkop_plus >/dev/null 2>&1 || true
+    uci -q del_list 'dhcp.@dnsmasq[0].notinterface=br-lan' >/dev/null 2>&1 || true
+    uci -q del_list 'dhcp.@dnsmasq[0].server=127.0.0.42' >/dev/null 2>&1 || true
+    uci -q set 'dhcp.@dnsmasq[0].noresolv=0' >/dev/null 2>&1 || true
+    uci -q set 'dhcp.@dnsmasq[0].cachesize=150' >/dev/null 2>&1 || true
+    uci -q commit dhcp >/dev/null 2>&1 || true
+    [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+}
 
 acquire_reload_lock() {
     local owner_pid
@@ -138,6 +154,11 @@ should_skip_internal_config_reload() {
 start_service() {
     echo "Start Podkop Plus"
 
+    if [ ! -x "$PODKOP_BIN" ]; then
+        restore_dnsmasq_failsafe
+        return 1
+    fi
+
     config_get enable_badwan_interface_monitoring "settings" "enable_badwan_interface_monitoring"
     config_get badwan_monitored_interfaces "settings" "badwan_monitored_interfaces"
 
@@ -151,7 +172,18 @@ start_service() {
 }
 
 stop_service() {
+    local status
+
+    if [ ! -x "$PODKOP_BIN" ]; then
+        restore_dnsmasq_failsafe
+        return 1
+    fi
+
     "$PODKOP_BIN" stop
+    status="$?"
+    [ "$status" -eq 0 ] || restore_dnsmasq_failsafe
+
+    return "$status"
 }
 
 reload_service() {

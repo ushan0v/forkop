@@ -602,7 +602,100 @@ remove_old_sing_box_if_needed() {
     warn "sing-box $installed_version is older than the required version $REQUIRED_SING_BOX_VERSION. Removing the old package first."
     [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
     [ -x /etc/init.d/podkop ] && /etc/init.d/podkop stop >/dev/null 2>&1 || true
+    restore_podkop_dnsmasq_failsafe
     pkg_remove_if_installed "sing-box"
+}
+
+restore_podkop_dnsmasq_failsafe_raw() {
+    podkop_dnsmasq_section="podkop_plus"
+    podkop_dns_address="127.0.0.42"
+    podkop_config_name="podkop-plus"
+    podkop_dnsmasq_changed=0
+    podkop_default_has_dns=0
+    podkop_split_instance_present=0
+
+    command_exists uci || return 0
+
+    podkop_interfaces="$(uci -q get "dhcp.$podkop_dnsmasq_section.interface" 2>/dev/null)"
+    [ -n "$podkop_interfaces" ] ||
+        podkop_interfaces="$(uci -q get "$podkop_config_name.settings.source_network_interfaces" 2>/dev/null)"
+    [ -n "$podkop_interfaces" ] || podkop_interfaces="br-lan"
+
+    podkop_default_servers="$(uci -q get 'dhcp.@dnsmasq[0].server' 2>/dev/null)"
+    for podkop_value in $podkop_default_servers; do
+        [ "$podkop_value" = "$podkop_dns_address" ] && podkop_default_has_dns=1
+    done
+
+    if uci -q show "dhcp.$podkop_dnsmasq_section" >/dev/null 2>&1; then
+        podkop_split_instance_present=1
+        podkop_dnsmasq_changed=1
+    fi
+    uci -q delete "dhcp.$podkop_dnsmasq_section" >/dev/null 2>&1 || true
+
+    podkop_backup_notinterfaces="$(uci -q get 'dhcp.@dnsmasq[0].podkop_notinterface' 2>/dev/null)"
+    if [ -n "$podkop_backup_notinterfaces" ]; then
+        uci -q delete 'dhcp.@dnsmasq[0].notinterface' >/dev/null 2>&1 || true
+        for podkop_value in $podkop_backup_notinterfaces; do
+            uci -q add_list "dhcp.@dnsmasq[0].notinterface=$podkop_value" >/dev/null 2>&1 || true
+        done
+        uci -q delete 'dhcp.@dnsmasq[0].podkop_notinterface' >/dev/null 2>&1 || true
+        podkop_dnsmasq_changed=1
+    else
+        if [ "$podkop_split_instance_present" -eq 1 ] || [ "$podkop_default_has_dns" -eq 1 ]; then
+            for podkop_value in $podkop_interfaces; do
+                uci -q del_list "dhcp.@dnsmasq[0].notinterface=$podkop_value" >/dev/null 2>&1 && podkop_dnsmasq_changed=1
+            done
+        fi
+        uci -q delete 'dhcp.@dnsmasq[0].podkop_notinterface' >/dev/null 2>&1 || true
+    fi
+
+    podkop_backup_servers="$(uci -q get 'dhcp.@dnsmasq[0].podkop_server' 2>/dev/null)"
+    if [ -n "$podkop_backup_servers" ]; then
+        uci -q delete 'dhcp.@dnsmasq[0].server' >/dev/null 2>&1 || true
+        for podkop_value in $podkop_backup_servers; do
+            uci -q add_list "dhcp.@dnsmasq[0].server=$podkop_value" >/dev/null 2>&1 || true
+        done
+        uci -q delete 'dhcp.@dnsmasq[0].podkop_server' >/dev/null 2>&1 || true
+        podkop_dnsmasq_changed=1
+    else
+        uci -q del_list "dhcp.@dnsmasq[0].server=$podkop_dns_address" >/dev/null 2>&1 && podkop_dnsmasq_changed=1
+        uci -q delete 'dhcp.@dnsmasq[0].podkop_server' >/dev/null 2>&1 || true
+    fi
+
+    podkop_noresolv="$(uci -q get 'dhcp.@dnsmasq[0].podkop_noresolv' 2>/dev/null)"
+    if [ -n "$podkop_noresolv" ]; then
+        uci -q set "dhcp.@dnsmasq[0].noresolv=$podkop_noresolv" >/dev/null 2>&1 || true
+        uci -q delete 'dhcp.@dnsmasq[0].podkop_noresolv' >/dev/null 2>&1 || true
+        podkop_dnsmasq_changed=1
+    elif [ "$podkop_default_has_dns" -eq 1 ]; then
+        uci -q set 'dhcp.@dnsmasq[0].noresolv=0' >/dev/null 2>&1 || true
+        podkop_dnsmasq_changed=1
+    fi
+
+    podkop_cachesize="$(uci -q get 'dhcp.@dnsmasq[0].podkop_cachesize' 2>/dev/null)"
+    if [ -n "$podkop_cachesize" ]; then
+        uci -q set "dhcp.@dnsmasq[0].cachesize=$podkop_cachesize" >/dev/null 2>&1 || true
+        uci -q delete 'dhcp.@dnsmasq[0].podkop_cachesize' >/dev/null 2>&1 || true
+        podkop_dnsmasq_changed=1
+    elif [ "$podkop_default_has_dns" -eq 1 ]; then
+        uci -q set 'dhcp.@dnsmasq[0].cachesize=150' >/dev/null 2>&1 || true
+        podkop_dnsmasq_changed=1
+    fi
+
+    [ "$podkop_dnsmasq_changed" -eq 1 ] || return 0
+
+    uci -q commit dhcp >/dev/null 2>&1 || true
+    [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+}
+
+restore_podkop_dnsmasq_failsafe() {
+    [ -x /usr/bin/podkop-plus ] && /usr/bin/podkop-plus restore_dnsmasq >/dev/null 2>&1 || true
+
+    if [ -r /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh ]; then
+        sh /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh >/dev/null 2>&1 || true
+    else
+        restore_podkop_dnsmasq_failsafe_raw
+    fi
 }
 
 remember_service_state() {
@@ -632,6 +725,7 @@ remember_service_state() {
 
 stop_conflicting_services() {
     [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
+    restore_podkop_dnsmasq_failsafe
     [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus disable >/dev/null 2>&1 || true
 }
 
