@@ -2059,12 +2059,13 @@ build_sing_box_signature() {
 
 append_nft_rule_signature() {
     local section="$1"
-    local ip_cidr ports community_lists community_subnet_lists remote_subnet_lists rule_set_with_subnets domain_ip_lists
+    local ip_cidr ports fully_routed_ips community_lists community_subnet_lists remote_subnet_lists rule_set_with_subnets domain_ip_lists
 
     rule_is_enabled "$section" || return 0
 
     ip_cidr="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
     ports="$(get_rule_ports_commas_string "$section")"
+    config_get fully_routed_ips "$section" "fully_routed_ips"
     config_get community_lists "$section" "community_lists"
     community_subnet_lists="$(filter_community_subnet_lists "$community_lists")"
     config_get remote_subnet_lists "$section" "remote_subnet_lists"
@@ -2073,6 +2074,7 @@ append_nft_rule_signature() {
 
     signature_add "rule.$section.ip_cidr" "$ip_cidr"
     signature_add "rule.$section.ports" "$ports"
+    signature_add "rule.$section.fully_routed_ips" "$fully_routed_ips"
     signature_add "rule.$section.community_subnet_lists" "$community_subnet_lists"
     signature_add "rule.$section.remote_subnet_lists" "$remote_subnet_lists"
     signature_add "rule.$section.rule_set_with_subnets" "$rule_set_with_subnets"
