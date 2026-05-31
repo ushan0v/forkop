@@ -251,6 +251,7 @@ const actionProvidersAvailabilityState = {
   byedpiInstalled: false,
 };
 let actionProvidersAvailabilityPromise = null;
+let actionProvidersAvailabilityLoader = null;
 const outboundNameChoicesCache = {};
 const COUNTRY_CODES =
   "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW XK".split(
@@ -292,6 +293,11 @@ function updateActionProvidersAvailabilityFromSystemInfo(systemInfo) {
     zapretInstalled: Boolean(systemInfo.zapret_installed),
     byedpiInstalled: Boolean(systemInfo.byedpi_installed),
   });
+}
+
+function setActionProvidersAvailabilityLoader(loader) {
+  actionProvidersAvailabilityLoader =
+    typeof loader === "function" ? loader : null;
 }
 
 if (typeof window !== "undefined") {
@@ -457,9 +463,30 @@ function ensureActionProvidersAvailabilityLoaded() {
     return actionProvidersAvailabilityPromise;
   }
 
+  if (actionProvidersAvailabilityLoader) {
+    actionProvidersAvailabilityPromise = actionProvidersAvailabilityLoader()
+      .then((capabilities) => {
+        updateActionProvidersAvailabilityState({
+          zapretInstalled: Boolean(capabilities?.zapretInstalled),
+          byedpiInstalled: Boolean(capabilities?.byedpiInstalled),
+        });
+        return actionProvidersAvailabilityState;
+      })
+      .catch(() => {
+        actionProvidersAvailabilityLoader = null;
+        actionProvidersAvailabilityPromise = null;
+        return ensureActionProvidersAvailabilityLoaded();
+      })
+      .finally(() => {
+        actionProvidersAvailabilityPromise = null;
+      });
+
+    return actionProvidersAvailabilityPromise;
+  }
+
   actionProvidersAvailabilityPromise = Promise.allSettled([
-    main.PodkopShellMethods.getZapretStatus(),
-    main.PodkopShellMethods.getByedpiStatus(),
+    main.PodkopShellMethods.checkZapretRuntime(),
+    main.PodkopShellMethods.checkByedpiRuntime(),
   ])
     .then(([zapretResult, byedpiResult]) => {
       const zapret =
@@ -473,10 +500,16 @@ function ensureActionProvidersAvailabilityLoaded() {
 
       actionProvidersAvailabilityState.loaded = true;
       actionProvidersAvailabilityState.zapretInstalled = Boolean(
-        zapret && zapret.success && zapret.data && zapret.data.installed,
+        zapret &&
+          zapret.success &&
+          zapret.data &&
+          zapret.data.zapret_installed,
       );
       actionProvidersAvailabilityState.byedpiInstalled = Boolean(
-        byedpi && byedpi.success && byedpi.data && byedpi.data.installed,
+        byedpi &&
+          byedpi.success &&
+          byedpi.data &&
+          byedpi.data.byedpi_installed,
       );
       return actionProvidersAvailabilityState;
     })
@@ -2493,9 +2526,6 @@ function createSectionContent(section) {
   );
   o.modalonly = false;
   o.rawhtml = true;
-  o.load = function () {
-    return ensureActionProvidersAvailabilityLoaded();
-  };
   o.cfgvalue = function (section_id) {
     return getRuleActionDisplayMarkup(section_id);
   };
@@ -3462,8 +3492,45 @@ function createSectionContent(section) {
   });
 }
 
+function loadSectionTableOptions(sectionRef) {
+  const sectionIds = sectionRef.cfgsections();
+  const tasks = [];
+
+  for (let i = 0; i < sectionIds.length; i += 1) {
+    const sectionId = sectionIds[i];
+
+    for (let j = 0; j < sectionRef.children.length; j += 1) {
+      const option = sectionRef.children[j];
+
+      if (option.disable || option.modalonly) {
+        continue;
+      }
+
+      tasks.push(
+        Promise.resolve(option.load.call(option, sectionId)).then((value) => {
+          option.cfgvalue(sectionId, value);
+        }),
+      );
+    }
+  }
+
+  return Promise.all(tasks);
+}
+
+function configureSectionSection(sectionRef, options = {}) {
+  setActionProvidersAvailabilityLoader(options.loadActionProvidersAvailability);
+
+  sectionRef.load = function () {
+    // The table renders only non-modal fields; the cloned Add/Edit modal loads
+    // action/provider details when the user opens it.
+    return loadSectionTableOptions(this);
+  };
+}
+
 const EntryPoint = {
+  configureSectionSection,
   createSectionContent,
+  setActionProvidersAvailabilityLoader,
 };
 
 return baseclass.extend(EntryPoint);

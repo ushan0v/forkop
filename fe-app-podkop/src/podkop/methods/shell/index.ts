@@ -259,6 +259,14 @@ export const PodkopShellMethods = {
     callBaseMethod<Podkop.GetSystemInfo>(
       Podkop.AvailableMethods.GET_SYSTEM_INFO,
     ),
+  getServerCapabilities: async () =>
+    callBaseMethod<Podkop.GetServerCapabilities>(
+      Podkop.AvailableMethods.GET_SERVER_CAPABILITIES,
+    ),
+  getUiCapabilities: async () =>
+    callBaseMethod<Podkop.GetUiCapabilities>(
+      Podkop.AvailableMethods.GET_UI_CAPABILITIES,
+    ),
   componentAction: async (
     component: Podkop.ComponentName,
     action: Podkop.ComponentAction,

@@ -108,8 +108,53 @@ check_required_file() {
 PODKOP_LIB="/usr/lib/podkop-plus"
 check_required_file /lib/functions.sh
 check_required_file /lib/config/uci.sh
-check_required_file /lib/functions/network.sh
 check_required_file "$PODKOP_LIB/constants.sh"
+
+. /lib/functions.sh
+. /lib/config/uci.sh
+. "$PODKOP_LIB/constants.sh"
+
+podkop_fast_ui_capabilities_server_handler() {
+    local section="$1" enabled
+
+    config_get enabled "$section" "enabled" "1"
+    [ "$enabled" = "0" ] && return 0
+
+    PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT=$((PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT + 1))
+}
+
+podkop_fast_get_ui_capabilities() {
+    local sing_box_version sing_box_extended=0 zapret_installed=0 byedpi_installed=0
+
+    if command -v sing-box >/dev/null 2>&1; then
+        sing_box_version="$(sing-box version 2>/dev/null | head -1 | awk '{print $NF}')"
+        case "$sing_box_version" in
+        *extended*) sing_box_extended=1 ;;
+        esac
+    fi
+
+    [ -x "$ZAPRET_PROVIDER_NFQWS_BIN" ] && zapret_installed=1
+    [ -x "$BYEDPI_BIN" ] && byedpi_installed=1
+
+    PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT=0
+    config_load "$PODKOP_CONFIG_NAME"
+    config_foreach podkop_fast_ui_capabilities_server_handler "server"
+
+    printf '{ "sing_box_extended": %s, "zapret_installed": %s, "byedpi_installed": %s, "server_inbounds_enabled_count": %s }\n' \
+        "$sing_box_extended" \
+        "$zapret_installed" \
+        "$byedpi_installed" \
+        "${PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT:-0}"
+}
+
+case "$PODKOP_COMMAND" in
+get_ui_capabilities)
+    podkop_fast_get_ui_capabilities
+    exit $?
+    ;;
+esac
+
+check_required_file /lib/functions/network.sh
 check_required_file "$PODKOP_LIB/nft.sh"
 check_required_file "$PODKOP_LIB/helpers.sh"
 check_required_file "$PODKOP_LIB/json_utils.uc"
@@ -127,10 +172,7 @@ check_required_file "$PODKOP_LIB/logging.sh"
 check_required_file "$PODKOP_LIB/rulesets.sh"
 check_required_file "$PODKOP_LIB/rulesets.uc"
 check_required_file "$PODKOP_LIB/updater.sh"
-. /lib/functions.sh
-. /lib/config/uci.sh
 . /lib/functions/network.sh
-. "$PODKOP_LIB/constants.sh"
 . "$PODKOP_LIB/nft.sh"
 . "$PODKOP_LIB/helpers.sh"
 . "$PODKOP_LIB/zapret.sh"
@@ -10293,6 +10335,33 @@ get_system_info() {
     printf '%s\n' "$system_info"
 }
 
+get_server_capabilities() {
+    local sing_box_version sing_box_extended=0
+
+    sing_box_version="$(get_sing_box_version)"
+    is_sing_box_extended "$sing_box_version" && sing_box_extended=1
+
+    printf '{"sing_box_extended":%s}\n' "$sing_box_extended"
+}
+
+get_ui_capabilities() {
+    local sing_box_version sing_box_extended=0 zapret_installed=0 byedpi_installed=0
+
+    sing_box_version="$(get_sing_box_version)"
+    is_sing_box_extended "$sing_box_version" && sing_box_extended=1
+    is_zapret_installed && zapret_installed=1
+    is_byedpi_installed && byedpi_installed=1
+
+    INBOUNDS_CONFIG_ENABLED_COUNT=0
+    config_foreach check_inbounds_config_server_handler "server"
+
+    json_utils_ucode object-json \
+        sing_box_extended n "$sing_box_extended" \
+        zapret_installed n "$zapret_installed" \
+        byedpi_installed n "$byedpi_installed" \
+        server_inbounds_enabled_count n "${INBOUNDS_CONFIG_ENABLED_COUNT:-0}"
+}
+
 get_zapret_status() {
     get_zapret_status_json
 }
@@ -11498,6 +11567,8 @@ Available commands:
     get_zapret_status       Get zapret provider and Podkop Plus-managed nfqws status
     get_byedpi_status       Get ByeDPI provider and Podkop Plus-managed ciadpi status
     get_system_info         Get system information in JSON format
+    get_server_capabilities Get server UI capabilities in JSON format
+    get_ui_capabilities     Get lightweight UI capabilities in JSON format
     generate_reality_keypair
                             Generate a sing-box Reality key pair in JSON format
     component_action        Manage Podkop Plus, sing-box, zapret, and ByeDPI components
@@ -11635,6 +11706,12 @@ get_byedpi_status)
     ;;
 get_system_info)
     get_system_info
+    ;;
+get_server_capabilities)
+    get_server_capabilities
+    ;;
+get_ui_capabilities)
+    get_ui_capabilities
     ;;
 generate_reality_keypair)
     generate_reality_keypair

@@ -8,6 +8,11 @@ const LOG_NOTIFICATION_DEDUPE_WINDOW_MS = 15000;
 const recentErrorNotifications = new Map<string, number>();
 const activeErrorNotifications = new Map<string, HTMLElement>();
 
+type CoreServiceOptions = {
+  waitForLogWatcherStart?: () => Promise<unknown>;
+  logWatcherStartDelayMs?: number;
+};
+
 function isErrorLogLine(line: string) {
   const lower = line.toLowerCase();
   return lower.includes('[error]') || lower.includes('[fatal]');
@@ -88,7 +93,7 @@ function showLogErrorNotification(line: string) {
   activeErrorNotifications.set(key, notification);
 }
 
-export function coreService() {
+export function coreService(options: CoreServiceOptions = {}) {
   TabServiceInstance.onChange((activeId, tabs) => {
     logger.info('[TAB]', activeId);
     store.set({
@@ -126,5 +131,23 @@ export function coreService() {
     },
   );
 
-  watcher.start();
+  const startWatcher = () => watcher.start();
+
+  if (typeof window !== 'undefined') {
+    window.setTimeout(() => {
+      if (options.waitForLogWatcherStart) {
+        Promise.resolve()
+          .then(() => options.waitForLogWatcherStart?.())
+          .catch(() => null)
+          .finally(() =>
+            window.setTimeout(startWatcher, options.logWatcherStartDelayMs ?? 0),
+          );
+        return;
+      }
+
+      startWatcher();
+    }, 0);
+  } else {
+    startWatcher();
+  }
 }

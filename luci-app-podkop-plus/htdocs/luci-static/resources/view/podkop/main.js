@@ -2097,6 +2097,8 @@ var Podkop;
     AvailableMethods2["CHECK_LOGS"] = "check_logs";
     AvailableMethods2["CHECK_SING_BOX_LOGS"] = "check_sing_box_logs";
     AvailableMethods2["GET_SYSTEM_INFO"] = "get_system_info";
+    AvailableMethods2["GET_SERVER_CAPABILITIES"] = "get_server_capabilities";
+    AvailableMethods2["GET_UI_CAPABILITIES"] = "get_ui_capabilities";
     AvailableMethods2["COMPONENT_ACTION"] = "component_action";
     AvailableMethods2["COMPONENT_ACTION_ASYNC"] = "component_action_async";
     AvailableMethods2["COMPONENT_ACTION_STATUS"] = "component_action_status";
@@ -2309,6 +2311,12 @@ var PodkopShellMethods = {
   checkSingBoxLogs: async () => callBaseMethod(Podkop.AvailableMethods.CHECK_SING_BOX_LOGS),
   getSystemInfo: async () => callBaseMethod(
     Podkop.AvailableMethods.GET_SYSTEM_INFO
+  ),
+  getServerCapabilities: async () => callBaseMethod(
+    Podkop.AvailableMethods.GET_SERVER_CAPABILITIES
+  ),
+  getUiCapabilities: async () => callBaseMethod(
+    Podkop.AvailableMethods.GET_UI_CAPABILITIES
   ),
   componentAction: async (component, action, expectedLatestVersion) => {
     const startedAt = Date.now();
@@ -3463,7 +3471,7 @@ function showLogErrorNotification(line) {
   );
   activeErrorNotifications.set(key, notification);
 }
-function coreService() {
+function coreService(options = {}) {
   TabServiceInstance.onChange((activeId, tabs) => {
     logger.info("[TAB]", activeId);
     store.set({
@@ -3495,7 +3503,20 @@ function coreService() {
       }
     }
   );
-  watcher.start();
+  const startWatcher = () => watcher.start();
+  if (typeof window !== "undefined") {
+    window.setTimeout(() => {
+      if (options.waitForLogWatcherStart) {
+        Promise.resolve().then(() => options.waitForLogWatcherStart?.()).catch(() => null).finally(
+          () => window.setTimeout(startWatcher, options.logWatcherStartDelayMs ?? 0)
+        );
+        return;
+      }
+      startWatcher();
+    }, 0);
+  } else {
+    startWatcher();
+  }
 }
 
 // src/podkop/services/socket.service.ts
@@ -4248,8 +4269,10 @@ async function initController() {
   dashboardControllerInitialized = true;
   onMount("dashboard-status").then(() => {
     logger.debug("[DASHBOARD]", "initController", "onMount");
-    onPageMount();
     registerLifecycleListeners();
+    if (store.get().tabService.current === "dashboard") {
+      onPageMount();
+    }
   });
 }
 
@@ -6818,8 +6841,10 @@ async function initController2() {
   diagnosticControllerInitialized = true;
   onMount("diagnostic-status").then(() => {
     logger.debug("[DIAGNOSTIC]", "initController", "onMount");
-    onPageMount2();
     registerLifecycleListeners2();
+    if (store.get().tabService.current === "diagnostic") {
+      onPageMount2();
+    }
   });
 }
 
@@ -9213,8 +9238,10 @@ async function initController4() {
   updatesControllerInitialized = true;
   onMount("updates-status").then(() => {
     logger.debug("[UPDATES]", "initController", "onMount");
-    onPageMount4();
     registerLifecycleListeners4();
+    if (store.get().tabService.current === "updates") {
+      onPageMount4();
+    }
   });
 }
 

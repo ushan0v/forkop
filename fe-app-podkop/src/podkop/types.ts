@@ -47,6 +47,7 @@ export namespace Podkop {
   // show_sing_box_version   Show sing-box version
   // get_status              Get podkop service status
   // get_sing_box_status     Get sing-box service status
+  // get_ui_capabilities     Get lightweight UI capabilities
   // check_dns_available     Check DNS server availability
   // global_check            Run global system check
 
@@ -78,6 +79,8 @@ export namespace Podkop {
     CHECK_LOGS = 'check_logs',
     CHECK_SING_BOX_LOGS = 'check_sing_box_logs',
     GET_SYSTEM_INFO = 'get_system_info',
+    GET_SERVER_CAPABILITIES = 'get_server_capabilities',
+    GET_UI_CAPABILITIES = 'get_ui_capabilities',
     COMPONENT_ACTION = 'component_action',
     COMPONENT_ACTION_ASYNC = 'component_action_async',
     COMPONENT_ACTION_STATUS = 'component_action_status',
@@ -326,6 +329,17 @@ export namespace Podkop {
     openwrt_version: string;
     device_model: string;
     generated_at?: number;
+  }
+
+  export interface GetServerCapabilities {
+    sing_box_extended: 0 | 1;
+  }
+
+  export interface GetUiCapabilities {
+    sing_box_extended: 0 | 1;
+    zapret_installed: 0 | 1;
+    byedpi_installed: 0 | 1;
+    server_inbounds_enabled_count: number;
   }
 
   export type ComponentName = 'podkop' | 'sing_box' | 'zapret' | 'byedpi';

@@ -610,7 +610,9 @@ export async function initController(): Promise<void> {
 
   onMount('updates-status').then(() => {
     logger.debug('[UPDATES]', 'initController', 'onMount');
-    onPageMount();
     registerLifecycleListeners();
+    if (store.get().tabService.current === 'updates') {
+      onPageMount();
+    }
   });
 }

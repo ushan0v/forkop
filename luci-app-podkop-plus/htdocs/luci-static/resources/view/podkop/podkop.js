@@ -101,17 +101,183 @@ function configureGridSection(sectionRef, type, title, addTitle) {
 const EntryPoint = {
   async render() {
     main.injectGlobalStyles();
-    const serverCapabilities = { singBoxExtended: false };
+    const uiCapabilities = {
+      loaded: false,
+      singBoxExtended: false,
+      zapretInstalled: false,
+      byedpiInstalled: false,
+      serverInboundsEnabledCount: -1,
+    };
+    let uiCapabilitiesPromise = null;
+    let serverSectionRef = null;
 
-    try {
-      const systemInfoResponse = await main.PodkopShellMethods.getSystemInfo();
-      serverCapabilities.singBoxExtended = Boolean(
-        systemInfoResponse?.success &&
-          Number(systemInfoResponse.data?.sing_box_extended) === 1,
+    const applyUiCapabilities = function () {
+      if (serverSectionRef) {
+        server.applyServerCapabilities(serverSectionRef, uiCapabilities);
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(main.PODKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT, {
+            detail: {
+              zapretInstalled: uiCapabilities.zapretInstalled,
+              byedpiInstalled: uiCapabilities.byedpiInstalled,
+            },
+          }),
+        );
+      }
+
+      if (main.store && typeof main.store.set === "function") {
+        const currentSystemInfo = main.store.get().diagnosticsSystemInfo;
+        main.store.set({
+          diagnosticsSystemInfo: {
+            ...currentSystemInfo,
+            providerInfoLoaded: true,
+            sing_box_extended: uiCapabilities.singBoxExtended ? 1 : 0,
+            zapret_installed: uiCapabilities.zapretInstalled ? 1 : 0,
+            byedpi_installed: uiCapabilities.byedpiInstalled ? 1 : 0,
+            server_inbounds_enabled_count:
+              uiCapabilities.serverInboundsEnabledCount,
+            zapret_version: uiCapabilities.zapretInstalled
+              ? currentSystemInfo.zapret_version
+              : "not installed",
+            byedpi_version: uiCapabilities.byedpiInstalled
+              ? currentSystemInfo.byedpi_version
+              : "not installed",
+          },
+        });
+      }
+    };
+
+    const updateUiCapabilities = function (data) {
+      uiCapabilities.loaded = true;
+      uiCapabilities.singBoxExtended = Boolean(
+        Number(data?.sing_box_extended) === 1,
       );
-    } catch (error) {
-      console.warn("Failed to load Podkop Plus server capabilities", error);
-    }
+      uiCapabilities.zapretInstalled = Boolean(
+        Number(data?.zapret_installed) === 1,
+      );
+      uiCapabilities.byedpiInstalled = Boolean(
+        Number(data?.byedpi_installed) === 1,
+      );
+      const serverInboundsEnabledCount =
+        typeof data?.server_inbounds_enabled_count !== "undefined"
+          ? Number(data.server_inbounds_enabled_count)
+          : -1;
+      uiCapabilities.serverInboundsEnabledCount = Number.isFinite(
+        serverInboundsEnabledCount,
+      )
+        ? serverInboundsEnabledCount
+        : -1;
+
+      applyUiCapabilities();
+
+      return uiCapabilities;
+    };
+
+    const loadFallbackUiCapabilities = function () {
+      return Promise.allSettled([
+        main.PodkopShellMethods.getServerCapabilities(),
+        main.PodkopShellMethods.checkZapretRuntime(),
+        main.PodkopShellMethods.checkByedpiRuntime(),
+        main.PodkopShellMethods.checkInboundsConfig(),
+      ]).then(
+        ([
+          serverCapabilitiesResult,
+          zapretRuntimeResult,
+          byedpiRuntimeResult,
+          inboundsConfigResult,
+        ]) => {
+          const serverCapabilities =
+            serverCapabilitiesResult.status === "fulfilled"
+              ? serverCapabilitiesResult.value
+              : null;
+          const zapretRuntime =
+            zapretRuntimeResult.status === "fulfilled"
+              ? zapretRuntimeResult.value
+              : null;
+          const byedpiRuntime =
+            byedpiRuntimeResult.status === "fulfilled"
+              ? byedpiRuntimeResult.value
+              : null;
+          const inboundsConfig =
+            inboundsConfigResult.status === "fulfilled"
+              ? inboundsConfigResult.value
+              : null;
+
+          return updateUiCapabilities({
+            sing_box_extended:
+              serverCapabilities?.success &&
+              Number(serverCapabilities.data?.sing_box_extended) === 1
+                ? 1
+                : 0,
+            zapret_installed:
+              zapretRuntime?.success &&
+              Number(zapretRuntime.data?.zapret_installed) === 1
+                ? 1
+                : 0,
+            byedpi_installed:
+              byedpiRuntime?.success &&
+              Number(byedpiRuntime.data?.byedpi_installed) === 1
+                ? 1
+                : 0,
+            server_inbounds_enabled_count:
+              inboundsConfig?.success &&
+              typeof inboundsConfig.data?.enabled_count !== "undefined"
+                ? inboundsConfig.data.enabled_count
+                : -1,
+          });
+        },
+      );
+    };
+
+    const loadUiCapabilities = function () {
+      if (uiCapabilities.loaded) {
+        return Promise.resolve(uiCapabilities);
+      }
+
+      if (uiCapabilitiesPromise) {
+        return uiCapabilitiesPromise;
+      }
+
+      uiCapabilitiesPromise = main.PodkopShellMethods.getUiCapabilities()
+        .then((response) => {
+          if (!response?.success) {
+            throw new Error("UI capabilities request failed");
+          }
+
+          return updateUiCapabilities(response.data);
+        })
+        .catch((error) => {
+          console.warn("Failed to load Podkop Plus UI capabilities", error);
+          return loadFallbackUiCapabilities();
+        })
+        .finally(() => {
+          uiCapabilitiesPromise = null;
+        });
+
+      return uiCapabilitiesPromise;
+    };
+    let initialUiDataPromise = null;
+    const loadInitialUiData = function () {
+      if (initialUiDataPromise) {
+        return initialUiDataPromise;
+      }
+
+      initialUiDataPromise = loadUiCapabilities()
+        .then(() => {
+          if (typeof server.preloadServerModalData === "function") {
+            return server.preloadServerModalData();
+          }
+          return null;
+        })
+        .catch(() => null)
+        .finally(() => {
+          initialUiDataPromise = null;
+        });
+
+      return initialUiDataPromise;
+    };
 
     const podkopMap = new form.Map(
       UCI_PACKAGE,
@@ -132,6 +298,9 @@ const EntryPoint = {
       _("Section"),
       _("Add a section"),
     );
+    section.configureSectionSection(rulesSection, {
+      loadActionProvidersAvailability: loadUiCapabilities,
+    });
     section.createSectionContent(rulesSection);
 
     const serverSection = podkopMap.section(
@@ -146,8 +315,11 @@ const EntryPoint = {
       _("Server"),
       _("Add a server inbound"),
     );
-    server.configureServerSection(serverSection);
-    server.createServerContent(serverSection, serverCapabilities);
+    serverSectionRef = serverSection;
+    server.configureServerSection(serverSection, {
+      loadCapabilities: loadUiCapabilities,
+    });
+    server.createServerContent(serverSection, uiCapabilities);
 
     const settingsSection = podkopMap.section(
       form.TypedSection,
@@ -209,9 +381,15 @@ const EntryPoint = {
     };
     updates.createUpdatesContent(updatesSection);
 
-    main.coreService();
-
     const rendered = await podkopMap.render();
+    main.coreService({
+      waitForLogWatcherStart: loadInitialUiData,
+      logWatcherStartDelayMs: 5000,
+    });
+    window.setTimeout(() => {
+      loadInitialUiData().catch(() => null);
+    }, 0);
+
     return rendered;
   },
 };

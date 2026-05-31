@@ -735,7 +735,9 @@ export async function initController(): Promise<void> {
 
   onMount('dashboard-status').then(() => {
     logger.debug('[DASHBOARD]', 'initController', 'onMount');
-    onPageMount();
     registerLifecycleListeners();
+    if (store.get().tabService.current === 'dashboard') {
+      onPageMount();
+    }
   });
 }

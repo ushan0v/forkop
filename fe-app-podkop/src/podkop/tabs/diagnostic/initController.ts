@@ -810,7 +810,9 @@ export async function initController(): Promise<void> {
 
   onMount('diagnostic-status').then(() => {
     logger.debug('[DIAGNOSTIC]', 'initController', 'onMount');
-    onPageMount();
     registerLifecycleListeners();
+    if (store.get().tabService.current === 'diagnostic') {
+      onPageMount();
+    }
   });
 }
