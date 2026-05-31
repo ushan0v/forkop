@@ -1493,7 +1493,7 @@ updates_resolve_sing_box_extended_release() {
 
 updates_install_sing_box_extended() {
     local action="$1"
-    local current_version latest_version normalized_current normalized_latest archive_file binary_path cronet_path target_binary target_cronet extract_error new_version backup_binary backup_cronet
+    local current_version latest_version normalized_current normalized_latest archive_file binary_path cronet_path extract_error new_version backup_binary backup_cronet
 
     updates_init_tmp_dir || updates_fail "sing_box" "$action" "Failed to create temporary directory"
     current_version="$(get_sing_box_version)"
@@ -1515,83 +1515,76 @@ updates_install_sing_box_extended() {
     [ -n "$binary_path" ] || updates_fail "sing_box" "$action" "sing-box binary was not found in the downloaded archive" "$current_version" "$latest_version"
     cronet_path="$(tar -tzf "$archive_file" 2>/dev/null | grep -E '(^|/)libcronet\.so$' | sed -n '1p')"
 
-    target_binary="/usr/bin/.sing-box.new.$$"
-    target_cronet=""
     extract_error="$UPDATES_TMP_DIR/sing-box-extract.err"
-
-    if ! tar -xzf "$archive_file" -O "$binary_path" >"$target_binary" 2>"$extract_error"; then
-        while IFS= read -r line; do
-            [ -n "$line" ] && updates_log "$line" "error"
-        done <"$extract_error"
-        rm -f "$target_binary"
-        updates_fail "sing_box" "$action" "Failed to extract sing-box-extended" "$current_version" "$latest_version"
-    fi
-
-    if [ ! -s "$target_binary" ]; then
-        rm -f "$target_binary"
-        updates_fail "sing_box" "$action" "sing-box binary was empty after extraction" "$current_version" "$latest_version"
-    fi
-
-    if ! chmod 0755 "$target_binary"; then
-        rm -f "$target_binary"
-        updates_fail "sing_box" "$action" "Failed to prepare sing-box-extended binary" "$current_version" "$latest_version"
-    fi
-
-    if [ -n "$cronet_path" ]; then
-        target_cronet="$UPDATES_TMP_DIR/libcronet.so"
-        if ! tar -xzf "$archive_file" -O "$cronet_path" >"$target_cronet" 2>"$extract_error"; then
-            while IFS= read -r line; do
-                [ -n "$line" ] && updates_log "$line" "error"
-            done <"$extract_error"
-            rm -f "$target_binary" "$target_cronet"
-            updates_fail "sing_box" "$action" "Failed to extract libcronet.so from sing-box-extended archive" "$current_version" "$latest_version"
-        fi
-
-        if [ ! -s "$target_cronet" ]; then
-            rm -f "$target_binary" "$target_cronet"
-            updates_fail "sing_box" "$action" "libcronet.so was empty after extraction" "$current_version" "$latest_version"
-        fi
-
-        if ! chmod 0644 "$target_cronet"; then
-            rm -f "$target_binary" "$target_cronet"
-            updates_fail "sing_box" "$action" "Failed to prepare libcronet.so" "$current_version" "$latest_version"
-        fi
-    fi
-
-    new_version="$(updates_validate_sing_box_extended_binary "$target_binary" "$UPDATES_TMP_DIR")" || {
-        rm -f "$target_binary" "$target_cronet"
-        updates_fail "sing_box" "$action" "Downloaded sing-box-extended binary failed validation" "$current_version" "$latest_version"
-    }
 
     backup_binary=""
     if [ -e /usr/bin/sing-box ]; then
         backup_binary="$UPDATES_TMP_DIR/sing-box.backup.$$"
         if ! cp -p /usr/bin/sing-box "$backup_binary"; then
-            rm -f "$target_binary" "$target_cronet" "$backup_binary"
+            rm -f "$backup_binary"
             updates_fail "sing_box" "$action" "Failed to backup current sing-box binary" "$current_version" "$latest_version"
         fi
+        rm -f /usr/bin/sing-box
     fi
 
     backup_cronet=""
-    if [ -n "$target_cronet" ] && [ -e /usr/lib/libcronet.so ]; then
+    if [ -n "$cronet_path" ] && [ -e /usr/lib/libcronet.so ]; then
         backup_cronet="$UPDATES_TMP_DIR/libcronet.so.backup.$$"
         if ! cp -p /usr/lib/libcronet.so "$backup_cronet"; then
-            rm -f "$target_binary" "$target_cronet" "$backup_binary" "$backup_cronet"
+            updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+            rm -f "$backup_binary" "$backup_cronet"
             updates_fail "sing_box" "$action" "Failed to backup current libcronet.so" "$current_version" "$latest_version"
         fi
+        rm -f /usr/lib/libcronet.so
     fi
 
-    if ! mv -f "$target_binary" /usr/bin/sing-box; then
-        rm -f "$target_binary" "$target_cronet"
+    if ! tar -xzf "$archive_file" -O "$binary_path" >/usr/bin/sing-box 2>"$extract_error"; then
+        while IFS= read -r line; do
+            [ -n "$line" ] && updates_log "$line" "error"
+        done <"$extract_error"
+        rm -f /usr/bin/sing-box
         updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
         updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
-        updates_fail "sing_box" "$action" "Failed to install sing-box-extended" "$current_version" "$latest_version"
+        updates_fail "sing_box" "$action" "Failed to extract sing-box-extended" "$current_version" "$latest_version"
     fi
 
-    if [ -n "$target_cronet" ] && ! mv -f "$target_cronet" /usr/lib/libcronet.so; then
+    if [ ! -s /usr/bin/sing-box ]; then
+        rm -f /usr/bin/sing-box
         updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
         updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
-        updates_fail "sing_box" "$action" "Failed to install libcronet.so" "$current_version" "$latest_version"
+        updates_fail "sing_box" "$action" "sing-box binary was empty after extraction" "$current_version" "$latest_version"
+    fi
+
+    if ! chmod 0755 /usr/bin/sing-box; then
+        rm -f /usr/bin/sing-box
+        updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+        updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
+        updates_fail "sing_box" "$action" "Failed to prepare sing-box-extended binary" "$current_version" "$latest_version"
+    fi
+
+    if [ -n "$cronet_path" ]; then
+        if ! tar -xzf "$archive_file" -O "$cronet_path" >/usr/lib/libcronet.so 2>"$extract_error"; then
+            while IFS= read -r line; do
+                [ -n "$line" ] && updates_log "$line" "error"
+            done <"$extract_error"
+            updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+            updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
+            updates_fail "sing_box" "$action" "Failed to extract libcronet.so from sing-box-extended archive" "$current_version" "$latest_version"
+        fi
+
+        if [ ! -s /usr/lib/libcronet.so ]; then
+            rm -f /usr/lib/libcronet.so
+            updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+            updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
+            updates_fail "sing_box" "$action" "libcronet.so was empty after extraction" "$current_version" "$latest_version"
+        fi
+
+        if ! chmod 0644 /usr/lib/libcronet.so; then
+            rm -f /usr/lib/libcronet.so
+            updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+            updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
+            updates_fail "sing_box" "$action" "Failed to prepare libcronet.so" "$current_version" "$latest_version"
+        fi
     fi
 
     new_version="$(updates_validate_sing_box_extended_binary /usr/bin/sing-box /usr/lib)" || {
