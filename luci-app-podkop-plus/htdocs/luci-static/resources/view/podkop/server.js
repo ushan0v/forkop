@@ -395,9 +395,10 @@ const PORT_PROTOCOLS = [
   "trojan",
   "hysteria2",
 ];
+const EXTENDED_PORT_PROTOCOLS = ["mtproto"];
 const PASSWORD_PROTOCOLS = ["shadowsocks", "socks", "trojan", "hysteria2"];
 
-const PROTOCOL_LABELS = {
+const BASE_PROTOCOL_LABELS = {
   vless: "VLESS",
   shadowsocks: "Shadowsocks",
   socks: "SOCKS",
@@ -405,6 +406,13 @@ const PROTOCOL_LABELS = {
   trojan: "Trojan",
   hysteria2: "Hysteria2",
   tailscale: "Tailscale",
+};
+const EXTENDED_PROTOCOL_LABELS = {
+  mtproto: "MTProto",
+};
+const PROTOCOL_LABELS = {
+  ...BASE_PROTOCOL_LABELS,
+  ...EXTENDED_PROTOCOL_LABELS,
 };
 
 const SECURITY_BY_PROTOCOL = {
@@ -414,6 +422,7 @@ const SECURITY_BY_PROTOCOL = {
   hysteria2: ["tls"],
   shadowsocks: ["none"],
   socks: ["none"],
+  mtproto: ["none"],
   tailscale: ["none"],
 };
 
@@ -489,6 +498,10 @@ function getProtocolLabel(protocol) {
   return PROTOCOL_LABELS[protocol] || protocol || "";
 }
 
+function getAvailableProtocolLabels(singBoxExtended) {
+  return singBoxExtended ? PROTOCOL_LABELS : BASE_PROTOCOL_LABELS;
+}
+
 function getServerName(sectionId) {
   return uci.get(UCI_PACKAGE, sectionId, "label") || sectionId;
 }
@@ -522,6 +535,7 @@ function getEffectiveSecurity(sectionId) {
   if (
     protocol === "shadowsocks" ||
     protocol === "socks" ||
+    protocol === "mtproto" ||
     protocol === "tailscale"
   ) {
     return "none";
@@ -700,6 +714,12 @@ function randomHex(byteLength) {
     .join("");
 }
 
+function stringToHex(value) {
+  return Array.from(unescape(encodeURIComponent(`${value || ""}`)))
+    .map((char) => char.charCodeAt(0).toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function generateUuid() {
   if (window.crypto && window.crypto.randomUUID) {
     return window.crypto.randomUUID();
@@ -732,6 +752,10 @@ function generatePassword() {
       .map((byte) => String.fromCharCode(byte))
       .join(""),
   );
+}
+
+function generateMtprotoSecret(host = "google.com") {
+  return `ee${randomHex(16)}${stringToHex(host)}`;
 }
 
 function randomPort() {
@@ -890,6 +914,15 @@ function ensureProtocolDefaults(sectionId, protocol, forceProtocolDefaults) {
   if (protocol === "hysteria2") {
     setDefault(sectionId, "hysteria2_obfs_password", generatePassword());
   }
+
+  if (protocol === "mtproto") {
+    setDefault(sectionId, "mtproto_secret", generateMtprotoSecret());
+    setDefault(sectionId, "mtproto_domain_fronting_port", "443");
+    setDefault(sectionId, "mtproto_prefer_ip", "prefer-ipv4");
+    setDefault(sectionId, "mtproto_tolerate_time_skewness", "3s");
+    setDefault(sectionId, "mtproto_idle_timeout", "5m");
+    setDefault(sectionId, "mtproto_handshake_timeout", "10s");
+  }
 }
 
 function parseLegacyServerUser(sectionId, protocol) {
@@ -917,12 +950,17 @@ function getServerIdentity(sectionId) {
     uci.get(UCI_PACKAGE, sectionId, "server_password") ||
     (PASSWORD_PROTOCOLS.includes(protocol) ? legacy?.credential : "") ||
     "";
+  const mtprotoSecret =
+    uci.get(UCI_PACKAGE, sectionId, "mtproto_secret") ||
+    (protocol === "mtproto" ? legacy?.credential : "") ||
+    "";
 
   return {
     name,
     username: getSocksUsername(sectionId),
     uuid,
     password,
+    mtprotoSecret,
     flow: normalizeVlessFlow(
       uci.get(UCI_PACKAGE, sectionId, "vless_flow") ||
         (protocol === "vless" ? legacy?.extra : "") ||
@@ -956,6 +994,11 @@ function getTransportParams(sectionId, params) {
   if (transport === "ws" || transport === "httpupgrade") {
     params.path = uci.get(UCI_PACKAGE, sectionId, "transport_path") || "";
     params.host = uci.get(UCI_PACKAGE, sectionId, "transport_host") || "";
+  } else if (transport === "xhttp") {
+    params.path = uci.get(UCI_PACKAGE, sectionId, "transport_path") || "/";
+    params.host = uci.get(UCI_PACKAGE, sectionId, "transport_host") || "";
+    params.mode =
+      uci.get(UCI_PACKAGE, sectionId, "transport_xhttp_mode") || "auto";
   } else if (transport === "grpc") {
     params.serviceName =
       uci.get(UCI_PACKAGE, sectionId, "transport_service_name") || "";
@@ -1074,6 +1117,18 @@ function buildHysteria2Link(sectionId, identity) {
   return `hysteria2://${encodeURIComponent(identity.password)}@${host}:${port}${query ? `?${query}` : ""}#${encodeURIComponent(identity.name || sectionId)}`;
 }
 
+function buildMtprotoLink(sectionId, identity) {
+  const host = getPublicHost(sectionId);
+  const port = uci.get(UCI_PACKAGE, sectionId, "listen_port") || "";
+  const query = encodeQuery({
+    server: host,
+    port,
+    secret: identity.mtprotoSecret,
+  });
+
+  return `https://t.me/proxy?${query}`;
+}
+
 function buildClientLink(sectionId) {
   const protocol = getProtocol(sectionId);
   const identity = getServerIdentity(sectionId);
@@ -1084,7 +1139,8 @@ function buildClientLink(sectionId) {
 
   if (
     ((protocol === "vless" || protocol === "vmess") && !identity.uuid) ||
-    (PASSWORD_PROTOCOLS.includes(protocol) && !identity.password)
+    (PASSWORD_PROTOCOLS.includes(protocol) && !identity.password) ||
+    (protocol === "mtproto" && !identity.mtprotoSecret)
   ) {
     return "";
   }
@@ -1109,6 +1165,8 @@ function buildClientLink(sectionId) {
       return buildVlessTrojanLink(sectionId, identity);
     case "hysteria2":
       return buildHysteria2Link(sectionId, identity);
+    case "mtproto":
+      return buildMtprotoLink(sectionId, identity);
     case "vless":
     default:
       return buildVlessTrojanLink(sectionId, identity);
@@ -1488,6 +1546,12 @@ function validateListenAddress(_sectionId, value) {
     : _("Use an IPv4 listen address");
 }
 
+function validateOptionalIpv4(_sectionId, value) {
+  return isEmptyValue(value) || isIpv4(normalizeHost(value))
+    ? true
+    : _("Use an IPv4 address");
+}
+
 function validateFilePath(_sectionId, value) {
   const path = `${value || ""}`;
 
@@ -1545,6 +1609,12 @@ function validateRequiredDuration(_sectionId, value) {
   return validateDurationValue(value)
     ? true
     : _("Use a duration like 30s, 5m, or 1h30m");
+}
+
+function validateOptionalNonNegativeInteger(_sectionId, value) {
+  return isEmptyValue(value) || /^[0-9]+$/.test(`${value}`)
+    ? true
+    : _("Use a non-negative integer");
 }
 
 function validateTransportPath(_sectionId, value) {
@@ -1837,8 +1907,13 @@ function addStreamDepends(option) {
   STREAM_PROTOCOLS.forEach((protocol) => option.depends("protocol", protocol));
 }
 
-function addPortProtocolDepends(option) {
+function addPortProtocolDepends(option, singBoxExtended) {
   PORT_PROTOCOLS.forEach((protocol) => option.depends("protocol", protocol));
+  if (singBoxExtended) {
+    EXTENDED_PORT_PROTOCOLS.forEach((protocol) =>
+      option.depends("protocol", protocol),
+    );
+  }
 }
 
 function addTlsDepends(option) {
@@ -1854,6 +1929,10 @@ function addRealityDepends(option) {
 
 function addTailscaleDepends(option) {
   option.depends("protocol", "tailscale");
+}
+
+function addMtprotoDepends(option) {
+  option.depends("protocol", "mtproto");
 }
 
 function configureServerSection(sectionRef) {
@@ -1928,8 +2007,9 @@ function configureServerSection(sectionRef) {
   };
 }
 
-function createServerContent(section) {
+function createServerContent(section, options = {}) {
   injectServerStyles();
+  const singBoxExtended = Boolean(options && options.singBoxExtended);
 
   let o = section.option(form.Flag, "enabled", _("Enable"));
   o.default = "1";
@@ -1972,9 +2052,11 @@ function createServerContent(section) {
   };
 
   o = section.option(form.ListValue, "protocol", _("Protocol"));
-  Object.entries(PROTOCOL_LABELS).forEach(([value, label]) => {
-    o.value(value, label);
-  });
+  Object.entries(getAvailableProtocolLabels(singBoxExtended)).forEach(
+    ([value, label]) => {
+      o.value(value, label);
+    },
+  );
   o.default = "vless";
   o.rmempty = false;
   o.modalonly = true;
@@ -1992,20 +2074,20 @@ function createServerContent(section) {
   o.rmempty = false;
   o.modalonly = true;
   o.validate = validateListenAddress;
-  addPortProtocolDepends(o);
+  addPortProtocolDepends(o, singBoxExtended);
 
   o = section.option(form.Value, "listen_port", _("Listen port"));
   o.default = "443";
   o.rmempty = false;
   o.modalonly = true;
   o.validate = validatePort;
-  addPortProtocolDepends(o);
+  addPortProtocolDepends(o, singBoxExtended);
 
   o = section.option(form.Value, "public_host", _("Public host"));
   o.modalonly = true;
   o.rmempty = false;
   o.validate = validateHost;
-  addPortProtocolDepends(o);
+  addPortProtocolDepends(o, singBoxExtended);
   o.load = function (sectionId) {
     return loadDefaultPublicHost().then((host) => {
       applyDefaultPublicHost(sectionId, host);
@@ -2207,6 +2289,9 @@ function createServerContent(section) {
   o.value("grpc", "gRPC");
   o.value("http", "HTTP");
   o.value("httpupgrade", "HTTPUpgrade");
+  if (singBoxExtended) {
+    o.value("xhttp", "XHTTP");
+  }
   o.default = "tcp";
   o.rmempty = false;
   o.modalonly = true;
@@ -2224,6 +2309,11 @@ function createServerContent(section) {
   o.depends({ protocol: "vless", transport: "httpupgrade" });
   o.depends({ protocol: "vmess", transport: "httpupgrade" });
   o.depends({ protocol: "trojan", transport: "httpupgrade" });
+  if (singBoxExtended) {
+    o.depends({ protocol: "vless", transport: "xhttp" });
+    o.depends({ protocol: "vmess", transport: "xhttp" });
+    o.depends({ protocol: "trojan", transport: "xhttp" });
+  }
 
   o = section.option(form.Value, "transport_host", _("Transport host"));
   o.modalonly = true;
@@ -2234,6 +2324,25 @@ function createServerContent(section) {
   o.depends({ protocol: "vless", transport: "httpupgrade" });
   o.depends({ protocol: "vmess", transport: "httpupgrade" });
   o.depends({ protocol: "trojan", transport: "httpupgrade" });
+  if (singBoxExtended) {
+    o.depends({ protocol: "vless", transport: "xhttp" });
+    o.depends({ protocol: "vmess", transport: "xhttp" });
+    o.depends({ protocol: "trojan", transport: "xhttp" });
+  }
+
+  if (singBoxExtended) {
+    o = section.option(form.ListValue, "transport_xhttp_mode", _("XHTTP mode"));
+    o.value("auto", "auto");
+    o.value("packet-up", "packet-up");
+    o.value("stream-up", "stream-up");
+    o.value("stream-one", "stream-one");
+    o.default = "auto";
+    o.rmempty = false;
+    o.modalonly = true;
+    o.depends({ protocol: "vless", transport: "xhttp" });
+    o.depends({ protocol: "vmess", transport: "xhttp" });
+    o.depends({ protocol: "trojan", transport: "xhttp" });
+  }
 
   o = section.option(form.DynamicList, "transport_hosts", _("HTTP hosts"));
   o.modalonly = true;
@@ -2350,6 +2459,132 @@ function createServerContent(section) {
     return value;
   };
   o.depends({ protocol: "hysteria2", hysteria2_obfs_type: "salamander" });
+
+  if (singBoxExtended) {
+    o = section.option(form.Value, "mtproto_secret", _("MTProto secret"));
+    o.modalonly = true;
+    o.rmempty = false;
+    o.validate = validateRequiredText;
+    o.load = function (sectionId) {
+      const current = uci.get(UCI_PACKAGE, sectionId, "mtproto_secret");
+      if (current) {
+        return current;
+      }
+      const value = generateMtprotoSecret();
+      uci.set(UCI_PACKAGE, sectionId, "mtproto_secret", value);
+      return value;
+    };
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Value,
+      "mtproto_concurrency",
+      _("MTProto concurrency"),
+    );
+    o.modalonly = true;
+    o.rmempty = true;
+    o.validate = validateOptionalNonNegativeInteger;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Value,
+      "mtproto_domain_fronting_port",
+      _("MTProto fronting port"),
+    );
+    o.default = "443";
+    o.modalonly = true;
+    o.rmempty = false;
+    o.validate = validatePort;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Value,
+      "mtproto_domain_fronting_ip",
+      _("MTProto fronting IP"),
+    );
+    o.modalonly = true;
+    o.rmempty = true;
+    o.validate = validateOptionalIpv4;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Flag,
+      "mtproto_domain_fronting_proxy_protocol",
+      _("MTProto fronting proxy protocol"),
+    );
+    o.default = "0";
+    o.modalonly = true;
+    o.rmempty = true;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.ListValue,
+      "mtproto_prefer_ip",
+      _("MTProto preferred IP"),
+    );
+    o.value("prefer-ipv4", "prefer-ipv4");
+    o.value("prefer-ipv6", "prefer-ipv6");
+    o.value("only-ipv4", "only-ipv4");
+    o.value("only-ipv6", "only-ipv6");
+    o.default = "prefer-ipv4";
+    o.rmempty = false;
+    o.modalonly = true;
+    o.validate = validateRequired;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Flag,
+      "mtproto_auto_update",
+      _("MTProto auto update"),
+    );
+    o.default = "0";
+    o.modalonly = true;
+    o.rmempty = true;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Flag,
+      "mtproto_allow_fallback_on_unknown_dc",
+      _("MTProto fallback on unknown DC"),
+    );
+    o.default = "0";
+    o.modalonly = true;
+    o.rmempty = true;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Value,
+      "mtproto_tolerate_time_skewness",
+      _("MTProto time skew tolerance"),
+    );
+    o.default = "3s";
+    o.modalonly = true;
+    o.rmempty = false;
+    o.validate = validateRequiredDuration;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Value,
+      "mtproto_idle_timeout",
+      _("MTProto idle timeout"),
+    );
+    o.default = "5m";
+    o.modalonly = true;
+    o.rmempty = false;
+    o.validate = validateRequiredDuration;
+    addMtprotoDepends(o);
+
+    o = section.option(
+      form.Value,
+      "mtproto_handshake_timeout",
+      _("MTProto handshake timeout"),
+    );
+    o.default = "10s";
+    o.modalonly = true;
+    o.rmempty = false;
+    o.validate = validateRequiredDuration;
+    addMtprotoDepends(o);
+  }
 
   o = section.option(form.Value, "tailscale_auth_key", _("Tailscale auth key"));
   o.modalonly = true;

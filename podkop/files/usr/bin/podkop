@@ -1721,9 +1721,13 @@ append_sing_box_server_signature() {
     local enabled label protocol listen listen_port public_host routing_mode routing_section security \
         users tls_server_name tls_alpn tls_certificate_path tls_key_path reality_handshake_server \
         reality_handshake_server_port reality_private_key reality_public_key reality_short_id \
-        reality_max_time_difference transport transport_path transport_host transport_service_name transport_hosts \
+        reality_max_time_difference transport transport_path transport_host transport_service_name transport_hosts transport_xhttp_mode \
         client_fingerprint server_uuid server_username server_password vless_flow vmess_alter_id \
         shadowsocks_method hysteria2_up_mbps hysteria2_down_mbps hysteria2_obfs_type hysteria2_obfs_password \
+        mtproto_secret mtproto_concurrency mtproto_domain_fronting_port mtproto_domain_fronting_ip \
+        mtproto_domain_fronting_proxy_protocol mtproto_prefer_ip mtproto_auto_update \
+        mtproto_allow_fallback_on_unknown_dc mtproto_tolerate_time_skewness mtproto_idle_timeout \
+        mtproto_handshake_timeout \
         tailscale_auth_key tailscale_control_url tailscale_hostname \
         tailscale_accept_routes tailscale_advertise_routes \
         tailscale_advertise_exit_node
@@ -1756,6 +1760,7 @@ append_sing_box_server_signature() {
     config_get transport_host "$section" "transport_host"
     config_get transport_service_name "$section" "transport_service_name"
     config_get transport_hosts "$section" "transport_hosts"
+    config_get transport_xhttp_mode "$section" "transport_xhttp_mode"
     config_get client_fingerprint "$section" "client_fingerprint"
     config_get server_uuid "$section" "server_uuid"
     config_get server_username "$section" "server_username"
@@ -1767,6 +1772,17 @@ append_sing_box_server_signature() {
     config_get hysteria2_down_mbps "$section" "hysteria2_down_mbps"
     config_get hysteria2_obfs_type "$section" "hysteria2_obfs_type"
     config_get hysteria2_obfs_password "$section" "hysteria2_obfs_password"
+    config_get mtproto_secret "$section" "mtproto_secret"
+    config_get mtproto_concurrency "$section" "mtproto_concurrency"
+    config_get mtproto_domain_fronting_port "$section" "mtproto_domain_fronting_port"
+    config_get mtproto_domain_fronting_ip "$section" "mtproto_domain_fronting_ip"
+    config_get mtproto_domain_fronting_proxy_protocol "$section" "mtproto_domain_fronting_proxy_protocol"
+    config_get mtproto_prefer_ip "$section" "mtproto_prefer_ip"
+    config_get mtproto_auto_update "$section" "mtproto_auto_update"
+    config_get mtproto_allow_fallback_on_unknown_dc "$section" "mtproto_allow_fallback_on_unknown_dc"
+    config_get mtproto_tolerate_time_skewness "$section" "mtproto_tolerate_time_skewness"
+    config_get mtproto_idle_timeout "$section" "mtproto_idle_timeout"
+    config_get mtproto_handshake_timeout "$section" "mtproto_handshake_timeout"
     config_get tailscale_auth_key "$section" "tailscale_auth_key"
     config_get tailscale_control_url "$section" "tailscale_control_url"
     config_get tailscale_hostname "$section" "tailscale_hostname"
@@ -1798,6 +1814,7 @@ append_sing_box_server_signature() {
     signature_add "server.$section.transport_host" "$transport_host"
     signature_add "server.$section.transport_service_name" "$transport_service_name"
     signature_add "server.$section.transport_hosts" "$transport_hosts"
+    signature_add "server.$section.transport_xhttp_mode" "$transport_xhttp_mode"
     signature_add "server.$section.client_fingerprint" "$client_fingerprint"
     signature_add "server.$section.server_uuid" "$server_uuid"
     signature_add "server.$section.server_username" "$server_username"
@@ -1809,6 +1826,17 @@ append_sing_box_server_signature() {
     signature_add "server.$section.hysteria2_down_mbps" "$hysteria2_down_mbps"
     signature_add "server.$section.hysteria2_obfs_type" "$hysteria2_obfs_type"
     signature_add "server.$section.hysteria2_obfs_password" "$hysteria2_obfs_password"
+    signature_add "server.$section.mtproto_secret" "$mtproto_secret"
+    signature_add "server.$section.mtproto_concurrency" "$mtproto_concurrency"
+    signature_add "server.$section.mtproto_domain_fronting_port" "$mtproto_domain_fronting_port"
+    signature_add "server.$section.mtproto_domain_fronting_ip" "$mtproto_domain_fronting_ip"
+    signature_add "server.$section.mtproto_domain_fronting_proxy_protocol" "$mtproto_domain_fronting_proxy_protocol"
+    signature_add "server.$section.mtproto_prefer_ip" "$mtproto_prefer_ip"
+    signature_add "server.$section.mtproto_auto_update" "$mtproto_auto_update"
+    signature_add "server.$section.mtproto_allow_fallback_on_unknown_dc" "$mtproto_allow_fallback_on_unknown_dc"
+    signature_add "server.$section.mtproto_tolerate_time_skewness" "$mtproto_tolerate_time_skewness"
+    signature_add "server.$section.mtproto_idle_timeout" "$mtproto_idle_timeout"
+    signature_add "server.$section.mtproto_handshake_timeout" "$mtproto_handshake_timeout"
     signature_add "server.$section.tailscale_auth_key" "$tailscale_auth_key"
     signature_add "server.$section.tailscale_control_url" "$tailscale_control_url"
     signature_add "server.$section.tailscale_hostname" "$tailscale_hostname"
@@ -2942,6 +2970,37 @@ migrate_list_update_enabled() {
     fi
 }
 
+validate_extended_server_features_handler() {
+    local section="$1"
+    local protocol transport
+
+    server_is_enabled "$section" || return 0
+
+    config_get protocol "$section" "protocol" "vless"
+    case "$protocol" in
+    mtproto)
+        log "Server '$section' uses MTProto proxy, but sing-box-extended is not installed. Install sing-box-extended or disable this server. Aborted." "fatal"
+        exit 1
+        ;;
+    esac
+
+    config_get transport "$section" "transport" "tcp"
+    case "$transport" in
+    xhttp)
+        log "Server '$section' uses XHTTP transport, but sing-box-extended is not installed. Install sing-box-extended or change the transport. Aborted." "fatal"
+        exit 1
+        ;;
+    esac
+}
+
+validate_extended_server_features() {
+    local sing_box_version="$1"
+
+    is_sing_box_extended "$sing_box_version" && return 0
+
+    config_foreach validate_extended_server_features_handler "server"
+}
+
 check_requirements() {
     log "Check Requirements"
 
@@ -2962,6 +3021,8 @@ check_requirements() {
             log "Service 'sing-box' is missing. Please install the official package to ensure the service is available. Aborted." "error"
             exit 1
         fi
+
+        validate_extended_server_features "$sing_box_version"
     fi
 
     if [ -z "$coreutils_base64_version" ]; then
@@ -5622,13 +5683,17 @@ configure_server_inbound() {
     local section="$1"
     local protocol listen listen_port public_host inbound_tag users_tmp status \
         shadowsocks_method server_password hysteria2_up_mbps hysteria2_down_mbps \
-        hysteria2_obfs_type hysteria2_obfs_password
+        hysteria2_obfs_type hysteria2_obfs_password mtproto_concurrency \
+        mtproto_domain_fronting_port mtproto_domain_fronting_ip \
+        mtproto_domain_fronting_proxy_protocol mtproto_prefer_ip mtproto_auto_update \
+        mtproto_allow_fallback_on_unknown_dc mtproto_tolerate_time_skewness \
+        mtproto_idle_timeout mtproto_handshake_timeout
 
     server_is_enabled "$section" || return 0
 
     config_get protocol "$section" "protocol" "vless"
     case "$protocol" in
-    shadowsocks | socks | vmess | vless | trojan | hysteria2 | tailscale) ;;
+    shadowsocks | socks | vmess | vless | trojan | hysteria2 | mtproto | tailscale) ;;
     *)
         log "Server '$section' has unsupported protocol '$protocol'. Aborted." "fatal"
         exit 1
@@ -5681,7 +5746,7 @@ configure_server_inbound() {
         config=$(sing_box_cm_add_shadowsocks_inbound "$config" "$inbound_tag" "$listen" "$listen_port" "$shadowsocks_method" "$server_password")
         status=$?
         ;;
-    socks | vmess | vless | trojan | hysteria2)
+    socks | vmess | vless | trojan | hysteria2 | mtproto)
         users_tmp="$(server_write_users_json "$section" "$protocol")" || {
             log "Failed to prepare users for server '$section'. Aborted." "fatal"
             exit 1
@@ -5720,6 +5785,63 @@ configure_server_inbound() {
                 sing_box_cm_add_hysteria2_inbound \
                     "$config" "$inbound_tag" "$listen" "$listen_port" "$users_tmp" \
                     "$hysteria2_up_mbps" "$hysteria2_down_mbps" "$hysteria2_obfs_type" "$hysteria2_obfs_password"
+            )
+            ;;
+        mtproto)
+            config_get mtproto_concurrency "$section" "mtproto_concurrency"
+            config_get mtproto_domain_fronting_port "$section" "mtproto_domain_fronting_port" "443"
+            config_get mtproto_domain_fronting_ip "$section" "mtproto_domain_fronting_ip"
+            config_get_bool mtproto_domain_fronting_proxy_protocol "$section" "mtproto_domain_fronting_proxy_protocol" 0
+            config_get mtproto_prefer_ip "$section" "mtproto_prefer_ip" "prefer-ipv4"
+            config_get_bool mtproto_auto_update "$section" "mtproto_auto_update" 0
+            config_get_bool mtproto_allow_fallback_on_unknown_dc "$section" "mtproto_allow_fallback_on_unknown_dc" 0
+            config_get mtproto_tolerate_time_skewness "$section" "mtproto_tolerate_time_skewness" "3s"
+            config_get mtproto_idle_timeout "$section" "mtproto_idle_timeout" "5m"
+            config_get mtproto_handshake_timeout "$section" "mtproto_handshake_timeout" "10s"
+
+            if [ -n "$mtproto_concurrency" ]; then
+                case "$mtproto_concurrency" in
+                '' | *[!0-9]*)
+                    log "Server '$section' has invalid MTProto concurrency '$mtproto_concurrency'. Use a non-negative integer. Aborted." "fatal"
+                    exit 1
+                    ;;
+                esac
+            fi
+            if ! server_port_is_valid "$mtproto_domain_fronting_port"; then
+                log "Server '$section' has invalid MTProto fronting port '$mtproto_domain_fronting_port'. Aborted." "fatal"
+                exit 1
+            fi
+            if [ -n "$mtproto_domain_fronting_ip" ] && ! is_ipv4 "$mtproto_domain_fronting_ip"; then
+                log "Server '$section' has invalid MTProto fronting IP '$mtproto_domain_fronting_ip'. Use an IPv4 address. Aborted." "fatal"
+                exit 1
+            fi
+            case "$mtproto_prefer_ip" in
+            prefer-ipv4 | prefer-ipv6 | only-ipv4 | only-ipv6) ;;
+            *)
+                log "Server '$section' has unsupported MTProto preferred IP mode '$mtproto_prefer_ip'. Aborted." "fatal"
+                exit 1
+                ;;
+            esac
+            if ! server_duration_is_valid "$mtproto_tolerate_time_skewness"; then
+                log "Server '$section' has invalid MTProto time skew tolerance '$mtproto_tolerate_time_skewness'. Aborted." "fatal"
+                exit 1
+            fi
+            if ! server_duration_is_valid "$mtproto_idle_timeout"; then
+                log "Server '$section' has invalid MTProto idle timeout '$mtproto_idle_timeout'. Aborted." "fatal"
+                exit 1
+            fi
+            if ! server_duration_is_valid "$mtproto_handshake_timeout"; then
+                log "Server '$section' has invalid MTProto handshake timeout '$mtproto_handshake_timeout'. Aborted." "fatal"
+                exit 1
+            fi
+
+            config=$(
+                sing_box_cm_add_mtproxy_inbound \
+                    "$config" "$inbound_tag" "$listen" "$listen_port" "$users_tmp" \
+                    "$mtproto_concurrency" "$mtproto_domain_fronting_port" "$mtproto_domain_fronting_ip" \
+                    "$mtproto_domain_fronting_proxy_protocol" "$mtproto_prefer_ip" "$mtproto_auto_update" \
+                    "$mtproto_allow_fallback_on_unknown_dc" "$mtproto_tolerate_time_skewness" \
+                    "$mtproto_idle_timeout" "$mtproto_handshake_timeout"
             )
             ;;
         esac
@@ -6077,7 +6199,7 @@ server_effective_security() {
     [ -n "$security" ] || security="$(server_default_security_for_protocol "$protocol")"
 
     case "$protocol" in
-    shadowsocks | socks | tailscale)
+    shadowsocks | socks | mtproto | tailscale)
         security="none"
         ;;
     hysteria2)
@@ -6140,6 +6262,19 @@ server_generate_uuid() {
 
 server_generate_password() {
     sing-box generate rand --base64 18 2>/dev/null | tr -d '\n'
+}
+
+server_generate_mtproto_secret() {
+    local host="${1:-google.com}"
+    local random_hex host_hex
+
+    random_hex="$(sing-box generate rand --hex 16 2>/dev/null | tr -d '\n')"
+    if [ -z "$random_hex" ]; then
+        random_hex="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    fi
+    host_hex="$(printf '%s' "$host" | od -An -tx1 | tr -d ' \n')"
+
+    printf 'ee%s%s\n' "$random_hex" "$host_hex"
 }
 
 server_generate_short_id() {
@@ -6302,6 +6437,9 @@ server_prepare_legacy_user_defaults() {
     shadowsocks | socks | trojan | hysteria2)
         server_default_set_option "$section" "server_password" "$credential"
         ;;
+    mtproto)
+        server_default_set_option "$section" "mtproto_secret" "$credential"
+        ;;
     esac
     if [ "$protocol" = "socks" ] && [ -n "$name" ]; then
         server_default_set_option "$section" "server_username" "$name"
@@ -6360,11 +6498,11 @@ server_prepare_tls_defaults() {
 
 prepare_server_defaults() {
     local section="$1"
-    local protocol security uuid password server_username label short_id reality_private_key reality_public_key safe_name
+    local protocol security uuid password server_username label short_id reality_private_key reality_public_key safe_name mtproto_secret
 
     config_get protocol "$section" "protocol" "vless"
     case "$protocol" in
-    shadowsocks | socks | vmess | vless | trojan | hysteria2 | tailscale) ;;
+    shadowsocks | socks | vmess | vless | trojan | hysteria2 | mtproto | tailscale) ;;
     *)
         log "Server '$section' has unsupported protocol '$protocol'. Aborted." "fatal"
         exit 1
@@ -6400,6 +6538,19 @@ prepare_server_defaults() {
         fi
         ;;
     esac
+
+    if [ "$protocol" = "mtproto" ]; then
+        mtproto_secret="$(uci -q get "$PODKOP_CONFIG_NAME.$section.mtproto_secret" 2>/dev/null)"
+        if [ -z "$mtproto_secret" ]; then
+            mtproto_secret="$(server_generate_mtproto_secret)"
+            server_default_set_option "$section" "mtproto_secret" "$mtproto_secret"
+        fi
+        server_default_set_option "$section" "mtproto_domain_fronting_port" "443"
+        server_default_set_option "$section" "mtproto_prefer_ip" "prefer-ipv4"
+        server_default_set_option "$section" "mtproto_tolerate_time_skewness" "3s"
+        server_default_set_option "$section" "mtproto_idle_timeout" "5m"
+        server_default_set_option "$section" "mtproto_handshake_timeout" "10s"
+    fi
 
     if [ "$protocol" = "socks" ]; then
         server_username="$(uci -q get "$PODKOP_CONFIG_NAME.$section.server_username" 2>/dev/null)"
@@ -6520,6 +6671,11 @@ server_write_users_json() {
         ;;
     trojan | hysteria2)
         config_get server_password "$section" "server_password"
+        credential="$server_password"
+        extra=""
+        ;;
+    mtproto)
+        config_get server_password "$section" "mtproto_secret"
         credential="$server_password"
         extra=""
         ;;
@@ -6702,7 +6858,7 @@ server_apply_tls() {
 server_apply_transport() {
     local section="$1"
     local inbound_tag="$2"
-    local protocol transport transport_path transport_host transport_service_name transport_hosts
+    local protocol transport transport_path transport_host transport_service_name transport_hosts transport_xhttp_mode
 
     config_get protocol "$section" "protocol" "vless"
     case "$protocol" in
@@ -6712,7 +6868,7 @@ server_apply_transport() {
 
     config_get transport "$section" "transport" "tcp"
     case "$transport" in
-    tcp | raw | ws | grpc | http | httpupgrade) ;;
+    tcp | raw | ws | grpc | http | httpupgrade | xhttp) ;;
     *)
         log "Server '$section' has unsupported transport '$transport'. Aborted." "fatal"
         exit 1
@@ -6724,10 +6880,11 @@ server_apply_transport() {
     config_get transport_path "$section" "transport_path"
     config_get transport_host "$section" "transport_host"
     config_get transport_service_name "$section" "transport_service_name"
+    config_get transport_xhttp_mode "$section" "transport_xhttp_mode" "auto"
     transport_hosts="$(config_list_to_json "$section" "transport_hosts")"
 
     case "$transport" in
-    ws | http | httpupgrade)
+    ws | http | httpupgrade | xhttp)
         if [ -n "$transport_path" ]; then
             case "$transport_path" in
             /*) ;;
@@ -6748,6 +6905,15 @@ server_apply_transport() {
         log "Server '$section' has invalid gRPC service name '$transport_service_name'. Aborted." "fatal"
         exit 1
     fi
+    if [ "$transport" = "xhttp" ]; then
+        case "$transport_xhttp_mode" in
+        auto | packet-up | stream-up | stream-one) ;;
+        *)
+            log "Server '$section' has unsupported XHTTP mode '$transport_xhttp_mode'. Aborted." "fatal"
+            exit 1
+            ;;
+        esac
+    fi
 
     config=$(
         sing_box_cm_set_transport_for_inbound \
@@ -6757,7 +6923,8 @@ server_apply_transport() {
             "$transport_path" \
             "$transport_host" \
             "$transport_service_name" \
-            "$transport_hosts"
+            "$transport_hosts" \
+            "$transport_xhttp_mode"
     )
 }
 
@@ -9068,6 +9235,9 @@ server_runtime_type_for_protocol() {
     shadowsocks | socks | vmess | vless | trojan | hysteria2)
         printf '%s\n' "$protocol"
         ;;
+    mtproto)
+        printf 'mtproxy\n'
+        ;;
     tailscale)
         printf 'tailscale\n'
         ;;
@@ -9534,6 +9704,8 @@ show_config() {
         -e 's/\(option server_uuid\).*/\1 '\''MASKED'\''/g' \
         -e 's/\(option server_username\).*/\1 '\''MASKED'\''/g' \
         -e 's/\(option server_password\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option mtproto_secret\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option mtproto_domain_fronting_ip[[:space:]]\).*/\1'\''MASKED'\''/g' \
         -e 's/\(option tls_server_name[[:space:]]\).*/\1'\''MASKED'\''/g' \
         -e 's/\(option reality_handshake_server[[:space:]]\).*/\1'\''MASKED'\''/g' \
         -e 's/\(option reality_handshake_server_port[[:space:]]\).*/\1'\''MASKED'\''/g' \

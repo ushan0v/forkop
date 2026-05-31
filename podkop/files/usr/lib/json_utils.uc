@@ -772,6 +772,12 @@ function server_users_from_tsv(protocol, path) {
                     user.name = name;
                 push(result, user);
             }
+            else if (protocol == "mtproto") {
+                let user = { secret: credential };
+                if (name != "")
+                    user.name = name;
+                push(result, user);
+            }
             else if (protocol == "socks") {
                 let user = {
                     username: name != "" ? name : "user",

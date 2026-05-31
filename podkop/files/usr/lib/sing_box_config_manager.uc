@@ -432,6 +432,32 @@ function add_hysteria2_inbound_file(config, args) {
     push(ensure_array(config, "inbounds"), inbound);
 }
 
+function add_mtproxy_inbound_file(config, args) {
+    let inbound = {
+        type: "mtproxy",
+        tag: as_string(args[0]),
+        listen: as_string(args[1]),
+        listen_port: number_arg(args[2]),
+        users: array_file_arg(args[3])
+    };
+
+    optional_number(inbound, "concurrency", args[4]);
+    optional_number(inbound, "domain_fronting_port", args[5]);
+    optional_string(inbound, "domain_fronting_ip", args[6]);
+    if (bool_arg(args[7]))
+        inbound.domain_fronting_proxy_protocol = true;
+    optional_string(inbound, "prefer_ip", args[8]);
+    if (bool_arg(args[9]))
+        inbound.auto_update = true;
+    if (bool_arg(args[10]))
+        inbound.allow_fallback_on_unknown_dc = true;
+    optional_string(inbound, "tolerate_time_skewness", args[11]);
+    optional_string(inbound, "idle_timeout", args[12]);
+    optional_string(inbound, "handshake_timeout", args[13]);
+
+    push(ensure_array(config, "inbounds"), inbound);
+}
+
 function add_tailscale_endpoint(config, args) {
     let endpoint = {
         type: "tailscale",
@@ -523,6 +549,22 @@ function set_transport_for_inbound(config, args) {
     else if (transport_type == "httpupgrade") {
         optional_string(transport, "path", args[2]);
         optional_string(transport, "host", args[3]);
+    }
+    else if (transport_type == "xhttp") {
+        let mode = as_string(args[6]);
+        if (mode != "auto" && mode != "packet-up" && mode != "stream-up" && mode != "stream-one")
+            mode = "auto";
+
+        transport.mode = mode;
+        transport.path = as_string(args[2]) != "" ? as_string(args[2]) : "/";
+        optional_string(transport, "host", args[3]);
+        transport.headers = {};
+        transport.x_padding_bytes = "100-1000";
+        transport.no_sse_header = false;
+        transport.sc_max_each_post_bytes = 1000000;
+        transport.sc_max_buffered_posts = 30;
+        transport.sc_stream_up_server_secs = "20-80";
+        transport.server_max_header_bytes = 8192;
     }
 
     patch_inbound(config, tag, { transport });
@@ -999,6 +1041,7 @@ let handlers = {
     "add-socks-inbound-file": add_socks_inbound_file,
     "add-shadowsocks-inbound": add_shadowsocks_inbound,
     "add-hysteria2-inbound-file": add_hysteria2_inbound_file,
+    "add-mtproxy-inbound-file": add_mtproxy_inbound_file,
     "add-tailscale-endpoint": add_tailscale_endpoint,
     "set-inbound-tls": set_tls_for_inbound,
     "set-inbound-transport": set_transport_for_inbound,

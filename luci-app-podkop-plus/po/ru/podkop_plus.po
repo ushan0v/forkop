@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-29 22:54+0300\n"
-"PO-Revision-Date: 2026-05-29 22:54+0300\n"
+"POT-Creation-Date: 2026-05-31 05:40+0300\n"
+"PO-Revision-Date: 2026-05-31 05:40+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -758,6 +758,39 @@ msgstr "Наблюдаемые интерфейсы"
 msgid "Monitoring"
 msgstr "Мониторинг"
 
+msgid "MTProto auto update"
+msgstr "Автообновление MTProto"
+
+msgid "MTProto concurrency"
+msgstr "Параллелизм MTProto"
+
+msgid "MTProto fallback on unknown DC"
+msgstr "Fallback MTProto для неизвестного DC"
+
+msgid "MTProto fronting IP"
+msgstr "IP фронтинга MTProto"
+
+msgid "MTProto fronting port"
+msgstr "Порт фронтинга MTProto"
+
+msgid "MTProto fronting proxy protocol"
+msgstr "Proxy protocol для фронтинга MTProto"
+
+msgid "MTProto handshake timeout"
+msgstr "Таймаут рукопожатия MTProto"
+
+msgid "MTProto idle timeout"
+msgstr "Таймаут простоя MTProto"
+
+msgid "MTProto preferred IP"
+msgstr "Предпочитаемый IP для MTProto"
+
+msgid "MTProto secret"
+msgstr "Секрет MTProto"
+
+msgid "MTProto time skew tolerance"
+msgstr "Допуск расхождения времени MTProto"
+
 msgid "Must be a number in the range of 50 - 1000"
 msgstr "Должно быть числом от 50 до 1000"
 
@@ -1448,6 +1481,9 @@ msgstr "Используйте неотрицательное целое чис�
 msgid "Use an HTTP or HTTPS URL"
 msgstr "Укажите HTTP или HTTPS URL"
 
+msgid "Use an IPv4 address"
+msgstr "Укажите IPv4-адрес"
+
 msgid "Use an IPv4 listen address"
 msgstr "Укажите IPv4-адрес прослушивания"
 
@@ -1510,6 +1546,9 @@ msgstr "Предупреждение: Russia inside может быть испо
 
 msgid "What Podkop Plus should do when this section matches"
 msgstr "Что Podkop Plus должен делать при совпадении этой секции"
+
+msgid "XHTTP mode"
+msgstr "Режим XHTTP"
 
 msgid "YACD Secret Key"
 msgstr "Секретный ключ YACD"

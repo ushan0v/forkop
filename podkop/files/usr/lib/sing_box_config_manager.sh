@@ -89,6 +89,10 @@ sing_box_cm_add_hysteria2_inbound() {
     sing_box_cm_ucode add-hysteria2-inbound-file "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 }
 
+sing_box_cm_add_mtproxy_inbound() {
+    sing_box_cm_ucode add-mtproxy-inbound-file "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}" "${14}" "${15}"
+}
+
 sing_box_cm_add_tailscale_endpoint() {
     sing_box_cm_ucode add-tailscale-endpoint "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}"
 }
@@ -98,7 +102,7 @@ sing_box_cm_set_tls_for_inbound() {
 }
 
 sing_box_cm_set_transport_for_inbound() {
-    sing_box_cm_ucode set-inbound-transport "$1" "$2" "$3" "$4" "$5" "$6" "$7"
+    sing_box_cm_ucode set-inbound-transport "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
 }
 
 sing_box_cm_add_direct_outbound() {

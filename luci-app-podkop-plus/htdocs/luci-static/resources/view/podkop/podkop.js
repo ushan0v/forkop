@@ -101,6 +101,17 @@ function configureGridSection(sectionRef, type, title, addTitle) {
 const EntryPoint = {
   async render() {
     main.injectGlobalStyles();
+    const serverCapabilities = { singBoxExtended: false };
+
+    try {
+      const systemInfoResponse = await main.PodkopShellMethods.getSystemInfo();
+      serverCapabilities.singBoxExtended = Boolean(
+        systemInfoResponse?.success &&
+          Number(systemInfoResponse.data?.sing_box_extended) === 1,
+      );
+    } catch (error) {
+      console.warn("Failed to load Podkop Plus server capabilities", error);
+    }
 
     const podkopMap = new form.Map(
       UCI_PACKAGE,
@@ -136,7 +147,7 @@ const EntryPoint = {
       _("Add a server inbound"),
     );
     server.configureServerSection(serverSection);
-    server.createServerContent(serverSection);
+    server.createServerContent(serverSection, serverCapabilities);
 
     const settingsSection = podkopMap.section(
       form.TypedSection,
