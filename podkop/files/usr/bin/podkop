@@ -5011,44 +5011,53 @@ list_update() {
     echo $$ > "$pidfile"
     trap 'rm -f "$pidfile"' EXIT INT TERM
 
-    local nslookup_timeout=3
-    local nslookup_attempts=10
+    local dns_probe_timeout=3
+    local dns_probe_attempts=10
     local curl_timeout=5
     local curl_attempts=10
     local curl_max_timeout=10
     local delay=3
-    local i service_proxy_address
+    local i service_proxy_address dns_probe_answer dns_probe_ok curl_ok
 
     # DNS Check
     service_proxy_address="$(get_service_proxy_address)"
     if [ -n "$service_proxy_address" ]; then
         echolog "DNS check skipped because list downloads use service proxy"
     else
-        for i in $(seq 1 $nslookup_attempts); do
-            if nslookup -timeout=$nslookup_timeout openwrt.org > /dev/null 2>&1; then
+        dns_probe_ok=0
+        for i in $(seq 1 $dns_probe_attempts); do
+            dns_probe_answer="$(
+                dig +short openwrt.org A +timeout=$dns_probe_timeout +tries=1 2> /dev/null |
+                    awk '/^[0-9]+\./ { print; exit }'
+            )"
+            if [ -n "$dns_probe_answer" ]; then
                 echolog "DNS check passed"
+                dns_probe_ok=1
                 break
             fi
-            echolog "DNS is unavailable [$i/$nslookup_attempts]"
+            echolog "DNS is unavailable [$i/$dns_probe_attempts]"
             sleep $delay
         done
 
-        if [ "$i" -eq $nslookup_attempts ]; then
-            echolog "DNS check failed after $nslookup_attempts attempts"
+        if [ "$dns_probe_ok" -ne 1 ]; then
+            echolog "DNS check failed after $dns_probe_attempts attempts"
             return 1
         fi
     fi
 
     # Github Check
+    curl_ok=0
     for i in $(seq 1 $curl_attempts); do
         if [ -n "$service_proxy_address" ]; then
             if curl -s -x "http://$service_proxy_address" -m $curl_timeout https://github.com > /dev/null; then
                 echolog "GitHub connection check passed (via proxy)"
+                curl_ok=1
                 break
             fi
         else
             if curl -s -m $curl_timeout https://github.com > /dev/null; then
                 echolog "GitHub connection check passed"
+                curl_ok=1
                 break
             fi
         fi
@@ -5060,7 +5069,7 @@ list_update() {
         sleep $delay
     done
 
-    if [ "$i" -eq $curl_attempts ]; then
+    if [ "$curl_ok" -ne 1 ]; then
         echolog "GitHub connection check failed after $curl_attempts attempts"
         return 1
     fi
