@@ -3,6 +3,8 @@
 
 START=99
 USE_PROCD=1
+EXTRA_COMMANDS="retry_start_on_wan_up"
+EXTRA_HELP="        retry_start_on_wan_up Retry failed cold start after WAN comes up\n"
 
 script=$(readlink "$initscript")
 NAME="$(basename ${script:-$initscript})"
@@ -181,12 +183,26 @@ should_skip_internal_config_reload() {
     return 1
 }
 
+should_restore_dnsmasq_on_start() {
+    local reason="$1"
+    local shutdown_correctly
+
+    [ "$reason" = "triggered" ] && return 1
+
+    config_get shutdown_correctly "settings" "shutdown_correctly" "1"
+    [ "$shutdown_correctly" = "0" ]
+}
+
 start_service() {
     echo "Start Podkop Plus"
 
     if [ ! -x "$PODKOP_BIN" ]; then
         restore_dnsmasq_failsafe
         return 1
+    fi
+
+    if should_restore_dnsmasq_on_start "$1"; then
+        restore_dnsmasq_failsafe
     fi
 
     config_get enable_badwan_interface_monitoring "settings" "enable_badwan_interface_monitoring"
@@ -255,6 +271,14 @@ status_service() {
     return 1
 }
 
+retry_start_on_wan_up() {
+    if runtime_is_running; then
+        return 0
+    fi
+
+    restart triggered
+}
+
 service_triggers() {
     config_get enable_badwan_interface_monitoring "settings" "enable_badwan_interface_monitoring"
     config_get badwan_monitored_interfaces "settings" "badwan_monitored_interfaces"
@@ -264,9 +288,11 @@ service_triggers() {
 
     procd_open_trigger
     procd_add_config_trigger "config.change" "$CONFIG_NAME" "$PODKOP_SERVICE_INIT" reload "$PODKOP_CONFIG_CHANGE_REASON"
+    procd_add_interface_trigger "interface.*.up" "wan" "$PODKOP_SERVICE_INIT" retry_start_on_wan_up
 
     if [ "$enable_badwan_interface_monitoring" = "1" ]; then
         for iface in $badwan_monitored_interfaces; do
+            [ "$iface" = "wan" ] && continue
             procd_add_interface_trigger "interface.*.up" "$iface" "$PODKOP_SERVICE_INIT" reload
         done
     fi
