@@ -259,10 +259,12 @@ sing_box_cf_add_proxy_outbound() {
         config=$(_add_outbound_transport "$config" "$tag" "$url")
         ;;
     hysteria2 | hy2)
-        local tag host port password obfuscator_type obfuscator_password upload_mbps download_mbps
+        local tag host port mport password obfuscator_type obfuscator_password upload_mbps download_mbps
         tag=$(get_outbound_tag_by_section "$section")
         host=$(url_get_host "$url")
         port="$(url_get_port "$url")"
+        mport="$(url_get_query_param "$url" "mport")"
+        [ -n "$mport" ] && port="$mport"
         password=$(url_get_userinfo "$url")
         obfuscator_type=$(url_get_query_param "$url" "obfs")
         obfuscator_password=$(url_get_query_param "$url" "obfs-password")

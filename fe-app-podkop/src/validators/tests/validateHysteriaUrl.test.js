@@ -33,6 +33,11 @@ const validUrls = [
     'port range 123,5000-6000',
     'hysteria2://letmein@example.com:123,5000-6000/?insecure=1&obfs=salamander&obfs-password=gawrgura&pinSHA256=deadbeef&sni=real.example.com',
   ],
+
+  [
+    'mport range',
+    'hysteria2://letmein@example.com:2053/?mport=20000-50000&insecure=1&obfs=salamander&obfs-password=gawrgura&sni=real.example.com',
+  ],
 ];
 
 const invalidUrls = [
@@ -57,6 +62,8 @@ const invalidUrls = [
 
   // SNI empty
   ['empty sni', 'hysteria2://pw@example.com:443/?sni='],
+
+  ['Invalid mport range end', 'hysteria2://pw@example.com:443/?mport=5000-'],
 ];
 
 describe('validateHysteria2Url', () => {

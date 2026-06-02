@@ -72,6 +72,31 @@ function valid_server_port(value) {
     return type(value) == "int" && value >= 1 && value <= 65535;
 }
 
+function valid_server_port_text(value) {
+    value = as_string(value);
+    if (!match(value, /^\d+$/))
+        return false;
+
+    return valid_server_port(int(value, 10));
+}
+
+function valid_hysteria2_server_ports(value) {
+    if (type(value) != "array" || length(value) == 0)
+        return false;
+
+    for (let item in value) {
+        let parts = split(as_string(item), ":");
+        if (length(parts) != 2)
+            return false;
+        if (!valid_server_port_text(parts[0]) || !valid_server_port_text(parts[1]))
+            return false;
+        if (int(parts[0], 10) > int(parts[1], 10))
+            return false;
+    }
+
+    return true;
+}
+
 function type_requires_server(proxy_type) {
     return proxy_type == "vless" || proxy_type == "vmess" || proxy_type == "trojan" ||
         proxy_type == "shadowsocks" || proxy_type == "socks" || proxy_type == "hysteria2";
@@ -134,7 +159,10 @@ function prefilter_skip_reason(outbound, supports_xhttp, plugin_supports) {
         return "unsupported type: " + proxy_type;
     if (type_requires_server(proxy_type) && !non_empty_string(outbound.server))
         return "missing or empty server";
-    if (type_requires_server(proxy_type) && !valid_server_port(outbound.server_port))
+    if (proxy_type == "hysteria2" && !valid_server_port(outbound.server_port) &&
+        !valid_hysteria2_server_ports(outbound.server_ports))
+        return "missing or invalid server_port";
+    if (proxy_type != "hysteria2" && type_requires_server(proxy_type) && !valid_server_port(outbound.server_port))
         return "missing or invalid server_port";
     if ((proxy_type == "vless" || proxy_type == "vmess") && !non_empty_string(outbound.uuid))
         return "missing uuid";

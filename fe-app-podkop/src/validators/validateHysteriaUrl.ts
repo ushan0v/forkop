@@ -139,6 +139,16 @@ export function validateHysteria2Url(url: string): ValidationResult {
           message: _('Invalid HY2 URL: sni cannot be empty'),
         };
       }
+
+      if (
+        paramsKeys.includes('mport') &&
+        (!params.mport || !params.mport.split(',').every(isValidPortEntry))
+      ) {
+        return {
+          valid: false,
+          message: _('Invalid HY2 URL: invalid port number'),
+        };
+      }
     }
 
     return { valid: true, message: _('Valid') };

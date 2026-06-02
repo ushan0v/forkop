@@ -690,8 +690,11 @@ function process_shadowsocks(raw) {
 }
 
 function process_hysteria2(raw, url) {
-    let server_ports = parse_hysteria2_server_ports(url.port);
-    if (url.host == "" || (!valid_port(url.port) && server_ports == null) || url.userinfo == "")
+    let mport = trim(as_string(url.query.mport || ""));
+    let port_value = mport != "" ? mport : url.port;
+    let server_ports = parse_hysteria2_server_ports(port_value);
+    let server_port = normalize_port_number(as_string(port_value));
+    if (url.host == "" || (server_ports == null && server_port == "") || url.userinfo == "")
         return null;
 
     let password = url.userinfo;
@@ -711,7 +714,7 @@ function process_hysteria2(raw, url) {
 
     let outbound = {
         type: "hysteria2",
-        tag: url.fragment != "" ? url.fragment : (url.host + ":" + as_string(url.port)),
+        tag: url.fragment != "" ? url.fragment : (url.host + ":" + as_string(port_value)),
         share_link: raw,
         server: url.host,
         password: password,
@@ -720,7 +723,7 @@ function process_hysteria2(raw, url) {
     if (server_ports != null)
         outbound.server_ports = server_ports;
     else
-        outbound.server_port = url.port;
+        outbound.server_port = int(server_port, 10);
 
     if ((url.query.network || "") != "")
         outbound.network = url.query.network;
