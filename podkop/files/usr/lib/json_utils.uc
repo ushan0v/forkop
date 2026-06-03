@@ -609,6 +609,55 @@ function normalized_country_list() {
     write_json(result);
 }
 
+function byte_at(value, index) {
+    return ord(substr(value, index, 1));
+}
+
+function regional_indicator_letter(value, index) {
+    if (index + 3 >= length(value))
+        return "";
+
+    if (byte_at(value, index) != 240 ||
+        byte_at(value, index + 1) != 159 ||
+        byte_at(value, index + 2) != 135)
+        return "";
+
+    let letter = byte_at(value, index + 3) - 166;
+    if (letter < 0 || letter > 25)
+        return "";
+
+    return chr(65 + letter);
+}
+
+function country_from_flag_emoji(value) {
+    value = as_string(value);
+
+    for (let i = 0; i + 7 < length(value); i++) {
+        let first = regional_indicator_letter(value, i);
+        if (first == "")
+            continue;
+
+        let second = regional_indicator_letter(value, i + 4);
+        if (second != "")
+            return first + second;
+    }
+
+    return "";
+}
+
+function countries_from_flag_names(path) {
+    let names = object_or_empty(read_json_file(path));
+    let result = {};
+
+    for (let tag, name in names) {
+        let country = country_from_flag_emoji(name);
+        if (country != "")
+            result[tag] = country;
+    }
+
+    write_json(result);
+}
+
 function contains(values, needle) {
     for (let value in values) {
         if (value == needle)
@@ -1009,6 +1058,8 @@ else if (mode == "objects-merge")
     objects_merge(ARGV[1], ARGV[2]);
 else if (mode == "normalized-country-list")
     normalized_country_list();
+else if (mode == "countries-from-flag-names")
+    countries_from_flag_names(ARGV[1]);
 else if (mode == "urltest-filter")
     urltest_filter(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
 else if (mode == "section-countries")

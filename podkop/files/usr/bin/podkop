@@ -210,6 +210,8 @@ PODKOP_SUBSCRIPTION_UPDATE_CRON_MARKER="# podkop-plus-subscription-update"
 # duration to emulate disabled automatic refreshes for remote rule sets.
 SING_BOX_DISABLED_UPDATE_INTERVAL="876000h"
 SING_BOX_URLTEST_DEFAULT_IDLE_TIMEOUT="30m"
+SERVER_COUNTRY_METHOD_FLAG_EMOJI="flag_emoji"
+SERVER_COUNTRY_METHOD_COUNTRY_IS="country_is"
 PODKOP_RELOAD_STATE_FORMAT=1
 PODKOP_RUNTIME_CACHE_FORMAT=4
 PODKOP_RUNTIME_STABLE_MIN_AGE=2
@@ -1655,7 +1657,8 @@ append_sing_box_rule_signature() {
         config_get subscription_urls "$section" "subscription_urls"
         config_get_bool udp_over_tcp "$section" "enable_udp_over_tcp" 0
         config_get_bool urltest_enabled "$section" "urltest_enabled" 0
-        config_get_bool detect_server_country "$section" "detect_server_country" 0
+        config_get detect_server_country "$section" "detect_server_country" "$SERVER_COUNTRY_METHOD_FLAG_EMOJI"
+        detect_server_country="$(normalize_detect_server_country_method "$detect_server_country")"
         urltest_check_interval="$(get_urltest_check_interval_for_rule "$section")"
         config_get urltest_tolerance "$section" "urltest_tolerance" 50
         config_get urltest_testing_url "$section" "urltest_testing_url" "https://www.gstatic.com/generate_204"
@@ -2820,6 +2823,53 @@ podkop_uci_migrate_urltest_filter_mode() {
     fi
 }
 
+urltest_filter_mode_filters_enabled() {
+    case "$1" in
+    exclude | include | mixed)
+        return 0
+        ;;
+    esac
+
+    return 1
+}
+
+normalize_detect_server_country_method() {
+    local value="${1:-}"
+
+    case "$value" in
+    "$SERVER_COUNTRY_METHOD_COUNTRY_IS")
+        printf '%s\n' "$SERVER_COUNTRY_METHOD_COUNTRY_IS"
+        ;;
+    0 | 1 | "" | "$SERVER_COUNTRY_METHOD_FLAG_EMOJI")
+        printf '%s\n' "$SERVER_COUNTRY_METHOD_FLAG_EMOJI"
+        ;;
+    *)
+        printf '%s\n' "$SERVER_COUNTRY_METHOD_FLAG_EMOJI"
+        ;;
+    esac
+}
+
+podkop_uci_migrate_detect_server_country() {
+    local section="$1"
+    local value urltest_enabled urltest_filter_mode
+
+    podkop_uci_option_exists "$section" "detect_server_country" || return 0
+
+    config_get value "$section" "detect_server_country"
+    config_get_bool urltest_enabled "$section" "urltest_enabled" 0
+    config_get urltest_filter_mode "$section" "urltest_filter_mode" "disabled"
+
+    case "$value" in
+    0 | 1)
+        if [ "$urltest_enabled" -eq 1 ] && urltest_filter_mode_filters_enabled "$urltest_filter_mode"; then
+            podkop_uci_set_option "$section" "detect_server_country" "$SERVER_COUNTRY_METHOD_FLAG_EMOJI"
+        else
+            podkop_uci_delete_option "$section" "detect_server_country"
+        fi
+        ;;
+    esac
+}
+
 podkop_uci_delete_option() {
     local section="$1"
     local option="$2"
@@ -3116,6 +3166,7 @@ migrate_0_7_17_8_rule() {
     case "$action" in
     proxy)
         podkop_uci_migrate_urltest_filter_mode "$section"
+        podkop_uci_migrate_detect_server_country "$section"
         migrate_0_7_17_8_proxy_rule "$section" "$proxy_config_type"
         if [ "$converted_from_rule" -eq 1 ] && [ -n "$subscription_urls" ]; then
             migrate_0_7_17_8_delete_subscription_cache "$section"
@@ -3943,6 +3994,21 @@ validate_urltest_filter_mode_option() {
     exit 1
 }
 
+validate_detect_server_country_option() {
+    local value="$1"
+    local section="$2"
+
+    [ -n "$value" ] || return 0
+    case "$value" in
+    "$SERVER_COUNTRY_METHOD_FLAG_EMOJI" | "$SERVER_COUNTRY_METHOD_COUNTRY_IS")
+        return 0
+        ;;
+    esac
+
+    log "Invalid server country detection mode '$value' in rule '$section'. Aborted." "fatal"
+    exit 1
+}
+
 validate_urltest_regex_option() {
     local value="$1"
     local section="$2"
@@ -4173,11 +4239,15 @@ process_validate_rule() {
     fi
 
     if [ "$action" = "proxy" ]; then
-        local urltest_enabled urltest_filter_mode
+        local urltest_enabled detect_server_country urltest_filter_mode
         config_get_bool urltest_enabled "$section" "urltest_enabled" 0
         if [ "$urltest_enabled" -eq 1 ]; then
             config_get urltest_filter_mode "$section" "urltest_filter_mode" "disabled"
             validate_urltest_filter_mode_option "$urltest_filter_mode" "$section"
+            if urltest_filter_mode_filters_enabled "$urltest_filter_mode"; then
+                config_get detect_server_country "$section" "detect_server_country" "$SERVER_COUNTRY_METHOD_FLAG_EMOJI"
+                validate_detect_server_country_option "$detect_server_country" "$section"
+            fi
             urltest_check_interval="$(get_urltest_check_interval_for_rule "$section")"
             validate_required_sing_box_duration_option "$urltest_check_interval" "rule.$section.urltest_check_interval"
             case "$urltest_filter_mode" in
@@ -7788,6 +7858,30 @@ detect_server_countries_for_tags() {
         printf '%s\n' "$cached_countries_json"
 }
 
+detect_server_countries_from_names() {
+    local names_json="$1"
+    local names_tmp result status
+
+    names_tmp="$(mktemp)" || {
+        printf '{}\n'
+        return 0
+    }
+
+    printf '%s' "$names_json" > "$names_tmp" || {
+        rm -f "$names_tmp"
+        printf '{}\n'
+        return 0
+    }
+
+    result="$(json_utils_ucode countries-from-flag-names "$names_tmp" 2>/dev/null)"
+    status=$?
+    rm -f "$names_tmp"
+
+    [ "$status" -eq 0 ] || result="{}"
+    [ -n "$result" ] || result="{}"
+    printf '%s\n' "$result"
+}
+
 select_urltest_included_outbounds() {
     local section="$1"
     local tags_json="$2"
@@ -8140,13 +8234,15 @@ configure_outbound_handler() {
     if [ "$action" = "proxy" ]; then
         local selector_proxy_links udp_over_tcp urltest_enabled urltest_tag selector_tag selector_outbounds selector_default \
             urltest_check_interval urltest_idle_timeout urltest_tolerance urltest_testing_url outbounds_count \
-            detect_server_country urltest_outbounds urltest_outbounds_count has_subscription_sources \
-            metadata_tmpfile metadata_count
+            detect_server_country urltest_filter_mode urltest_country_filter_enabled urltest_outbounds urltest_outbounds_count has_subscription_sources \
+            metadata_countries_json metadata_tmpfile metadata_count
 
         config_get selector_proxy_links "$section" "selector_proxy_links"
         config_get udp_over_tcp "$section" "enable_udp_over_tcp"
         config_get_bool urltest_enabled "$section" "urltest_enabled" 0
-        config_get_bool detect_server_country "$section" "detect_server_country" 0
+        config_get detect_server_country "$section" "detect_server_country" "$SERVER_COUNTRY_METHOD_FLAG_EMOJI"
+        detect_server_country="$(normalize_detect_server_country_method "$detect_server_country")"
+        config_get urltest_filter_mode "$section" "urltest_filter_mode" "disabled"
         rule_has_subscription_urls "$section" && has_subscription_sources=1 || has_subscription_sources=0
 
         PROXY_GROUP_SECTION="$section"
@@ -8157,7 +8253,7 @@ configure_outbound_handler() {
         PROXY_GROUP_NAMES_JSON="{}"
         PROXY_GROUP_SERVERS_JSON="{}"
         PROXY_GROUP_COUNTRIES_JSON="{}"
-        PROXY_GROUP_DETECT_COUNTRIES="$detect_server_country"
+        metadata_countries_json="{}"
 
         config_list_foreach "$section" "selector_proxy_links" proxy_group_add_manual_link "$section" "$udp_over_tcp"
 
@@ -8186,8 +8282,14 @@ configure_outbound_handler() {
             write_subscription_metadata_json "$section" ""
         fi
 
-        if [ "$PROXY_GROUP_DETECT_COUNTRIES" -eq 1 ]; then
+        if [ "$urltest_enabled" -eq 1 ] && urltest_filter_mode_filters_enabled "$urltest_filter_mode" &&
+            [ "$detect_server_country" = "$SERVER_COUNTRY_METHOD_COUNTRY_IS" ]; then
             PROXY_GROUP_COUNTRIES_JSON="$(detect_server_countries_for_tags "$PROXY_GROUP_SERVERS_JSON" "$section")"
+            [ -n "$PROXY_GROUP_COUNTRIES_JSON" ] || PROXY_GROUP_COUNTRIES_JSON="{}"
+            metadata_countries_json="$PROXY_GROUP_COUNTRIES_JSON"
+        elif [ "$urltest_enabled" -eq 1 ] && urltest_filter_mode_filters_enabled "$urltest_filter_mode" &&
+            [ "$detect_server_country" = "$SERVER_COUNTRY_METHOD_FLAG_EMOJI" ]; then
+            PROXY_GROUP_COUNTRIES_JSON="$(detect_server_countries_from_names "$PROXY_GROUP_NAMES_JSON")"
             [ -n "$PROXY_GROUP_COUNTRIES_JSON" ] || PROXY_GROUP_COUNTRIES_JSON="{}"
         fi
 
@@ -8204,9 +8306,13 @@ configure_outbound_handler() {
             urltest_idle_timeout="$(get_urltest_idle_timeout_for_config "$section")"
             config_get urltest_tolerance "$section" "urltest_tolerance" 50
             config_get urltest_testing_url "$section" "urltest_testing_url" "https://www.gstatic.com/generate_204"
+            urltest_country_filter_enabled=0
+            if urltest_filter_mode_filters_enabled "$urltest_filter_mode"; then
+                urltest_country_filter_enabled=1
+            fi
 
             urltest_outbounds="$(filter_urltest_outbounds "$section" "$PROXY_GROUP_OUTBOUND_TAGS_JSON" \
-                "$PROXY_GROUP_NAMES_JSON" "$PROXY_GROUP_COUNTRIES_JSON" "$detect_server_country")"
+                "$PROXY_GROUP_NAMES_JSON" "$PROXY_GROUP_COUNTRIES_JSON" "$urltest_country_filter_enabled")"
             [ -n "$urltest_outbounds" ] || urltest_outbounds="[]"
             urltest_outbounds_count="$(printf '%s' "$urltest_outbounds" | json_utils_ucode stdin-length 2>/dev/null)"
             case "$urltest_outbounds_count" in
@@ -8247,7 +8353,7 @@ configure_outbound_handler() {
         fi
 
         write_subscription_outbound_link_cache "$section" "$PROXY_GROUP_LINKS_JSON" "$PROXY_GROUP_LINK_REFS_JSON"
-        write_outbound_metadata "$section" "$PROXY_GROUP_NAMES_JSON" "$PROXY_GROUP_COUNTRIES_JSON" "$PROXY_GROUP_SERVERS_JSON"
+        write_outbound_metadata "$section" "$PROXY_GROUP_NAMES_JSON" "$metadata_countries_json" "$PROXY_GROUP_SERVERS_JSON"
         return 0
     fi
 

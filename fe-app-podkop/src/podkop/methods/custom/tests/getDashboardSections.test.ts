@@ -130,13 +130,66 @@ describe('getDashboardSections', () => {
     ]);
   });
 
+  it('does not expose flag-emoji detected countries on dashboard outbounds', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({ detect_server_country: 'flag_emoji' }),
+    ]);
+    mocks.fsRead.mockResolvedValue(
+      JSON.stringify({
+        outboundMetadata: {
+          names: {},
+          countries: { 'main-1-out': 'US' },
+        },
+      }),
+    );
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(
+      section.outbounds.find((item) => item.code === 'main-1-out')?.country,
+    ).toBeUndefined();
+  });
+
+  it('exposes country.is detected countries on dashboard outbounds', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({ detect_server_country: 'country_is' }),
+    ]);
+    mocks.fsRead.mockResolvedValue(
+      JSON.stringify({
+        outboundMetadata: {
+          names: {},
+          countries: { 'main-1-out': 'US' },
+        },
+      }),
+    );
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(
+      section.outbounds.find((item) => item.code === 'main-1-out')?.country,
+    ).toBe('US');
+  });
+
   it('does not hide servers when URLTest filtering is set to all servers', async () => {
     mocks.getConfigSections.mockResolvedValue([
       proxySection({
+        detect_server_country: 'country_is',
         urltest_filter_mode: 'disabled',
         urltest_hide_filtered_outbounds: '1',
       }),
     ]);
+    mocks.fsRead.mockResolvedValue(
+      JSON.stringify({
+        outboundMetadata: {
+          names: {},
+          countries: { 'main-1-out': 'US' },
+        },
+      }),
+    );
 
     const result = await getDashboardSections();
     const [section] = result.data;
@@ -144,6 +197,9 @@ describe('getDashboardSections', () => {
     expect(result.success).toBe(true);
     expect(section.latencyTestCode).toBe('main-out');
     expect(section.outbounds.map((item) => item.code)).toContain('main-2-out');
+    expect(
+      section.outbounds.find((item) => item.code === 'main-1-out')?.country,
+    ).toBeUndefined();
   });
 
   it('uses allocated tags for section names that collide with system tags', async () => {
@@ -193,9 +249,12 @@ describe('getDashboardSections', () => {
     const result = await getDashboardSections();
 
     expect(result.success).toBe(true);
-    expect(fetchMock).toHaveBeenCalledWith('http://router.example:9090/proxies', {
-      headers: { Authorization: 'Bearer secret' },
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://router.example:9090/proxies',
+      {
+        headers: { Authorization: 'Bearer secret' },
+      },
+    );
     expect(mocks.getClashApiProxies).not.toHaveBeenCalled();
   });
 });

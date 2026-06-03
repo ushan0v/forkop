@@ -2930,9 +2930,7 @@ function parseStrategyWithRemoteValidation(section_id, config) {
         return rejectStrategyValidation(
           this,
           section_id,
-          result && result.message
-            ? result.message
-            : config.invalidMessage,
+          result && result.message ? result.message : config.invalidMessage,
         );
       }
 
@@ -3442,18 +3440,6 @@ function createSectionContent(section) {
   o = section.taboption(
     "settings",
     form.Flag,
-    "detect_server_country",
-    _("Detect server country"),
-    _("Resolve server countries using country.is"),
-  );
-  o.default = "0";
-  o.rmempty = false;
-  o.depends("action", "proxy");
-  o.modalonly = true;
-
-  o = section.taboption(
-    "settings",
-    form.Flag,
     "urltest_enabled",
     _("Auto select by URLTest"),
   );
@@ -3606,6 +3592,33 @@ function createSectionContent(section) {
 
   o = section.taboption(
     "settings",
+    form.ListValue,
+    "detect_server_country",
+    _("Detect server country"),
+  );
+  o.value("flag_emoji", _("By flag emoji from name"));
+  o.value("country_is", _("Via country.is"));
+  o.default = "flag_emoji";
+  o.rmempty = false;
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "exclude",
+  });
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "include",
+  });
+  o.depends({
+    action: "proxy",
+    urltest_enabled: "1",
+    urltest_filter_mode: "mixed",
+  });
+  o.modalonly = true;
+
+  o = section.taboption(
+    "settings",
     form.DynamicList,
     "urltest_include_countries",
     _("Include country in URLTest"),
@@ -3616,13 +3629,25 @@ function createSectionContent(section) {
   o.rmempty = true;
   o.depends({
     action: "proxy",
-    detect_server_country: "1",
+    detect_server_country: "flag_emoji",
     urltest_filter_mode: "include",
     urltest_enabled: "1",
   });
   o.depends({
     action: "proxy",
-    detect_server_country: "1",
+    detect_server_country: "flag_emoji",
+    urltest_filter_mode: "mixed",
+    urltest_enabled: "1",
+  });
+  o.depends({
+    action: "proxy",
+    detect_server_country: "country_is",
+    urltest_filter_mode: "include",
+    urltest_enabled: "1",
+  });
+  o.depends({
+    action: "proxy",
+    detect_server_country: "country_is",
     urltest_filter_mode: "mixed",
     urltest_enabled: "1",
   });
@@ -3690,13 +3715,25 @@ function createSectionContent(section) {
   o.rmempty = true;
   o.depends({
     action: "proxy",
-    detect_server_country: "1",
+    detect_server_country: "flag_emoji",
     urltest_filter_mode: "exclude",
     urltest_enabled: "1",
   });
   o.depends({
     action: "proxy",
-    detect_server_country: "1",
+    detect_server_country: "flag_emoji",
+    urltest_filter_mode: "mixed",
+    urltest_enabled: "1",
+  });
+  o.depends({
+    action: "proxy",
+    detect_server_country: "country_is",
+    urltest_filter_mode: "exclude",
+    urltest_enabled: "1",
+  });
+  o.depends({
+    action: "proxy",
+    detect_server_country: "country_is",
     urltest_filter_mode: "mixed",
     urltest_enabled: "1",
   });

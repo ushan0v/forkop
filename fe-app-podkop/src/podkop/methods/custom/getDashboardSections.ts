@@ -129,6 +129,14 @@ function shouldHideFilteredUrlTestOutbounds(section: Podkop.ConfigSection) {
   );
 }
 
+function shouldShowDetectedCountries(section: Podkop.ConfigSection) {
+  return (
+    isUrlTestEnabled(section) &&
+    isUrlTestFilteringEnabled(section) &&
+    section.detect_server_country === 'country_is'
+  );
+}
+
 function shouldUseProxyGroup(section: Podkop.ConfigSection) {
   return (
     getManualProxyLinks(section).length > 0 || hasSubscriptionSources(section)
@@ -279,6 +287,7 @@ function buildProxyGroupOutbounds(
   const manualLinkByCode = buildManualLinkByCode(section);
   const selectorCodes = selector?.value?.all ?? [];
   const urltestCodes = fallbackUrltest?.value?.all ?? [];
+  const showDetectedCountries = shouldShowDetectedCountries(section);
   const hideFilteredUrlTestOutbounds =
     shouldHideFilteredUrlTestOutbounds(section) &&
     Boolean(fallbackUrltest?.code) &&
@@ -314,7 +323,9 @@ function buildProxyGroupOutbounds(
         selected: selector?.value?.now === item.code,
         link,
         canCopyLink,
-        country: outboundMetadata?.countries?.[item.code],
+        country: showDetectedCountries
+          ? outboundMetadata?.countries?.[item.code]
+          : undefined,
       },
     ];
   });
@@ -475,9 +486,7 @@ export async function getDashboardSections(
 
         if (sectionAction === 'vpn') {
           const outboundTag = getOutboundTagBySection(sectionName);
-          const outbound = proxies.find(
-            (proxy) => proxy.code === outboundTag,
-          );
+          const outbound = proxies.find((proxy) => proxy.code === outboundTag);
 
           return {
             withTagSelect: false,
@@ -499,9 +508,7 @@ export async function getDashboardSections(
 
         if (sectionAction === 'byedpi') {
           const outboundTag = getOutboundTagBySection(sectionName);
-          const outbound = proxies.find(
-            (proxy) => proxy.code === outboundTag,
-          );
+          const outbound = proxies.find((proxy) => proxy.code === outboundTag);
 
           return {
             withTagSelect: false,
@@ -523,9 +530,7 @@ export async function getDashboardSections(
 
         if (sectionAction === 'outbound') {
           const outboundTag = getOutboundTagBySection(sectionName);
-          const outbound = proxies.find(
-            (proxy) => proxy.code === outboundTag,
-          );
+          const outbound = proxies.find((proxy) => proxy.code === outboundTag);
 
           return {
             withTagSelect: false,

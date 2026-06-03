@@ -2536,6 +2536,9 @@ function isUrlTestFilteringEnabled(section) {
 function shouldHideFilteredUrlTestOutbounds(section) {
   return isUrlTestEnabled(section) && isUrlTestFilteringEnabled(section) && section.urltest_hide_filtered_outbounds === "1";
 }
+function shouldShowDetectedCountries(section) {
+  return isUrlTestEnabled(section) && isUrlTestFilteringEnabled(section) && section.detect_server_country === "country_is";
+}
 function shouldUseProxyGroup(section) {
   return getManualProxyLinks(section).length > 0 || hasSubscriptionSources(section);
 }
@@ -2641,6 +2644,7 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
   const manualLinkByCode = buildManualLinkByCode(section);
   const selectorCodes = selector?.value?.all ?? [];
   const urltestCodes = fallbackUrltest?.value?.all ?? [];
+  const showDetectedCountries = shouldShowDetectedCountries(section);
   const hideFilteredUrlTestOutbounds = shouldHideFilteredUrlTestOutbounds(section) && Boolean(fallbackUrltest?.code) && urltestCodes.length > 0;
   const groupCodes = hideFilteredUrlTestOutbounds ? [fallbackUrltest?.code || "", ...urltestCodes] : selectorCodes.length ? selectorCodes : [fallbackUrltest?.code || "", ...urltestCodes];
   const outbounds = uniqueCodes(groupCodes).flatMap((code) => {
@@ -2660,7 +2664,7 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
         selected: selector?.value?.now === item.code,
         link,
         canCopyLink,
-        country: outboundMetadata?.countries?.[item.code]
+        country: showDetectedCountries ? outboundMetadata?.countries?.[item.code] : void 0
       }
     ];
   });
@@ -2764,9 +2768,7 @@ async function getDashboardSections(options = {}) {
       const proxyConfigType = getSectionProxyConfigType(section);
       if (sectionAction === "vpn") {
         const outboundTag = getOutboundTagBySection(sectionName);
-        const outbound = proxies.find(
-          (proxy) => proxy.code === outboundTag
-        );
+        const outbound = proxies.find((proxy) => proxy.code === outboundTag);
         return {
           withTagSelect: false,
           code: outbound?.code || sectionName,
@@ -2786,9 +2788,7 @@ async function getDashboardSections(options = {}) {
       }
       if (sectionAction === "byedpi") {
         const outboundTag = getOutboundTagBySection(sectionName);
-        const outbound = proxies.find(
-          (proxy) => proxy.code === outboundTag
-        );
+        const outbound = proxies.find((proxy) => proxy.code === outboundTag);
         return {
           withTagSelect: false,
           code: outbound?.code || sectionName,
@@ -2808,9 +2808,7 @@ async function getDashboardSections(options = {}) {
       }
       if (sectionAction === "outbound") {
         const outboundTag = getOutboundTagBySection(sectionName);
-        const outbound = proxies.find(
-          (proxy) => proxy.code === outboundTag
-        );
+        const outbound = proxies.find((proxy) => proxy.code === outboundTag);
         return {
           withTagSelect: false,
           code: outbound?.code || sectionName,

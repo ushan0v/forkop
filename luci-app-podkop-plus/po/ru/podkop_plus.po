@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-02 21:00+0300\n"
-"PO-Revision-Date: 2026-06-02 21:00+0300\n"
+"POT-Creation-Date: 2026-06-03 03:08+0300\n"
+"PO-Revision-Date: 2026-06-03 03:08+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -127,6 +127,9 @@ msgstr "Браузер использует FakeIP"
 
 msgid "Built-in rule sets"
 msgstr "Встроенные наборы правил"
+
+msgid "By flag emoji from name"
+msgstr "По эмодзи флага из названия"
 
 msgid "ByeDPI listen address and port are assigned by Podkop Plus and must not be set in the strategy."
 msgstr "Адрес и порт прослушивания ByeDPI назначаются Podkop Plus и не должны задаваться в стратегии."
@@ -1088,9 +1091,6 @@ msgstr "Разрешать доменные имена перед маршрут
 msgid "Resolve real IP for routing"
 msgstr "Разрешать реальный IP для маршрутизации"
 
-msgid "Resolve server countries using country.is"
-msgstr "Определять страны серверов через country.is"
-
 msgid "Resource selection by hostname inside nfqws is not supported here; sing-box selects resources before NFQUEUE."
 msgstr "Выбор ресурсов по hostname внутри nfqws здесь не поддерживается; ресурсы выбирает sing-box до NFQUEUE."
 
@@ -1618,6 +1618,9 @@ msgstr "Значение не должно содержать управляющ
 
 msgid "Version"
 msgstr "Версия"
+
+msgid "Via country.is"
+msgstr "Через сервис country.is"
 
 msgid "View logs"
 msgstr "Посмотреть логи"
