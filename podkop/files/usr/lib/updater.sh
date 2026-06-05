@@ -649,7 +649,11 @@ updates_pkg_install_name_downgrade() {
     local package_name="$1"
 
     if updates_is_apk; then
-        apk add "$package_name" </dev/null
+        if updates_pkg_is_installed "$package_name"; then
+            apk fix --reinstall --upgrade "$package_name" </dev/null
+        else
+            apk add "$package_name" </dev/null
+        fi
     else
         opkg install --force-reinstall --force-downgrade "$package_name" </dev/null ||
             opkg install --force-downgrade "$package_name" </dev/null
@@ -1568,10 +1572,15 @@ updates_install_sing_box_extended() {
 
 updates_install_stable_sing_box() {
     local action="$1"
-    local current_version latest_version new_version changed
+    local current_version latest_version new_version changed package_version binary_version
 
-    current_version="$(updates_get_installed_package_version "sing-box")"
-    [ -n "$current_version" ] || current_version="$(get_sing_box_version)"
+    package_version="$(updates_get_installed_package_version "sing-box")"
+    binary_version="$(get_sing_box_version)"
+    current_version="$package_version"
+    if is_sing_box_extended "$binary_version"; then
+        current_version="$binary_version"
+    fi
+    [ -n "$current_version" ] || current_version="$binary_version"
     latest_version="$(updates_get_available_package_version "sing-box")"
     [ -n "$latest_version" ] || latest_version="$(updates_get_installed_package_version "sing-box")"
     [ -n "$latest_version" ] || updates_fail "sing_box" "$action" "Failed to resolve stable sing-box package version" "$current_version"
@@ -1591,10 +1600,20 @@ updates_install_stable_sing_box() {
         updates_fail "sing_box" "$action" "Failed to install stable sing-box" "$current_version" "$latest_version"
     fi
 
+    new_version="$(get_sing_box_version)"
+    if [ -z "$new_version" ]; then
+        updates_clear_version_caches
+        updates_fail "sing_box" "$action" "Stable sing-box package was installed, but sing-box binary is not available" "$current_version" "$latest_version"
+    fi
+
+    if is_sing_box_extended "$new_version"; then
+        updates_clear_version_caches
+        updates_fail "sing_box" "$action" "Stable sing-box package was installed, but the active binary is still sing-box-extended" "$new_version" "$latest_version"
+    fi
+
     updates_restart_podkop_after_successful_change
     updates_clear_version_caches
 
-    new_version="$(get_sing_box_version)"
     changed=1
     [ "$new_version" = "$current_version" ] && changed=0
 
