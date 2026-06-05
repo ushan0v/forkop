@@ -1269,14 +1269,18 @@ function buildHysteria2Link(sectionId, identity, options = {}) {
   const host = getPublicHost(sectionId);
   const port = uci.get(UCI_PACKAGE, sectionId, "listen_port") || "";
   const certificatePin = normalizeSha256(options.tlsCertificateSha256);
+  const obfsType = uci.get(UCI_PACKAGE, sectionId, "hysteria2_obfs_type") || "";
   const params = {
     sni: uci.get(UCI_PACKAGE, sectionId, "tls_server_name") || "",
-    pinSHA256: certificatePin,
     pcs: certificatePin,
-    obfs: uci.get(UCI_PACKAGE, sectionId, "hysteria2_obfs_type") || "",
-    "obfs-password":
-      uci.get(UCI_PACKAGE, sectionId, "hysteria2_obfs_password") || "",
   };
+
+  if (obfsType === "salamander") {
+    params.obfs = obfsType;
+    params["obfs-password"] =
+      uci.get(UCI_PACKAGE, sectionId, "hysteria2_obfs_password") || "";
+  }
+
   const query = encodeQuery(params);
 
   return `hysteria2://${encodeURIComponent(identity.password)}@${host}:${port}${query ? `?${query}` : ""}#${encodeURIComponent(identity.name || sectionId)}`;
