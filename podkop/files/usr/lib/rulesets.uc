@@ -6,6 +6,14 @@ function as_string(value) {
     return value == null ? "" : "" + value;
 }
 
+function ascii_lower(value) {
+    let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let lower = "abcdefghijklmnopqrstuvwxyz";
+    return replace(as_string(value), /[A-Z]/g, function(ch) {
+        return substr(lower, index(upper, ch), 1);
+    });
+}
+
 function json_decode_text(text) {
     try {
         return json(as_string(text));
@@ -175,11 +183,22 @@ function is_ipv4_cidr_text(value) {
 }
 
 function is_domain_suffix_text(value) {
-    let text = as_string(value);
+    let text = ascii_lower(value);
     if (substr(text, 0, 1) == ".")
         text = substr(text, 1);
 
     return match(text, /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/);
+}
+
+function normalize_plain_ruleset_value(value, kind) {
+    if (kind == "domains") {
+        let normalized = ascii_lower(value);
+        return is_domain_suffix_text(normalized) ? normalized : null;
+    }
+    if (kind == "subnets")
+        return is_ipv4_text(value, true) || is_ipv4_cidr_text(value) ? value : null;
+
+    return null;
 }
 
 function is_plain_ruleset_value(value, kind) {
@@ -218,12 +237,13 @@ function import_plain_list(plain_path, ruleset_path, key, kind, chunk_size_text,
         if (line == "")
             continue;
 
-        if (!is_plain_ruleset_value(line, kind)) {
+        let normalized = normalize_plain_ruleset_value(line, kind);
+        if (normalized == null) {
             push(invalid, line);
             continue;
         }
 
-        push(chunk, line);
+        push(chunk, normalized);
 
         if (length(chunk) == chunk_size) {
             push(counts, "" + length(chunk));

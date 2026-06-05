@@ -6,6 +6,14 @@ function as_string(value) {
     return value == null ? "" : "" + value;
 }
 
+function ascii_lower(value) {
+    let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let lower = "abcdefghijklmnopqrstuvwxyz";
+    return replace(as_string(value), /[A-Z]/g, function(ch) {
+        return substr(lower, index(upper, ch), 1);
+    });
+}
+
 function write_json(value) {
     print(sprintf("%J", value), "\n");
 }
@@ -131,7 +139,7 @@ function valid_ipv4_cidr(value) {
 }
 
 function valid_domain_suffix(value) {
-    value = as_string(value);
+    value = ascii_lower(value);
     if (substr(value, 0, 1) == ".")
         value = substr(value, 1);
 
@@ -204,6 +212,18 @@ function domain_subnet_value_valid(value, kind) {
     exit(1);
 }
 
+function normalize_domain_subnet_value(value, kind) {
+    kind = as_string(kind);
+    if (kind == "domains") {
+        let normalized = ascii_lower(value);
+        return valid_domain_suffix(normalized) ? normalized : null;
+    }
+    if (kind == "subnets")
+        return valid_ipv4(value) || valid_ipv4_cidr(value) ? value : null;
+
+    exit(1);
+}
+
 function filter_domain_subnet_values(values, kind) {
     let result = [];
     kind = as_string(kind);
@@ -211,9 +231,11 @@ function filter_domain_subnet_values(values, kind) {
     if (kind != "domains" && kind != "subnets")
         exit(1);
 
-    for (let value in values)
-        if (domain_subnet_value_valid(value, kind))
-            push(result, value);
+    for (let value in values) {
+        let normalized = normalize_domain_subnet_value(value, kind);
+        if (normalized != null)
+            push(result, normalized);
+    }
 
     return result;
 }
@@ -239,8 +261,9 @@ function split_domain_subnet_file(path, domains_path, subnets_path) {
     let subnets = [];
 
     for (let value in domain_subnet_line_values(data)) {
-        if (valid_domain_suffix(value))
-            push(domains, value);
+        let domain = normalize_domain_subnet_value(value, "domains");
+        if (domain != null)
+            push(domains, domain);
         else if (valid_ipv4(value) || valid_ipv4_cidr(value))
             push(subnets, value);
     }

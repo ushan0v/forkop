@@ -6,6 +6,14 @@ function as_string(value) {
     return value == null ? "" : "" + value;
 }
 
+function ascii_lower(value) {
+    let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let lower = "abcdefghijklmnopqrstuvwxyz";
+    return replace(as_string(value), /[A-Z]/g, function(ch) {
+        return substr(lower, index(upper, ch), 1);
+    });
+}
+
 function write_json(value) {
     print(sprintf("%J", value), "\n");
 }
@@ -157,7 +165,7 @@ function valid_ipv4(value) {
 }
 
 function valid_domain(value) {
-    return regex_matches(as_string(value), "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$");
+    return regex_matches(ascii_lower(value), "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$");
 }
 
 function valid_host(value) {

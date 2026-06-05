@@ -6,6 +6,14 @@ function as_string(value) {
     return value == null ? "" : "" + value;
 }
 
+function ascii_lower(value) {
+    let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let lower = "abcdefghijklmnopqrstuvwxyz";
+    return replace(as_string(value), /[A-Z]/g, function(ch) {
+        return substr(lower, index(upper, ch), 1);
+    });
+}
+
 function read_stdin() {
     let input = fs.open("/dev/stdin", "r");
     if (!input)
@@ -115,7 +123,7 @@ function valid_ipv4_cidr(value) {
 }
 
 function valid_domain(value) {
-    return match(as_string(value), /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/) != null;
+    return match(ascii_lower(value), /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/) != null;
 }
 
 function valid_domain_suffix(value) {
