@@ -373,7 +373,12 @@ EOF
 grep -q "105 podkopplus" /etc/iproute2/rt_tables && sed -i "/105 podkopplus/d" /etc/iproute2/rt_tables
 
 /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
-/usr/bin/podkop-plus restore_dnsmasq >/dev/null 2>&1 || true
+podkop_dont_touch_dhcp="$(uci -q get 'podkop-plus.settings.dont_touch_dhcp' 2>/dev/null)"
+case "$podkop_dont_touch_dhcp" in
+	1|true|yes|on)
+		;;
+	*)
+		/usr/bin/podkop-plus restore_dnsmasq >/dev/null 2>&1 || true
 if [ -r /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh ]; then
 	sh /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh >/dev/null 2>&1 || true
 else
@@ -415,6 +420,8 @@ else
 	uci -q commit dhcp >/dev/null 2>&1 || true
 	[ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 fi
+		;;
+esac
 
 exit 0
 EOF
@@ -573,7 +580,12 @@ EOF
 #!/bin/sh
 grep -q "105 podkopplus" /etc/iproute2/rt_tables && sed -i "/105 podkopplus/d" /etc/iproute2/rt_tables
 /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
-/usr/bin/podkop-plus restore_dnsmasq >/dev/null 2>&1 || true
+podkop_dont_touch_dhcp="$(uci -q get 'podkop-plus.settings.dont_touch_dhcp' 2>/dev/null)"
+case "$podkop_dont_touch_dhcp" in
+	1|true|yes|on)
+		;;
+	*)
+		/usr/bin/podkop-plus restore_dnsmasq >/dev/null 2>&1 || true
 if [ -r /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh ]; then
 	sh /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh >/dev/null 2>&1 || true
 else
@@ -615,6 +627,8 @@ else
 	uci -q commit dhcp >/dev/null 2>&1 || true
 	[ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 fi
+		;;
+esac
 exit 0
 EOF
 

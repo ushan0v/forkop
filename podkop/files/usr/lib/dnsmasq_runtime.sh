@@ -40,6 +40,13 @@ dnsmasq_has_podkop_dns() {
     dnsmasq_default_has_podkop_dns || dnsmasq_legacy_instance_exists
 }
 
+dnsmasq_management_disabled() {
+    local dont_touch_dhcp
+
+    config_get_bool dont_touch_dhcp "settings" "dont_touch_dhcp" 0
+    [ "$dont_touch_dhcp" -eq 1 ]
+}
+
 dnsmasq_default_config_is_complete() {
     local cachesize noresolv
 
@@ -235,6 +242,11 @@ dnsmasq_restore() {
 }
 
 dnsmasq_restore_fail_safe() {
+    if dnsmasq_management_disabled; then
+        log "Fail-safe: dont_touch_dhcp is enabled, leaving dnsmasq unchanged" "warn"
+        return 0
+    fi
+
     log "Fail-safe: restoring dnsmasq away from Podkop Plus DNS" "warn"
 
     dnsmasq_restore force >/dev/null 2>&1 || true

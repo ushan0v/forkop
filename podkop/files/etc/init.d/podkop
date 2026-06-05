@@ -20,7 +20,17 @@ PODKOP_DNSMASQ_FAILSAFE="/usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh"
 PODKOP_STATUS_DIAGNOSTICS_UC="/usr/lib/podkop-plus/status_diagnostics.uc"
 config_load "$CONFIG_NAME"
 
+dnsmasq_management_disabled() {
+    local dont_touch_dhcp
+
+    config_load "$CONFIG_NAME"
+    config_get_bool dont_touch_dhcp "settings" "dont_touch_dhcp" 0
+    [ "$dont_touch_dhcp" -eq 1 ]
+}
+
 restore_dnsmasq_failsafe() {
+    dnsmasq_management_disabled && return 0
+
     if [ -r "$PODKOP_DNSMASQ_FAILSAFE" ]; then
         sh "$PODKOP_DNSMASQ_FAILSAFE" >/dev/null 2>&1 || true
         return 0

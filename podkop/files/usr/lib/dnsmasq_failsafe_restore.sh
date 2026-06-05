@@ -9,6 +9,11 @@ podkop_dnsmasq_failsafe_restore() {
     local legacy_instance_present
 
     command -v uci >/dev/null 2>&1 || return 0
+    case "$(uci -q get "$PODKOP_CONFIG_NAME.settings.dont_touch_dhcp" 2>/dev/null)" in
+    1|true|yes|on)
+        return 0
+        ;;
+    esac
 
     legacy_dnsmasq_section="podkop_plus"
     changed=0

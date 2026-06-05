@@ -85,6 +85,18 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+podkop_dont_touch_dhcp_enabled() {
+    command_exists uci || return 1
+
+    case "$(uci -q get 'podkop-plus.settings.dont_touch_dhcp' 2>/dev/null)" in
+        1|true|yes|on)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
 init_tmp_dir() {
     TMP_DIR="$(mktemp -d /tmp/podkop-plus.XXXXXX 2>/dev/null || true)"
 
@@ -615,6 +627,7 @@ restore_podkop_dnsmasq_failsafe_raw() {
     podkop_legacy_instance_present=0
 
     command_exists uci || return 0
+    podkop_dont_touch_dhcp_enabled && return 0
 
     podkop_legacy_interfaces="$(uci -q get "dhcp.$podkop_legacy_dnsmasq_section.interface" 2>/dev/null)"
     [ -n "$podkop_legacy_interfaces" ] ||
@@ -689,6 +702,8 @@ restore_podkop_dnsmasq_failsafe_raw() {
 }
 
 restore_podkop_dnsmasq_failsafe() {
+    podkop_dont_touch_dhcp_enabled && return 0
+
     [ -x /usr/bin/podkop-plus ] && /usr/bin/podkop-plus restore_dnsmasq >/dev/null 2>&1 || true
 
     if [ -r /usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh ]; then
