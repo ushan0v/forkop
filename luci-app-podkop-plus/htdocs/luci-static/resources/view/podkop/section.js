@@ -3381,7 +3381,7 @@ function createSectionContent(section) {
     form.DynamicList,
     "selector_proxy_links",
     _("Connection URL"),
-    _("vless://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links"),
+    _("vless://, vmess://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links"),
   );
   o.depends("action", "proxy");
   o.modalonly = true;

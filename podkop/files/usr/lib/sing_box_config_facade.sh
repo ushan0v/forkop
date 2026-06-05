@@ -151,6 +151,15 @@ sing_box_cf_add_proxy_outbound() {
         config=$(_add_outbound_security "$config" "$tag" "$url")
         config=$(_add_outbound_transport "$config" "$tag" "$url")
         ;;
+    vmess)
+        local tag outbound_json
+        tag=$(get_outbound_tag_by_section "$section")
+        outbound_json="$(ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/subscription_parser.uc" share-link-outbound "$url" "$tag")" || {
+            log "Invalid VMess proxy URL. Aborted." "fatal"
+            exit 1
+        }
+        config=$(sing_box_cm_add_raw_outbound "$config" "$tag" "$outbound_json")
+        ;;
     ss)
         local userinfo tag host port method password udp_over_tcp
 

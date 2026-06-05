@@ -1,6 +1,7 @@
 import { ValidationResult } from './types';
 import { validateShadowsocksUrl } from './validateShadowsocksUrl';
 import { validateVlessUrl } from './validateVlessUrl';
+import { validateVmessUrl } from './validateVmessUrl';
 import { validateTrojanUrl } from './validateTrojanUrl';
 import { validateSocksUrl } from './validateSocksUrl';
 import { validateHysteria2Url } from './validateHysteriaUrl';
@@ -15,6 +16,10 @@ export function validateProxyUrl(url: string): ValidationResult {
 
   if (trimmedUrl.startsWith('vless://')) {
     return validateVlessUrl(trimmedUrl);
+  }
+
+  if (trimmedUrl.startsWith('vmess://')) {
+    return validateVmessUrl(trimmedUrl);
   }
 
   if (trimmedUrl.startsWith('trojan://')) {
@@ -35,7 +40,7 @@ export function validateProxyUrl(url: string): ValidationResult {
   return {
     valid: false,
     message: _(
-      'URL must start with vless://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2://, or hy2://',
+      'URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2://, or hy2://',
     ),
   };
 }

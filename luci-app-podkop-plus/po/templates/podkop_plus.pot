@@ -2209,7 +2209,7 @@ msgid "Uploaded"
 msgstr ""
 
 #: src/validators/validateProxyUrl.ts:37
-msgid "URL must start with vless://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2://, or hy2://"
+msgid "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2://, or hy2://"
 msgstr ""
 
 #: src/validators/validateUrl.ts:17
@@ -2353,7 +2353,7 @@ msgid "VLESS flow"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3384
-msgid "vless://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links"
+msgid "vless://, vmess://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:70

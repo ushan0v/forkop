@@ -870,6 +870,18 @@ function parse_share_link(line) {
     return null;
 }
 
+function share_link_outbound(raw, tag) {
+    let outbound = parse_share_link(raw);
+    if (type(outbound) != "object")
+        return false;
+
+    outbound.tag = as_string(tag);
+    delete outbound.share_link;
+    delete outbound.remark;
+    write_json(outbound);
+    return true;
+}
+
 function clean_scalar(value) {
     value = trim(value);
     let first = substr(value, 0, 1);
@@ -1893,6 +1905,8 @@ if (mode == "validate-subscription")
     ok = validate_subscription(ARGV[1]);
 else if (mode == "url-fragment")
     ok = subscription_url_fragment(ARGV[1]);
+else if (mode == "share-link-outbound")
+    ok = share_link_outbound(ARGV[1], ARGV[2]);
 else if (mode == "normalize-uri-list")
     ok = normalize_uri_list(ARGV[1], ARGV[2]);
 else if (mode == "normalize-clash-yaml")
@@ -1916,6 +1930,7 @@ else if (ARGV[0] && ARGV[1])
 else {
     warn("Usage: subscription_parser.uc validate-subscription <normalized-json>\n");
     warn("       subscription_parser.uc url-fragment <url>\n");
+    warn("       subscription_parser.uc share-link-outbound <url> <tag>\n");
     warn("       subscription_parser.uc normalize-uri-list <input> <output>\n");
     warn("       subscription_parser.uc normalize-clash-yaml <input> <output>\n");
     warn("       subscription_parser.uc normalize-content <input> <output>\n");
