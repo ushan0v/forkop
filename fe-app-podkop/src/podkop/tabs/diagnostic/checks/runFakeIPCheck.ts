@@ -1,7 +1,7 @@
 import { insertIf } from '../../../../helpers';
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
 import { PodkopShellMethods, RemoteFakeIPMethods } from '../../../methods';
-import { IDiagnosticsChecksItem } from '../../../services';
+import type { IDiagnosticsChecksItem } from '../../../services';
 import { updateCheckStore } from './updateCheckStore';
 import { getMeta } from '../helpers/getMeta';
 
@@ -26,18 +26,25 @@ export async function runFakeIPCheck() {
       routerFakeIPResponse.success && routerFakeIPResponse.data.fakeip,
     browserFakeIP:
       checkFakeIPResponse.success && checkFakeIPResponse.data.fakeip,
+    canComparePublicIP: checkFakeIPResponse.success && checkIPResponse.success,
     differentIP:
       checkFakeIPResponse.success &&
       checkIPResponse.success &&
       checkFakeIPResponse.data.IP !== checkIPResponse.data.IP,
   };
 
-  const allGood =
-    checks.singBoxFakeIP && checks.browserFakeIP && checks.differentIP;
-  const atLeastOneGood =
-    checks.singBoxFakeIP || checks.browserFakeIP || checks.differentIP;
-
-  const { state, description } = getMeta({ atLeastOneGood, allGood });
+  const fakeIPWorks = checks.singBoxFakeIP && checks.browserFakeIP;
+  const { state, description } = fakeIPWorks
+    ? checks.differentIP
+      ? { state: 'success' as const, description: _('Checks passed') }
+      : {
+          state: 'warning' as const,
+          description: _('FakeIP works; public IP comparison is inconclusive'),
+        }
+    : getMeta({
+        allGood: false,
+        atLeastOneGood: checks.singBoxFakeIP || checks.browserFakeIP,
+      });
 
   updateCheckStore({
     order,
@@ -62,10 +69,12 @@ export async function runFakeIPCheck() {
       },
       ...insertIf<IDiagnosticsChecksItem>(checks.browserFakeIP, [
         {
-          state: checks.differentIP ? 'success' : 'error',
-          key: checks.differentIP
-            ? _('Proxy traffic is routed via FakeIP')
-            : _('Proxy traffic is not routed via FakeIP'),
+          state: checks.differentIP ? 'success' : 'warning',
+          key: !checks.canComparePublicIP
+            ? _('Could not compare FakeIP and control public IPs')
+            : checks.differentIP
+              ? _('FakeIP and control checks use different public IPs')
+              : _('FakeIP and control checks use the same public IP'),
           value: '',
         },
       ]),

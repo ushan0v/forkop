@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-03 03:08+0300\n"
-"PO-Revision-Date: 2026-06-03 03:08+0300\n"
+"POT-Creation-Date: 2026-06-05 22:07+0300\n"
+"PO-Revision-Date: 2026-06-05 22:07+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -260,6 +260,9 @@ msgstr "Копировать"
 msgid "Copy proxy link"
 msgstr "Скопировать ссылку прокси"
 
+msgid "Could not compare FakeIP and control public IPs"
+msgstr "Не удалось сравнить публичные IP FakeIP и контрольной проверки"
+
 msgid "Currently unavailable"
 msgstr "Временно недоступно"
 
@@ -469,6 +472,15 @@ msgstr "Не удалось выполнить"
 
 msgid "Failed to update subscriptions"
 msgstr "Не удалось обновить подписки"
+
+msgid "FakeIP and control checks use different public IPs"
+msgstr "FakeIP и контрольная проверка используют разные публичные IP"
+
+msgid "FakeIP and control checks use the same public IP"
+msgstr "FakeIP и контрольная проверка используют один публичный IP"
+
+msgid "FakeIP works; public IP comparison is inconclusive"
+msgstr "FakeIP работает; сравнение публичных IP не дает однозначного результата"
 
 msgid "FakeTLS host"
 msgstr "FakeTLS-хост"
@@ -1039,12 +1051,6 @@ msgstr "Протокол"
 
 msgid "Proxy link is unavailable"
 msgstr "Ссылка прокси недоступна"
-
-msgid "Proxy traffic is not routed via FakeIP"
-msgstr "Прокси-трафик не маршрутизируется через FakeIP"
-
-msgid "Proxy traffic is routed via FakeIP"
-msgstr "Прокси-трафик направляется через FakeIP"
 
 msgid "Public host"
 msgstr "Публичный хост"
