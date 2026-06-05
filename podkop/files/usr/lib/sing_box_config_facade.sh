@@ -630,15 +630,15 @@ sing_box_cf_load_prepared_state() {
     if printf '%s' "$prepared_json" |
         ucode "$PODKOP_LIB/sing_box_config_facade.uc" prepared-state-to-files "$source_section" \
             "$tags_tmp" "$tags_csv_tmp" "$names_lines_tmp" "$link_refs_tmp" "$names_tmp" "$servers_tmp"; then
-        SUBSCRIPTION_OUTBOUND_TAGS_JSON="$(cat "$tags_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_TAGS_JSON < "$tags_tmp" || SUBSCRIPTION_OUTBOUND_TAGS_JSON=""
         [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
-        SUBSCRIPTION_OUTBOUND_TAGS="$(cat "$tags_csv_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_TAGS < "$tags_csv_tmp" || SUBSCRIPTION_OUTBOUND_TAGS=""
         SUBSCRIPTION_OUTBOUND_NAMES="$(cat "$names_lines_tmp" 2>/dev/null)"
-        SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="$(cat "$link_refs_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON < "$link_refs_tmp" || SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON=""
         [ -n "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON" ] || SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="{}"
-        SUBSCRIPTION_OUTBOUND_NAMES_JSON="$(cat "$names_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_NAMES_JSON < "$names_tmp" || SUBSCRIPTION_OUTBOUND_NAMES_JSON=""
         [ -n "$SUBSCRIPTION_OUTBOUND_NAMES_JSON" ] || SUBSCRIPTION_OUTBOUND_NAMES_JSON="{}"
-        SUBSCRIPTION_OUTBOUND_SERVERS_JSON="$(cat "$servers_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_SERVERS_JSON < "$servers_tmp" || SUBSCRIPTION_OUTBOUND_SERVERS_JSON=""
         [ -n "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON" ] || SUBSCRIPTION_OUTBOUND_SERVERS_JSON="{}"
         status=0
     fi
@@ -670,22 +670,27 @@ sing_box_cf_append_subscription_prepared_metadata() {
     }
 
     status=1
-    if printf '%s' "${SUBSCRIPTION_OUTBOUND_TAGS_JSON:-[]}" > "$tags_tmp" &&
+    [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
+    [ -n "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON" ] || SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="{}"
+    [ -n "$SUBSCRIPTION_OUTBOUND_NAMES_JSON" ] || SUBSCRIPTION_OUTBOUND_NAMES_JSON="{}"
+    [ -n "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON" ] || SUBSCRIPTION_OUTBOUND_SERVERS_JSON="{}"
+
+    if printf '%s' "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" > "$tags_tmp" &&
         printf '%s' "$SUBSCRIPTION_OUTBOUND_NAMES" > "$names_lines_tmp" &&
-        printf '%s' "${SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON:-{}}" > "$link_refs_tmp" &&
-        printf '%s' "${SUBSCRIPTION_OUTBOUND_NAMES_JSON:-{}}" > "$names_tmp" &&
-        printf '%s' "${SUBSCRIPTION_OUTBOUND_SERVERS_JSON:-{}}" > "$servers_tmp" &&
+        printf '%s' "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON" > "$link_refs_tmp" &&
+        printf '%s' "$SUBSCRIPTION_OUTBOUND_NAMES_JSON" > "$names_tmp" &&
+        printf '%s' "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON" > "$servers_tmp" &&
         printf '%s' "$prepared_json" |
             ucode "$PODKOP_LIB/sing_box_config_facade.uc" append-prepared-state-to-files "$SING_BOX_CF_SOURCE_SECTION" \
                 "$tags_tmp" "$names_lines_tmp" "$link_refs_tmp" "$names_tmp" "$servers_tmp"; then
-        SUBSCRIPTION_OUTBOUND_TAGS_JSON="$(cat "$tags_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_TAGS_JSON < "$tags_tmp" || SUBSCRIPTION_OUTBOUND_TAGS_JSON=""
         [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
         SUBSCRIPTION_OUTBOUND_NAMES="$(cat "$names_lines_tmp" 2>/dev/null)"
-        SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="$(cat "$link_refs_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON < "$link_refs_tmp" || SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON=""
         [ -n "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON" ] || SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="{}"
-        SUBSCRIPTION_OUTBOUND_NAMES_JSON="$(cat "$names_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_NAMES_JSON < "$names_tmp" || SUBSCRIPTION_OUTBOUND_NAMES_JSON=""
         [ -n "$SUBSCRIPTION_OUTBOUND_NAMES_JSON" ] || SUBSCRIPTION_OUTBOUND_NAMES_JSON="{}"
-        SUBSCRIPTION_OUTBOUND_SERVERS_JSON="$(cat "$servers_tmp" 2>/dev/null)"
+        IFS= read -r SUBSCRIPTION_OUTBOUND_SERVERS_JSON < "$servers_tmp" || SUBSCRIPTION_OUTBOUND_SERVERS_JSON=""
         [ -n "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON" ] || SUBSCRIPTION_OUTBOUND_SERVERS_JSON="{}"
         status=0
     fi

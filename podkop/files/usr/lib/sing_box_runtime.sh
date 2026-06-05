@@ -531,10 +531,15 @@ proxy_group_append_outbound() {
     names_tmp="$tmpdir/names.json"
     servers_tmp="$tmpdir/servers.json"
 
-    if printf '%s' "${PROXY_GROUP_OUTBOUND_TAGS_JSON:-[]}" > "$tags_tmp" &&
-        printf '%s' "${PROXY_GROUP_LINKS_JSON:-{}}" > "$links_tmp" &&
-        printf '%s' "${PROXY_GROUP_NAMES_JSON:-{}}" > "$names_tmp" &&
-        printf '%s' "${PROXY_GROUP_SERVERS_JSON:-{}}" > "$servers_tmp" &&
+    [ -n "$PROXY_GROUP_OUTBOUND_TAGS_JSON" ] || PROXY_GROUP_OUTBOUND_TAGS_JSON="[]"
+    [ -n "$PROXY_GROUP_LINKS_JSON" ] || PROXY_GROUP_LINKS_JSON="{}"
+    [ -n "$PROXY_GROUP_NAMES_JSON" ] || PROXY_GROUP_NAMES_JSON="{}"
+    [ -n "$PROXY_GROUP_SERVERS_JSON" ] || PROXY_GROUP_SERVERS_JSON="{}"
+
+    if printf '%s' "$PROXY_GROUP_OUTBOUND_TAGS_JSON" > "$tags_tmp" &&
+        printf '%s' "$PROXY_GROUP_LINKS_JSON" > "$links_tmp" &&
+        printf '%s' "$PROXY_GROUP_NAMES_JSON" > "$names_tmp" &&
+        printf '%s' "$PROXY_GROUP_SERVERS_JSON" > "$servers_tmp" &&
         sing_box_runtime_ucode append-proxy-group-outbound-state \
             "$tags_tmp" "$links_tmp" "$names_tmp" "$servers_tmp" "$tag" "$link" "$display_name" "$server"; then
         PROXY_GROUP_OUTBOUND_TAGS_JSON="$(cat "$tags_tmp" 2>/dev/null)"
@@ -583,24 +588,33 @@ proxy_group_merge_subscription_metadata() {
     sub_servers_tmp="$tmpdir/sub-servers.json"
 
     status=1
-    if printf '%s' "${PROXY_GROUP_OUTBOUND_TAGS_JSON:-[]}" > "$tags_tmp" &&
-        printf '%s' "${PROXY_GROUP_LINK_REFS_JSON:-{}}" > "$link_refs_tmp" &&
-        printf '%s' "${PROXY_GROUP_NAMES_JSON:-{}}" > "$names_tmp" &&
-        printf '%s' "${PROXY_GROUP_SERVERS_JSON:-{}}" > "$servers_tmp" &&
-        printf '%s' "${SUBSCRIPTION_OUTBOUND_TAGS_JSON:-[]}" > "$sub_tags_tmp" &&
-        printf '%s' "${SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON:-{}}" > "$sub_link_refs_tmp" &&
-        printf '%s' "${SUBSCRIPTION_OUTBOUND_NAMES_JSON:-{}}" > "$sub_names_tmp" &&
-        printf '%s' "${SUBSCRIPTION_OUTBOUND_SERVERS_JSON:-{}}" > "$sub_servers_tmp" &&
+    [ -n "$PROXY_GROUP_OUTBOUND_TAGS_JSON" ] || PROXY_GROUP_OUTBOUND_TAGS_JSON="[]"
+    [ -n "$PROXY_GROUP_LINK_REFS_JSON" ] || PROXY_GROUP_LINK_REFS_JSON="{}"
+    [ -n "$PROXY_GROUP_NAMES_JSON" ] || PROXY_GROUP_NAMES_JSON="{}"
+    [ -n "$PROXY_GROUP_SERVERS_JSON" ] || PROXY_GROUP_SERVERS_JSON="{}"
+    [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
+    [ -n "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON" ] || SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="{}"
+    [ -n "$SUBSCRIPTION_OUTBOUND_NAMES_JSON" ] || SUBSCRIPTION_OUTBOUND_NAMES_JSON="{}"
+    [ -n "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON" ] || SUBSCRIPTION_OUTBOUND_SERVERS_JSON="{}"
+
+    if printf '%s' "$PROXY_GROUP_OUTBOUND_TAGS_JSON" > "$tags_tmp" &&
+        printf '%s' "$PROXY_GROUP_LINK_REFS_JSON" > "$link_refs_tmp" &&
+        printf '%s' "$PROXY_GROUP_NAMES_JSON" > "$names_tmp" &&
+        printf '%s' "$PROXY_GROUP_SERVERS_JSON" > "$servers_tmp" &&
+        printf '%s' "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" > "$sub_tags_tmp" &&
+        printf '%s' "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON" > "$sub_link_refs_tmp" &&
+        printf '%s' "$SUBSCRIPTION_OUTBOUND_NAMES_JSON" > "$sub_names_tmp" &&
+        printf '%s' "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON" > "$sub_servers_tmp" &&
         sing_box_runtime_ucode merge-proxy-group-subscription-state \
             "$tags_tmp" "$link_refs_tmp" "$names_tmp" "$servers_tmp" \
             "$sub_tags_tmp" "$sub_link_refs_tmp" "$sub_names_tmp" "$sub_servers_tmp"; then
-        PROXY_GROUP_OUTBOUND_TAGS_JSON="$(cat "$tags_tmp" 2>/dev/null)"
+        IFS= read -r PROXY_GROUP_OUTBOUND_TAGS_JSON < "$tags_tmp" || PROXY_GROUP_OUTBOUND_TAGS_JSON=""
         [ -n "$PROXY_GROUP_OUTBOUND_TAGS_JSON" ] || PROXY_GROUP_OUTBOUND_TAGS_JSON="[]"
-        PROXY_GROUP_LINK_REFS_JSON="$(cat "$link_refs_tmp" 2>/dev/null)"
+        IFS= read -r PROXY_GROUP_LINK_REFS_JSON < "$link_refs_tmp" || PROXY_GROUP_LINK_REFS_JSON=""
         [ -n "$PROXY_GROUP_LINK_REFS_JSON" ] || PROXY_GROUP_LINK_REFS_JSON="{}"
-        PROXY_GROUP_NAMES_JSON="$(cat "$names_tmp" 2>/dev/null)"
+        IFS= read -r PROXY_GROUP_NAMES_JSON < "$names_tmp" || PROXY_GROUP_NAMES_JSON=""
         [ -n "$PROXY_GROUP_NAMES_JSON" ] || PROXY_GROUP_NAMES_JSON="{}"
-        PROXY_GROUP_SERVERS_JSON="$(cat "$servers_tmp" 2>/dev/null)"
+        IFS= read -r PROXY_GROUP_SERVERS_JSON < "$servers_tmp" || PROXY_GROUP_SERVERS_JSON=""
         [ -n "$PROXY_GROUP_SERVERS_JSON" ] || PROXY_GROUP_SERVERS_JSON="{}"
         status=0
     fi

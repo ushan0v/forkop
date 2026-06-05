@@ -178,6 +178,35 @@ describe('getDashboardSections', () => {
     ).toBe('US');
   });
 
+  it('marks subscription outbounds as copyable when section cache has link refs', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({
+        subscription_urls: ['https://subscription.example/list'],
+      }),
+    ]);
+    mocks.fsRead.mockResolvedValue(
+      JSON.stringify({
+        links: {},
+        linkRefs: {
+          'main-2-out': {
+            sourceSection: 'main-subscription-1',
+            sourceIndex: 1,
+          },
+        },
+      }),
+    );
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+    const subscriptionOutbound = section.outbounds.find(
+      (item) => item.code === 'main-2-out',
+    );
+
+    expect(result.success).toBe(true);
+    expect(subscriptionOutbound?.link).toBe('');
+    expect(subscriptionOutbound?.canCopyLink).toBe(true);
+  });
+
   it('does not hide servers when URLTest filtering is set to all servers', async () => {
     mocks.getConfigSections.mockResolvedValue([
       proxySection({
