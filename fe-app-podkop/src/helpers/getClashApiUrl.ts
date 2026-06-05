@@ -1,3 +1,17 @@
+function getWindowLocation(): Location | undefined {
+  return typeof window !== 'undefined' ? window.location : undefined;
+}
+
+export function canUseDirectClashApi(): boolean {
+  const location = getWindowLocation();
+
+  return (
+    typeof location?.hostname === 'string' &&
+    location.hostname !== '' &&
+    location.protocol !== 'https:'
+  );
+}
+
 export function getClashWsUrl(): string {
   const { hostname } = window.location;
 

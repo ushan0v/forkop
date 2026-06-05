@@ -1,4 +1,4 @@
-import { getClashWsUrl, onMount } from '../../../helpers';
+import { canUseDirectClashApi, getClashWsUrl, onMount } from '../../../helpers';
 import { prettyBytes } from '../../../helpers/prettyBytes';
 import { showToast } from '../../../helpers/showToast';
 import {
@@ -53,7 +53,16 @@ interface MonitoredConnection extends ClashConnection {
   lastSeenAt: number;
 }
 
+function normalizeConnectionsPayload(value: unknown): ClashConnectionsPayload {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as ClashConnectionsPayload;
+}
+
 const RENDER_INTERVAL_MS = 500;
+const CONNECTIONS_RPC_POLL_INTERVAL_MS = 1500;
 const CLOSED_CONNECTION_LIMIT = 300;
 const ALL_FILTER_VALUE = 'all';
 
@@ -63,9 +72,11 @@ let monitoringMountId = 0;
 let monitoringLifecycleRegistered = false;
 let monitoringControllerInitialized = false;
 let renderTimer: ReturnType<typeof setInterval> | null = null;
+let connectionsPollTimer: ReturnType<typeof setInterval> | null = null;
 let connectionsSocketUrl = '';
 let renderSkippedForSelection = false;
 let pendingConnectionsPayload: ClashConnectionsPayload | null = null;
+let pollingConnections = false;
 
 let activeTab: MonitoringTabId = 'active';
 let selectedDeviceFilter = ALL_FILTER_VALUE;
@@ -882,6 +893,11 @@ function setMonitoringPaused(paused: boolean) {
       applyConnectionsPayload(payload);
       return;
     }
+
+    if (connectionsPollTimer) {
+      void pollConnectionsSnapshot();
+      return;
+    }
   }
 
   renderConnections();
@@ -1233,6 +1249,54 @@ async function loadRouteDisplayNames() {
   }
 }
 
+async function pollConnectionsSnapshot() {
+  if (pollingConnections || !monitoringMounted || monitoringPaused) {
+    return;
+  }
+
+  const mountId = monitoringMountId;
+  pollingConnections = true;
+
+  try {
+    const response = await PodkopShellMethods.getClashApiConnections();
+
+    if (!monitoringMounted || mountId !== monitoringMountId) {
+      return;
+    }
+
+    if (!response.success) {
+      failed = true;
+      loading = false;
+      renderConnections();
+      return;
+    }
+
+    applyConnectionsPayload(normalizeConnectionsPayload(response.data));
+  } catch (error) {
+    if (!monitoringMounted || mountId !== monitoringMountId) {
+      return;
+    }
+
+    logger.error('[MONITORING]', 'connections polling failed', error);
+    failed = true;
+    loading = false;
+    renderConnections();
+  } finally {
+    pollingConnections = false;
+  }
+}
+
+function startConnectionsPolling() {
+  if (connectionsPollTimer) {
+    return;
+  }
+
+  void pollConnectionsSnapshot();
+  connectionsPollTimer = setInterval(() => {
+    void pollConnectionsSnapshot();
+  }, CONNECTIONS_RPC_POLL_INTERVAL_MS);
+}
+
 async function connectToConnectionsSocket() {
   const mountId = monitoringMountId;
   const clashApiSecret = await getClashApiSecret();
@@ -1262,6 +1326,15 @@ async function connectToConnectionsSocket() {
       renderConnections();
     },
   );
+}
+
+function startConnectionsUpdates() {
+  if (canUseDirectClashApi()) {
+    void connectToConnectionsSocket();
+    return;
+  }
+
+  startConnectionsPolling();
 }
 
 function resetMonitoringState() {
@@ -1300,7 +1373,7 @@ function onPageMount() {
 
   void loadLocalDevices();
   void loadRouteDisplayNames();
-  void connectToConnectionsSocket();
+  startConnectionsUpdates();
   document.addEventListener('selectionchange', flushRenderAfterSelection);
   document.addEventListener('copy', handleMonitoringValueCopy);
 
@@ -1320,6 +1393,11 @@ function onPageUnmount() {
   if (renderTimer) {
     clearInterval(renderTimer);
     renderTimer = null;
+  }
+
+  if (connectionsPollTimer) {
+    clearInterval(connectionsPollTimer);
+    connectionsPollTimer = null;
   }
 
   if (connectionsSocketUrl) {

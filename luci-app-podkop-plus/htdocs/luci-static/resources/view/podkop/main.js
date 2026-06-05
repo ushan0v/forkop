@@ -819,6 +819,13 @@ async function onMount(target) {
 }
 
 // src/helpers/getClashApiUrl.ts
+function getWindowLocation() {
+  return typeof window !== "undefined" ? window.location : void 0;
+}
+function canUseDirectClashApi() {
+  const location = getWindowLocation();
+  return typeof location?.hostname === "string" && location.hostname !== "" && location.protocol !== "https:";
+}
 function getClashWsUrl() {
   const { hostname } = window.location;
   return `ws://${hostname}:9090`;
@@ -2487,7 +2494,7 @@ function getClashApiSecret(configSections) {
   return getSettingsSection(configSections)?.yacd_secret_key || "";
 }
 function canFetchClashApiDirectly() {
-  return typeof window !== "undefined" && typeof window.location?.hostname === "string" && typeof fetch === "function";
+  return canUseDirectClashApi() && typeof fetch === "function";
 }
 async function getClashApiProxies(configSections) {
   if (canFetchClashApiDirectly()) {
@@ -7343,7 +7350,14 @@ function render3() {
 }
 
 // src/podkop/tabs/monitoring/initController.ts
+function normalizeConnectionsPayload(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value;
+}
 var RENDER_INTERVAL_MS = 500;
+var CONNECTIONS_RPC_POLL_INTERVAL_MS = 1500;
 var CLOSED_CONNECTION_LIMIT = 300;
 var ALL_FILTER_VALUE = "all";
 var dependencies = {};
@@ -7352,9 +7366,11 @@ var monitoringMountId = 0;
 var monitoringLifecycleRegistered = false;
 var monitoringControllerInitialized = false;
 var renderTimer = null;
+var connectionsPollTimer = null;
 var connectionsSocketUrl = "";
 var renderSkippedForSelection = false;
 var pendingConnectionsPayload = null;
+var pollingConnections = false;
 var activeTab = "active";
 var selectedDeviceFilter = ALL_FILTER_VALUE;
 var searchQuery = "";
@@ -7988,6 +8004,10 @@ function setMonitoringPaused(paused) {
       applyConnectionsPayload(payload);
       return;
     }
+    if (connectionsPollTimer) {
+      void pollConnectionsSnapshot();
+      return;
+    }
   }
   renderConnections();
 }
@@ -8253,6 +8273,45 @@ async function loadRouteDisplayNames() {
     renderConnections();
   }
 }
+async function pollConnectionsSnapshot() {
+  if (pollingConnections || !monitoringMounted || monitoringPaused) {
+    return;
+  }
+  const mountId = monitoringMountId;
+  pollingConnections = true;
+  try {
+    const response = await PodkopShellMethods.getClashApiConnections();
+    if (!monitoringMounted || mountId !== monitoringMountId) {
+      return;
+    }
+    if (!response.success) {
+      failed = true;
+      loading = false;
+      renderConnections();
+      return;
+    }
+    applyConnectionsPayload(normalizeConnectionsPayload(response.data));
+  } catch (error) {
+    if (!monitoringMounted || mountId !== monitoringMountId) {
+      return;
+    }
+    logger.error("[MONITORING]", "connections polling failed", error);
+    failed = true;
+    loading = false;
+    renderConnections();
+  } finally {
+    pollingConnections = false;
+  }
+}
+function startConnectionsPolling() {
+  if (connectionsPollTimer) {
+    return;
+  }
+  void pollConnectionsSnapshot();
+  connectionsPollTimer = setInterval(() => {
+    void pollConnectionsSnapshot();
+  }, CONNECTIONS_RPC_POLL_INTERVAL_MS);
+}
 async function connectToConnectionsSocket() {
   const mountId = monitoringMountId;
   const clashApiSecret = await getClashApiSecret2();
@@ -8278,6 +8337,13 @@ async function connectToConnectionsSocket() {
       renderConnections();
     }
   );
+}
+function startConnectionsUpdates() {
+  if (canUseDirectClashApi()) {
+    void connectToConnectionsSocket();
+    return;
+  }
+  startConnectionsPolling();
 }
 function resetMonitoringState() {
   activeTab = "active";
@@ -8310,7 +8376,7 @@ function onPageMount3() {
   renderConnections();
   void loadLocalDevices();
   void loadRouteDisplayNames();
-  void connectToConnectionsSocket();
+  startConnectionsUpdates();
   document.addEventListener("selectionchange", flushRenderAfterSelection);
   document.addEventListener("copy", handleMonitoringValueCopy);
   renderTimer = setInterval(() => {
@@ -8326,6 +8392,10 @@ function onPageUnmount3() {
   if (renderTimer) {
     clearInterval(renderTimer);
     renderTimer = null;
+  }
+  if (connectionsPollTimer) {
+    clearInterval(connectionsPollTimer);
+    connectionsPollTimer = null;
   }
   if (connectionsSocketUrl) {
     socket.disconnect(connectionsSocketUrl);

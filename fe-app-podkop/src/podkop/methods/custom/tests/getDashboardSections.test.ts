@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getConfigSections: vi.fn(),
   getClashApiProxies: vi.fn(),
+  canUseDirectClashApi: vi.fn(),
   fsRead: vi.fn(),
 }));
 
@@ -17,6 +18,7 @@ vi.mock('../../shell', () => ({
 }));
 
 vi.mock('../../../../helpers', () => ({
+  canUseDirectClashApi: mocks.canUseDirectClashApi,
   getClashHttpUrl: () => 'http://router.example:9090',
   getProxyUrlName: (link?: string) =>
     link?.includes('#') ? decodeURIComponent(link.split('#').pop() || '') : '',
@@ -85,6 +87,7 @@ describe('getDashboardSections', () => {
   beforeEach(() => {
     mocks.getConfigSections.mockReset();
     mocks.getClashApiProxies.mockReset();
+    mocks.canUseDirectClashApi.mockReset();
     mocks.fsRead.mockReset();
     mocks.fsRead.mockRejectedValue(new Error('cache miss'));
     vi.stubGlobal('fs', { read: mocks.fsRead });
@@ -95,6 +98,7 @@ describe('getDashboardSections', () => {
       success: true,
       data: { proxies: clashProxies },
     });
+    mocks.canUseDirectClashApi.mockReturnValue(false);
   });
 
   it('shows the full selector group by default', async () => {
@@ -238,6 +242,7 @@ describe('getDashboardSections', () => {
       { '.name': 'settings', '.type': 'settings', yacd_secret_key: 'secret' },
       proxySection(),
     ]);
+    mocks.canUseDirectClashApi.mockReturnValue(true);
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ proxies: clashProxies }),
@@ -256,5 +261,24 @@ describe('getDashboardSections', () => {
       },
     );
     expect(mocks.getClashApiProxies).not.toHaveBeenCalled();
+  });
+
+  it('uses rpcd fallback when direct Clash API access is unsafe', async () => {
+    mocks.getConfigSections.mockResolvedValue([proxySection()]);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ proxies: clashProxies }),
+    });
+
+    vi.stubGlobal('window', {
+      location: { hostname: 'router.example', protocol: 'https:' },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getDashboardSections();
+
+    expect(result.success).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.getClashApiProxies).toHaveBeenCalledTimes(1);
   });
 });

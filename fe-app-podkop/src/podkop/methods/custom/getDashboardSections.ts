@@ -1,6 +1,7 @@
 import { getConfigSections } from './getConfigSections';
 import { ClashAPI, Podkop } from '../../types';
 import {
+  canUseDirectClashApi,
   getClashHttpUrl,
   getProxyUrlName,
   isCopyableProxyLink,
@@ -52,11 +53,7 @@ function getClashApiSecret(configSections: Podkop.ConfigSection[]) {
 }
 
 function canFetchClashApiDirectly() {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.location?.hostname === 'string' &&
-    typeof fetch === 'function'
-  );
+  return canUseDirectClashApi() && typeof fetch === 'function';
 }
 
 async function getClashApiProxies(
