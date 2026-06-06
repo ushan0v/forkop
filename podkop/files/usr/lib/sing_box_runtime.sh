@@ -1176,64 +1176,85 @@ configure_rule_set_reference_handler() {
 
 get_domain_ip_list_ruleset_tag() {
     local section="$1"
-    local kind="$2"
 
-    get_ruleset_tag "$section" "lists" "$kind"
+    get_ruleset_tag "$section" "lists" ""
 }
 
 get_domain_ip_list_ruleset_path() {
     local section="$1"
-    local kind="$2"
 
-    printf '%s/%s.json\n' "$TMP_RULESET_FOLDER" "$(get_domain_ip_list_ruleset_tag "$section" "$kind")"
+    printf '%s/%s.json\n' "$TMP_RULESET_FOLDER" "$(get_domain_ip_list_ruleset_tag "$section")"
 }
 
-reset_domain_ip_list_rulesets() {
+reset_domain_ip_list_ruleset() {
     local section="$1"
-    local domain_ruleset_filepath subnet_ruleset_filepath
+    local ruleset_filepath
 
-    domain_ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section" "domains")"
-    subnet_ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section" "subnets")"
+    ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section")"
 
-    rm -f "$domain_ruleset_filepath" "$subnet_ruleset_filepath"
-    create_source_rule_set "$domain_ruleset_filepath" >/dev/null 2>&1
-    create_source_rule_set "$subnet_ruleset_filepath" >/dev/null 2>&1
+    rm -f "$ruleset_filepath"
+    create_source_rule_set "$ruleset_filepath" >/dev/null 2>&1
 }
 
-ensure_domain_ip_list_rulesets() {
+source_ruleset_has_rules() {
+    local filepath="$1"
+
+    ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/rulesets.uc" has-rules "$filepath" >/dev/null 2>&1
+}
+
+source_ruleset_has_domain_matchers() {
+    local filepath="$1"
+
+    ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/rulesets.uc" has-domain-matchers "$filepath" >/dev/null 2>&1
+}
+
+cleanup_empty_domain_ip_list_ruleset() {
+    local section="$1"
+    local ruleset_filepath
+
+    ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section")"
+    source_ruleset_has_rules "$ruleset_filepath" && return 0
+
+    rm -f "$ruleset_filepath"
+    return 1
+}
+
+ensure_domain_ip_list_ruleset() {
     local section="$1"
     local route_rule_tag="$2"
-    local domain_ruleset_tag subnet_ruleset_tag domain_ruleset_filepath subnet_ruleset_filepath
+    local ruleset_tag ruleset_filepath
 
-    domain_ruleset_tag="$(get_domain_ip_list_ruleset_tag "$section" "domains")"
-    subnet_ruleset_tag="$(get_domain_ip_list_ruleset_tag "$section" "subnets")"
-    domain_ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section" "domains")"
-    subnet_ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section" "subnets")"
+    ruleset_tag="$(get_domain_ip_list_ruleset_tag "$section")"
+    ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section")"
 
-    config=$(sing_box_cm_add_local_ruleset "$config" "$domain_ruleset_tag" "source" "$domain_ruleset_filepath")
-    config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "rule_set" "$domain_ruleset_tag")
-    ensure_fakeip_dns_route_rule "$SB_FAKEIP_RULESET_DNS_RULE_TAG"
-    config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_RULESET_DNS_RULE_TAG" "rule_set" "$domain_ruleset_tag")
+    if ! cleanup_empty_domain_ip_list_ruleset "$section"; then
+        log "Domain/IP list ruleset for '$section' is empty, skipping route rule_set" "debug"
+        return 0
+    fi
 
-    config=$(sing_box_cm_add_local_ruleset "$config" "$subnet_ruleset_tag" "source" "$subnet_ruleset_filepath")
-    config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "rule_set" "$subnet_ruleset_tag")
+    config=$(sing_box_cm_add_local_ruleset "$config" "$ruleset_tag" "source" "$ruleset_filepath")
+    config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "rule_set" "$ruleset_tag")
+
+    if source_ruleset_has_domain_matchers "$ruleset_filepath"; then
+        ensure_fakeip_dns_route_rule "$SB_FAKEIP_RULESET_DNS_RULE_TAG"
+        config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_RULESET_DNS_RULE_TAG" "rule_set" "$ruleset_tag")
+    fi
 }
 
 import_domain_ip_list_file_into_rulesets() {
     local filepath="$1"
     local section="$2"
-    local domains_tmpfile subnets_tmpfile domain_ruleset_filepath subnet_ruleset_filepath
+    local domains_tmpfile subnets_tmpfile ruleset_filepath
 
     [ -f "$filepath" ] || return 0
 
     domains_tmpfile="$(mktemp)"
     subnets_tmpfile="$(mktemp)"
-    domain_ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section" "domains")"
-    subnet_ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section" "subnets")"
+    ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section")"
 
     split_domain_or_subnet_file "$filepath" "$domains_tmpfile" "$subnets_tmpfile"
-    import_plain_domain_list_to_local_source_ruleset_chunked "$domains_tmpfile" "$domain_ruleset_filepath"
-    import_plain_subnet_list_to_local_source_ruleset_chunked "$subnets_tmpfile" "$subnet_ruleset_filepath"
+    import_plain_domain_list_to_local_source_ruleset_chunked "$domains_tmpfile" "$ruleset_filepath"
+    import_plain_subnet_list_to_local_source_ruleset_chunked "$subnets_tmpfile" "$ruleset_filepath"
     add_plain_subnet_file_to_nft_for_section "$section" "$subnets_tmpfile"
 
     rm -f "$domains_tmpfile" "$subnets_tmpfile"
@@ -1267,10 +1288,9 @@ configure_domain_ip_lists() {
     local section="$1"
     local route_rule_tag="$2"
 
-    reset_domain_ip_list_rulesets "$section"
-    ensure_domain_ip_list_rulesets "$section" "$route_rule_tag"
-
+    reset_domain_ip_list_ruleset "$section"
     config_list_foreach "$section" "domain_ip_lists" configure_domain_ip_lists_reference_handler "$section"
+    ensure_domain_ip_list_ruleset "$section" "$route_rule_tag"
 }
 
 configure_domain_ip_lists_reference_handler() {
@@ -1351,8 +1371,9 @@ rebuild_domain_ip_lists_from_rule() {
     config_get references "$section" "domain_ip_lists"
     [ -n "$references" ] || return 0
 
-    reset_domain_ip_list_rulesets "$section"
+    reset_domain_ip_list_ruleset "$section"
     config_list_foreach "$section" "domain_ip_lists" import_domain_ip_list_reference_into_rulesets "$section"
+    cleanup_empty_domain_ip_list_ruleset "$section" || true
 }
 
 rule_has_primary_matchers() {

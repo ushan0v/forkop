@@ -558,6 +558,11 @@ function has_domain_matchers(path) {
     return value_has_domain_matchers(read_json_file(path));
 }
 
+function has_rules(path) {
+    let ruleset = object_or_empty(read_json_file(path));
+    return length(array_or_empty(ruleset.rules)) > 0;
+}
+
 let mode = ARGV[0] || "";
 
 if (mode == "create-source")
@@ -572,7 +577,9 @@ else if (mode == "extract-ip-cidr-nft")
     extract_ip_cidr_nft_elements(ARGV[1], ARGV[2], ARGV[3], ARGV[4] || "[]", ARGV[5] || "[]");
 else if (mode == "has-domain-matchers")
     exit(has_domain_matchers(ARGV[1]) ? 0 : 1);
+else if (mode == "has-rules")
+    exit(has_rules(ARGV[1]) ? 0 : 1);
 else {
-    warn("Usage: rulesets.uc <create-source|patch-source|import-plain-list|extract-ip-cidr|extract-ip-cidr-nft> ...\n");
+    warn("Usage: rulesets.uc <create-source|patch-source|import-plain-list|extract-ip-cidr|extract-ip-cidr-nft|has-domain-matchers|has-rules> ...\n");
     exit(1);
 }
