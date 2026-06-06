@@ -1244,26 +1244,31 @@ ensure_domain_ip_list_ruleset() {
 import_domain_ip_list_file_into_rulesets() {
     local filepath="$1"
     local section="$2"
-    local domains_tmpfile subnets_tmpfile ruleset_filepath
+    local domains_tmpfile subnets_tmpfile ruleset_filepath status
 
     [ -f "$filepath" ] || return 0
 
     domains_tmpfile="$(mktemp)"
     subnets_tmpfile="$(mktemp)"
     ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section")"
+    status=0
 
-    split_domain_or_subnet_file "$filepath" "$domains_tmpfile" "$subnets_tmpfile"
-    import_plain_domain_list_to_local_source_ruleset_chunked "$domains_tmpfile" "$ruleset_filepath"
-    import_plain_subnet_list_to_local_source_ruleset_chunked "$subnets_tmpfile" "$ruleset_filepath"
-    add_plain_subnet_file_to_nft_for_section "$section" "$subnets_tmpfile"
+    split_domain_or_subnet_file "$filepath" "$domains_tmpfile" "$subnets_tmpfile" || status=1
+    if [ "$status" -eq 0 ]; then
+        import_plain_domain_list_to_local_source_ruleset_chunked "$domains_tmpfile" "$ruleset_filepath" || status=1
+        import_plain_subnet_list_to_local_source_ruleset_chunked "$subnets_tmpfile" "$ruleset_filepath" || status=1
+        add_plain_subnet_file_to_nft_for_section "$section" "$subnets_tmpfile" || status=1
+    fi
 
     rm -f "$domains_tmpfile" "$subnets_tmpfile"
+    return "$status"
 }
 
 import_domain_ip_list_reference_into_rulesets() {
     local reference="$1"
     local section="$2"
-    local tmpfile http_proxy_address
+    local tmpfile http_proxy_address status
+    status=0
 
     case "$reference" in
     http://* | https://*)
@@ -1272,11 +1277,13 @@ import_domain_ip_list_reference_into_rulesets() {
         download_to_file "$reference" "$tmpfile" "$http_proxy_address"
         if [ $? -eq 0 ] && [ -s "$tmpfile" ]; then
             convert_crlf_to_lf "$tmpfile"
-            import_domain_ip_list_file_into_rulesets "$tmpfile" "$section"
+            import_domain_ip_list_file_into_rulesets "$tmpfile" "$section" || status=1
         else
             log "Download $reference list failed" "error"
+            status=1
         fi
         rm -f "$tmpfile"
+        return "$status"
         ;;
     *)
         import_domain_ip_list_file_into_rulesets "$reference" "$section"
@@ -1743,7 +1750,9 @@ import_builtin_subnets_from_rule() {
     local section="$1"
 
     rule_is_enabled "$section" || return 0
+    BUILTIN_SUBNET_IMPORT_STATUS=0
     config_list_foreach "$section" "community_lists" import_builtin_subnets_reference_handler "$section"
+    return "$BUILTIN_SUBNET_IMPORT_STATUS"
 }
 
 import_builtin_subnets_reference_handler() {
@@ -1751,8 +1760,9 @@ import_builtin_subnets_reference_handler() {
     local section="$2"
 
     if helpers_ucode whitespace-list-contains "$COMMUNITY_SERVICES" "$reference" >/dev/null 2>&1; then
-        import_community_service_subnet_list_handler "$reference" "$section"
+        import_community_service_subnet_list_handler "$reference" "$section" || BUILTIN_SUBNET_IMPORT_STATUS=1
     fi
+    return 0
 }
 
 import_rule_sets_with_subnets_from_rule() {
@@ -1763,8 +1773,10 @@ import_rule_sets_with_subnets_from_rule() {
 
     config_get rule_set_with_subnets "$section" "rule_set_with_subnets"
     if [ -n "$rule_set_with_subnets" ]; then
+        RULE_SET_WITH_SUBNETS_IMPORT_STATUS=0
         log "Importing subnets from rule sets with subnets for '$section' section"
         config_list_foreach "$section" "rule_set_with_subnets" import_rule_set_with_subnets_reference_handler "$section"
+        return "$RULE_SET_WITH_SUBNETS_IMPORT_STATUS"
     fi
 }
 
@@ -1777,33 +1789,44 @@ import_rule_set_with_subnets_reference_handler() {
 
     case "$reference" in
     /*.srs)
-        import_custom_ruleset_subnets_from_local "$reference" "binary" "$section" || \
+        import_custom_ruleset_subnets_from_local "$reference" "binary" "$section" || {
             log "Failed to import subnets from local SRS rule set: $reference" "error"
+            RULE_SET_WITH_SUBNETS_IMPORT_STATUS=1
+        }
         ;;
     /*.json)
-        import_custom_ruleset_subnets_from_local "$reference" "source" "$section" || \
+        import_custom_ruleset_subnets_from_local "$reference" "source" "$section" || {
             log "Failed to import subnets from local JSON rule set: $reference" "error"
+            RULE_SET_WITH_SUBNETS_IMPORT_STATUS=1
+        }
         ;;
     http://* | https://*)
         extension="$(url_get_file_extension "$reference")"
         case "$extension" in
         srs)
-            import_custom_ruleset_subnets_from_remote "$reference" "binary" "$section" || \
+            import_custom_ruleset_subnets_from_remote "$reference" "binary" "$section" || {
                 log "Failed to import subnets from remote SRS rule set: $reference" "error"
+                RULE_SET_WITH_SUBNETS_IMPORT_STATUS=1
+            }
             ;;
         json)
-            import_custom_ruleset_subnets_from_remote "$reference" "source" "$section" || \
+            import_custom_ruleset_subnets_from_remote "$reference" "source" "$section" || {
                 log "Failed to import subnets from remote JSON rule set: $reference" "error"
+                RULE_SET_WITH_SUBNETS_IMPORT_STATUS=1
+            }
             ;;
         *)
             format="$(get_inline_remote_ruleset_format "$reference")"
-            import_custom_ruleset_subnets_from_remote "$reference" "$format" "$section" || \
+            import_custom_ruleset_subnets_from_remote "$reference" "$format" "$section" || {
                 log "Failed to import subnets from remote rule set: $reference" "error"
+                RULE_SET_WITH_SUBNETS_IMPORT_STATUS=1
+            }
             ;;
         esac
         ;;
     *)
         log "Unsupported rule set reference for subnet import: $reference" "error"
+        RULE_SET_WITH_SUBNETS_IMPORT_STATUS=1
         ;;
     esac
 
@@ -1916,7 +1939,7 @@ ensure_discord_udp_fakeip_rule() {
 import_community_service_subnet_list_handler() {
     local service="$1"
     local section="$2"
-    local ports
+    local ports status
 
     ports="$(get_rule_ports_commas_string "$section")"
 
@@ -1963,16 +1986,19 @@ import_community_service_subnet_list_handler() {
 
     if [ $? -ne 0 ] || [ ! -s "$tmpfile" ]; then
         log "Download $service list failed" "error"
+        rm -f "$tmpfile"
         return 1
     fi
 
+    status=0
     if [ "$service" = "discord" ] && [ -z "$ports" ]; then
-        nft_add_set_elements_from_file_chunked "$tmpfile" "$NFT_TABLE_NAME" "$NFT_DISCORD_SET_NAME"
+        nft_add_set_elements_from_file_chunked "$tmpfile" "$NFT_TABLE_NAME" "$NFT_DISCORD_SET_NAME" || status=1
     else
-        add_plain_subnet_file_to_nft_for_section "$section" "$tmpfile"
+        add_plain_subnet_file_to_nft_for_section "$section" "$tmpfile" || status=1
     fi
 
     rm -f "$tmpfile"
+    return "$status"
 }
 
 import_domains_from_remote_domain_lists() {
@@ -2039,8 +2065,10 @@ import_subnets_from_remote_subnet_lists() {
 
     config_get remote_subnet_lists "$section" "remote_subnet_lists"
     if [ -n "$remote_subnet_lists" ]; then
+        REMOTE_SUBNET_IMPORT_STATUS=0
         log "Importing subnets from remote subnet lists for '$section' section"
         config_list_foreach "$section" "remote_subnet_lists" import_subnets_from_remote_subnet_list_handler "$section"
+        return "$REMOTE_SUBNET_IMPORT_STATUS"
     fi
 }
 
@@ -2056,17 +2084,18 @@ import_subnets_from_remote_subnet_list_handler() {
     case "$file_extension" in
     json)
         log "Import subnets from a remote JSON list" "info"
-        import_subnets_from_remote_json_file "$url" "$section"
+        import_subnets_from_remote_json_file "$url" "$section" || REMOTE_SUBNET_IMPORT_STATUS=1
         ;;
     srs)
         log "Import subnets from a remote SRS list" "info"
-        import_subnets_from_remote_srs_file "$url" "$section"
+        import_subnets_from_remote_srs_file "$url" "$section" || REMOTE_SUBNET_IMPORT_STATUS=1
         ;;
     *)
         log "Import subnets from a remote plain-text list" "info"
-        import_subnets_from_remote_plain_file "$url" "$section"
+        import_subnets_from_remote_plain_file "$url" "$section" || REMOTE_SUBNET_IMPORT_STATUS=1
         ;;
     esac
+    return 0
 }
 
 import_subnets_from_remote_json_file() {
@@ -2145,7 +2174,7 @@ import_subnets_from_remote_plain_file() {
     local url="$1"
     local section="$2"
 
-    local tmpfile http_proxy_address items json_array
+    local tmpfile http_proxy_address ruleset_tag ruleset_filepath status
     tmpfile=$(mktemp)
     http_proxy_address="$(get_service_proxy_address)"
 
@@ -2153,6 +2182,7 @@ import_subnets_from_remote_plain_file() {
 
     if [ $? -ne 0 ] || [ ! -s "$tmpfile" ]; then
         log "Download $url list failed" "error"
+        rm -f "$tmpfile"
         return 1
     fi
 
@@ -2160,10 +2190,12 @@ import_subnets_from_remote_plain_file() {
 
     ruleset_tag=$(get_ruleset_tag "$section" "remote" "subnets")
     ruleset_filepath="$TMP_RULESET_FOLDER/$ruleset_tag.json"
-    import_plain_subnet_list_to_local_source_ruleset_chunked "$tmpfile" "$ruleset_filepath"
-    add_plain_subnet_file_to_nft_for_section "$section" "$tmpfile"
+    status=0
+    import_plain_subnet_list_to_local_source_ruleset_chunked "$tmpfile" "$ruleset_filepath" || status=1
+    add_plain_subnet_file_to_nft_for_section "$section" "$tmpfile" || status=1
 
     rm -f "$tmpfile"
+    return "$status"
 }
 
 ## Support functions

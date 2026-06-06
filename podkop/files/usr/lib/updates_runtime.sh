@@ -115,6 +115,21 @@ list_update_if_due() {
     list_update
 }
 
+list_update_section_handler() {
+    local section="$1"
+    local callback="$2"
+
+    "$callback" "$section" || LIST_UPDATE_FOREACH_STATUS=1
+}
+
+list_update_for_each_section() {
+    local callback="$1"
+
+    LIST_UPDATE_FOREACH_STATUS=0
+    config_foreach list_update_section_handler "section" "$callback"
+    [ "$LIST_UPDATE_FOREACH_STATUS" -eq 0 ]
+}
+
 list_update() {
     echolog "Starting lists update..."
 
@@ -203,11 +218,11 @@ list_update() {
     local update_status now
     update_status=0
 
-    config_foreach rebuild_domain_ip_lists_from_rule "section" || update_status=1
-    config_foreach import_builtin_subnets_from_rule "section" || update_status=1
-    config_foreach import_domains_from_remote_domain_lists "section" || update_status=1
-    config_foreach import_subnets_from_remote_subnet_lists "section" || update_status=1
-    config_foreach import_rule_sets_with_subnets_from_rule "section" || update_status=1
+    list_update_for_each_section rebuild_domain_ip_lists_from_rule || update_status=1
+    list_update_for_each_section import_builtin_subnets_from_rule || update_status=1
+    list_update_for_each_section import_domains_from_remote_domain_lists || update_status=1
+    list_update_for_each_section import_subnets_from_remote_subnet_lists || update_status=1
+    list_update_for_each_section import_rule_sets_with_subnets_from_rule || update_status=1
     # Keep legacy rule_set references inside sing-box only.
     # Mirroring them into nft via decompile/import regressed compared to the
     # original Podkop behavior and causes long-running list updates plus

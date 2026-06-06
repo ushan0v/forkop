@@ -46,6 +46,15 @@ function file_has_cr_exit(path) {
     exit(result == null ? 2 : (result ? 0 : 1));
 }
 
+function write_text_file(path, text) {
+    let result = fs.writefile(path, as_string(text));
+    if (result == null)
+        return false;
+    if (type(result) == "boolean" && !result)
+        return false;
+    return true;
+}
+
 function file_remove_cr(path) {
     path = as_string(path);
     let data = fs.readfile(path);
@@ -57,7 +66,7 @@ function file_remove_cr(path) {
 
     let stamp = clock();
     let tmp_path = sprintf("%s.%d.%d.tmp", path, stamp[0], stamp[1]);
-    if (!fs.writefile(tmp_path, replace(data, /\r/g, "")))
+    if (!write_text_file(tmp_path, replace(data, /\r/g, "")))
         return false;
 
     if (!fs.rename(tmp_path, path)) {

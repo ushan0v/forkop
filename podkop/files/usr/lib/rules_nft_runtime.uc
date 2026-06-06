@@ -37,6 +37,15 @@ function read_stdin() {
     return data == null ? "" : data;
 }
 
+function write_text_file(path, text) {
+    let result = fs.writefile(path, as_string(text));
+    if (result == null)
+        return false;
+    if (type(result) == "boolean" && !result)
+        return false;
+    return true;
+}
+
 function strip_list_comment(line) {
     line = replace(as_string(line), /[[:space:]]*\/\/.*$/, "");
     return replace(line, /[[:space:]]*#.*$/, "");
@@ -268,9 +277,9 @@ function split_domain_subnet_file(path, domains_path, subnets_path) {
             push(subnets, value);
     }
 
-    if (!fs.writefile(domains_path, length(domains) > 0 ? join("\n", domains) + "\n" : ""))
+    if (!write_text_file(domains_path, length(domains) > 0 ? join("\n", domains) + "\n" : ""))
         exit(1);
-    if (!fs.writefile(subnets_path, length(subnets) > 0 ? join("\n", subnets) + "\n" : ""))
+    if (!write_text_file(subnets_path, length(subnets) > 0 ? join("\n", subnets) + "\n" : ""))
         exit(1);
 }
 
@@ -508,9 +517,9 @@ function nft_prepare_chunks(path, kind, ports_csv, chunk_size_text, chunks_path,
 
     nft_write_chunk(chunks, chunk);
 
-    if (!fs.writefile(chunks_path, length(chunks) > 0 ? join("\n", chunks) + "\n" : ""))
+    if (!write_text_file(chunks_path, length(chunks) > 0 ? join("\n", chunks) + "\n" : ""))
         exit(1);
-    if (!fs.writefile(invalid_path, length(invalid) > 0 ? join("\n", invalid) + "\n" : ""))
+    if (!write_text_file(invalid_path, length(invalid) > 0 ? join("\n", invalid) + "\n" : ""))
         exit(1);
 }
 

@@ -88,12 +88,21 @@ function url_decode(value) {
     }
 }
 
+function write_file(path, text) {
+    let result = fs.writefile(path, as_string(text));
+    if (result == null)
+        return false;
+    if (type(result) == "boolean" && !result)
+        return false;
+    return true;
+}
+
 function write_file_json(path, value) {
-    return fs.writefile(path, sprintf("%J", value) + "\n");
+    return write_file(path, sprintf("%J", value) + "\n");
 }
 
 function write_text_file(path, value) {
-    return fs.writefile(path, as_string(value));
+    return write_file(path, as_string(value));
 }
 
 function array_or_empty(value) {
