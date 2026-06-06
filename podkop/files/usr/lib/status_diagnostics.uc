@@ -349,6 +349,7 @@ function podkop_config_masked_line(line) {
     line = mask_after_token(line, "list subscription_urls");
     line = mask_after_token(line, "list urltest_proxy_links");
     line = mask_after_token(line, "list selector_proxy_links");
+    line = mask_after_token_space(line, "option outbound_json");
     line = mask_after_token_space(line, "list domain");
     line = mask_after_token_space(line, "list domain_suffix");
     line = mask_after_token_space(line, "list domain_keyword");
@@ -398,24 +399,11 @@ function podkop_config_masked(path) {
         exit(1);
 
     let lines = split(as_string(data), "\n");
-    let skipping_outbound_json = false;
 
     for (let i = 0; i < length(lines); i++) {
         let line = as_string(lines[i]);
         if (i == length(lines) - 1 && line == "" && substr(as_string(data), length(data) - 1) == "\n")
             continue;
-
-        if (skipping_outbound_json) {
-            if (substr(line, 0, 1) == "}")
-                skipping_outbound_json = false;
-            continue;
-        }
-
-        if (index(line, "option outbound_json") >= 0) {
-            print("\toption outbound_json 'MASKED'\n");
-            skipping_outbound_json = true;
-            continue;
-        }
 
         if (delete_token_space(line, "option tailscale_ephemeral") ||
             delete_token_space(line, "option tailscale_exit_node") ||
