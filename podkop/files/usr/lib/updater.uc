@@ -684,7 +684,7 @@ function sing_box_extended_arch_suffix(host_arch, distrib_arch) {
         exit(1);
 }
 
-function sing_box_extended_asset_url(arch_suffix, prefer_musl) {
+function sing_box_extended_asset_url(arch_suffix, prefer_musl, compressed) {
     let release = object_or_empty(read_stdin_json());
     let patterns = [];
 
@@ -692,9 +692,12 @@ function sing_box_extended_asset_url(arch_suffix, prefer_musl) {
     if (arch_suffix == "")
         exit(1);
 
-    if (as_string(prefer_musl) == "1")
+    if (as_string(compressed) == "1")
+        push(patterns, "linux-" + arch_suffix + "-compressed.tar.gz");
+    else if (as_string(prefer_musl) == "1")
         push(patterns, "linux-" + arch_suffix + "-musl.tar.gz");
-    push(patterns, "linux-" + arch_suffix + ".tar.gz");
+    if (as_string(compressed) != "1")
+        push(patterns, "linux-" + arch_suffix + ".tar.gz");
 
     for (let suffix in patterns) {
         let url = release_asset_url_by_suffix_from_release(release, suffix);
@@ -709,15 +712,10 @@ function sing_box_extended_asset_url(arch_suffix, prefer_musl) {
 
 function updates_opkg_package_installed(package_name) {
     package_name = as_string(package_name);
-    let package_name_len = length(package_name);
 
     for (let line in split(read_stdin(), "\n")) {
-        line = as_string(line);
-        if (substr(line, 0, package_name_len) != package_name)
-            continue;
-
-        let next = substr(line, package_name_len, 1);
-        if (next == "" || next == "-" || next == " " || next == "\t")
+        let fields = split(trim(as_string(line)), /[ \t]+/);
+        if (length(fields) >= 1 && as_string(fields[0]) == package_name)
             exit(0);
     }
 
@@ -1161,7 +1159,7 @@ else if (mode == "file-whitespace-list")
 else if (mode == "sing-box-extended-arch-suffix")
     sing_box_extended_arch_suffix(ARGV[1], ARGV[2]);
 else if (mode == "sing-box-extended-asset-url")
-    sing_box_extended_asset_url(ARGV[1], ARGV[2]);
+    sing_box_extended_asset_url(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "updates-opkg-package-installed")
     updates_opkg_package_installed(ARGV[1]);
 else if (mode == "updates-opkg-package-version")

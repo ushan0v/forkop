@@ -104,6 +104,8 @@ const EntryPoint = {
     const uiCapabilities = {
       loaded: false,
       singBoxExtended: false,
+      singBoxTiny: false,
+      singBoxTailscale: true,
       zapretInstalled: false,
       zapret2Installed: false,
       byedpiInstalled: false,
@@ -136,6 +138,8 @@ const EntryPoint = {
             ...currentSystemInfo,
             providerInfoLoaded: true,
             sing_box_extended: uiCapabilities.singBoxExtended ? 1 : 0,
+            sing_box_tiny: uiCapabilities.singBoxTiny ? 1 : 0,
+            sing_box_tailscale: uiCapabilities.singBoxTailscale ? 1 : 0,
             zapret_installed: uiCapabilities.zapretInstalled ? 1 : 0,
             zapret2_installed: uiCapabilities.zapret2Installed ? 1 : 0,
             byedpi_installed: uiCapabilities.byedpiInstalled ? 1 : 0,
@@ -160,6 +164,11 @@ const EntryPoint = {
       uiCapabilities.singBoxExtended = Boolean(
         Number(data?.sing_box_extended) === 1,
       );
+      uiCapabilities.singBoxTiny = Boolean(Number(data?.sing_box_tiny) === 1);
+      uiCapabilities.singBoxTailscale =
+        typeof data?.sing_box_tailscale === "undefined"
+          ? true
+          : Boolean(Number(data.sing_box_tailscale) === 1);
       uiCapabilities.zapretInstalled = Boolean(
         Number(data?.zapret_installed) === 1,
       );
@@ -251,6 +260,18 @@ const EntryPoint = {
             sing_box_extended:
               serverCapabilities?.success &&
               Number(serverCapabilities.data?.sing_box_extended) === 1
+                ? 1
+                : 0,
+            sing_box_tiny:
+              serverCapabilities?.success &&
+              Number(serverCapabilities.data?.sing_box_tiny) === 1
+                ? 1
+                : 0,
+            sing_box_tailscale:
+              !serverCapabilities?.success ||
+              typeof serverCapabilities.data?.sing_box_tailscale ===
+                "undefined" ||
+              Number(serverCapabilities.data?.sing_box_tailscale) === 1
                 ? 1
                 : 0,
             zapret_installed:

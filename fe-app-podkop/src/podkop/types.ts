@@ -334,6 +334,9 @@ export namespace Podkop {
     luci_app_version: string;
     sing_box_version: string;
     sing_box_extended: 0 | 1;
+    sing_box_tiny: 0 | 1;
+    sing_box_compressed: 0 | 1;
+    sing_box_tailscale: 0 | 1;
     zapret_version: string;
     zapret_installed: 0 | 1;
     zapret2_version: string;
@@ -347,10 +350,14 @@ export namespace Podkop {
 
   export interface GetServerCapabilities {
     sing_box_extended: 0 | 1;
+    sing_box_tiny: 0 | 1;
+    sing_box_tailscale: 0 | 1;
   }
 
   export interface GetUiCapabilities {
     sing_box_extended: 0 | 1;
+    sing_box_tiny: 0 | 1;
+    sing_box_tailscale: 0 | 1;
     zapret_installed: 0 | 1;
     zapret2_installed: 0 | 1;
     byedpi_installed: 0 | 1;
@@ -416,6 +423,8 @@ export namespace Podkop {
     | 'install'
     | 'remove'
     | 'install_extended'
+    | 'install_extended_compressed'
+    | 'install_tiny'
     | 'install_stable';
 
   export interface ComponentActionResult {

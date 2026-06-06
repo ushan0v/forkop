@@ -20,6 +20,10 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
+function translate(message: string) {
+  return typeof _ === 'function' ? _(message) : message;
+}
+
 function parseJsonObjectOutput<T>(output: string): T | null {
   if (!output) {
     return null;
@@ -614,7 +618,7 @@ export const PodkopShellMethods = {
                   success: true,
                   component,
                   action,
-                  message: _('Podkop Plus has been installed'),
+                  message: translate('Podkop Plus has been installed'),
                   current_version: installedVersion,
                   latest_version: expectedLatestVersion,
                   changed: true,

@@ -527,6 +527,12 @@ validate_extended_server_features_handler() {
         log "Server '$section' uses MTProto proxy, but sing-box-extended is not installed. Install sing-box-extended or disable this server. Aborted." "fatal"
         exit 1
         ;;
+    tailscale)
+        if ! sing_box_supports_tailscale; then
+            log "Server '$section' uses Tailscale, but the installed sing-box binary was built without Tailscale support. Install full sing-box or sing-box-extended, or disable this server. Aborted." "fatal"
+            exit 1
+        fi
+        ;;
     esac
 
     config_get transport "$section" "transport" "tcp"

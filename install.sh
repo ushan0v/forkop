@@ -13,6 +13,8 @@ TMP_DIR=""
 PODKOP_WAS_ENABLED=0
 PODKOP_WAS_RUNNING=0
 PODKOP_PLUS_I18N_REQUESTED=0
+INSTALLER_LANG="en"
+SING_BOX_INSTALL_VARIANT=""
 
 PODKOP_PLUS_RELEASE_JSON=""
 PODKOP_PLUS_RELEASE_TAG=""
@@ -26,6 +28,13 @@ PODKOP_PLUS_I18N_URL=""
 PODKOP_PLUS_I18N_NAME=""
 PODKOP_PLUS_I18N_FILE=""
 PODKOP_PLUS_PACKAGE_VERSION=""
+SING_BOX_VARIANT_STATE_FILE="/etc/podkop-plus/sing-box-variant"
+SING_BOX_EXTENDED_RELEASE_JSON=""
+SING_BOX_EXTENDED_RELEASE_TAG=""
+SING_BOX_EXTENDED_ARCH_SUFFIX=""
+SING_BOX_EXTENDED_ASSET_URL=""
+SING_BOX_EXTENDED_ASSET_NAME=""
+SING_BOX_EXTENDED_ARCHIVE_FILE=""
 
 command -v apk >/dev/null 2>&1 && PKG_IS_APK=1
 
@@ -46,12 +55,16 @@ usage() {
     cat <<EOF
 Usage: $0
 
-Installs or updates Podkop Plus packages only:
+Installs or updates Podkop Plus packages:
   - podkop-plus
   - luci-app-podkop-plus
   - luci-i18n-podkop-plus-ru when requested or when LuCI language is Russian
 
-External components are managed from the Podkop Plus Updates tab after installation.
+Can also install or switch sing-box variant:
+  - stable/full sing-box from OpenWrt feeds
+  - sing-box-tiny from OpenWrt feeds
+  - sing-box-extended from GitHub releases
+  - sing-box-extended compressed from GitHub releases
 EOF
 }
 
@@ -177,6 +190,10 @@ function ends_with(value, suffix) {
     return length(value) >= length(suffix) && substr(value, length(value) - length(suffix)) == suffix;
 }
 
+function contains(value, needle) {
+    return index(as_string(value), as_string(needle)) >= 0;
+}
+
 function asset_matches(name, kind, ext) {
     let suffix = "." + ext;
     if (!ends_with(name, suffix))
@@ -189,6 +206,107 @@ function asset_matches(name, kind, ext) {
     if (kind == "i18n")
         return starts_with(name, "luci-i18n-podkop-plus-ru_") || starts_with(name, "luci-i18n-podkop-plus-ru-");
     return false;
+}
+
+function release_asset_url_by_suffix_from_release(release, suffix) {
+    suffix = as_string(suffix);
+    for (let asset in (type(release.assets) == "array" ? release.assets : [])) {
+        if (type(asset) != "object")
+            continue;
+        let name = as_string(asset.name || "");
+        if (ends_with(name, suffix))
+            return as_string(asset.browser_download_url || "");
+    }
+
+    return "";
+}
+
+function release_asset_url_by_suffix(suffix) {
+    let release = read_stdin_json();
+    if (type(release) != "object")
+        return;
+
+    let url = release_asset_url_by_suffix_from_release(release, suffix);
+    if (url != "")
+        print(url, "\n");
+}
+
+function sing_box_extended_arch_suffix(host_arch, distrib_arch) {
+    host_arch = as_string(host_arch);
+    distrib_arch = as_string(distrib_arch);
+
+    if (contains(distrib_arch, "mipsel") || contains(distrib_arch, "mipsle"))
+        host_arch = "mipsel";
+    else if (contains(distrib_arch, "mips64el") || contains(distrib_arch, "mips64le"))
+        host_arch = "mips64el";
+
+    if (host_arch == "aarch64")
+        print("arm64\n");
+    else if (substr(host_arch, 0, 5) == "armv7")
+        print("armv7\n");
+    else if (substr(host_arch, 0, 5) == "armv6")
+        print("armv6\n");
+    else if (host_arch == "x86_64")
+        print("amd64\n");
+    else if (host_arch == "i386" || host_arch == "i686")
+        print("386\n");
+    else if (host_arch == "mips")
+        print("mips-softfloat\n");
+    else if (host_arch == "mipsel" || host_arch == "mipsle")
+        print("mipsle-softfloat\n");
+    else if (host_arch == "mips64")
+        print("mips64\n");
+    else if (host_arch == "mips64el" || host_arch == "mips64le")
+        print("mips64le\n");
+    else if (host_arch == "riscv64")
+        print("riscv64\n");
+    else if (host_arch == "s390x")
+        print("s390x\n");
+    else
+        exit(1);
+}
+
+function sing_box_extended_asset_url(arch_suffix, prefer_musl, compressed) {
+    let release = read_stdin_json();
+    let patterns = [];
+
+    if (type(release) != "object")
+        exit(1);
+
+    arch_suffix = as_string(arch_suffix);
+    if (arch_suffix == "")
+        exit(1);
+
+    if (as_string(compressed) == "1")
+        push(patterns, "linux-" + arch_suffix + "-compressed.tar.gz");
+    else if (as_string(prefer_musl) == "1")
+        push(patterns, "linux-" + arch_suffix + "-musl.tar.gz");
+    if (as_string(compressed) != "1")
+        push(patterns, "linux-" + arch_suffix + ".tar.gz");
+
+    for (let suffix in patterns) {
+        let url = release_asset_url_by_suffix_from_release(release, suffix);
+        if (url != "") {
+            print(url, "\n");
+            return;
+        }
+    }
+
+    exit(1);
+}
+
+function archive_member_path(member_name) {
+    member_name = as_string(member_name);
+    for (let line in split(read_stdin(), "\n")) {
+        line = as_string(line);
+        if (line == "")
+            continue;
+        let parts = split(line, "/");
+        if (length(parts) > 0 && as_string(parts[length(parts) - 1]) == member_name) {
+            print(line, "\n");
+            return;
+        }
+    }
 }
 
 function github_message() {
@@ -225,6 +343,12 @@ else if (mode == "release-tag")
     release_tag();
 else if (mode == "release-asset-url")
     release_asset_url(ARGV[1], ARGV[2]);
+else if (mode == "sing-box-extended-arch-suffix")
+    sing_box_extended_arch_suffix(ARGV[1], ARGV[2]);
+else if (mode == "sing-box-extended-asset-url")
+    sing_box_extended_asset_url(ARGV[1], ARGV[2], ARGV[3]);
+else if (mode == "archive-member-path")
+    archive_member_path(ARGV[1]);
 else
     exit(1);
 EOF
@@ -287,7 +411,7 @@ pkg_is_installed() {
     if [ "$PKG_IS_APK" -eq 1 ]; then
         apk info -e "$pkg_name" >/dev/null 2>&1
     else
-        opkg list-installed 2>/dev/null | grep -Eq "^${pkg_name}([[:space:]-]|$)"
+        opkg list-installed 2>/dev/null | awk -v pkg="$pkg_name" '$1 == pkg { found = 1 } END { exit(found ? 0 : 1) }'
     fi
 }
 
@@ -306,6 +430,21 @@ pkg_install_name() {
         apk add "$pkg_name" </dev/null
     else
         opkg install "$pkg_name" </dev/null
+    fi
+}
+
+pkg_install_name_downgrade() {
+    pkg_name="$1"
+
+    if [ "$PKG_IS_APK" -eq 1 ]; then
+        if pkg_is_installed "$pkg_name"; then
+            apk fix --reinstall --upgrade "$pkg_name" </dev/null
+        else
+            apk add "$pkg_name" </dev/null
+        fi
+    else
+        opkg install --force-reinstall --force-downgrade "$pkg_name" </dev/null ||
+            opkg install --force-downgrade "$pkg_name" </dev/null
     fi
 }
 
@@ -407,31 +546,102 @@ check_system() {
     fi
 }
 
-confirm_prompt() {
+installer_is_ru() {
+    [ "$INSTALLER_LANG" = "ru" ]
+}
+
+installer_text() {
+    key="$1"
+
+    if installer_is_ru; then
+        case "$key" in
+            yes) printf '%s\n' "Да" ;;
+            no) printf '%s\n' "Нет" ;;
+            select) printf '%s\n' "Выберите номер" ;;
+            invalid_choice) printf '%s\n' "Введите номер из списка." ;;
+            i18n_installed) printf '%s\n' "Русский пакет интерфейса уже установлен и будет обновлен." ;;
+            i18n_prompt) printf '%s\n' "Установить русский пакет интерфейса?" ;;
+            i18n_skip) printf '%s\n' "Продолжаю без русского пакета интерфейса." ;;
+            luci_ru) printf '%s\n' "Язык LuCI - русский." ;;
+            sing_box_prompt) printf '%s\n' "Какой вариант sing-box установить?" ;;
+            sing_box_skip) printf '%s\n' "Не менять sing-box" ;;
+            sing_box_stable) printf '%s\n' "Установить обычный sing-box" ;;
+            sing_box_tiny) printf '%s\n' "Установить sing-box tiny" ;;
+            sing_box_extended) printf '%s\n' "Установить sing-box extended" ;;
+            sing_box_extended_compressed) printf '%s\n' "Установить sing-box extended compressed" ;;
+            sing_box_skip_msg) printf '%s\n' "Пропускаю установку sing-box." ;;
+            *) printf '%s\n' "$key" ;;
+        esac
+        return 0
+    fi
+
+    case "$key" in
+        yes) printf '%s\n' "Yes" ;;
+        no) printf '%s\n' "No" ;;
+        select) printf '%s\n' "Select a number" ;;
+        invalid_choice) printf '%s\n' "Enter a number from the list." ;;
+        i18n_installed) printf '%s\n' "The Russian interface package is already installed and will be updated." ;;
+        i18n_prompt) printf '%s\n' "Install the Russian interface language package?" ;;
+        i18n_skip) printf '%s\n' "Continuing without the Russian interface language package." ;;
+        luci_ru) printf '%s\n' "LuCI language is Russian." ;;
+        sing_box_prompt) printf '%s\n' "Which sing-box variant should be installed?" ;;
+        sing_box_skip) printf '%s\n' "Do not change sing-box" ;;
+        sing_box_stable) printf '%s\n' "Install stable sing-box" ;;
+        sing_box_tiny) printf '%s\n' "Install sing-box tiny" ;;
+        sing_box_extended) printf '%s\n' "Install sing-box extended" ;;
+        sing_box_extended_compressed) printf '%s\n' "Install sing-box extended compressed" ;;
+        sing_box_skip_msg) printf '%s\n' "Skipping sing-box installation." ;;
+        *) printf '%s\n' "$key" ;;
+    esac
+}
+
+detect_installer_language() {
+    luci_lang="$(get_luci_main_lang)"
+
+    INSTALLER_LANG="en"
+    if pkg_is_installed "luci-i18n-podkop-plus-ru"; then
+        INSTALLER_LANG="ru"
+        return 0
+    fi
+
+    case "$luci_lang" in
+        ru|ru_*|ru-*) INSTALLER_LANG="ru" ;;
+    esac
+}
+
+numbered_yes_no_prompt() {
     prompt_text="$1"
     answer=""
 
     if [ ! -t 0 ]; then
-        msg "$prompt_text [y/N]: y (non-interactive)"
+        msg "$prompt_text: 1 ($(installer_text yes), non-interactive)"
         return 0
     fi
 
     while :; do
-        printf '%s [y/N]: ' "$prompt_text"
+        printf '\n%s\n' "$prompt_text"
+        printf '  1) %s\n' "$(installer_text yes)"
+        printf '  2) %s\n' "$(installer_text no)"
+        printf '%s [2]: ' "$(installer_text select)"
         read -r answer || return 1
 
         case "$answer" in
-            y|Y)
+            1)
                 return 0
                 ;;
-            n|N|"")
+            2|"")
                 return 1
                 ;;
             *)
-                warn "Please answer y or n."
+                warn "$(installer_text invalid_choice)"
                 ;;
         esac
     done
+}
+
+confirm_prompt() {
+    prompt_text="$1"
+    numbered_yes_no_prompt "$prompt_text"
 }
 
 get_luci_main_lang() {
@@ -601,7 +811,6 @@ remove_conflicting_dns_proxy() {
 remove_old_sing_box_if_needed() {
     installed_version=""
 
-    pkg_is_installed "sing-box" || return 0
     command_exists sing-box || return 0
 
     installed_version="$(sing-box version 2>/dev/null | head -n 1 | awk '{print $3}')"
@@ -615,7 +824,317 @@ remove_old_sing_box_if_needed() {
     [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
     [ -x /etc/init.d/podkop ] && /etc/init.d/podkop stop >/dev/null 2>&1 || true
     restore_podkop_dnsmasq_failsafe
+    pkg_remove_if_installed "sing-box-tiny"
     pkg_remove_if_installed "sing-box"
+}
+
+sing_box_version_value() {
+    command_exists sing-box || return 0
+    sing-box version 2>/dev/null | head -n 1 | awk '{print $3}'
+}
+
+sing_box_is_extended() {
+    case "$(sing_box_version_value)" in
+        *extended*) return 0 ;;
+    esac
+    return 1
+}
+
+sing_box_compressed_marker_set() {
+    [ -r "$SING_BOX_VARIANT_STATE_FILE" ] || return 1
+    [ "$(cat "$SING_BOX_VARIANT_STATE_FILE" 2>/dev/null)" = "extended-compressed" ]
+}
+
+sing_box_tiny_marker_set() {
+    [ -r "$SING_BOX_VARIANT_STATE_FILE" ] || return 1
+    [ "$(cat "$SING_BOX_VARIANT_STATE_FILE" 2>/dev/null)" = "tiny" ]
+}
+
+sing_box_supports_tailscale() {
+    sing_box_is_extended && return 0
+    command_exists sing-box || return 1
+    sing-box version 2>/dev/null | grep -Eq '(^|[,:[:space:]])with_tailscale([,[:space:]]|$)'
+}
+
+sing_box_active_variant() {
+    if ! command_exists sing-box; then
+        printf '%s\n' "none"
+        return 0
+    fi
+
+    if sing_box_is_extended; then
+        if sing_box_compressed_marker_set; then
+            printf '%s\n' "extended-compressed"
+        else
+            printf '%s\n' "extended"
+        fi
+        return 0
+    fi
+
+    if pkg_is_installed "sing-box-tiny" || { sing_box_tiny_marker_set && ! sing_box_supports_tailscale; }; then
+        printf '%s\n' "tiny"
+        return 0
+    fi
+
+    printf '%s\n' "stable"
+}
+
+select_sing_box_installation() {
+    active_variant="$(sing_box_active_variant)"
+    answer=""
+    skip_choice=1
+    next_choice=2
+    stable_choice=""
+    tiny_choice=""
+    extended_choice=""
+    extended_compressed_choice=""
+
+    if [ "$active_variant" != "stable" ]; then
+        stable_choice="$next_choice"
+        next_choice=$((next_choice + 1))
+    fi
+    if [ "$active_variant" != "tiny" ]; then
+        tiny_choice="$next_choice"
+        next_choice=$((next_choice + 1))
+    fi
+    if [ "$active_variant" != "extended" ]; then
+        extended_choice="$next_choice"
+        next_choice=$((next_choice + 1))
+    fi
+    if [ "$active_variant" != "extended-compressed" ]; then
+        extended_compressed_choice="$next_choice"
+        next_choice=$((next_choice + 1))
+    fi
+
+    if [ ! -t 0 ]; then
+        SING_BOX_INSTALL_VARIANT=""
+        msg "$(installer_text sing_box_prompt): $skip_choice ($(installer_text sing_box_skip), non-interactive)"
+        return 0
+    fi
+
+    while :; do
+        printf '\n%s\n' "$(installer_text sing_box_prompt)"
+        printf '  %s) %s\n' "$skip_choice" "$(installer_text sing_box_skip)"
+        [ -n "$stable_choice" ] && printf '  %s) %s\n' "$stable_choice" "$(installer_text sing_box_stable)"
+        [ -n "$tiny_choice" ] && printf '  %s) %s\n' "$tiny_choice" "$(installer_text sing_box_tiny)"
+        [ -n "$extended_choice" ] && printf '  %s) %s\n' "$extended_choice" "$(installer_text sing_box_extended)"
+        [ -n "$extended_compressed_choice" ] && printf '  %s) %s\n' "$extended_compressed_choice" "$(installer_text sing_box_extended_compressed)"
+        printf '%s [1]: ' "$(installer_text select)"
+        read -r answer || return 1
+        [ -n "$answer" ] || answer="$skip_choice"
+
+        if [ "$answer" = "$skip_choice" ]; then
+            SING_BOX_INSTALL_VARIANT=""
+            return 0
+        fi
+        if [ -n "$stable_choice" ] && [ "$answer" = "$stable_choice" ]; then
+            SING_BOX_INSTALL_VARIANT="stable"
+            return 0
+        fi
+        if [ -n "$tiny_choice" ] && [ "$answer" = "$tiny_choice" ]; then
+            SING_BOX_INSTALL_VARIANT="tiny"
+            return 0
+        fi
+        if [ -n "$extended_choice" ] && [ "$answer" = "$extended_choice" ]; then
+            SING_BOX_INSTALL_VARIANT="extended"
+            return 0
+        fi
+        if [ -n "$extended_compressed_choice" ] && [ "$answer" = "$extended_compressed_choice" ]; then
+            SING_BOX_INSTALL_VARIANT="extended-compressed"
+            return 0
+        fi
+
+        warn "$(installer_text invalid_choice)"
+    done
+}
+
+pkg_install_sing_box_variant() {
+    target_pkg="$1"
+    conflict_pkg="$2"
+
+    if [ "$PKG_IS_APK" -eq 1 ]; then
+        apk add "$target_pkg" </dev/null && return 0
+        if [ -n "$conflict_pkg" ] && pkg_is_installed "$conflict_pkg"; then
+            apk del --force-broken-world "$conflict_pkg" </dev/null || return 1
+        fi
+        apk add "$target_pkg" </dev/null
+        return $?
+    fi
+
+    if [ -n "$conflict_pkg" ] && pkg_is_installed "$conflict_pkg"; then
+        opkg remove --force-depends "$conflict_pkg" </dev/null || return 1
+    fi
+
+    pkg_install_name_downgrade "$target_pkg"
+}
+
+write_sing_box_variant_marker() {
+    variant="$1"
+    marker_dir="$(dirname "$SING_BOX_VARIANT_STATE_FILE")"
+
+    mkdir -p "$marker_dir" || return 1
+    printf '%s\n' "$variant" >"$SING_BOX_VARIANT_STATE_FILE"
+}
+
+system_uses_musl() {
+    ls /lib/ld-musl-*.so* >/dev/null 2>&1 && return 0
+    ldd --version 2>&1 | grep -qi musl
+}
+
+resolve_sing_box_extended_release() {
+    compressed="$1"
+    host_arch="$(uname -m 2>/dev/null || true)"
+    distrib_arch="$(read_openwrt_release_value "DISTRIB_ARCH")"
+    prefer_musl=0
+
+    SING_BOX_EXTENDED_RELEASE_JSON="$(fetch_github_latest_release_json "shtorm-7" "sing-box-extended")"
+    SING_BOX_EXTENDED_RELEASE_TAG="$(printf '%s' "$SING_BOX_EXTENDED_RELEASE_JSON" | install_json_ucode release-tag 2>/dev/null)"
+    [ -n "$SING_BOX_EXTENDED_RELEASE_TAG" ] || fail "Failed to detect the sing-box-extended release tag"
+
+    SING_BOX_EXTENDED_ARCH_SUFFIX="$(install_json_ucode sing-box-extended-arch-suffix "$host_arch" "$distrib_arch" 2>/dev/null)" ||
+        fail "Failed to resolve sing-box-extended architecture for $host_arch/$distrib_arch"
+    [ -n "$SING_BOX_EXTENDED_ARCH_SUFFIX" ] || fail "Failed to resolve sing-box-extended architecture for $host_arch/$distrib_arch"
+
+    system_uses_musl && prefer_musl=1
+    SING_BOX_EXTENDED_ASSET_URL="$(printf '%s' "$SING_BOX_EXTENDED_RELEASE_JSON" | install_json_ucode sing-box-extended-asset-url "$SING_BOX_EXTENDED_ARCH_SUFFIX" "$prefer_musl" "$compressed" 2>/dev/null)"
+    [ -n "$SING_BOX_EXTENDED_ASSET_URL" ] || fail "The sing-box-extended release does not contain a matching asset for $SING_BOX_EXTENDED_ARCH_SUFFIX"
+    SING_BOX_EXTENDED_ASSET_NAME="$(basename "$SING_BOX_EXTENDED_ASSET_URL")"
+}
+
+validate_extended_sing_box_binary() {
+    binary_path="$1"
+    library_dir="${2:-}"
+    version=""
+
+    [ -x "$binary_path" ] || return 1
+
+    if [ -n "$library_dir" ]; then
+        version="$(LD_LIBRARY_PATH="$library_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$binary_path" version 2>/dev/null | head -n 1 | awk '{print $3}')"
+    else
+        version="$("$binary_path" version 2>/dev/null | head -n 1 | awk '{print $3}')"
+    fi
+
+    case "$version" in
+        *extended*) printf '%s\n' "$version"; return 0 ;;
+    esac
+
+    return 1
+}
+
+install_sing_box_extended_binary() {
+    compressed="$1"
+    label="sing-box-extended"
+    marker_variant="extended"
+    binary_path=""
+    cronet_path=""
+    backup_binary=""
+    backup_cronet=""
+    extract_error="$TMP_DIR/sing-box-extract.err"
+
+    if [ "$compressed" -eq 1 ]; then
+        label="sing-box-extended compressed"
+        marker_variant="extended-compressed"
+    fi
+
+    resolve_sing_box_extended_release "$compressed"
+    SING_BOX_EXTENDED_ARCHIVE_FILE="$TMP_DIR/$SING_BOX_EXTENDED_ASSET_NAME"
+    download_with_retry "$SING_BOX_EXTENDED_ASSET_URL" "$SING_BOX_EXTENDED_ARCHIVE_FILE" "$SING_BOX_EXTENDED_ASSET_NAME" ||
+        fail "Failed to download $SING_BOX_EXTENDED_ASSET_NAME"
+
+    binary_path="$(tar -tzf "$SING_BOX_EXTENDED_ARCHIVE_FILE" 2>/dev/null | install_json_ucode archive-member-path sing-box 2>/dev/null)"
+    [ -n "$binary_path" ] || fail "sing-box binary was not found in $SING_BOX_EXTENDED_ASSET_NAME"
+    cronet_path="$(tar -tzf "$SING_BOX_EXTENDED_ARCHIVE_FILE" 2>/dev/null | install_json_ucode archive-member-path libcronet.so 2>/dev/null)"
+
+    if [ -e /usr/bin/sing-box ]; then
+        backup_binary="$TMP_DIR/sing-box.backup.$$"
+        cp -p /usr/bin/sing-box "$backup_binary" || fail "Failed to backup current sing-box binary"
+    fi
+
+    pkg_install_sing_box_variant "sing-box" "sing-box-tiny" || {
+        [ -n "$backup_binary" ] && mv -f "$backup_binary" /usr/bin/sing-box
+        fail "Failed to install full sing-box package before $label"
+    }
+
+    if [ -z "$backup_binary" ] && [ -e /usr/bin/sing-box ]; then
+        backup_binary="$TMP_DIR/sing-box.package-backup.$$"
+        cp -p /usr/bin/sing-box "$backup_binary" || fail "Failed to backup package sing-box binary"
+    fi
+
+    rm -f /usr/bin/sing-box
+    if ! tar -xzf "$SING_BOX_EXTENDED_ARCHIVE_FILE" -O "$binary_path" >/usr/bin/sing-box 2>"$extract_error"; then
+        [ -s "$extract_error" ] && cat "$extract_error" >&2
+        rm -f /usr/bin/sing-box
+        [ -n "$backup_binary" ] && mv -f "$backup_binary" /usr/bin/sing-box
+        fail "Failed to extract $label"
+    fi
+    if ! chmod 0755 /usr/bin/sing-box; then
+        [ -n "$backup_binary" ] && mv -f "$backup_binary" /usr/bin/sing-box
+        fail "Failed to prepare $label binary"
+    fi
+
+    if [ -n "$cronet_path" ]; then
+        if [ -e /usr/lib/libcronet.so ]; then
+            backup_cronet="$TMP_DIR/libcronet.so.backup.$$"
+            cp -p /usr/lib/libcronet.so "$backup_cronet" || fail "Failed to backup current libcronet.so"
+        fi
+
+        if ! tar -xzf "$SING_BOX_EXTENDED_ARCHIVE_FILE" -O "$cronet_path" >/usr/lib/libcronet.so 2>"$extract_error"; then
+            [ -s "$extract_error" ] && cat "$extract_error" >&2
+            [ -n "$backup_binary" ] && mv -f "$backup_binary" /usr/bin/sing-box
+            [ -n "$backup_cronet" ] && mv -f "$backup_cronet" /usr/lib/libcronet.so
+            fail "Failed to extract libcronet.so from $label"
+        fi
+        if ! chmod 0644 /usr/lib/libcronet.so; then
+            [ -n "$backup_binary" ] && mv -f "$backup_binary" /usr/bin/sing-box
+            [ -n "$backup_cronet" ] && mv -f "$backup_cronet" /usr/lib/libcronet.so
+            fail "Failed to prepare libcronet.so"
+        fi
+    fi
+
+    new_version="$(validate_extended_sing_box_binary /usr/bin/sing-box /usr/lib)" || {
+        [ -n "$backup_binary" ] && mv -f "$backup_binary" /usr/bin/sing-box
+        [ -n "$backup_cronet" ] && mv -f "$backup_cronet" /usr/lib/libcronet.so
+        fail "Installed $label failed validation"
+    }
+
+    rm -f "$backup_binary" "$backup_cronet"
+    write_sing_box_variant_marker "$marker_variant" || warn "Failed to write sing-box variant marker"
+    msg "Installed $label $new_version"
+}
+
+stop_podkop_for_sing_box_install() {
+    remember_service_state
+    [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
+    restore_podkop_dnsmasq_failsafe
+}
+
+install_selected_sing_box() {
+    case "$SING_BOX_INSTALL_VARIANT" in
+        "")
+            msg "$(installer_text sing_box_skip_msg)"
+            ;;
+        stable)
+            stop_podkop_for_sing_box_install
+            pkg_install_sing_box_variant "sing-box" "sing-box-tiny" || fail "Failed to install stable sing-box"
+            write_sing_box_variant_marker "stable" || warn "Failed to write sing-box variant marker"
+            ;;
+        tiny)
+            stop_podkop_for_sing_box_install
+            pkg_install_sing_box_variant "sing-box-tiny" "sing-box" || fail "Failed to install sing-box-tiny"
+            write_sing_box_variant_marker "tiny" || warn "Failed to write sing-box variant marker"
+            ;;
+        extended)
+            stop_podkop_for_sing_box_install
+            install_sing_box_extended_binary 0
+            ;;
+        extended-compressed)
+            stop_podkop_for_sing_box_install
+            install_sing_box_extended_binary 1
+            ;;
+        *)
+            fail "Unknown sing-box installation variant: $SING_BOX_INSTALL_VARIANT"
+            ;;
+    esac
 }
 
 restore_podkop_dnsmasq_failsafe_raw() {
@@ -787,24 +1306,27 @@ cleanup_legacy_installation() {
 decide_i18n_installation() {
     luci_lang="$(get_luci_main_lang)"
 
+    detect_installer_language
+
     if pkg_is_installed "luci-i18n-podkop-plus-ru"; then
         PODKOP_PLUS_I18N_REQUESTED=1
-        msg "The Russian interface package is already installed and will be updated."
+        msg "$(installer_text i18n_installed)"
         return 0
     fi
 
     case "$luci_lang" in
         ru|ru_*|ru-*)
-            msg "LuCI language is Russian."
+            msg "$(installer_text luci_ru)"
             ;;
     esac
 
-    if confirm_prompt "Install the Russian interface language package?"; then
+    if confirm_prompt "$(installer_text i18n_prompt)"; then
         PODKOP_PLUS_I18N_REQUESTED=1
+        INSTALLER_LANG="ru"
         return 0
     fi
 
-    warn "Continuing without the Russian interface language package."
+    warn "$(installer_text i18n_skip)"
 }
 
 download_podkop_plus_packages() {
@@ -863,9 +1385,11 @@ main() {
     pkg_list_update || fail "Failed to update package lists"
     ensure_bootstrap_tool "ucode" "ucode"
 
+    select_sing_box_installation
     resolve_podkop_plus_release
     remove_conflicting_dns_proxy
     remove_old_sing_box_if_needed
+    install_selected_sing_box
 
     cleanup_legacy_installation
     download_podkop_plus_packages

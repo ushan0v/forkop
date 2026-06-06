@@ -1,4 +1,5 @@
 import { getComponentActionKey } from '../helpers/getComponentActionKey';
+import { normalizeSingBoxVariantFields } from '../helpers/singBoxVariant';
 import type { Podkop } from '../types';
 import { store } from './store.service';
 import type { StoreType } from './store.service';
@@ -16,6 +17,8 @@ function getEmptyUpdatesActions(): StoreType['updatesActions'] {
     singBoxCheck: { loading: false },
     singBoxInstall: { loading: false },
     singBoxInstallExtended: { loading: false },
+    singBoxInstallExtendedCompressed: { loading: false },
+    singBoxInstallTiny: { loading: false },
     singBoxInstallStable: { loading: false },
     zapretCheck: { loading: false },
     zapretInstall: { loading: false },
@@ -52,16 +55,18 @@ function applyServiceState(uiState: Podkop.UiState) {
         podkopStatus: uiState.service.podkop.status,
       },
     },
-    diagnosticsSystemInfo: {
+    diagnosticsSystemInfo: normalizeSingBoxVariantFields({
       ...currentSystemInfo,
       providerInfoLoaded: true,
       sing_box_extended: uiState.capabilities.sing_box_extended,
+      sing_box_tiny: uiState.capabilities.sing_box_tiny,
+      sing_box_tailscale: uiState.capabilities.sing_box_tailscale,
       zapret_installed: uiState.capabilities.zapret_installed,
       zapret2_installed: uiState.capabilities.zapret2_installed,
       byedpi_installed: uiState.capabilities.byedpi_installed,
       server_inbounds_enabled_count:
         uiState.capabilities.server_inbounds_enabled_count,
-    },
+    }),
   });
 }
 

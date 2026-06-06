@@ -2218,6 +2218,9 @@ var COMPONENT_ACTION_STATE_DIR = "/var/run/podkop-plus/component-actions";
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+function translate(message) {
+  return typeof _ === "function" ? _(message) : message;
+}
 function parseJsonObjectOutput(output) {
   if (!output) {
     return null;
@@ -2653,7 +2656,7 @@ var PodkopShellMethods = {
                   success: true,
                   component,
                   action,
-                  message: _("Podkop Plus has been installed"),
+                  message: translate("Podkop Plus has been installed"),
                   current_version: installedVersion,
                   latest_version: expectedLatestVersion,
                   changed: true,
@@ -3421,6 +3424,9 @@ var initialDiagnosticStore = {
     luci_app_version: "loading",
     sing_box_version: "loading",
     sing_box_extended: 0,
+    sing_box_tiny: 0,
+    sing_box_compressed: 0,
+    sing_box_tailscale: 1,
     zapret_version: "loading",
     zapret_installed: 0,
     zapret2_version: "loading",
@@ -3465,6 +3471,8 @@ var initialDiagnosticStore = {
     singBoxCheck: { loading: false },
     singBoxInstall: { loading: false },
     singBoxInstallExtended: { loading: false },
+    singBoxInstallExtendedCompressed: { loading: false },
+    singBoxInstallTiny: { loading: false },
     singBoxInstallStable: { loading: false },
     zapretCheck: { loading: false },
     zapretInstall: { loading: false },
@@ -4009,6 +4017,8 @@ var componentActionKeyMap = {
   "sing_box:check_update": "singBoxCheck",
   "sing_box:install": "singBoxInstall",
   "sing_box:install_extended": "singBoxInstallExtended",
+  "sing_box:install_extended_compressed": "singBoxInstallExtendedCompressed",
+  "sing_box:install_tiny": "singBoxInstallTiny",
   "sing_box:install_stable": "singBoxInstallStable",
   "zapret:check_update": "zapretCheck",
   "zapret:install": "zapretInstall",
@@ -4024,6 +4034,48 @@ function getComponentActionKey(component, action) {
   return componentActionKeyMap[`${component}:${action}`];
 }
 
+// src/podkop/helpers/singBoxVariant.ts
+function isExtendedSingBoxVersion(version) {
+  return String(version || "").includes("extended");
+}
+function isVersionPlaceholder(version) {
+  const normalized = String(version || "").trim().toLowerCase();
+  if (!normalized || normalized === "loading" || normalized === "unknown" || normalized === "not installed") {
+    return true;
+  }
+  return typeof _ === "function" && normalized === _("unknown").toLowerCase() || typeof _ === "function" && normalized === _("Not installed").toLowerCase();
+}
+function formatSingBoxVersion(value) {
+  const version = String(value.sing_box_version || "");
+  if (!version || version === "not installed") {
+    return _("Not installed");
+  }
+  if (isVersionPlaceholder(version)) {
+    return version;
+  }
+  const normalizedValue = normalizeSingBoxVariantFields(value);
+  let variant = "";
+  if (normalizedValue.sing_box_extended && normalizedValue.sing_box_compressed) {
+    variant = _("extended compressed");
+  } else if (normalizedValue.sing_box_extended) {
+    variant = _("extended");
+  } else if (normalizedValue.sing_box_tiny) {
+    variant = _("tiny");
+  }
+  return variant ? `${version} (${variant})` : version;
+}
+function normalizeSingBoxVariantFields(value) {
+  const versionExtended = isExtendedSingBoxVersion(value.sing_box_version);
+  const singBoxExtended = Boolean(value.sing_box_extended) || versionExtended;
+  return {
+    ...value,
+    sing_box_extended: singBoxExtended ? 1 : 0,
+    sing_box_tiny: singBoxExtended ? 0 : value.sing_box_tiny ? 1 : 0,
+    sing_box_compressed: singBoxExtended && value.sing_box_compressed ? 1 : 0,
+    sing_box_tailscale: singBoxExtended || value.sing_box_tailscale ? 1 : 0
+  };
+}
+
 // src/podkop/services/uiState.service.ts
 function isRunningAction(state) {
   return state.running === true;
@@ -4035,6 +4087,8 @@ function getEmptyUpdatesActions() {
     singBoxCheck: { loading: false },
     singBoxInstall: { loading: false },
     singBoxInstallExtended: { loading: false },
+    singBoxInstallExtendedCompressed: { loading: false },
+    singBoxInstallTiny: { loading: false },
     singBoxInstallStable: { loading: false },
     zapretCheck: { loading: false },
     zapretInstall: { loading: false },
@@ -4068,15 +4122,17 @@ function applyServiceState(uiState) {
         podkopStatus: uiState.service.podkop.status
       }
     },
-    diagnosticsSystemInfo: {
+    diagnosticsSystemInfo: normalizeSingBoxVariantFields({
       ...currentSystemInfo,
       providerInfoLoaded: true,
       sing_box_extended: uiState.capabilities.sing_box_extended,
+      sing_box_tiny: uiState.capabilities.sing_box_tiny,
+      sing_box_tailscale: uiState.capabilities.sing_box_tailscale,
       zapret_installed: uiState.capabilities.zapret_installed,
       zapret2_installed: uiState.capabilities.zapret2_installed,
       byedpi_installed: uiState.capabilities.byedpi_installed,
       server_inbounds_enabled_count: uiState.capabilities.server_inbounds_enabled_count
-    }
+    })
   });
 }
 function applyActionState(actions = {}) {
@@ -6127,6 +6183,9 @@ var UNKNOWN_SYSTEM_INFO = {
   luci_app_version: _("unknown"),
   sing_box_version: _("unknown"),
   sing_box_extended: 0,
+  sing_box_tiny: 0,
+  sing_box_compressed: 0,
+  sing_box_tailscale: 1,
   zapret_version: _("unknown"),
   zapret_installed: 0,
   zapret2_version: _("unknown"),
@@ -6170,14 +6229,14 @@ async function ensureSystemInfo({
         return store.get().diagnosticsSystemInfo;
       }
       if (systemInfo.success) {
-        const nextSystemInfo = {
+        const nextSystemInfo = normalizeSingBoxVariantFields({
           ...UNKNOWN_SYSTEM_INFO,
           loading: false,
           loaded: true,
           providerInfoLoaded: true,
           server_inbounds_enabled_count: currentSystemInfo.server_inbounds_enabled_count,
           ...systemInfo.data
-        };
+        });
         store.set({
           diagnosticsSystemInfo: nextSystemInfo
         });
@@ -7251,15 +7310,17 @@ async function fetchDiagnosticsProviderInfo({
     }
     if (uiState.success) {
       const currentSystemInfo2 = store.get().diagnosticsSystemInfo;
-      const nextSystemInfo2 = {
+      const nextSystemInfo2 = normalizeSingBoxVariantFields({
         ...currentSystemInfo2,
         providerInfoLoaded: true,
         sing_box_extended: uiState.data.capabilities.sing_box_extended,
+        sing_box_tiny: uiState.data.capabilities.sing_box_tiny,
+        sing_box_tailscale: uiState.data.capabilities.sing_box_tailscale,
         zapret_installed: uiState.data.capabilities.zapret_installed,
         zapret2_installed: uiState.data.capabilities.zapret2_installed,
         byedpi_installed: uiState.data.capabilities.byedpi_installed,
         server_inbounds_enabled_count: uiState.data.capabilities.server_inbounds_enabled_count
-      };
+      });
       if (!nextSystemInfo2.zapret_installed) {
         nextSystemInfo2.zapret_version = "not installed";
       }
@@ -7655,7 +7716,7 @@ function renderDiagnosticSystemInfoWidget() {
     },
     {
       key: "Sing-box",
-      value: diagnosticsSystemInfo.sing_box_version
+      value: formatSingBoxVersion(diagnosticsSystemInfo)
     }
   ];
   if (diagnosticsSystemInfo.zapret_installed) {
@@ -9986,9 +10047,27 @@ function patchSystemInfoAfterMutation(result) {
     nextSystemInfo.sing_box_version = version;
     if (result.action === "install_extended") {
       nextSystemInfo.sing_box_extended = 1;
+      nextSystemInfo.sing_box_tiny = 0;
+      nextSystemInfo.sing_box_compressed = 0;
+      nextSystemInfo.sing_box_tailscale = 1;
+    }
+    if (result.action === "install_extended_compressed") {
+      nextSystemInfo.sing_box_extended = 1;
+      nextSystemInfo.sing_box_tiny = 0;
+      nextSystemInfo.sing_box_compressed = 1;
+      nextSystemInfo.sing_box_tailscale = 1;
     }
     if (result.action === "install_stable") {
       nextSystemInfo.sing_box_extended = 0;
+      nextSystemInfo.sing_box_tiny = 0;
+      nextSystemInfo.sing_box_compressed = 0;
+      nextSystemInfo.sing_box_tailscale = 1;
+    }
+    if (result.action === "install_tiny") {
+      nextSystemInfo.sing_box_extended = 0;
+      nextSystemInfo.sing_box_tiny = 1;
+      nextSystemInfo.sing_box_compressed = 0;
+      nextSystemInfo.sing_box_tailscale = 0;
     }
   }
   if (result.component === "zapret") {
@@ -10021,11 +10100,12 @@ function patchSystemInfoAfterMutation(result) {
       nextSystemInfo.byedpi_version = version;
     }
   }
+  const normalizedSystemInfo = normalizeSingBoxVariantFields(nextSystemInfo);
   store.set({
-    diagnosticsSystemInfo: nextSystemInfo
+    diagnosticsSystemInfo: normalizedSystemInfo
   });
   if (result.component === "zapret" || result.component === "zapret2" || result.component === "byedpi") {
-    notifyActionProvidersAvailabilityChanged(nextSystemInfo);
+    notifyActionProvidersAvailabilityChanged(normalizedSystemInfo);
   }
 }
 async function applyCompletedComponentAction(key, result) {
@@ -10167,24 +10247,57 @@ function getPrimaryUpdateAction(component, checkKey, installKey) {
   };
 }
 function getComponentCards() {
-  const systemInfo = store.get().diagnosticsSystemInfo;
+  const systemInfo = normalizeSingBoxVariantFields(
+    store.get().diagnosticsSystemInfo
+  );
   const systemInfoLoading = isSystemInfoLoading();
   const zapretInstalled = Boolean(systemInfo.zapret_installed);
   const zapret2Installed = Boolean(systemInfo.zapret2_installed);
   const byedpiInstalled = Boolean(systemInfo.byedpi_installed);
-  const singBoxInstallAction = systemInfo.sing_box_extended ? {
-    key: "singBoxInstallStable",
-    text: _("Install stable"),
-    icon: renderRotateCcwIcon24,
-    component: "sing_box",
-    action: "install_stable"
-  } : {
-    key: "singBoxInstallExtended",
-    text: _("Install extended"),
-    icon: renderRotateCcwIcon24,
-    component: "sing_box",
-    action: "install_extended"
-  };
+  const singBoxInstalled = !isNotInstalled(systemInfo.sing_box_version);
+  const singBoxStable = singBoxInstalled && !systemInfo.sing_box_extended && !systemInfo.sing_box_tiny;
+  const singBoxExtended = Boolean(systemInfo.sing_box_extended) && !systemInfo.sing_box_compressed;
+  const singBoxExtendedCompressed = Boolean(systemInfo.sing_box_extended) && Boolean(systemInfo.sing_box_compressed);
+  const singBoxTiny = Boolean(systemInfo.sing_box_tiny);
+  const singBoxActions = [
+    getPrimaryUpdateAction("sing_box", "singBoxCheck", "singBoxInstall")
+  ];
+  if (!singBoxStable) {
+    singBoxActions.push({
+      key: "singBoxInstallStable",
+      text: _("Install stable"),
+      icon: renderRotateCcwIcon24,
+      component: "sing_box",
+      action: "install_stable"
+    });
+  }
+  if (!singBoxTiny) {
+    singBoxActions.push({
+      key: "singBoxInstallTiny",
+      text: _("Install tiny"),
+      icon: renderRotateCcwIcon24,
+      component: "sing_box",
+      action: "install_tiny"
+    });
+  }
+  if (!singBoxExtended) {
+    singBoxActions.push({
+      key: "singBoxInstallExtended",
+      text: _("Install extended"),
+      icon: renderRotateCcwIcon24,
+      component: "sing_box",
+      action: "install_extended"
+    });
+  }
+  if (!singBoxExtendedCompressed) {
+    singBoxActions.push({
+      key: "singBoxInstallExtendedCompressed",
+      text: _("Install extended compressed"),
+      icon: renderRotateCcwIcon24,
+      component: "sing_box",
+      action: "install_extended_compressed"
+    });
+  }
   return [
     {
       title: "Podkop Plus",
@@ -10197,13 +10310,10 @@ function getComponentCards() {
     },
     {
       title: "Sing-box",
-      version: isNotInstalled(systemInfo.sing_box_version) ? _("Not installed") : systemInfo.sing_box_version,
+      version: formatSingBoxVersion(systemInfo),
       releaseUrl: getGitHubReleaseUrl("sing_box"),
       tag: getCheckTag("sing_box"),
-      actions: [
-        getPrimaryUpdateAction("sing_box", "singBoxCheck", "singBoxInstall"),
-        singBoxInstallAction
-      ]
+      actions: singBoxActions
     },
     {
       title: "Zapret",
@@ -10365,9 +10475,15 @@ function renderUpdatesComponents() {
   if (!container) {
     return;
   }
-  const renderedComponents = getComponentCards().map(renderComponentCard);
+  const columns = [[], []];
+  getComponentCards().forEach((card, index) => {
+    columns[index % 2].push(renderComponentCard(card));
+  });
   return preserveScrollForPage(() => {
-    container.replaceChildren(...renderedComponents);
+    container.replaceChildren(
+      E("div", { class: "pdk_updates-page__components-column" }, columns[0]),
+      E("div", { class: "pdk_updates-page__components-column" }, columns[1])
+    );
   });
 }
 function onStoreUpdate3(_next, _prev, diff) {
@@ -10436,14 +10552,26 @@ var styles6 = `
 }
 
 .pdk_updates-page__components {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(240px, 1fr));
-    grid-gap: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.pdk_updates-page__components-column {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
 }
 
 @media (max-width: 760px) {
     .pdk_updates-page__components {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
+    .pdk_updates-page__components-column {
+        width: 100%;
     }
 }
 
@@ -10452,9 +10580,9 @@ var styles6 = `
     border-radius: 4px;
     padding: 10px;
     min-width: 0;
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-row-gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .pdk_updates-page__component__header {
@@ -10523,11 +10651,20 @@ var styles6 = `
 .pdk_updates-page__component__actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    flex: 0 0 auto;
     gap: 6px;
+    min-height: 0;
 }
 
 .pdk_updates-page__component__actions > .pdk-partial-button {
     margin-left: 0;
+    align-self: flex-start;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    width: auto;
 }
 
 .pdk_updates-page__component__release-link {

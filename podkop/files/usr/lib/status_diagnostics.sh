@@ -556,7 +556,7 @@ write_system_info_cache() {
 }
 
 build_system_info() {
-    local podkop_version podkop_latest_version luci_app_version sing_box_version sing_box_extended zapret_version zapret_installed zapret2_version zapret2_installed byedpi_version byedpi_installed openwrt_version device_model
+    local podkop_version podkop_latest_version luci_app_version sing_box_version sing_box_extended sing_box_tiny sing_box_compressed sing_box_tailscale zapret_version zapret_installed zapret2_version zapret2_installed byedpi_version byedpi_installed openwrt_version device_model
     local generated_at
 
     podkop_version="$PODKOP_VERSION"
@@ -574,6 +574,14 @@ build_system_info() {
     fi
     sing_box_extended=0
     is_sing_box_extended "$sing_box_version" && sing_box_extended=1
+    sing_box_tiny=0
+    is_sing_box_tiny && sing_box_tiny=1
+    sing_box_compressed=0
+    if [ "$sing_box_extended" -eq 1 ] && is_sing_box_compressed_marker_set; then
+        sing_box_compressed=1
+    fi
+    sing_box_tailscale=0
+    sing_box_supports_tailscale && sing_box_tailscale=1
 
     zapret_installed=0
     if is_zapret_installed; then
@@ -623,7 +631,7 @@ build_system_info() {
 
     status_diagnostics_ucode system-info-json \
         "$podkop_version" "$podkop_latest_version" "$luci_app_version" \
-        "$sing_box_version" "$sing_box_extended" \
+        "$sing_box_version" "$sing_box_extended" "$sing_box_tiny" "$sing_box_compressed" "$sing_box_tailscale" \
         "$zapret_version" "$zapret_installed" \
         "$zapret2_version" "$zapret2_installed" \
         "$byedpi_version" "$byedpi_installed" \
@@ -655,19 +663,23 @@ get_system_info() {
 }
 
 get_server_capabilities() {
-    local sing_box_version sing_box_extended=0
+    local sing_box_version sing_box_extended=0 sing_box_tiny=0 sing_box_tailscale=0
 
     sing_box_version="$(get_sing_box_version)"
     is_sing_box_extended "$sing_box_version" && sing_box_extended=1
+    is_sing_box_tiny && sing_box_tiny=1
+    sing_box_supports_tailscale && sing_box_tailscale=1
 
-    status_diagnostics_ucode server-capabilities-json "$sing_box_extended"
+    status_diagnostics_ucode server-capabilities-json "$sing_box_extended" "$sing_box_tiny" "$sing_box_tailscale"
 }
 
 get_ui_capabilities() {
-    local sing_box_version sing_box_extended=0 zapret_installed=0 zapret2_installed=0 byedpi_installed=0
+    local sing_box_version sing_box_extended=0 sing_box_tiny=0 sing_box_tailscale=0 zapret_installed=0 zapret2_installed=0 byedpi_installed=0
 
     sing_box_version="$(get_sing_box_version)"
     is_sing_box_extended "$sing_box_version" && sing_box_extended=1
+    is_sing_box_tiny && sing_box_tiny=1
+    sing_box_supports_tailscale && sing_box_tailscale=1
     is_zapret_installed && zapret_installed=1
     is_zapret2_installed && zapret2_installed=1
     is_byedpi_installed && byedpi_installed=1
@@ -677,6 +689,8 @@ get_ui_capabilities() {
 
     status_diagnostics_ucode ui-capabilities-json \
         "$sing_box_extended" \
+        "$sing_box_tiny" \
+        "$sing_box_tailscale" \
         "$zapret_installed" \
         "$zapret2_installed" \
         "$byedpi_installed" \

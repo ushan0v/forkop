@@ -56,6 +56,7 @@ SB_SERVICE_MIXED_INBOUND_PORT=4534
 SB_DIRECT_OUTBOUND_TAG="direct-out"
 # Experimental
 SB_CLASH_API_CONTROLLER_PORT=9090
+SB_VARIANT_STATE_FILE="/etc/podkop-plus/sing-box-variant"
 
 ## Lists
 GITHUB_RAW_URL="https://raw.githubusercontent.com/itdoginfo/allow-domains/main"

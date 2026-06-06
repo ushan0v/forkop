@@ -15,14 +15,26 @@ export const styles = `
 }
 
 .pdk_updates-page__components {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(240px, 1fr));
-    grid-gap: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.pdk_updates-page__components-column {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
 }
 
 @media (max-width: 760px) {
     .pdk_updates-page__components {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
+    .pdk_updates-page__components-column {
+        width: 100%;
     }
 }
 
@@ -31,9 +43,9 @@ export const styles = `
     border-radius: 4px;
     padding: 10px;
     min-width: 0;
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-row-gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .pdk_updates-page__component__header {
@@ -102,11 +114,20 @@ export const styles = `
 .pdk_updates-page__component__actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    flex: 0 0 auto;
     gap: 6px;
+    min-height: 0;
 }
 
 .pdk_updates-page__component__actions > .pdk-partial-button {
     margin-left: 0;
+    align-self: flex-start;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    width: auto;
 }
 
 .pdk_updates-page__component__release-link {

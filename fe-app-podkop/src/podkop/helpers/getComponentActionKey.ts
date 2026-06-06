@@ -9,6 +9,8 @@ const componentActionKeyMap: Record<string, UpdatesActionKey> = {
   'sing_box:check_update': 'singBoxCheck',
   'sing_box:install': 'singBoxInstall',
   'sing_box:install_extended': 'singBoxInstallExtended',
+  'sing_box:install_extended_compressed': 'singBoxInstallExtendedCompressed',
+  'sing_box:install_tiny': 'singBoxInstallTiny',
   'sing_box:install_stable': 'singBoxInstallStable',
   'zapret:check_update': 'zapretCheck',
   'zapret:install': 'zapretInstall',

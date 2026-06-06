@@ -266,11 +266,87 @@ get_sing_box_version() {
     echo "$version"
 }
 
+sing_box_version_output() {
+    command -v sing-box >/dev/null 2>&1 || return 1
+    sing-box version 2>/dev/null
+}
+
+sing_box_has_build_tag() {
+    local tag="$1"
+
+    [ -n "$tag" ] || return 1
+    sing_box_version_output | grep -Eq "(^|[,:[:space:]])${tag}([,[:space:]]|$)"
+}
+
 is_sing_box_extended() {
     local version="${1:-}"
 
     [ -n "$version" ] || version="$(get_sing_box_version)"
     helpers_ucode sing-box-version-is-extended "$version" >/dev/null 2>&1
+}
+
+is_sing_box_tiny_package_installed() {
+    if command -v apk >/dev/null 2>&1; then
+        apk info -e sing-box-tiny >/dev/null 2>&1
+        return $?
+    fi
+
+    opkg_package_is_installed sing-box-tiny
+}
+
+is_sing_box_full_package_installed() {
+    if command -v apk >/dev/null 2>&1; then
+        apk info -e sing-box >/dev/null 2>&1
+        return $?
+    fi
+
+    opkg_package_is_installed sing-box
+}
+
+is_sing_box_compressed_marker_set() {
+    [ -r "${SB_VARIANT_STATE_FILE:-/etc/podkop-plus/sing-box-variant}" ] || return 1
+    [ "$(cat "${SB_VARIANT_STATE_FILE:-/etc/podkop-plus/sing-box-variant}" 2>/dev/null)" = "extended-compressed" ]
+}
+
+is_sing_box_tiny_marker_set() {
+    [ -r "${SB_VARIANT_STATE_FILE:-/etc/podkop-plus/sing-box-variant}" ] || return 1
+    [ "$(cat "${SB_VARIANT_STATE_FILE:-/etc/podkop-plus/sing-box-variant}" 2>/dev/null)" = "tiny" ]
+}
+
+is_sing_box_tiny() {
+    is_sing_box_extended && return 1
+    is_sing_box_tiny_package_installed && return 0
+    is_sing_box_tiny_marker_set || return 1
+    sing_box_supports_tailscale && return 1
+    return 0
+}
+
+sing_box_supports_tailscale() {
+    is_sing_box_extended && return 0
+    sing_box_has_build_tag with_tailscale
+}
+
+get_sing_box_variant() {
+    if ! command -v sing-box >/dev/null 2>&1; then
+        printf '%s\n' "not-installed"
+        return 0
+    fi
+
+    if is_sing_box_extended; then
+        if is_sing_box_compressed_marker_set; then
+            printf '%s\n' "extended-compressed"
+        else
+            printf '%s\n' "extended"
+        fi
+        return 0
+    fi
+
+    if is_sing_box_tiny; then
+        printf '%s\n' "tiny"
+        return 0
+    fi
+
+    printf '%s\n' "stable"
 }
 
 get_subscription_user_agent() {

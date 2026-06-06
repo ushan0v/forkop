@@ -388,6 +388,7 @@ function qrSvgDataUri(text) {
 
 const SERVER_STYLE_ID = "podkop-plus-server-styles";
 const DEFAULT_SERVER_PROTOCOL = "tailscale";
+const FALLBACK_SERVER_PROTOCOL = "vless";
 const STREAM_PROTOCOLS = ["vless", "vmess", "trojan"];
 const PORT_PROTOCOLS = [
   "shadowsocks",
@@ -401,7 +402,6 @@ const EXTENDED_PORT_PROTOCOLS = ["mtproto"];
 const PASSWORD_PROTOCOLS = ["shadowsocks", "socks", "trojan", "hysteria2"];
 
 const BASE_PROTOCOL_LABELS = {
-  tailscale: "Tailscale",
   vless: "VLESS",
   shadowsocks: "Shadowsocks",
   socks: "SOCKS",
@@ -412,9 +412,13 @@ const BASE_PROTOCOL_LABELS = {
 const EXTENDED_PROTOCOL_LABELS = {
   mtproto: "MTProto",
 };
+const TAILSCALE_PROTOCOL_LABELS = {
+  tailscale: "Tailscale",
+};
 const PROTOCOL_LABELS = {
   ...BASE_PROTOCOL_LABELS,
   ...EXTENDED_PROTOCOL_LABELS,
+  ...TAILSCALE_PROTOCOL_LABELS,
 };
 
 const SECURITY_BY_PROTOCOL = {
@@ -500,6 +504,11 @@ function getProtocolLabel(protocol) {
   return PROTOCOL_LABELS[protocol] || protocol || "";
 }
 
+function resetOptionValues(option) {
+  option.keylist = [];
+  option.vallist = [];
+}
+
 function addOptionValue(option, value, label) {
   if (option.keylist && option.keylist.indexOf(value) >= 0) {
     return;
@@ -508,12 +517,35 @@ function addOptionValue(option, value, label) {
   option.value(value, label);
 }
 
-function populateProtocolValues(option, singBoxExtended) {
+function normalizeServerCapabilities(capabilities) {
+  return {
+    singBoxExtended: Boolean(capabilities?.singBoxExtended),
+    singBoxTailscale: capabilities?.singBoxTailscale !== false,
+  };
+}
+
+function getDefaultProtocolForCapabilities(capabilities) {
+  return normalizeServerCapabilities(capabilities).singBoxTailscale
+    ? DEFAULT_SERVER_PROTOCOL
+    : FALLBACK_SERVER_PROTOCOL;
+}
+
+function populateProtocolValues(option, capabilities) {
+  const normalized = normalizeServerCapabilities(capabilities);
+
+  resetOptionValues(option);
+
+  if (normalized.singBoxTailscale) {
+    Object.entries(TAILSCALE_PROTOCOL_LABELS).forEach(([value, label]) => {
+      addOptionValue(option, value, label);
+    });
+  }
+
   Object.entries(BASE_PROTOCOL_LABELS).forEach(([value, label]) => {
     addOptionValue(option, value, label);
   });
 
-  if (singBoxExtended) {
+  if (normalized.singBoxExtended) {
     Object.entries(EXTENDED_PROTOCOL_LABELS).forEach(([value, label]) => {
       addOptionValue(option, value, label);
     });
@@ -521,6 +553,8 @@ function populateProtocolValues(option, singBoxExtended) {
 }
 
 function populateTransportValues(option, singBoxExtended) {
+  resetOptionValues(option);
+
   addOptionValue(option, "tcp", "TCP");
   addOptionValue(option, "ws", "WebSocket");
   addOptionValue(option, "grpc", "gRPC");
@@ -534,17 +568,21 @@ function populateTransportValues(option, singBoxExtended) {
 
 function applyServerCapabilities(sectionRef, capabilities) {
   const options = sectionRef.serverCapabilityOptions;
+  const normalized = normalizeServerCapabilities(capabilities);
 
-  if (!options || !capabilities || !capabilities.singBoxExtended) {
+  sectionRef.serverCapabilities = normalized;
+
+  if (!options) {
     return;
   }
 
   if (options.protocol) {
-    populateProtocolValues(options.protocol, true);
+    populateProtocolValues(options.protocol, normalized);
+    options.protocol.default = getDefaultProtocolForCapabilities(normalized);
   }
 
   if (options.transport) {
-    populateTransportValues(options.transport, true);
+    populateTransportValues(options.transport, normalized.singBoxExtended);
   }
 }
 
@@ -2187,8 +2225,11 @@ function addRealityDepends(option) {
   option.depends({ protocol: "vless", security: "reality" });
 }
 
-function addTailscaleDepends(option) {
-  option.depends("protocol", "tailscale");
+function addTailscaleDepends(option, singBoxTailscale) {
+  option.depends(
+    "protocol",
+    singBoxTailscale ? "tailscale" : "__unsupported_tailscale__",
+  );
 }
 
 function addMtprotoDepends(option) {
@@ -2231,13 +2272,30 @@ function configureServerSection(sectionRef, options = {}) {
     const prevMap = mapNode ? dom.findClassInstance(mapNode) : this.map;
 
     prevMap.addedSection = sectionId;
-    ensureProtocolDefaults(sectionId, DEFAULT_SERVER_PROTOCOL, true);
 
-    loadDefaultPublicHost()
-      .then((host) => applyDefaultPublicHost(sectionId, host))
-      .catch(() => null);
+    const capabilitiesTask =
+      typeof options.loadCapabilities === "function"
+        ? options.loadCapabilities()
+        : Promise.resolve(this.serverCapabilities);
 
-    return this.renderMoreOptionsModal(sectionId);
+    return Promise.resolve(capabilitiesTask)
+      .then((capabilities) => {
+        if (capabilities) {
+          this.serverCapabilities = normalizeServerCapabilities(capabilities);
+        }
+
+        ensureProtocolDefaults(
+          sectionId,
+          getDefaultProtocolForCapabilities(this.serverCapabilities),
+          true,
+        );
+
+        loadDefaultPublicHost()
+          .then((host) => applyDefaultPublicHost(sectionId, host))
+          .catch(() => null);
+
+        return this.renderMoreOptionsModal(sectionId);
+      });
   };
 
   sectionRef.handleModalCancel = function (modalMap, ev, isSaving) {
@@ -2281,8 +2339,11 @@ function configureServerSection(sectionRef, options = {}) {
 
 function createServerContent(section, options = {}) {
   injectServerStyles();
-  const singBoxExtended = Boolean(options && options.singBoxExtended);
+  const capabilities = normalizeServerCapabilities(options);
+  const singBoxExtended = capabilities.singBoxExtended;
+  const singBoxTailscale = capabilities.singBoxTailscale;
   section.serverCapabilityOptions = {};
+  section.serverCapabilities = capabilities;
 
   let o = section.option(form.Flag, "enabled", _("Enable"));
   o.default = "1";
@@ -2326,8 +2387,8 @@ function createServerContent(section, options = {}) {
 
   o = section.option(form.ListValue, "protocol", _("Protocol"));
   section.serverCapabilityOptions.protocol = o;
-  populateProtocolValues(o, singBoxExtended);
-  o.default = DEFAULT_SERVER_PROTOCOL;
+  populateProtocolValues(o, capabilities);
+  o.default = getDefaultProtocolForCapabilities(capabilities);
   o.rmempty = false;
   o.modalonly = true;
   o.validate = validateRequired;
@@ -2864,7 +2925,7 @@ function createServerContent(section, options = {}) {
   o.modalonly = true;
   o.rmempty = false;
   o.validate = validateRequired;
-  addTailscaleDepends(o);
+  addTailscaleDepends(o, singBoxTailscale);
 
   o = section.option(
     form.Value,
@@ -2875,7 +2936,7 @@ function createServerContent(section, options = {}) {
   o.modalonly = true;
   o.rmempty = false;
   o.validate = validateHttpUrl;
-  addTailscaleDepends(o);
+  addTailscaleDepends(o, singBoxTailscale);
 
   o = section.option(form.Value, "tailscale_hostname", _("Tailscale hostname"));
   o.modalonly = true;
@@ -2890,7 +2951,7 @@ function createServerContent(section, options = {}) {
     uci.set(UCI_PACKAGE, sectionId, "tailscale_hostname", value);
     return value;
   };
-  addTailscaleDepends(o);
+  addTailscaleDepends(o, singBoxTailscale);
 
   o = section.option(
     form.Flag,
@@ -2900,7 +2961,7 @@ function createServerContent(section, options = {}) {
   o.default = "1";
   o.modalonly = true;
   o.rmempty = false;
-  addTailscaleDepends(o);
+  addTailscaleDepends(o, singBoxTailscale);
 
   o = section.option(
     form.DynamicList,
@@ -2910,13 +2971,13 @@ function createServerContent(section, options = {}) {
   o.modalonly = true;
   o.rmempty = true;
   o.validate = (_sectionId, value) => validateOptionalCidrOrIp(value);
-  addTailscaleDepends(o);
+  addTailscaleDepends(o, singBoxTailscale);
 
   o = section.option(form.Flag, "tailscale_accept_routes", _("Accept routes"));
   o.default = "0";
   o.modalonly = true;
   o.rmempty = true;
-  addTailscaleDepends(o);
+  addTailscaleDepends(o, singBoxTailscale);
 }
 
 return baseclass.extend({

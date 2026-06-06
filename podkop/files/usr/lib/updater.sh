@@ -42,9 +42,12 @@ UPDATES_JOB_DIR="/var/run/podkop-plus/component-actions"
 UPDATES_JOB_FINISHED_TTL_MINUTES=60
 UPDATES_JOB_ORPHAN_OUTPUT_TTL_MINUTES=60
 UPDATES_JOB_STALE_GRACE_SECONDS=15
+UPDATES_TMP_STALE_TTL_MINUTES=30
+UPDATES_TMP_FILE_STALE_TTL_MINUTES=10
 UPDATES_LOCK_DIR="/var/run/podkop-plus/component-action.lock"
 UPDATES_LOCK_HELD=0
 UPDATES_PODKOP_WAS_RUNNING=0
+UPDATES_PODKOP_STOPPED_FOR_SING_BOX_CHANGE=0
 
 updates_log() {
     local message="$1"
@@ -71,6 +74,8 @@ updates_json_file_running_is() {
 updates_init_tmp_dir() {
     [ -n "$UPDATES_TMP_DIR" ] && return 0
 
+    updates_cleanup_stale_tmp_files
+
     UPDATES_TMP_DIR="$(mktemp -d /tmp/podkop-plus-updates.XXXXXX 2>/dev/null || true)"
     if [ -z "$UPDATES_TMP_DIR" ]; then
         UPDATES_TMP_DIR="/tmp/podkop-plus-updates.$$"
@@ -78,8 +83,25 @@ updates_init_tmp_dir() {
     fi
 }
 
+updates_cleanup_stale_tmp_files() {
+    local tmp_path
+
+    find /tmp -maxdepth 1 -type d -name 'podkop-plus-updates.*' -mmin "+$UPDATES_TMP_STALE_TTL_MINUTES" 2>/dev/null |
+        while IFS= read -r tmp_path; do
+            [ -n "$tmp_path" ] || continue
+            [ "$tmp_path" = "$UPDATES_TMP_DIR" ] && continue
+            rm -rf "$tmp_path" 2>/dev/null || true
+        done
+
+    find /tmp -maxdepth 1 -type f \( -name 'podkop-plus-updates-command.*' -o -name 'podkop-plus-updates-http.*' \) -mmin "+$UPDATES_TMP_FILE_STALE_TTL_MINUTES" -delete 2>/dev/null || true
+}
+
 updates_cleanup() {
-    [ -n "$UPDATES_TMP_DIR" ] && rm -rf "$UPDATES_TMP_DIR"
+    if [ -n "$UPDATES_TMP_DIR" ]; then
+        rm -rf "$UPDATES_TMP_DIR"
+        UPDATES_TMP_DIR=""
+    fi
+    updates_cleanup_stale_tmp_files
 }
 
 updates_acquire_component_lock() {
@@ -144,7 +166,19 @@ updates_json_response() {
 
 updates_success() {
     updates_json_response true "$@"
+    updates_component_action_cleanup
     exit 0
+}
+
+updates_restart_podkop_after_failed_sing_box_change() {
+    [ "$UPDATES_PODKOP_STOPPED_FOR_SING_BOX_CHANGE" -eq 1 ] || return 0
+    [ "$UPDATES_PODKOP_WAS_RUNNING" = "1" ] || return 0
+    [ -x "$PODKOP_SERVICE_INIT" ] || return 0
+
+    updates_log "Restarting Podkop Plus after failed sing-box component change"
+    "$PODKOP_SERVICE_INIT" start >/dev/null 2>&1 ||
+        "$PODKOP_SERVICE_INIT" restart >/dev/null 2>&1 ||
+        true
 }
 
 updates_fail() {
@@ -157,7 +191,9 @@ updates_fail() {
     local release_url="${7:-}"
 
     updates_log "$message" "error"
+    updates_restart_podkop_after_failed_sing_box_change
     updates_json_response false "$component" "$action" "$message" "$current_version" "$latest_version" 0 "$status" "$release_url"
+    updates_component_action_cleanup
     exit 1
 }
 
@@ -199,6 +235,19 @@ updates_cleanup_component_jobs() {
 
     [ -d "$UPDATES_JOB_DIR" ] || return 0
 
+    find "$UPDATES_JOB_DIR" -type f -name '*.out' 2>/dev/null |
+        while IFS= read -r output_file; do
+            [ -f "$output_file" ] || continue
+            state_file="${output_file%.out}.json"
+
+            if [ -f "$state_file" ]; then
+                updates_refresh_running_job_state "$state_file"
+                if ! updates_json_file_running_is "$state_file" true; then
+                    rm -f "$output_file" "$output_file.json" 2>/dev/null || true
+                fi
+            fi
+        done
+
     find "$UPDATES_JOB_DIR" -type f -name '*.out' -mmin "+$UPDATES_JOB_ORPHAN_OUTPUT_TTL_MINUTES" 2>/dev/null |
         while IFS= read -r output_file; do
             [ -f "$output_file" ] || continue
@@ -215,6 +264,7 @@ updates_cleanup_component_jobs() {
         done
 
     find "$UPDATES_JOB_DIR" -type f -name '*.out.json' -mmin "+$UPDATES_JOB_ORPHAN_OUTPUT_TTL_MINUTES" -delete 2>/dev/null || true
+    find "$UPDATES_JOB_DIR" -type f -name '*.json.*' -mmin "+$UPDATES_TMP_FILE_STALE_TTL_MINUTES" -delete 2>/dev/null || true
 
     find "$UPDATES_JOB_DIR" -type f -name '*.json' -mmin "+$UPDATES_JOB_FINISHED_TTL_MINUTES" 2>/dev/null |
         while IFS= read -r state_file; do
@@ -478,7 +528,11 @@ updates_http_get() {
     local url="$1"
     local service_proxy_address output_path
 
-    output_path="$(mktemp /tmp/podkop-plus-updates-http.XXXXXX 2>/dev/null || true)"
+    updates_init_tmp_dir >/dev/null 2>&1 || true
+    if [ -n "$UPDATES_TMP_DIR" ] && [ -d "$UPDATES_TMP_DIR" ]; then
+        output_path="$(mktemp "$UPDATES_TMP_DIR/http.XXXXXX" 2>/dev/null || true)"
+    fi
+    [ -n "$output_path" ] || output_path="$(mktemp /tmp/podkop-plus-updates-http.XXXXXX 2>/dev/null || true)"
     [ -n "$output_path" ] || return 1
 
     service_proxy_address="$(updates_get_service_proxy_address)"
@@ -575,7 +629,11 @@ updates_log_command() {
     local status output_file line level
     shift
 
-    output_file="$(mktemp /tmp/podkop-plus-updates-command.XXXXXX 2>/dev/null || true)"
+    updates_init_tmp_dir >/dev/null 2>&1 || true
+    if [ -n "$UPDATES_TMP_DIR" ] && [ -d "$UPDATES_TMP_DIR" ]; then
+        output_file="$(mktemp "$UPDATES_TMP_DIR/command.XXXXXX" 2>/dev/null || true)"
+    fi
+    [ -n "$output_file" ] || output_file="$(mktemp /tmp/podkop-plus-updates-command.XXXXXX 2>/dev/null || true)"
     [ -n "$output_file" ] || output_file="/tmp/podkop-plus-updates-command.$$"
 
     updates_log "$description"
@@ -839,6 +897,64 @@ updates_restart_podkop_after_successful_change() {
     fi
 
     updates_log_command "Restarting Podkop Plus after successful component change" "$PODKOP_SERVICE_INIT" restart || true
+}
+
+updates_stop_podkop_before_sing_box_change() {
+    [ "$UPDATES_PODKOP_STOPPED_FOR_SING_BOX_CHANGE" -eq 0 ] || return 0
+    UPDATES_PODKOP_STOPPED_FOR_SING_BOX_CHANGE=1
+
+    [ -x "$PODKOP_SERVICE_INIT" ] || return 0
+
+    if [ "$UPDATES_PODKOP_WAS_RUNNING" = "1" ]; then
+        updates_log_command "Stopping Podkop Plus before sing-box package change" "$PODKOP_SERVICE_INIT" stop || true
+    fi
+
+    if [ -x "$PODKOP_BIN" ]; then
+        "$PODKOP_BIN" restore_dnsmasq >/dev/null 2>&1 || true
+    fi
+}
+
+updates_podkop_status_running_with_timeout() {
+    local output_file pid watcher rc
+
+    updates_init_tmp_dir || return 1
+    output_file="$UPDATES_TMP_DIR/podkop-status.$$"
+    rm -f "$output_file"
+
+    "$PODKOP_BIN" get_status >"$output_file" 2>/dev/null &
+    pid="$!"
+    (
+        sleep 6
+        kill "$pid" 2>/dev/null || true
+    ) &
+    watcher="$!"
+
+    wait "$pid" 2>/dev/null
+    rc="$?"
+    kill "$watcher" 2>/dev/null || true
+    wait "$watcher" 2>/dev/null || true
+
+    [ "$rc" -eq 0 ] || return 1
+    grep -Eq '"running"[[:space:]]*:[[:space:]]*1' "$output_file"
+}
+
+updates_wait_podkop_running_after_sing_box_change() {
+    local waited=0
+
+    [ "$UPDATES_PODKOP_WAS_RUNNING" = "1" ] || return 0
+    [ -x "$PODKOP_BIN" ] || return 1
+
+    while [ "$waited" -lt 60 ]; do
+        if updates_podkop_status_running_with_timeout; then
+            sleep 8
+            updates_podkop_status_running_with_timeout && return 0
+        fi
+
+        sleep 4
+        waited=$((waited + 4))
+    done
+
+    return 1
 }
 
 updates_resolve_arch_candidates() {
@@ -1352,11 +1468,43 @@ updates_system_uses_musl() {
 
 updates_select_sing_box_extended_asset_url() {
     local release_json="$1"
+    local compressed="${2:-0}"
     local prefer_musl=0
 
     updates_system_uses_musl && prefer_musl=1
 
-    printf '%s' "$release_json" | updates_ucode sing-box-extended-asset-url "$UPDATES_SING_BOX_EXTENDED_ARCH_SUFFIX" "$prefer_musl" 2>/dev/null
+    printf '%s' "$release_json" | updates_ucode sing-box-extended-asset-url "$UPDATES_SING_BOX_EXTENDED_ARCH_SUFFIX" "$prefer_musl" "$compressed" 2>/dev/null
+}
+
+updates_write_sing_box_variant_marker() {
+    local variant="$1"
+    local marker="${SB_VARIANT_STATE_FILE:-/etc/podkop-plus/sing-box-variant}"
+    local marker_dir
+
+    marker_dir="$(dirname "$marker")"
+    mkdir -p "$marker_dir" || return 1
+    printf '%s\n' "$variant" >"$marker"
+}
+
+updates_read_sing_box_variant_marker() {
+    local marker="${SB_VARIANT_STATE_FILE:-/etc/podkop-plus/sing-box-variant}"
+
+    [ -r "$marker" ] || return 1
+    sed -n '1p' "$marker" 2>/dev/null
+}
+
+updates_restore_sing_box_variant_marker() {
+    local previous_marker="$1"
+
+    if [ -n "$previous_marker" ]; then
+        updates_write_sing_box_variant_marker "$previous_marker"
+    else
+        updates_clear_sing_box_variant_marker
+    fi
+}
+
+updates_clear_sing_box_variant_marker() {
+    rm -f "${SB_VARIANT_STATE_FILE:-/etc/podkop-plus/sing-box-variant}" 2>/dev/null || true
 }
 
 updates_read_sing_box_binary_version() {
@@ -1437,6 +1585,7 @@ updates_resolve_sing_box_extended_arch_suffix() {
 }
 
 updates_resolve_sing_box_extended_release() {
+    local compressed="${1:-0}"
     local response tag release_json
 
     UPDATES_SING_BOX_EXTENDED_RELEASE_TAG=""
@@ -1453,31 +1602,73 @@ updates_resolve_sing_box_extended_release() {
     UPDATES_SING_BOX_EXTENDED_RELEASE_TAG="$tag"
     release_json="$(printf '%s' "$response" | updates_ucode release-by-tag "$tag" 2>/dev/null)"
     UPDATES_SING_BOX_EXTENDED_RELEASE_URL="$(printf '%s' "$release_json" | updates_ucode object-get-default html_url "" 2>/dev/null)"
-    UPDATES_SING_BOX_EXTENDED_ASSET_URL="$(updates_select_sing_box_extended_asset_url "$release_json")"
+    UPDATES_SING_BOX_EXTENDED_ASSET_URL="$(updates_select_sing_box_extended_asset_url "$release_json" "$compressed")"
 
     [ -n "$UPDATES_SING_BOX_EXTENDED_ASSET_URL" ] || return 1
     UPDATES_SING_BOX_EXTENDED_ASSET_NAME="$(basename "$UPDATES_SING_BOX_EXTENDED_ASSET_URL")"
 }
 
+updates_replace_sing_box_package_variant() {
+    local target_package="$1"
+    local conflict_package="$2"
+
+    if updates_is_apk; then
+        apk add "$target_package" </dev/null && return 0
+
+        if [ -n "$conflict_package" ] && updates_pkg_is_installed "$conflict_package"; then
+            apk del --force-broken-world "$conflict_package" </dev/null || return 1
+        fi
+        apk add "$target_package" </dev/null
+        return $?
+    fi
+
+    if [ -n "$conflict_package" ] && updates_pkg_is_installed "$conflict_package"; then
+        opkg remove --force-depends "$conflict_package" </dev/null || return 1
+    fi
+
+    updates_pkg_install_name_downgrade "$target_package"
+}
+
+updates_ensure_full_sing_box_package() {
+    updates_log_command "Updating package lists before sing-box package installation" updates_pkg_list_update ||
+        return 1
+
+    updates_log_command "Installing full sing-box package" updates_replace_sing_box_package_variant "sing-box" "sing-box-tiny"
+}
+
 updates_install_sing_box_extended() {
     local action="$1"
-    local current_version latest_version normalized_current normalized_latest archive_file binary_path cronet_path extract_error new_version backup_binary backup_cronet
+    local compressed="${2:-0}"
+    local current_version latest_version normalized_current normalized_latest archive_file binary_path cronet_path extract_error new_version backup_binary backup_cronet label marker_variant previous_marker
+
+    label="sing-box-extended"
+    marker_variant="extended"
+    if [ "$compressed" -eq 1 ]; then
+        label="sing-box-extended compressed"
+        marker_variant="extended-compressed"
+    fi
 
     updates_init_tmp_dir || updates_fail "sing_box" "$action" "Failed to create temporary directory"
     current_version="$(get_sing_box_version)"
-    updates_resolve_sing_box_extended_release || updates_fail "sing_box" "$action" "Failed to resolve sing-box-extended release" "$current_version"
+    previous_marker="$(updates_read_sing_box_variant_marker 2>/dev/null || true)"
+    updates_resolve_sing_box_extended_release "$compressed" || updates_fail "sing_box" "$action" "Failed to resolve $label release" "$current_version"
     latest_version="$(updates_normalize_sing_box_version "$UPDATES_SING_BOX_EXTENDED_RELEASE_TAG")"
     normalized_current="$(updates_normalize_sing_box_version "$current_version")"
     normalized_latest="$(updates_normalize_sing_box_version "$latest_version")"
 
     if [ "$action" = "check_update" ]; then
         is_sing_box_extended "$current_version" || updates_fail "sing_box" "$action" "sing-box-extended is not installed" "$current_version" "$latest_version"
+        if [ "$compressed" -eq 1 ] && ! is_sing_box_compressed_marker_set; then
+            updates_fail "sing_box" "$action" "sing-box-extended compressed is not installed" "$current_version" "$latest_version"
+        fi
         updates_check_success "sing_box" "$normalized_current" "$normalized_latest" "$UPDATES_SING_BOX_EXTENDED_RELEASE_URL"
     fi
 
+    updates_stop_podkop_before_sing_box_change
+
     archive_file="$UPDATES_TMP_DIR/$UPDATES_SING_BOX_EXTENDED_ASSET_NAME"
     updates_download_with_retry "$UPDATES_SING_BOX_EXTENDED_ASSET_URL" "$archive_file" "$UPDATES_SING_BOX_EXTENDED_ASSET_NAME" ||
-        updates_fail "sing_box" "$action" "Failed to download sing-box-extended" "$current_version" "$latest_version"
+        updates_fail "sing_box" "$action" "Failed to download $label" "$current_version" "$latest_version"
 
     binary_path="$(updates_select_archive_member_path "$archive_file" "sing-box")"
     [ -n "$binary_path" ] || updates_fail "sing_box" "$action" "sing-box binary was not found in the downloaded archive" "$current_version" "$latest_version"
@@ -1492,8 +1683,22 @@ updates_install_sing_box_extended() {
             rm -f "$backup_binary"
             updates_fail "sing_box" "$action" "Failed to backup current sing-box binary" "$current_version" "$latest_version"
         fi
-        rm -f /usr/bin/sing-box
     fi
+
+    if ! updates_ensure_full_sing_box_package; then
+        [ -n "$backup_binary" ] && updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+        updates_fail "sing_box" "$action" "Failed to prepare full sing-box package for $label" "$current_version" "$latest_version"
+    fi
+
+    if [ -z "$backup_binary" ] && [ -e /usr/bin/sing-box ]; then
+        backup_binary="$UPDATES_TMP_DIR/sing-box.package-backup.$$"
+        if ! cp -p /usr/bin/sing-box "$backup_binary"; then
+            rm -f "$backup_binary"
+            updates_fail "sing_box" "$action" "Failed to backup package sing-box binary" "$current_version" "$latest_version"
+        fi
+    fi
+
+    rm -f /usr/bin/sing-box
 
     backup_cronet=""
     if [ -n "$cronet_path" ] && [ -e /usr/lib/libcronet.so ]; then
@@ -1513,7 +1718,7 @@ updates_install_sing_box_extended() {
         rm -f /usr/bin/sing-box
         updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
         updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
-        updates_fail "sing_box" "$action" "Failed to extract sing-box-extended" "$current_version" "$latest_version"
+        updates_fail "sing_box" "$action" "Failed to extract $label" "$current_version" "$latest_version"
     fi
 
     if [ ! -s /usr/bin/sing-box ]; then
@@ -1558,16 +1763,33 @@ updates_install_sing_box_extended() {
     new_version="$(updates_validate_sing_box_extended_binary /usr/bin/sing-box /usr/lib)" || {
         updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
         if updates_restore_sing_box_backup "$backup_binary"; then
-            updates_fail "sing_box" "$action" "Installed sing-box-extended failed validation; previous binary was restored" "$current_version" "$latest_version"
+            updates_fail "sing_box" "$action" "Installed $label failed validation; previous binary was restored" "$current_version" "$latest_version"
         fi
-        updates_fail "sing_box" "$action" "Installed sing-box-extended failed validation and previous binary could not be restored" "$current_version" "$latest_version"
+        updates_fail "sing_box" "$action" "Installed $label failed validation and previous binary could not be restored" "$current_version" "$latest_version"
     }
 
-    rm -f "$backup_binary" "$backup_cronet"
+    updates_write_sing_box_variant_marker "$marker_variant" || updates_log "Failed to write sing-box variant marker" "warn"
     updates_restart_podkop_after_successful_change
+    if ! updates_wait_podkop_running_after_sing_box_change; then
+        updates_log "$label did not start cleanly; restoring previous sing-box binary" "error"
+        [ -x "$PODKOP_SERVICE_INIT" ] && "$PODKOP_SERVICE_INIT" stop >/dev/null 2>&1 || true
+        updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
+        if updates_restore_sing_box_backup "$backup_binary"; then
+            updates_restore_sing_box_variant_marker "$previous_marker" >/dev/null 2>&1 || true
+            updates_clear_version_caches
+            rm -f "$backup_binary" "$backup_cronet"
+            updates_fail "sing_box" "$action" "$label was installed but Podkop Plus did not start cleanly; previous sing-box binary was restored" "$current_version" "$latest_version"
+        fi
+
+        updates_restore_sing_box_variant_marker "$previous_marker" >/dev/null 2>&1 || true
+        updates_clear_version_caches
+        updates_fail "sing_box" "$action" "$label was installed but Podkop Plus did not start cleanly and previous sing-box binary could not be restored" "$current_version" "$latest_version"
+    fi
+
+    rm -f "$backup_binary" "$backup_cronet"
     updates_clear_version_caches
-    updates_log "Installed sing-box-extended ${new_version:-unknown}"
-    updates_success "sing_box" "$action" "sing-box-extended has been installed" "$new_version" "$latest_version" 1 "latest"
+    updates_log "Installed $label ${new_version:-unknown}"
+    updates_success "sing_box" "$action" "$label has been installed" "$new_version" "$latest_version" 1 "latest"
 }
 
 updates_install_stable_sing_box() {
@@ -1589,6 +1811,8 @@ updates_install_stable_sing_box() {
         updates_check_success "sing_box" "$current_version" "$latest_version"
     fi
 
+    updates_stop_podkop_before_sing_box_change
+
     updates_log_command "Updating package lists before sing-box installation" updates_pkg_list_update ||
         updates_fail "sing_box" "$action" "Failed to update package lists" "$current_version" "$latest_version"
 
@@ -1596,7 +1820,7 @@ updates_install_stable_sing_box() {
     [ -n "$latest_version" ] || latest_version="$(updates_get_installed_package_version "sing-box")"
     [ -n "$latest_version" ] || updates_fail "sing_box" "$action" "Failed to resolve stable sing-box package version" "$current_version"
 
-    if ! updates_log_command "Installing stable sing-box package" updates_pkg_install_name_downgrade "sing-box"; then
+    if ! updates_log_command "Installing stable sing-box package" updates_replace_sing_box_package_variant "sing-box" "sing-box-tiny"; then
         updates_fail "sing_box" "$action" "Failed to install stable sing-box" "$current_version" "$latest_version"
     fi
 
@@ -1611,13 +1835,77 @@ updates_install_stable_sing_box() {
         updates_fail "sing_box" "$action" "Stable sing-box package was installed, but the active binary is still sing-box-extended" "$new_version" "$latest_version"
     fi
 
+    updates_write_sing_box_variant_marker "stable" || updates_log "Failed to write sing-box variant marker" "warn"
     updates_restart_podkop_after_successful_change
+    if ! updates_wait_podkop_running_after_sing_box_change; then
+        updates_clear_version_caches
+        updates_fail "sing_box" "$action" "Stable sing-box was installed, but Podkop Plus did not start cleanly" "$new_version" "$latest_version"
+    fi
     updates_clear_version_caches
 
     changed=1
     [ "$new_version" = "$current_version" ] && changed=0
 
     updates_success "sing_box" "$action" "stable sing-box has been installed" "$new_version" "$latest_version" "$changed" "latest"
+}
+
+updates_install_tiny_sing_box() {
+    local action="$1"
+    local current_version latest_version new_version changed package_version binary_version
+
+    package_version="$(updates_get_installed_package_version "sing-box-tiny")"
+    binary_version="$(get_sing_box_version)"
+    current_version="$package_version"
+    if is_sing_box_extended "$binary_version"; then
+        current_version="$binary_version"
+    fi
+    [ -n "$current_version" ] || current_version="$binary_version"
+
+    latest_version="$(updates_get_available_package_version "sing-box-tiny")"
+    [ -n "$latest_version" ] || latest_version="$(updates_get_installed_package_version "sing-box-tiny")"
+    [ -n "$latest_version" ] || updates_fail "sing_box" "$action" "Failed to resolve tiny sing-box package version" "$current_version"
+
+    if [ "$action" = "check_update" ]; then
+        is_sing_box_tiny || updates_fail "sing_box" "$action" "sing-box-tiny is not installed" "$current_version" "$latest_version"
+        updates_check_success "sing_box" "$current_version" "$latest_version"
+    fi
+
+    updates_stop_podkop_before_sing_box_change
+
+    updates_log_command "Updating package lists before sing-box-tiny installation" updates_pkg_list_update ||
+        updates_fail "sing_box" "$action" "Failed to update package lists" "$current_version" "$latest_version"
+
+    latest_version="$(updates_get_available_package_version "sing-box-tiny")"
+    [ -n "$latest_version" ] || latest_version="$(updates_get_installed_package_version "sing-box-tiny")"
+    [ -n "$latest_version" ] || updates_fail "sing_box" "$action" "Failed to resolve tiny sing-box package version" "$current_version"
+
+    if ! updates_log_command "Installing tiny sing-box package" updates_replace_sing_box_package_variant "sing-box-tiny" "sing-box"; then
+        updates_fail "sing_box" "$action" "Failed to install sing-box-tiny" "$current_version" "$latest_version"
+    fi
+
+    new_version="$(get_sing_box_version)"
+    if [ -z "$new_version" ]; then
+        updates_clear_version_caches
+        updates_fail "sing_box" "$action" "sing-box-tiny package was installed, but sing-box binary is not available" "$current_version" "$latest_version"
+    fi
+
+    if is_sing_box_extended "$new_version"; then
+        updates_clear_version_caches
+        updates_fail "sing_box" "$action" "sing-box-tiny package was installed, but the active binary is still sing-box-extended" "$new_version" "$latest_version"
+    fi
+
+    updates_write_sing_box_variant_marker "tiny" || updates_log "Failed to write sing-box variant marker" "warn"
+    updates_restart_podkop_after_successful_change
+    if ! updates_wait_podkop_running_after_sing_box_change; then
+        updates_clear_version_caches
+        updates_fail "sing_box" "$action" "Tiny sing-box was installed, but Podkop Plus did not start cleanly" "$new_version" "$latest_version"
+    fi
+    updates_clear_version_caches
+
+    changed=1
+    [ "$new_version" = "$current_version" ] && changed=0
+
+    updates_success "sing_box" "$action" "tiny sing-box has been installed" "$new_version" "$latest_version" "$changed" "latest"
 }
 
 updates_check_podkop_plus() {
@@ -1722,6 +2010,7 @@ component_action() {
     trap updates_component_action_cleanup EXIT HUP INT TERM
 
     updates_acquire_component_lock || updates_fail "${component:-unknown}" "${action:-unknown}" "Another component action is already running"
+    updates_init_tmp_dir || updates_fail "${component:-unknown}" "${action:-unknown}" "Failed to create temporary directory"
     updates_capture_podkop_running_state
 
     case "$component:$action" in
@@ -1732,19 +2021,45 @@ component_action() {
         updates_install_podkop_plus
         ;;
     sing_box:check_update)
-        if is_sing_box_extended "$(get_sing_box_version)"; then
-            updates_install_sing_box_extended "$action"
-        fi
-        updates_install_stable_sing_box "$action"
+        case "$(get_sing_box_variant)" in
+        extended-compressed)
+            updates_install_sing_box_extended "$action" 1
+            ;;
+        extended)
+            updates_install_sing_box_extended "$action" 0
+            ;;
+        tiny)
+            updates_install_tiny_sing_box "$action"
+            ;;
+        *)
+            updates_install_stable_sing_box "$action"
+            ;;
+        esac
         ;;
     sing_box:install)
-        if is_sing_box_extended "$(get_sing_box_version)"; then
-            updates_install_sing_box_extended "$action"
-        fi
-        updates_install_stable_sing_box "$action"
+        case "$(get_sing_box_variant)" in
+        extended-compressed)
+            updates_install_sing_box_extended "$action" 1
+            ;;
+        extended)
+            updates_install_sing_box_extended "$action" 0
+            ;;
+        tiny)
+            updates_install_tiny_sing_box "$action"
+            ;;
+        *)
+            updates_install_stable_sing_box "$action"
+            ;;
+        esac
         ;;
     sing_box:install_extended)
-        updates_install_sing_box_extended "$action"
+        updates_install_sing_box_extended "$action" 0
+        ;;
+    sing_box:install_extended_compressed)
+        updates_install_sing_box_extended "$action" 1
+        ;;
+    sing_box:install_tiny)
+        updates_install_tiny_sing_box "$action"
         ;;
     sing_box:install_stable)
         updates_install_stable_sing_box "$action"

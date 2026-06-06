@@ -5,6 +5,7 @@ import { Podkop } from '../../types';
 
 function createUiState(
   actions: Partial<Podkop.UiState['actions']> = {},
+  capabilities: Partial<Podkop.UiState['capabilities']> = {},
 ): Podkop.UiState {
   return {
     service: {
@@ -22,10 +23,13 @@ function createUiState(
     },
     capabilities: {
       sing_box_extended: 1,
+      sing_box_tiny: 0,
+      sing_box_tailscale: 1,
       zapret_installed: 1,
       zapret2_installed: 0,
       byedpi_installed: 1,
       server_inbounds_enabled_count: 0,
+      ...capabilities,
     },
     actions: {
       service: [],
@@ -146,5 +150,31 @@ describe('applyUiStateToStore', () => {
     expect(state.sectionsWidget.subscriptionUpdatingSections).toEqual({});
     expect(state.sectionsWidget.latencyFetchingSections).toEqual({});
     expect(state.updatesActions.zapretInstall.loading).toBe(false);
+  });
+
+  it('does not combine a stale extended version with tiny capabilities', () => {
+    store.set({
+      diagnosticsSystemInfo: {
+        ...store.get().diagnosticsSystemInfo,
+        sing_box_version: '1.13.12-extended-2.3.2',
+        sing_box_extended: 1,
+        sing_box_tiny: 0,
+      },
+    });
+
+    applyUiStateToStore(
+      createUiState(undefined, {
+        sing_box_extended: 0,
+        sing_box_tiny: 1,
+        sing_box_tailscale: 0,
+      }),
+    );
+
+    expect(store.get().diagnosticsSystemInfo).toMatchObject({
+      sing_box_version: '1.13.12-extended-2.3.2',
+      sing_box_extended: 1,
+      sing_box_tiny: 0,
+      sing_box_tailscale: 1,
+    });
   });
 });

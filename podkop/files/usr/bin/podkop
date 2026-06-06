@@ -137,18 +137,30 @@ podkop_fast_ui_capabilities_server_handler() {
 }
 
 podkop_fast_collect_ui_capabilities() {
-    local sing_box_version
+    local sing_box_version sing_box_output sing_box_tags
 
     PODKOP_FAST_SING_BOX_EXTENDED=0
+    PODKOP_FAST_SING_BOX_TINY=0
+    PODKOP_FAST_SING_BOX_TAILSCALE=0
     PODKOP_FAST_ZAPRET_INSTALLED=0
     PODKOP_FAST_ZAPRET2_INSTALLED=0
     PODKOP_FAST_BYEDPI_INSTALLED=0
     PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT=0
 
     if command -v sing-box >/dev/null 2>&1; then
-        sing_box_version="$(ui_runtime_sing_box_version 2>/dev/null || true)"
+        sing_box_output="$(sing-box version 2>/dev/null || true)"
+        sing_box_version="$(printf '%s\n' "$sing_box_output" | sed -n '1{s/.*[[:space:]]//;p;q;}')"
         case "$sing_box_version" in
-        *extended*) PODKOP_FAST_SING_BOX_EXTENDED=1 ;;
+        *extended*)
+            PODKOP_FAST_SING_BOX_EXTENDED=1
+            PODKOP_FAST_SING_BOX_TAILSCALE=1
+            ;;
+        *)
+            sing_box_tags="$(printf '%s\n' "$sing_box_output" | sed -n 's/^Tags:[[:space:]]*//p' | head -n 1)"
+            printf '%s\n' "$sing_box_tags" | grep -Eq '(^|[,:[:space:]])with_tailscale([,[:space:]]|$)' &&
+                PODKOP_FAST_SING_BOX_TAILSCALE=1
+            [ "$PODKOP_FAST_SING_BOX_TAILSCALE" -eq 0 ] && PODKOP_FAST_SING_BOX_TINY=1
+            ;;
         esac
     fi
 
@@ -165,6 +177,8 @@ podkop_fast_get_ui_capabilities() {
 
     podkop_fast_status_diagnostics_ucode ui-capabilities-json \
         "$PODKOP_FAST_SING_BOX_EXTENDED" \
+        "$PODKOP_FAST_SING_BOX_TINY" \
+        "$PODKOP_FAST_SING_BOX_TAILSCALE" \
         "$PODKOP_FAST_ZAPRET_INSTALLED" \
         "$PODKOP_FAST_ZAPRET2_INSTALLED" \
         "$PODKOP_FAST_BYEDPI_INSTALLED" \
@@ -206,6 +220,8 @@ podkop_fast_get_ui_state() {
         "$sing_box_enabled" \
         "$sing_box_status" \
         "$PODKOP_FAST_SING_BOX_EXTENDED" \
+        "$PODKOP_FAST_SING_BOX_TINY" \
+        "$PODKOP_FAST_SING_BOX_TAILSCALE" \
         "$PODKOP_FAST_ZAPRET_INSTALLED" \
         "$PODKOP_FAST_ZAPRET2_INSTALLED" \
         "$PODKOP_FAST_BYEDPI_INSTALLED" \

@@ -11,6 +11,10 @@ import { renderButton } from '../../../partials';
 import { getComponentActionKey } from '../../helpers/getComponentActionKey';
 import type { UpdatesActionKey } from '../../helpers/getComponentActionKey';
 import { isActiveLuciTab } from '../../helpers/isActiveLuciTab';
+import {
+  formatSingBoxVersion,
+  normalizeSingBoxVariantFields,
+} from '../../helpers/singBoxVariant';
 import { PodkopShellMethods } from '../../methods';
 import { logger, store, StoreType } from '../../services';
 import { ensureSystemInfo } from '../../services/systemInfo.service';
@@ -211,10 +215,30 @@ function patchSystemInfoAfterMutation(result: Podkop.ComponentActionResult) {
 
     if (result.action === 'install_extended') {
       nextSystemInfo.sing_box_extended = 1;
+      nextSystemInfo.sing_box_tiny = 0;
+      nextSystemInfo.sing_box_compressed = 0;
+      nextSystemInfo.sing_box_tailscale = 1;
+    }
+
+    if (result.action === 'install_extended_compressed') {
+      nextSystemInfo.sing_box_extended = 1;
+      nextSystemInfo.sing_box_tiny = 0;
+      nextSystemInfo.sing_box_compressed = 1;
+      nextSystemInfo.sing_box_tailscale = 1;
     }
 
     if (result.action === 'install_stable') {
       nextSystemInfo.sing_box_extended = 0;
+      nextSystemInfo.sing_box_tiny = 0;
+      nextSystemInfo.sing_box_compressed = 0;
+      nextSystemInfo.sing_box_tailscale = 1;
+    }
+
+    if (result.action === 'install_tiny') {
+      nextSystemInfo.sing_box_extended = 0;
+      nextSystemInfo.sing_box_tiny = 1;
+      nextSystemInfo.sing_box_compressed = 0;
+      nextSystemInfo.sing_box_tailscale = 0;
     }
   }
 
@@ -254,8 +278,10 @@ function patchSystemInfoAfterMutation(result: Podkop.ComponentActionResult) {
     }
   }
 
+  const normalizedSystemInfo = normalizeSingBoxVariantFields(nextSystemInfo);
+
   store.set({
-    diagnosticsSystemInfo: nextSystemInfo,
+    diagnosticsSystemInfo: normalizedSystemInfo,
   });
 
   if (
@@ -263,7 +289,7 @@ function patchSystemInfoAfterMutation(result: Podkop.ComponentActionResult) {
     result.component === 'zapret2' ||
     result.component === 'byedpi'
   ) {
-    notifyActionProvidersAvailabilityChanged(nextSystemInfo);
+    notifyActionProvidersAvailabilityChanged(normalizedSystemInfo);
   }
 }
 
@@ -450,27 +476,68 @@ function getPrimaryUpdateAction(
 }
 
 function getComponentCards(): ComponentCard[] {
-  const systemInfo = store.get().diagnosticsSystemInfo;
+  const systemInfo = normalizeSingBoxVariantFields(
+    store.get().diagnosticsSystemInfo,
+  );
   const systemInfoLoading = isSystemInfoLoading();
   const zapretInstalled = Boolean(systemInfo.zapret_installed);
   const zapret2Installed = Boolean(systemInfo.zapret2_installed);
   const byedpiInstalled = Boolean(systemInfo.byedpi_installed);
-  const singBoxInstallAction: ComponentActionButton =
-    systemInfo.sing_box_extended
-      ? {
-          key: 'singBoxInstallStable',
-          text: _('Install stable'),
-          icon: renderRotateCcwIcon24,
-          component: 'sing_box',
-          action: 'install_stable',
-        }
-      : {
-          key: 'singBoxInstallExtended',
-          text: _('Install extended'),
-          icon: renderRotateCcwIcon24,
-          component: 'sing_box',
-          action: 'install_extended',
-        };
+  const singBoxInstalled = !isNotInstalled(systemInfo.sing_box_version);
+  const singBoxStable =
+    singBoxInstalled &&
+    !systemInfo.sing_box_extended &&
+    !systemInfo.sing_box_tiny;
+  const singBoxExtended =
+    Boolean(systemInfo.sing_box_extended) &&
+    !systemInfo.sing_box_compressed;
+  const singBoxExtendedCompressed =
+    Boolean(systemInfo.sing_box_extended) &&
+    Boolean(systemInfo.sing_box_compressed);
+  const singBoxTiny = Boolean(systemInfo.sing_box_tiny);
+  const singBoxActions: ComponentActionButton[] = [
+    getPrimaryUpdateAction('sing_box', 'singBoxCheck', 'singBoxInstall'),
+  ];
+
+  if (!singBoxStable) {
+    singBoxActions.push({
+      key: 'singBoxInstallStable',
+      text: _('Install stable'),
+      icon: renderRotateCcwIcon24,
+      component: 'sing_box',
+      action: 'install_stable',
+    });
+  }
+
+  if (!singBoxTiny) {
+    singBoxActions.push({
+      key: 'singBoxInstallTiny',
+      text: _('Install tiny'),
+      icon: renderRotateCcwIcon24,
+      component: 'sing_box',
+      action: 'install_tiny',
+    });
+  }
+
+  if (!singBoxExtended) {
+    singBoxActions.push({
+      key: 'singBoxInstallExtended',
+      text: _('Install extended'),
+      icon: renderRotateCcwIcon24,
+      component: 'sing_box',
+      action: 'install_extended',
+    });
+  }
+
+  if (!singBoxExtendedCompressed) {
+    singBoxActions.push({
+      key: 'singBoxInstallExtendedCompressed',
+      text: _('Install extended compressed'),
+      icon: renderRotateCcwIcon24,
+      component: 'sing_box',
+      action: 'install_extended_compressed',
+    });
+  }
 
   return [
     {
@@ -484,15 +551,10 @@ function getComponentCards(): ComponentCard[] {
     },
     {
       title: 'Sing-box',
-      version: isNotInstalled(systemInfo.sing_box_version)
-        ? _('Not installed')
-        : systemInfo.sing_box_version,
+      version: formatSingBoxVersion(systemInfo),
       releaseUrl: getGitHubReleaseUrl('sing_box'),
       tag: getCheckTag('sing_box'),
-      actions: [
-        getPrimaryUpdateAction('sing_box', 'singBoxCheck', 'singBoxInstall'),
-        singBoxInstallAction,
-      ],
+      actions: singBoxActions,
     },
     {
       title: 'Zapret',
@@ -689,10 +751,16 @@ function renderUpdatesComponents() {
     return;
   }
 
-  const renderedComponents = getComponentCards().map(renderComponentCard);
+  const columns = [[], []] as Node[][];
+  getComponentCards().forEach((card, index) => {
+    columns[index % 2].push(renderComponentCard(card));
+  });
 
   return preserveScrollForPage(() => {
-    container.replaceChildren(...renderedComponents);
+    container.replaceChildren(
+      E('div', { class: 'pdk_updates-page__components-column' }, columns[0]),
+      E('div', { class: 'pdk_updates-page__components-column' }, columns[1]),
+    );
   });
 }
 
