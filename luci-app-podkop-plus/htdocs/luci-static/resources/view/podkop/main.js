@@ -4094,9 +4094,6 @@ function getEmptyDiagnosticsActions() {
 }
 function applyServiceState(uiState) {
   const currentSystemInfo = store.get().diagnosticsSystemInfo;
-  const singBoxComponentActionRunning = (uiState.actions.component || []).find(
-    (state) => state.component === "sing_box" && state.running === true
-  );
   const nextSystemInfo = {
     ...currentSystemInfo,
     providerInfoLoaded: true,
@@ -4105,32 +4102,10 @@ function applyServiceState(uiState) {
     byedpi_installed: uiState.capabilities.byedpi_installed,
     server_inbounds_enabled_count: uiState.capabilities.server_inbounds_enabled_count
   };
-  if (singBoxComponentActionRunning?.action === "install_extended") {
-    nextSystemInfo.sing_box_extended = 1;
-    nextSystemInfo.sing_box_tiny = 0;
-    nextSystemInfo.sing_box_compressed = 0;
-    nextSystemInfo.sing_box_tailscale = 1;
-  } else if (singBoxComponentActionRunning?.action === "install_extended_compressed") {
-    nextSystemInfo.sing_box_extended = 1;
-    nextSystemInfo.sing_box_tiny = 0;
-    nextSystemInfo.sing_box_compressed = 1;
-    nextSystemInfo.sing_box_tailscale = 1;
-  } else if (singBoxComponentActionRunning?.action === "install_stable") {
-    nextSystemInfo.sing_box_extended = 0;
-    nextSystemInfo.sing_box_tiny = 0;
-    nextSystemInfo.sing_box_compressed = 0;
-    nextSystemInfo.sing_box_tailscale = 1;
-  } else if (singBoxComponentActionRunning?.action === "install_tiny") {
-    nextSystemInfo.sing_box_extended = 0;
-    nextSystemInfo.sing_box_tiny = 1;
-    nextSystemInfo.sing_box_compressed = 0;
-    nextSystemInfo.sing_box_tailscale = 0;
-  } else {
-    nextSystemInfo.sing_box_extended = uiState.capabilities.sing_box_extended;
-    nextSystemInfo.sing_box_tiny = uiState.capabilities.sing_box_tiny;
-    nextSystemInfo.sing_box_compressed = uiState.capabilities.sing_box_compressed;
-    nextSystemInfo.sing_box_tailscale = uiState.capabilities.sing_box_tailscale;
-  }
+  nextSystemInfo.sing_box_extended = uiState.capabilities.sing_box_extended;
+  nextSystemInfo.sing_box_tiny = uiState.capabilities.sing_box_tiny;
+  nextSystemInfo.sing_box_compressed = uiState.capabilities.sing_box_compressed;
+  nextSystemInfo.sing_box_tailscale = uiState.capabilities.sing_box_tailscale;
   store.set({
     servicesInfoWidget: {
       loading: false,

@@ -180,14 +180,14 @@ describe('applyUiStateToStore', () => {
     });
   });
 
-  it('preserves sing-box variant capabilities while a sing-box component action is running', () => {
+  it('keeps current sing-box variant while a different sing-box install action is running', () => {
     store.set({
       diagnosticsSystemInfo: {
         ...store.get().diagnosticsSystemInfo,
         providerInfoLoaded: true,
-        sing_box_version: '1.13.12-extended-2.3.2',
-        sing_box_extended: 1,
-        sing_box_tiny: 0,
+        sing_box_version: '1.12.25',
+        sing_box_extended: 0,
+        sing_box_tiny: 1,
         sing_box_compressed: 0,
         sing_box_tailscale: 1,
         zapret_installed: 0,
@@ -229,19 +229,22 @@ describe('applyUiStateToStore', () => {
 
     expect(store.get().diagnosticsSystemInfo).toMatchObject({
       providerInfoLoaded: true,
-      sing_box_version: '1.13.12-extended-2.3.2',
-      sing_box_extended: 1,
-      sing_box_tiny: 0,
-      sing_box_compressed: 1,
-      sing_box_tailscale: 1,
+      sing_box_version: '1.12.25',
+      sing_box_extended: 0,
+      sing_box_tiny: 1,
+      sing_box_compressed: 0,
+      sing_box_tailscale: 0,
       zapret_installed: 1,
       zapret2_installed: 1,
       byedpi_installed: 0,
       server_inbounds_enabled_count: 2,
     });
+    expect(
+      store.get().updatesActions.singBoxInstallExtendedCompressed.loading,
+    ).toBe(true);
   });
 
-  it('uses the running sing-box install action as the immediate target variant', () => {
+  it('marks the running sing-box install action without pretending it is installed', () => {
     applyUiStateToStore(
       createUiState(
         {
@@ -269,10 +272,13 @@ describe('applyUiStateToStore', () => {
     );
 
     expect(store.get().diagnosticsSystemInfo).toMatchObject({
-      sing_box_extended: 1,
-      sing_box_tiny: 0,
+      sing_box_extended: 0,
+      sing_box_tiny: 1,
       sing_box_compressed: 0,
-      sing_box_tailscale: 1,
+      sing_box_tailscale: 0,
     });
+    expect(store.get().updatesActions.singBoxInstallExtended.loading).toBe(
+      true,
+    );
   });
 });
