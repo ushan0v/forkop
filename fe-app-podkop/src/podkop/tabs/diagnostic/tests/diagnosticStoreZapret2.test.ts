@@ -35,4 +35,22 @@ describe('diagnostic store provider checks', () => {
       DIAGNOSTICS_CHECKS.ZAPRET2,
     );
   });
+
+  it('keeps Inbounds hidden until enabled inbounds are confirmed', () => {
+    const checks = getDiagnosticsChecks('Pending');
+
+    expect(checks.map((check) => check.code)).not.toContain(
+      DIAGNOSTICS_CHECKS.INBOUNDS,
+    );
+  });
+
+  it('shows Inbounds when enabled inbounds are confirmed', () => {
+    const checks = getDiagnosticsChecks('Pending', {
+      includeInbounds: true,
+    });
+
+    expect(checks.map((check) => check.code)).toContain(
+      DIAGNOSTICS_CHECKS.INBOUNDS,
+    );
+  });
 });

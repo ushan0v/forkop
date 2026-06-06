@@ -7,6 +7,7 @@ import { runFakeIPCheck } from './checks/runFakeIPCheck';
 import { runZapretCheck } from './checks/runZapretCheck';
 import { runZapret2Check } from './checks/runZapret2Check';
 import { runByedpiCheck } from './checks/runByedpiCheck';
+import { DIAGNOSTICS_CHECKS } from './checks/contstants';
 import {
   DiagnosticsProviderOptions,
   getDiagnosticsChecks,
@@ -27,6 +28,17 @@ import { renderModal } from '../../../partials';
 import { PODKOP_LUCI_APP_VERSION } from '../../../constants';
 import { renderWikiDisclaimer } from './partials/renderWikiDisclaimer';
 import { runSectionsCheck } from './checks/runSectionsCheck';
+import { Podkop } from '../../types';
+import {
+  getServiceTransition,
+  hasLocalMutatingServiceActionLoading,
+  isServiceTransitionStatus,
+  shouldSkipServicesInfoAutoRefresh,
+  shouldShowRestartAction,
+  shouldShowStartAction,
+  shouldShowStopAction,
+} from './serviceTransition';
+import { isActiveLuciTab } from '../../helpers/isActiveLuciTab';
 
 const SERVICE_STATUS_REFRESH_INTERVAL_MS = 2000;
 const SERVICE_ACTION_STATUS_TIMEOUT_MS = 45000;
@@ -36,8 +48,10 @@ let diagnosticLifecycleRegistered = false;
 let diagnosticControllerInitialized = false;
 let diagnosticMounted = false;
 let diagnosticMountId = 0;
+let diagnosticCompletedWhileHidden = false;
 let servicesInfoRefreshTimer: ReturnType<typeof setInterval> | null = null;
 let servicesInfoRefreshPromise: Promise<void> | null = null;
+const followedServiceActionJobs = new Set<string>();
 
 type ServiceRuntimeAction = 'restart' | 'start' | 'stop';
 
@@ -58,7 +72,7 @@ function getDiagnosticsProviderOptions(
     includeZapret: Boolean(systemInfo.zapret_installed),
     includeZapret2: Boolean(systemInfo.zapret2_installed),
     includeByedpi: Boolean(systemInfo.byedpi_installed),
-    includeInbounds: systemInfo.server_inbounds_enabled_count !== 0,
+    includeInbounds: systemInfo.server_inbounds_enabled_count > 0,
   };
 }
 
@@ -93,15 +107,16 @@ function isDiagnosticMountActive(mountId = diagnosticMountId) {
   return diagnosticMounted && diagnosticMountId === mountId;
 }
 
-function isMutatingServiceActionLoading() {
+function isLocalMutatingServiceActionLoading() {
   const actions = store.get().diagnosticsActions;
 
+  return hasLocalMutatingServiceActionLoading(actions);
+}
+
+function isMutatingServiceActionLoading() {
   return (
-    actions.restart.loading ||
-    actions.start.loading ||
-    actions.stop.loading ||
-    actions.enable.loading ||
-    actions.disable.loading
+    isLocalMutatingServiceActionLoading() ||
+    isServiceTransitionStatus(store.get().servicesInfoWidget.data.podkopStatus)
   );
 }
 
@@ -143,7 +158,12 @@ async function refreshDiagnosticServicesInfo({
     return;
   }
 
-  if (!force && isMutatingServiceActionLoading()) {
+  if (
+    shouldSkipServicesInfoAutoRefresh({
+      force,
+      localMutatingActionLoading: isLocalMutatingServiceActionLoading(),
+    })
+  ) {
     return;
   }
 
@@ -152,6 +172,9 @@ async function refreshDiagnosticServicesInfo({
   }
 
   const promise = fetchServicesInfo()
+    .then((uiState) => {
+      followServiceActionsFromUiState(uiState);
+    })
     .catch((error) => {
       logger.error(
         '[DIAGNOSTIC]',
@@ -208,6 +231,80 @@ function stopServicesInfoRefreshTimer() {
   servicesInfoRefreshTimer = null;
 }
 
+function isVisibleServiceRuntimeAction(
+  action: Podkop.ServiceActionState['action'],
+): action is ServiceRuntimeAction {
+  return action === 'restart' || action === 'start' || action === 'stop';
+}
+
+function setServiceActionStateLoading(
+  state: Podkop.ServiceActionState,
+  loading: boolean,
+) {
+  if (!isVisibleServiceRuntimeAction(state.action)) {
+    return;
+  }
+
+  setDiagnosticActionLoading(state.action, loading);
+}
+
+async function followServiceActionState(state: Podkop.ServiceActionState) {
+  const jobId = state.job_id;
+
+  if (!jobId || followedServiceActionJobs.has(jobId)) {
+    return;
+  }
+
+  followedServiceActionJobs.add(jobId);
+  if (state.running) {
+    setServiceActionStateLoading(state, true);
+  }
+
+  try {
+    if (state.running) {
+      await PodkopShellMethods.waitServiceActionJob(jobId);
+    }
+  } catch (error) {
+    logger.error('[DIAGNOSTIC]', 'followServiceActionState failed', error);
+  } finally {
+    setServiceActionStateLoading(state, false);
+    await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
+    void PodkopShellMethods.uiActionAck('service', jobId);
+    followedServiceActionJobs.delete(jobId);
+    resetDiagnosticsChecks();
+  }
+}
+
+function followServiceActionsFromUiState(uiState?: Podkop.UiState) {
+  if (!uiState) {
+    return;
+  }
+
+  for (const action of uiState.actions.service || []) {
+    if (action.running) {
+      void followServiceActionState(action);
+    }
+  }
+}
+
+async function restoreServiceActionState() {
+  const response = await PodkopShellMethods.getUiState();
+
+  if (!response.success) {
+    return;
+  }
+
+  const serviceActions = response.data.actions.service || [];
+
+  for (const action of serviceActions) {
+    if (action.running) {
+      setServiceActionStateLoading(action, true);
+    }
+
+    void followServiceActionState(action);
+  }
+}
+
 async function fetchSystemInfo() {
   const systemInfo = await ensureSystemInfo();
 
@@ -225,6 +322,52 @@ async function fetchDiagnosticsProviderInfo({
   const requestId = ++latestProviderInfoRequestId;
 
   try {
+    const uiState = await PodkopShellMethods.getUiState();
+
+    if (requestId !== latestProviderInfoRequestId) {
+      return;
+    }
+
+    if (uiState.success) {
+      const currentSystemInfo = store.get().diagnosticsSystemInfo;
+      const nextSystemInfo = {
+        ...currentSystemInfo,
+        providerInfoLoaded: true,
+        sing_box_extended: uiState.data.capabilities.sing_box_extended,
+        zapret_installed: uiState.data.capabilities.zapret_installed,
+        zapret2_installed: uiState.data.capabilities.zapret2_installed,
+        byedpi_installed: uiState.data.capabilities.byedpi_installed,
+        server_inbounds_enabled_count:
+          uiState.data.capabilities.server_inbounds_enabled_count,
+      };
+
+      if (!nextSystemInfo.zapret_installed) {
+        nextSystemInfo.zapret_version = 'not installed';
+      }
+
+      if (!nextSystemInfo.zapret2_installed) {
+        nextSystemInfo.zapret2_version = 'not installed';
+      }
+
+      if (!nextSystemInfo.byedpi_installed) {
+        nextSystemInfo.byedpi_version = 'not installed';
+      }
+
+      const nextState: Partial<StoreType> = {
+        diagnosticsSystemInfo: nextSystemInfo,
+      };
+
+      if (resetChecks) {
+        nextState.diagnosticsChecks = getDiagnosticsChecks(
+          _('Not running'),
+          getDiagnosticsProviderOptions(nextSystemInfo),
+        );
+      }
+
+      store.set(nextState);
+      return;
+    }
+
     const [zapretRuntime, zapret2Runtime, byedpiRuntime, inboundsConfig] =
       await Promise.all([
         PodkopShellMethods.checkZapretRuntime(),
@@ -342,11 +485,19 @@ function renderDiagnosticRunActionWidget() {
   const { loading } = store.get().diagnosticsRunAction;
   const providerInfoLoaded =
     store.get().diagnosticsSystemInfo.providerInfoLoaded;
+  const servicesInfoWidget = store.get().servicesInfoWidget;
+  const podkopRunning = Boolean(servicesInfoWidget.data.podkopRunning);
+  const podkopEnabled = Boolean(servicesInfoWidget.data.podkopEnabled);
   const container = document.getElementById('pdk_diagnostic-page-run-check');
 
   const renderedAction = renderRunAction({
     loading,
-    disabled: !providerInfoLoaded,
+    disabled:
+      !providerInfoLoaded ||
+      servicesInfoWidget.loading ||
+      !podkopEnabled ||
+      !podkopRunning ||
+      isMutatingServiceActionLoading(),
     click: () => runChecks(),
   });
 
@@ -357,28 +508,47 @@ function renderDiagnosticRunActionWidget() {
 
 async function handleServiceRuntimeAction({
   action,
-  command,
   expectedRunning,
   optimisticRunning,
 }: {
   action: ServiceRuntimeAction;
-  command: () => Promise<unknown>;
   expectedRunning: boolean;
   optimisticRunning?: boolean;
 }) {
   setDiagnosticActionLoading(action, true);
+  let jobId = '';
 
   if (optimisticRunning !== undefined) {
     setDisplayedPodkopRunning(optimisticRunning);
   }
 
   try {
-    await command();
+    const startResponse = await PodkopShellMethods.serviceActionStart(action);
+
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
+    }
+
+    jobId = startResponse.data.job_id;
+    const result = await PodkopShellMethods.waitServiceActionJob(jobId);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    if (result.data.success === false) {
+      throw new Error(result.data.message || _('Service action failed'));
+    }
+
     await waitForPodkopRunningState(expectedRunning);
   } catch (e) {
     logger.error('[DIAGNOSTIC]', `handleServiceRuntimeAction(${action})`, e);
   } finally {
     setDiagnosticActionLoading(action, false);
+    await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
+    if (jobId) {
+      void PodkopShellMethods.uiActionAck('service', jobId);
+    }
     resetDiagnosticsChecks();
   }
 }
@@ -386,7 +556,6 @@ async function handleServiceRuntimeAction({
 async function handleRestart() {
   await handleServiceRuntimeAction({
     action: 'restart',
-    command: PodkopShellMethods.restart,
     expectedRunning: true,
     optimisticRunning: false,
   });
@@ -395,7 +564,6 @@ async function handleRestart() {
 async function handleStart() {
   await handleServiceRuntimeAction({
     action: 'start',
-    command: PodkopShellMethods.start,
     expectedRunning: true,
   });
 }
@@ -403,7 +571,6 @@ async function handleStart() {
 async function handleStop() {
   await handleServiceRuntimeAction({
     action: 'stop',
-    command: PodkopShellMethods.stop,
     expectedRunning: false,
   });
 }
@@ -557,35 +724,60 @@ function renderDiagnosticAvailableActionsWidget() {
 
   const podkopEnabled = Boolean(servicesInfoWidget.data.podkopEnabled);
   const podkopRunning = Boolean(servicesInfoWidget.data.podkopRunning);
-  const restartLoading = diagnosticsActions.restart.loading;
+  const serviceTransition = getServiceTransition(
+    servicesInfoWidget.data.podkopStatus,
+  );
+  const restartLoading =
+    diagnosticsActions.restart.loading || serviceTransition.restarting;
+  const startLoading =
+    diagnosticsActions.start.loading || serviceTransition.starting;
+  const stopLoading =
+    diagnosticsActions.stop.loading || serviceTransition.stopping;
   const atLeastOneMutatingActionLoading =
     restartLoading ||
-    diagnosticsActions.start.loading ||
-    diagnosticsActions.stop.loading ||
+    startLoading ||
+    stopLoading ||
     diagnosticsActions.enable.loading ||
     diagnosticsActions.disable.loading;
   const serviceControlsDisabled =
     servicesInfoWidget.loading || atLeastOneMutatingActionLoading;
   const utilityActionsDisabled = atLeastOneMutatingActionLoading;
+  const startVisible =
+    shouldShowStartAction({
+      podkopRunning,
+      restartLoading,
+      startLoading,
+      stopLoading,
+    });
+  const stopVisible =
+    shouldShowStopAction({
+      podkopRunning,
+      restartLoading,
+      startLoading,
+      stopLoading,
+    });
 
   const container = document.getElementById('pdk_diagnostic-page-actions');
 
   const renderedActions = renderAvailableActions({
     restart: {
       loading: restartLoading,
-      visible: true,
+      visible: shouldShowRestartAction({
+        podkopRunning,
+        restartLoading,
+      }),
       onClick: handleRestart,
       disabled: serviceControlsDisabled,
     },
     start: {
-      loading: diagnosticsActions.start.loading,
-      visible: !podkopRunning,
+      loading: startLoading,
+      visible: startVisible,
       onClick: handleStart,
       disabled: serviceControlsDisabled,
     },
     stop: {
-      loading: diagnosticsActions.stop.loading,
-      visible: podkopRunning,
+      loading: stopLoading,
+      visible: stopVisible,
       onClick: handleStop,
       disabled: serviceControlsDisabled,
     },
@@ -704,6 +896,7 @@ async function onStoreUpdate(
 
   if (diff.diagnosticsActions || diff.servicesInfoWidget) {
     renderDiagnosticAvailableActionsWidget();
+    renderDiagnosticRunActionWidget();
   }
 
   if (diff.diagnosticsSystemInfo) {
@@ -712,47 +905,73 @@ async function onStoreUpdate(
   }
 }
 
+function getDiagnosticRunners(providerOptions: DiagnosticsProviderOptions) {
+  return [
+    { code: DIAGNOSTICS_CHECKS.DNS, run: runDnsCheck },
+    { code: DIAGNOSTICS_CHECKS.SINGBOX, run: runSingBoxCheck },
+    ...(providerOptions.includeInbounds
+      ? [{ code: DIAGNOSTICS_CHECKS.INBOUNDS, run: runInboundsCheck }]
+      : []),
+    { code: DIAGNOSTICS_CHECKS.NFT, run: runNftCheck },
+    ...(providerOptions.includeZapret
+      ? [{ code: DIAGNOSTICS_CHECKS.ZAPRET, run: runZapretCheck }]
+      : []),
+    ...(providerOptions.includeZapret2
+      ? [{ code: DIAGNOSTICS_CHECKS.ZAPRET2, run: runZapret2Check }]
+      : []),
+    ...(providerOptions.includeByedpi
+      ? [{ code: DIAGNOSTICS_CHECKS.BYEDPI, run: runByedpiCheck }]
+      : []),
+    { code: DIAGNOSTICS_CHECKS.OUTBOUNDS, run: runSectionsCheck },
+    { code: DIAGNOSTICS_CHECKS.FAKEIP, run: runFakeIPCheck },
+  ];
+}
+
 async function runChecks() {
-  const initialProviderOptions = getDiagnosticsProviderOptions();
+  if (store.get().diagnosticsRunAction.loading) {
+    return;
+  }
+
+  let providerOptions = getDiagnosticsProviderOptions();
 
   store.set({
     diagnosticsRunAction: { loading: true },
-    diagnosticsChecks: getLoadingDiagnosticsChecks(initialProviderOptions)
+    diagnosticsChecks: getLoadingDiagnosticsChecks(providerOptions)
       .diagnosticsChecks,
   });
 
   try {
     await fetchDiagnosticsProviderInfo({ resetChecks: false });
 
-    const providerOptions = getDiagnosticsProviderOptions();
-    const runners = [
-      runDnsCheck,
-      runSingBoxCheck,
-      ...(providerOptions.includeInbounds ? [runInboundsCheck] : []),
-      runNftCheck,
-      ...(providerOptions.includeZapret ? [runZapretCheck] : []),
-      ...(providerOptions.includeZapret2 ? [runZapret2Check] : []),
-      ...(providerOptions.includeByedpi ? [runByedpiCheck] : []),
-      runSectionsCheck,
-      runFakeIPCheck,
-    ];
+    providerOptions = getDiagnosticsProviderOptions();
 
     store.set({
       diagnosticsChecks:
         getLoadingDiagnosticsChecks(providerOptions).diagnosticsChecks,
     });
 
-    for (const runner of runners) {
+    const runners = getDiagnosticRunners(providerOptions);
+
+    for (let index = 0; index < runners.length; index += 1) {
+      const runner = runners[index];
+
       try {
-        await runner();
+        await runner.run();
       } catch (e) {
-        logger.error('[DIAGNOSTIC]', `runChecks - ${runner.name} failed`, e);
+        logger.error(
+          '[DIAGNOSTIC]',
+          `runChecks - ${runner.run.name} failed`,
+          e,
+        );
       }
     }
   } catch (e) {
     logger.error('[DIAGNOSTIC]', 'runChecks - e', e);
   } finally {
     store.set({ diagnosticsRunAction: { loading: false } });
+    if (!diagnosticMounted) {
+      diagnosticCompletedWhileHidden = true;
+    }
   }
 }
 
@@ -760,17 +979,30 @@ async function loadInitialDiagnosticData() {
   const diagnosticStatus = document.getElementById('diagnostic-status');
 
   if (diagnosticStatus?.isConnected && diagnosticStatus.offsetParent !== null) {
+    if (store.get().diagnosticsRunAction.loading) {
+      return;
+    }
+
     await fetchSystemInfo();
     await fetchDiagnosticsProviderInfo();
   }
 }
 
 function onPageMount() {
+  const preserveHiddenResult = diagnosticCompletedWhileHidden;
+
   // Cleanup before mount
-  onPageUnmount();
+  onPageUnmount({ preserveCompletedResult: preserveHiddenResult });
 
   diagnosticMounted = true;
   diagnosticMountId += 1;
+
+  if (preserveHiddenResult) {
+    diagnosticCompletedWhileHidden = false;
+  } else if (!store.get().diagnosticsRunAction.loading) {
+    store.reset(['diagnosticsRunAction']);
+    resetDiagnosticsChecks();
+  }
 
   // Add new listener
   store.subscribe(onStoreUpdate);
@@ -791,11 +1023,16 @@ function onPageMount() {
   renderWikiDisclaimerWidget();
 
   void refreshDiagnosticServicesInfo({ force: true });
+  void restoreServiceActionState();
   startServicesInfoRefreshTimer();
-  void loadInitialDiagnosticData();
+  if (!preserveHiddenResult) {
+    void loadInitialDiagnosticData();
+  }
 }
 
-function onPageUnmount() {
+function onPageUnmount({
+  preserveCompletedResult = false,
+}: { preserveCompletedResult?: boolean } = {}) {
   diagnosticMounted = false;
   diagnosticMountId += 1;
   stopServicesInfoRefreshTimer();
@@ -804,9 +1041,11 @@ function onPageUnmount() {
   // Remove old listener
   store.unsubscribe(onStoreUpdate);
 
-  // Clear store
-  store.reset(['diagnosticsRunAction']);
-  resetDiagnosticsChecks();
+  if (!preserveCompletedResult && !store.get().diagnosticsRunAction.loading) {
+    store.reset(['diagnosticsRunAction']);
+    resetDiagnosticsChecks();
+    diagnosticCompletedWhileHidden = false;
+  }
 }
 
 function registerLifecycleListeners() {
@@ -859,7 +1098,10 @@ export async function initController(): Promise<void> {
   onMount('diagnostic-status').then(() => {
     logger.debug('[DIAGNOSTIC]', 'initController', 'onMount');
     registerLifecycleListeners();
-    if (store.get().tabService.current === 'diagnostic') {
+    if (
+      store.get().tabService.current === 'diagnostic' ||
+      isActiveLuciTab('diagnostic')
+    ) {
       onPageMount();
     }
   });

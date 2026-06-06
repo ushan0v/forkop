@@ -1,0 +1,150 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { applyUiStateToStore } from '../uiState.service';
+import { store } from '../store.service';
+import { Podkop } from '../../types';
+
+function createUiState(
+  actions: Partial<Podkop.UiState['actions']> = {},
+): Podkop.UiState {
+  return {
+    service: {
+      podkop: {
+        running: 0,
+        enabled: 1,
+        status: 'starting',
+        dns_configured: 0,
+      },
+      sing_box: {
+        running: 0,
+        enabled: 1,
+        status: 'stopped but enabled',
+      },
+    },
+    capabilities: {
+      sing_box_extended: 1,
+      zapret_installed: 1,
+      zapret2_installed: 0,
+      byedpi_installed: 1,
+      server_inbounds_enabled_count: 0,
+    },
+    actions: {
+      service: [],
+      latency: [],
+      component: [],
+      subscription: [],
+      ...actions,
+    },
+  };
+}
+
+describe('applyUiStateToStore', () => {
+  beforeEach(() => {
+    store.reset();
+  });
+
+  it('applies service, capability, and running action state before first render', () => {
+    applyUiStateToStore(
+      createUiState({
+        service: [
+          {
+            success: true,
+            running: true,
+            kind: 'service',
+            action: 'start',
+            job_id: 'service-1',
+          },
+        ],
+        subscription: [
+          {
+            success: true,
+            running: true,
+            job_id: 'subscription-1',
+            section: 'main',
+            message: 'Subscription update is running',
+          },
+        ],
+        latency: [
+          {
+            success: true,
+            running: true,
+            kind: 'latency',
+            latency_type: 'group',
+            section: 'main',
+            tag: 'AUTO',
+            job_id: 'latency-1',
+          },
+        ],
+        component: [
+          {
+            success: true,
+            running: true,
+            job_id: 'component-1',
+            component: 'zapret',
+            action: 'install',
+            message: 'Install is running',
+            current_version: '',
+            latest_version: '',
+            changed: false,
+          },
+        ],
+      }),
+    );
+
+    const state = store.get();
+
+    expect(state.servicesInfoWidget).toMatchObject({
+      loading: false,
+      failed: false,
+      data: {
+        podkopEnabled: 1,
+        podkopRunning: 0,
+        podkopStatus: 'starting',
+      },
+    });
+    expect(state.diagnosticsSystemInfo).toMatchObject({
+      providerInfoLoaded: true,
+      sing_box_extended: 1,
+      zapret_installed: 1,
+      zapret2_installed: 0,
+      byedpi_installed: 1,
+      server_inbounds_enabled_count: 0,
+    });
+    expect(state.diagnosticsActions.start.loading).toBe(true);
+    expect(state.sectionsWidget.subscriptionUpdatingSections).toEqual({
+      main: true,
+    });
+    expect(state.sectionsWidget.latencyFetchingSections).toEqual({
+      main: true,
+    });
+    expect(state.updatesActions.zapretInstall.loading).toBe(true);
+  });
+
+  it('clears finished persisted action flags while preserving local enable actions', () => {
+    store.set({
+      diagnosticsActions: {
+        ...store.get().diagnosticsActions,
+        start: { loading: true },
+        enable: { loading: true },
+      },
+      sectionsWidget: {
+        ...store.get().sectionsWidget,
+        subscriptionUpdatingSections: { main: true },
+        latencyFetchingSections: { main: true },
+      },
+      updatesActions: {
+        ...store.get().updatesActions,
+        zapretInstall: { loading: true },
+      },
+    });
+
+    applyUiStateToStore(createUiState());
+
+    const state = store.get();
+
+    expect(state.diagnosticsActions.start.loading).toBe(false);
+    expect(state.diagnosticsActions.enable.loading).toBe(true);
+    expect(state.sectionsWidget.subscriptionUpdatingSections).toEqual({});
+    expect(state.sectionsWidget.latencyFetchingSections).toEqual({});
+    expect(state.updatesActions.zapretInstall.loading).toBe(false);
+  });
+});

@@ -1023,6 +1023,20 @@ function stdin_service_status_running() {
     exit(number_value(value.running) == 1 ? 0 : 1);
 }
 
+function service_list_instance_running(name) {
+    let value = object_or_empty(read_stdin_json());
+    let service = object_or_empty(value[as_string(name)]);
+    let instances = object_or_empty(service.instances);
+
+    for (let key in instances) {
+        let instance = object_or_empty(instances[key]);
+        if (flag_is_true(instance.running))
+            exit(0);
+    }
+
+    exit(1);
+}
+
 function write_dns_check_json(dns_type, dns_server, dns_status, dns_on_router, bootstrap_dns_server, bootstrap_dns_status, dhcp_config_status) {
     write_json({
         dns_type: as_string(dns_type),
@@ -1668,6 +1682,8 @@ else if (mode == "service-status-json")
     write_service_status_json(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "service-status-running")
     stdin_service_status_running();
+else if (mode == "service-list-instance-running")
+    service_list_instance_running(ARGV[1]);
 else if (mode == "dns-check-json")
     write_dns_check_json(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
 else if (mode == "nft-check-json")

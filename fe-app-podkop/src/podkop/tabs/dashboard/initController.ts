@@ -13,6 +13,8 @@ import { renderSections, renderWidget } from './partials';
 import { fetchServicesInfo } from '../../fetchers/fetchServicesInfo';
 import { getClashApiSecret } from '../../methods/custom/getClashApiSecret';
 import { Podkop } from '../../types';
+import { applyUiStateToStore } from '../../services/uiState.service';
+import { isActiveLuciTab } from '../../helpers/isActiveLuciTab';
 
 const SECTIONS_REFRESH_INTERVAL_MS = 10000;
 let sectionsRefreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -20,6 +22,18 @@ let sectionsRefreshPromise: Promise<boolean> | null = null;
 let sectionsRefreshQueued = false;
 let dashboardMounted = false;
 let dashboardMountId = 0;
+let pageUnloading = false;
+const followedSubscriptionJobs = new Set<string>();
+const followedLatencyJobs = new Set<string>();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    pageUnloading = true;
+  });
+  window.addEventListener('pageshow', () => {
+    pageUnloading = false;
+  });
+}
 
 // Fetchers
 
@@ -176,6 +190,127 @@ function setLatencyFetching(sectionName: string, fetching: boolean) {
   });
 }
 
+async function completeSubscriptionUpdateJob(
+  jobId: string,
+  sectionName: string,
+  response: Podkop.MethodResponse<Podkop.SubscriptionUpdateJobState>,
+) {
+  setSubscriptionUpdating(sectionName, false);
+
+  if (pageUnloading) {
+    return;
+  }
+
+  if (jobId && response.success) {
+    void PodkopShellMethods.uiActionAck('subscription', jobId);
+  }
+
+  if (!response.success || response.data.success === false) {
+    showToast(_('Failed to update subscriptions'), 'error');
+    return;
+  }
+
+  showToast(_('Subscription update completed'), 'success');
+  void fetchDashboardSections({ force: true });
+  void fetchServicesInfo();
+}
+
+async function followSubscriptionUpdateState(
+  state: Podkop.SubscriptionUpdateJobState,
+) {
+  const jobId = state.job_id;
+  const sectionName = state.section || '';
+
+  if (!jobId || !sectionName || followedSubscriptionJobs.has(jobId)) {
+    return;
+  }
+
+  followedSubscriptionJobs.add(jobId);
+  setSubscriptionUpdating(sectionName, true);
+
+  try {
+    const response = state.running
+      ? await PodkopShellMethods.waitSubscriptionUpdateJob(jobId)
+      : ({
+          success: true,
+          data: state,
+        } as Podkop.MethodSuccessResponse<Podkop.SubscriptionUpdateJobState>);
+
+    await completeSubscriptionUpdateJob(jobId, sectionName, response);
+  } catch (error) {
+    logger.error('[DASHBOARD]', 'followSubscriptionUpdateState failed', error);
+    if (!pageUnloading) {
+      setSubscriptionUpdating(sectionName, false);
+      showToast(_('Failed to update subscriptions'), 'error');
+    }
+  } finally {
+    followedSubscriptionJobs.delete(jobId);
+  }
+}
+
+async function completeLatencyTestJob(jobId: string, sectionName: string) {
+  setLatencyFetching(sectionName, false);
+
+  if (pageUnloading) {
+    return;
+  }
+
+  if (jobId) {
+    void PodkopShellMethods.uiActionAck('latency', jobId);
+  }
+
+  void fetchDashboardSections({ force: true });
+}
+
+async function followLatencyTestState(state: Podkop.LatencyActionState) {
+  const jobId = state.job_id;
+  const sectionName = state.section || '';
+
+  if (!jobId || !sectionName || followedLatencyJobs.has(jobId)) {
+    return;
+  }
+
+  followedLatencyJobs.add(jobId);
+  setLatencyFetching(sectionName, true);
+
+  try {
+    if (state.running) {
+      await PodkopShellMethods.waitLatencyTestJob(jobId);
+    }
+
+    await completeLatencyTestJob(jobId, sectionName);
+  } catch (error) {
+    logger.error('[DASHBOARD]', 'followLatencyTestState failed', error);
+    if (!pageUnloading) {
+      setLatencyFetching(sectionName, false);
+    }
+  } finally {
+    followedLatencyJobs.delete(jobId);
+  }
+}
+
+async function restoreDashboardActionState() {
+  const response = await PodkopShellMethods.getUiState();
+
+  if (!response.success) {
+    return;
+  }
+
+  applyUiStateToStore(response.data);
+
+  for (const state of response.data.actions.subscription || []) {
+    if (state.running === false || state.running) {
+      void followSubscriptionUpdateState(state);
+    }
+  }
+
+  for (const state of response.data.actions.latency || []) {
+    if (state.running === false || state.running) {
+      void followLatencyTestState(state);
+    }
+  }
+}
+
 async function connectToClashSockets() {
   const clashApiSecret = await getClashApiSecret();
 
@@ -295,12 +430,29 @@ async function handleTestGroupLatency(sectionName: string, tag: string) {
   }
 
   setLatencyFetching(sectionName, true);
+  let jobId = '';
 
   try {
-    await PodkopShellMethods.getClashApiGroupLatency(tag);
-    await fetchDashboardSections({ force: true });
+    const startResponse = await PodkopShellMethods.latencyTestStart(
+      'group',
+      sectionName,
+      tag,
+    );
+
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
+    }
+
+    jobId = startResponse.data.job_id;
+    await PodkopShellMethods.waitLatencyTestJob(jobId);
+    await completeLatencyTestJob(jobId, sectionName);
+    jobId = '';
+  } catch (error) {
+    logger.error('[DASHBOARD]', 'handleTestGroupLatency: failed', error);
   } finally {
-    setLatencyFetching(sectionName, false);
+    if (jobId) {
+      setLatencyFetching(sectionName, false);
+    }
   }
 }
 
@@ -310,12 +462,29 @@ async function handleTestProxyLatency(sectionName: string, tag: string) {
   }
 
   setLatencyFetching(sectionName, true);
+  let jobId = '';
 
   try {
-    await PodkopShellMethods.getClashApiProxyLatency(tag);
-    await fetchDashboardSections({ force: true });
+    const startResponse = await PodkopShellMethods.latencyTestStart(
+      'proxy',
+      sectionName,
+      tag,
+    );
+
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
+    }
+
+    jobId = startResponse.data.job_id;
+    await PodkopShellMethods.waitLatencyTestJob(jobId);
+    await completeLatencyTestJob(jobId, sectionName);
+    jobId = '';
+  } catch (error) {
+    logger.error('[DASHBOARD]', 'handleTestProxyLatency: failed', error);
   } finally {
-    setLatencyFetching(sectionName, false);
+    if (jobId) {
+      setLatencyFetching(sectionName, false);
+    }
   }
 }
 
@@ -351,26 +520,27 @@ async function handleUpdateSubscription(section: Podkop.OutboundGroup) {
   }
 
   setSubscriptionUpdating(section.sectionName, true);
+  let jobId = '';
 
   try {
-    const response = await PodkopShellMethods.subscriptionUpdate(
+    const startResponse = await PodkopShellMethods.subscriptionUpdateStart(
       section.sectionName,
     );
 
-    if (!response.success) {
-      setSubscriptionUpdating(section.sectionName, false);
-      showToast(_('Failed to update subscriptions'), 'error');
-      return;
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
     }
 
-    setSubscriptionUpdating(section.sectionName, false);
-    showToast(_('Subscription update completed'), 'success');
-    void fetchDashboardSections({ force: true });
-    void fetchServicesInfo();
+    jobId = startResponse.data.job_id;
+    const response = await PodkopShellMethods.waitSubscriptionUpdateJob(jobId);
+    await completeSubscriptionUpdateJob(jobId, section.sectionName, response);
+    jobId = '';
   } catch (error) {
     logger.error('[DASHBOARD]', 'handleUpdateSubscription: failed', error);
-    setSubscriptionUpdating(section.sectionName, false);
-    showToast(_('Failed to update subscriptions'), 'error');
+    if (!pageUnloading) {
+      setSubscriptionUpdating(section.sectionName, false);
+      showToast(_('Failed to update subscriptions'), 'error');
+    }
   }
 }
 
@@ -653,6 +823,7 @@ async function onPageMount() {
 
   void fetchDashboardSections({ force: true });
   void fetchServicesInfo();
+  void restoreDashboardActionState();
   void connectToClashSockets();
 
   sectionsRefreshTimer = setInterval(() => {
@@ -677,8 +848,6 @@ function onPageUnmount() {
     'bandwidthWidget',
     'trafficTotalWidget',
     'systemInfoWidget',
-    'servicesInfoWidget',
-    'sectionsWidget',
   ]);
   socket.resetAll();
 }
@@ -736,7 +905,10 @@ export async function initController(): Promise<void> {
   onMount('dashboard-status').then(() => {
     logger.debug('[DASHBOARD]', 'initController', 'onMount');
     registerLifecycleListeners();
-    if (store.get().tabService.current === 'dashboard') {
+    if (
+      store.get().tabService.current === 'dashboard' ||
+      isActiveLuciTab('dashboard')
+    ) {
       onPageMount();
     }
   });

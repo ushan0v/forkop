@@ -1,5 +1,7 @@
 import { PodkopShellMethods } from '../methods';
-import { logger, store } from '../services';
+import { logger } from '../services/logger.service';
+import { store } from '../services/store.service';
+import { applyUiStateToStore } from '../services/uiState.service';
 import { Podkop } from '../types';
 
 let latestServicesInfoRequestId = 0;
@@ -22,6 +24,16 @@ function getSettledMethodResponse<T>(
 
 export async function fetchServicesInfo() {
   const requestId = ++latestServicesInfoRequestId;
+  const uiState = await PodkopShellMethods.getUiState();
+
+  if (requestId !== latestServicesInfoRequestId) {
+    return;
+  }
+
+  if (uiState.success) {
+    applyUiStateToStore(uiState.data);
+    return uiState.data;
+  }
 
   const [podkopResult, singboxResult] = await Promise.allSettled([
     PodkopShellMethods.getStatus(),
@@ -47,4 +59,6 @@ export async function fetchServicesInfo() {
       },
     },
   });
+
+  return undefined;
 }

@@ -122,21 +122,29 @@ function subscription_running_job_state(section, source_index, started_at) {
     });
 }
 
-function subscription_finished_job_state(success, message, exit_code, updated_at) {
+function subscription_finished_job_state(success, message, exit_code, updated_at, section, source_index, started_at) {
     write_json({
         success: arg_bool(success),
         running: false,
         message: as_string(message),
+        section: as_string(section),
+        source_index: as_string(source_index),
+        pid: null,
+        started_at: arg_number(started_at),
         exit_code: arg_number(exit_code),
         updated_at: arg_number(updated_at)
     });
 }
 
-function subscription_stale_job_state(updated_at) {
+function subscription_stale_job_state(updated_at, section, source_index, started_at) {
     write_json({
         success: false,
         running: false,
         message: "Subscription update worker exited unexpectedly",
+        section: as_string(section),
+        source_index: as_string(source_index),
+        pid: null,
+        started_at: arg_number(started_at),
         exit_code: null,
         updated_at: arg_number(updated_at)
     });
@@ -168,9 +176,9 @@ else if (mode == "subscription-job-json-response")
 else if (mode == "subscription-running-job-state")
     subscription_running_job_state(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "subscription-finished-job-state")
-    subscription_finished_job_state(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
+    subscription_finished_job_state(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
 else if (mode == "subscription-stale-job-state")
-    subscription_stale_job_state(ARGV[1]);
+    subscription_stale_job_state(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "subscription-status-error")
     subscription_status_error(ARGV[1]);
 else {

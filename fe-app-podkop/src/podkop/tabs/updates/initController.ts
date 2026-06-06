@@ -8,12 +8,15 @@ import {
   renderXIcon24,
 } from '../../../icons';
 import { renderButton } from '../../../partials';
+import { getComponentActionKey } from '../../helpers/getComponentActionKey';
+import type { UpdatesActionKey } from '../../helpers/getComponentActionKey';
+import { isActiveLuciTab } from '../../helpers/isActiveLuciTab';
 import { PodkopShellMethods } from '../../methods';
 import { logger, store, StoreType } from '../../services';
 import { ensureSystemInfo } from '../../services/systemInfo.service';
+import { applyUiStateToStore } from '../../services/uiState.service';
 import { Podkop } from '../../types';
 
-type UpdatesActionKey = keyof StoreType['updatesActions'];
 type UpdateStatus = StoreType['updatesChecks'][Podkop.ComponentName]['status'];
 
 interface ComponentActionButton {
@@ -38,6 +41,17 @@ interface ComponentCard {
 let updatesLifecycleRegistered = false;
 let updatesControllerInitialized = false;
 let updatesMounted = false;
+let pageUnloading = false;
+const followedComponentJobs = new Set<string>();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    pageUnloading = true;
+  });
+  window.addEventListener('pageshow', () => {
+    pageUnloading = false;
+  });
+}
 
 function isNotInstalled(version: string | undefined) {
   return !version || version === 'not installed';
@@ -253,72 +267,161 @@ function patchSystemInfoAfterMutation(result: Podkop.ComponentActionResult) {
   }
 }
 
+async function applyCompletedComponentAction(
+  key: UpdatesActionKey,
+  result: Podkop.ComponentActionResult,
+) {
+  if (result.action === 'check_update') {
+    const status = result.status || null;
+
+    if (status === 'latest' || status === 'outdated' || status === 'dev') {
+      setCheckResult(
+        result.component,
+        status,
+        result.latest_version || '',
+        result.release_url || '',
+      );
+    }
+
+    setActionLoading(key, false);
+    showToast(getCheckToastMessage(status), 'success');
+    return;
+  }
+
+  if (result.action === 'install' || result.action.startsWith('install_')) {
+    setCheckResult(result.component, 'latest', result.latest_version || '');
+  } else {
+    resetCheckResult(result.component);
+  }
+
+  patchSystemInfoAfterMutation(result);
+  setActionLoading(key, false);
+
+  if (result.component === 'podkop' && result.action === 'install') {
+    if (result.message) {
+      showToast(result.message, 'success', 1200);
+    }
+
+    reloadPageAfterPodkopUpdate();
+    return;
+  }
+
+  if (result.message) {
+    showToast(result.message, 'success');
+  }
+
+  void refreshSystemInfoAfterMutation();
+}
+
+async function completeComponentActionJob(
+  key: UpdatesActionKey,
+  jobId: string,
+  response: Podkop.MethodResponse<Podkop.ComponentActionResult>,
+) {
+  if (pageUnloading) {
+    return;
+  }
+
+  if (!response.success || response.data.success === false) {
+    setActionLoading(key, false);
+    showToast(
+      response.success
+        ? response.data.message || _('Failed to execute')
+        : response.error || _('Failed to execute'),
+      'error',
+    );
+    return;
+  }
+
+  await PodkopShellMethods.uiActionAck('component', jobId);
+  await applyCompletedComponentAction(key, response.data);
+}
+
+async function followComponentActionState(state: Podkop.ComponentActionResult) {
+  const jobId = state.job_id;
+  const key = getComponentActionKey(state.component, state.action);
+
+  if (!jobId || !key || followedComponentJobs.has(jobId)) {
+    return;
+  }
+
+  followedComponentJobs.add(jobId);
+  setActionLoading(key, true);
+
+  try {
+    const response = state.running
+      ? await PodkopShellMethods.waitComponentActionJob(
+          jobId,
+          state.component,
+          state.action,
+          state.latest_version || undefined,
+        )
+      : ({
+          success: true,
+          data: state,
+        } as Podkop.MethodSuccessResponse<Podkop.ComponentActionResult>);
+
+    await completeComponentActionJob(key, jobId, response);
+  } catch (error) {
+    logger.error('[UPDATES]', 'followComponentActionState failed', error);
+    if (!pageUnloading) {
+      setActionLoading(key, false);
+      showToast(_('Failed to execute'), 'error');
+    }
+  } finally {
+    followedComponentJobs.delete(jobId);
+  }
+}
+
+async function restoreComponentActionState() {
+  const response = await PodkopShellMethods.getUiState();
+
+  if (!response.success) {
+    return;
+  }
+
+  applyUiStateToStore(response.data);
+
+  for (const state of response.data.actions.component || []) {
+    if (state.running === false || state.running) {
+      void followComponentActionState(state);
+    }
+  }
+}
+
 async function handleComponentAction(button: ComponentActionButton) {
   if (isAnyActionLoading()) {
     return;
   }
 
   setActionLoading(button.key, true);
+  let jobId = '';
 
   try {
-    const response = await PodkopShellMethods.componentAction(
+    const startResponse = await PodkopShellMethods.componentActionStart(
+      button.component,
+      button.action,
+    );
+
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
+    }
+
+    jobId = startResponse.data.job_id;
+    const response = await PodkopShellMethods.waitComponentActionJob(
+      jobId,
       button.component,
       button.action,
       getExpectedLatestVersionForAction(button),
     );
 
-    if (!response.success) {
-      setActionLoading(button.key, false);
-      showToast(response.error || _('Failed to execute'), 'error');
-      return;
-    }
-
-    const result = response.data;
-
-    if (button.action === 'check_update') {
-      const status = result.status || null;
-
-      if (status === 'latest' || status === 'outdated' || status === 'dev') {
-        setCheckResult(
-          button.component,
-          status,
-          result.latest_version || '',
-          result.release_url || '',
-        );
-      }
-
-      setActionLoading(button.key, false);
-      showToast(getCheckToastMessage(status), 'success');
-      return;
-    }
-
-    if (button.action === 'install' || button.action.startsWith('install_')) {
-      setCheckResult(button.component, 'latest', result.latest_version || '');
-    } else {
-      resetCheckResult(button.component);
-    }
-
-    patchSystemInfoAfterMutation(result);
-    setActionLoading(button.key, false);
-
-    if (result.component === 'podkop' && result.action === 'install') {
-      if (result.message) {
-        showToast(result.message, 'success', 1200);
-      }
-
-      reloadPageAfterPodkopUpdate();
-      return;
-    }
-
-    if (result.message) {
-      showToast(result.message, 'success');
-    }
-
-    void refreshSystemInfoAfterMutation();
+    await completeComponentActionJob(button.key, jobId, response);
   } catch (error) {
     logger.error('[UPDATES]', 'handleComponentAction failed', error);
-    setActionLoading(button.key, false);
-    showToast(_('Failed to execute'), 'error');
+    if (!pageUnloading) {
+      setActionLoading(button.key, false);
+      showToast(_('Failed to execute'), 'error');
+    }
   }
 }
 
@@ -607,9 +710,13 @@ function onPageMount() {
   onPageUnmount();
 
   updatesMounted = true;
+  if (!isAnyActionLoading()) {
+    store.reset(['updatesChecks']);
+  }
   store.subscribe(onStoreUpdate);
   renderUpdatesComponents();
   void ensureSystemInfo();
+  void restoreComponentActionState();
 }
 
 function onPageUnmount() {
@@ -652,7 +759,10 @@ export async function initController(): Promise<void> {
   onMount('updates-status').then(() => {
     logger.debug('[UPDATES]', 'initController', 'onMount');
     registerLifecycleListeners();
-    if (store.get().tabService.current === 'updates') {
+    if (
+      store.get().tabService.current === 'updates' ||
+      isActiveLuciTab('updates')
+    ) {
       onPageMount();
     }
   });

@@ -184,6 +184,33 @@ const EntryPoint = {
       return uiCapabilities;
     };
 
+    const applyUiState = function (data) {
+      const result = updateUiCapabilities(data?.capabilities || data || {});
+
+      if (typeof main.applyUiStateToStore === "function" && data?.service) {
+        main.applyUiStateToStore(data);
+      } else if (
+        main.store &&
+        typeof main.store.set === "function" &&
+        data?.service
+      ) {
+        main.store.set({
+          servicesInfoWidget: {
+            loading: false,
+            failed: false,
+            data: {
+              singbox: Number(data.service.sing_box?.running) || 0,
+              podkopRunning: Number(data.service.podkop?.running) || 0,
+              podkopEnabled: Number(data.service.podkop?.enabled) || 0,
+              podkopStatus: data.service.podkop?.status || "",
+            },
+          },
+        });
+      }
+
+      return result;
+    };
+
     const loadFallbackUiCapabilities = function () {
       return Promise.allSettled([
         main.PodkopShellMethods.getServerCapabilities(),
@@ -260,17 +287,31 @@ const EntryPoint = {
         return uiCapabilitiesPromise;
       }
 
-      uiCapabilitiesPromise = main.PodkopShellMethods.getUiCapabilities()
+      uiCapabilitiesPromise = main.PodkopShellMethods.getUiState()
         .then((response) => {
           if (!response?.success) {
-            throw new Error("UI capabilities request failed");
+            throw new Error("UI state request failed");
           }
 
-          return updateUiCapabilities(response.data);
+          return applyUiState(response.data);
         })
         .catch((error) => {
-          console.warn("Failed to load Podkop Plus UI capabilities", error);
-          return loadFallbackUiCapabilities();
+          console.warn("Failed to load Podkop Plus UI state", error);
+          return main.PodkopShellMethods.getUiCapabilities()
+            .then((response) => {
+              if (!response?.success) {
+                throw new Error("UI capabilities request failed");
+              }
+
+              return updateUiCapabilities(response.data);
+            })
+            .catch((fallbackError) => {
+              console.warn(
+                "Failed to load Podkop Plus UI capabilities",
+                fallbackError,
+              );
+              return loadFallbackUiCapabilities();
+            });
         })
         .finally(() => {
           uiCapabilitiesPromise = null;
@@ -305,6 +346,46 @@ const EntryPoint = {
       _("Configuration for Podkop Plus service"),
     );
     podkopMap.tabbed = true;
+    const originalHandleSaveApply = podkopMap.handleSaveApply;
+    podkopMap.handleSaveApply = function (ev, mode) {
+      const refreshUiState = function () {
+        main.PodkopShellMethods.getUiState()
+          .then((response) => {
+            if (
+              response?.success &&
+              typeof main.applyUiStateToStore === "function"
+            ) {
+              main.applyUiStateToStore(response.data);
+            }
+          })
+          .catch(() => null);
+      };
+
+      if (main.store && typeof main.store.set === "function") {
+        const servicesInfoWidget = main.store.get().servicesInfoWidget;
+        main.store.set({
+          servicesInfoWidget: {
+            ...servicesInfoWidget,
+            data: {
+              ...servicesInfoWidget.data,
+              podkopStatus: "reloading",
+            },
+          },
+        });
+      }
+
+      return Promise.resolve(originalHandleSaveApply.call(this, ev, mode))
+        .then((result) => {
+          window.setTimeout(refreshUiState, 250);
+
+          return result;
+        })
+        .catch((error) => {
+          refreshUiState();
+
+          throw error;
+        });
+    };
 
     const rulesSection = podkopMap.section(
       form.GridSection,
@@ -400,6 +481,8 @@ const EntryPoint = {
       return ["updates"];
     };
     updates.createUpdatesContent(updatesSection);
+
+    await loadUiCapabilities().catch(() => null);
 
     const rendered = await podkopMap.render();
     main.coreService({

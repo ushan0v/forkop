@@ -33,7 +33,7 @@ export function getDiagnosticsChecks(
 ): Array<IDiagnosticsChecksStoreItem> {
   const checks = [DIAGNOSTICS_CHECKS.DNS, DIAGNOSTICS_CHECKS.SINGBOX];
 
-  if (options.includeInbounds !== false) {
+  if (options.includeInbounds === true) {
     checks.push(DIAGNOSTICS_CHECKS.INBOUNDS);
   }
 

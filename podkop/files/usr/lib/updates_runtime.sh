@@ -796,7 +796,7 @@ subscription_update_write_finished_job_state() {
     local state_file="$1"
     local exit_code="$2"
     local output_file="$3"
-    local tmp_file updated_at success message
+    local tmp_file updated_at success message section source_index started_at
 
     updated_at="$(date +%s 2>/dev/null)"
     case "$updated_at" in
@@ -810,8 +810,12 @@ subscription_update_write_finished_job_state() {
         message="$(subscription_update_output_message "$output_file" "Subscription update completed")"
     fi
 
+    section="$(updates_ucode json-file-field "$state_file" section "" 2>/dev/null)"
+    source_index="$(updates_ucode json-file-field "$state_file" source_index "" 2>/dev/null)"
+    started_at="$(updates_ucode json-file-field "$state_file" started_at 0 2>/dev/null)"
+
     tmp_file="$(subscription_update_job_tmp_file "$state_file")" || return 1
-    updates_runtime_ucode subscription-finished-job-state "$success" "$message" "$exit_code" "$updated_at" >"$tmp_file" && mv "$tmp_file" "$state_file"
+    updates_runtime_ucode subscription-finished-job-state "$success" "$message" "$exit_code" "$updated_at" "$section" "$source_index" "$started_at" >"$tmp_file" && mv "$tmp_file" "$state_file"
 
     local rc=$?
     rm -f "$tmp_file" "$output_file" 2>/dev/null
@@ -820,15 +824,19 @@ subscription_update_write_finished_job_state() {
 
 subscription_update_mark_stale_job_state() {
     local state_file="$1"
-    local tmp_file updated_at
+    local tmp_file updated_at section source_index started_at
 
     updated_at="$(date +%s 2>/dev/null)"
     case "$updated_at" in
     "" | *[!0-9]*) updated_at=0 ;;
     esac
 
+    section="$(updates_ucode json-file-field "$state_file" section "" 2>/dev/null)"
+    source_index="$(updates_ucode json-file-field "$state_file" source_index "" 2>/dev/null)"
+    started_at="$(updates_ucode json-file-field "$state_file" started_at 0 2>/dev/null)"
+
     tmp_file="$(subscription_update_job_tmp_file "$state_file")" || return 1
-    updates_runtime_ucode subscription-stale-job-state "$updated_at" >"$tmp_file" && mv "$tmp_file" "$state_file"
+    updates_runtime_ucode subscription-stale-job-state "$updated_at" "$section" "$source_index" "$started_at" >"$tmp_file" && mv "$tmp_file" "$state_file"
 
     local rc=$?
     rm -f "$tmp_file" 2>/dev/null

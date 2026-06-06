@@ -117,4 +117,46 @@ describe('PodkopShellMethods.subscriptionUpdate', () => {
       error: 'Failed to download subscriptions',
     });
   });
+
+  it('returns failed finished job state from the low-level waiter for UI restoration', async () => {
+    mocks.executeShellCommand.mockImplementation(({ args }) => {
+      if (args[0] === 'subscription_update_status') {
+        return Promise.resolve({
+          stdout: JSON.stringify({
+            success: false,
+            running: false,
+            message: 'Failed to download subscriptions',
+            section: 'main',
+            source_index: '',
+            exit_code: 1,
+          }),
+          stderr: '',
+          code: 0,
+        });
+      }
+
+      return Promise.resolve({
+        stdout: '',
+        stderr: 'Unexpected command',
+        code: 1,
+      });
+    });
+
+    const responsePromise =
+      PodkopShellMethods.waitSubscriptionUpdateJob('job-1');
+
+    await vi.advanceTimersByTimeAsync(1500);
+
+    await expect(responsePromise).resolves.toEqual({
+      success: true,
+      data: {
+        success: false,
+        running: false,
+        message: 'Failed to download subscriptions',
+        section: 'main',
+        source_index: '',
+        exit_code: 1,
+      },
+    });
+  });
 });

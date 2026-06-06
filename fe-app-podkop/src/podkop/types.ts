@@ -83,6 +83,12 @@ export namespace Podkop {
     GET_SYSTEM_INFO = 'get_system_info',
     GET_SERVER_CAPABILITIES = 'get_server_capabilities',
     GET_UI_CAPABILITIES = 'get_ui_capabilities',
+    GET_UI_STATE = 'get_ui_state',
+    SERVICE_ACTION_ASYNC = 'service_action_async',
+    SERVICE_ACTION_STATUS = 'service_action_status',
+    LATENCY_TEST_ASYNC = 'latency_test_async',
+    LATENCY_TEST_STATUS = 'latency_test_status',
+    UI_ACTION_ACK = 'ui_action_ack',
     COMPONENT_ACTION = 'component_action',
     COMPONENT_ACTION_ASYNC = 'component_action_async',
     COMPONENT_ACTION_STATUS = 'component_action_status',
@@ -351,6 +357,53 @@ export namespace Podkop {
     server_inbounds_enabled_count: number;
   }
 
+  export type ServiceAction = 'start' | 'stop' | 'restart' | 'reload';
+
+  export interface UiActionStartResult {
+    success: boolean;
+    job_id: string;
+    message: string;
+  }
+
+  export interface UiActionState {
+    success: boolean;
+    running?: boolean;
+    kind?: string;
+    message?: string;
+    pid?: string | null;
+    started_at?: number;
+    updated_at?: number | null;
+    exit_code?: number | null;
+    job_id?: string;
+  }
+
+  export interface ServiceActionState extends UiActionState {
+    kind: 'service';
+    action: ServiceAction;
+    source?: string;
+  }
+
+  export interface LatencyActionState extends UiActionState {
+    kind: 'latency';
+    latency_type: 'group' | 'proxy';
+    section: string;
+    tag: string;
+  }
+
+  export interface UiState {
+    service: {
+      podkop: GetStatus;
+      sing_box: GetSingBoxStatus;
+    };
+    capabilities: GetUiCapabilities;
+    actions: {
+      service: ServiceActionState[];
+      latency: LatencyActionState[];
+      component: ComponentActionResult[];
+      subscription: SubscriptionUpdateJobState[];
+    };
+  }
+
   export type ComponentName =
     | 'podkop'
     | 'sing_box'
@@ -368,6 +421,7 @@ export namespace Podkop {
   export interface ComponentActionResult {
     success: boolean;
     running?: boolean;
+    job_id?: string;
     component: ComponentName;
     action: ComponentAction;
     message: string;
@@ -376,27 +430,26 @@ export namespace Podkop {
     release_url?: string;
     changed: boolean;
     status?: 'latest' | 'outdated' | 'dev' | '';
+    pid?: string | null;
+    started_at?: number;
+    updated_at?: number | null;
     exit_code?: number | null;
   }
 
-  export interface ComponentActionStartResult {
-    success: boolean;
-    job_id: string;
-    message: string;
-  }
+  export type ComponentActionStartResult = UiActionStartResult;
 
-  export interface SubscriptionUpdateStartResult {
-    success: boolean;
-    job_id: string;
-    message: string;
-  }
+  export type SubscriptionUpdateStartResult = UiActionStartResult;
 
-  export interface SubscriptionUpdateJobState {
+  export interface SubscriptionUpdateJobState extends UiActionState {
     success: boolean;
     running?: boolean;
     message?: string;
+    section?: string;
+    source_index?: string;
+    pid?: string | null;
+    started_at?: number;
     exit_code?: number | null;
-    updated_at?: number;
+    updated_at?: number | null;
   }
 
   export interface GetZapretStatus {

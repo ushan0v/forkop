@@ -23,6 +23,7 @@ export { getClashUIUrl } from './helpers/getClashApiUrl';
 export { PodkopShellMethods } from './podkop/methods/shell';
 export { coreService } from './podkop/services/core.service';
 export { store } from './podkop/services/store.service';
+export { applyUiStateToStore } from './podkop/services/uiState.service';
 export { DashboardTab } from './podkop/tabs/dashboard';
 export { DiagnosticTab } from './podkop/tabs/diagnostic';
 export { MonitoringTab } from './podkop/tabs/monitoring';

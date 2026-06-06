@@ -12,6 +12,15 @@
         "/var/run/podkop-plus/component-actions/*": [
           "read"
         ],
+        "/var/run/podkop-plus/ui-state/*": [
+          "read"
+        ],
+        "/var/run/podkop-plus/ui-state/service-actions/*": [
+          "read"
+        ],
+        "/var/run/podkop-plus/ui-state/latency-actions/*": [
+          "read"
+        ],
         "/usr/bin/podkop-plus": [
           "exec"
         ]
@@ -33,6 +42,17 @@
       ]
     },
     "write": {
+      "file": {
+        "/var/run/podkop-plus/ui-state/*": [
+          "write"
+        ],
+        "/var/run/podkop-plus/ui-state/service-actions/*": [
+          "write"
+        ],
+        "/var/run/podkop-plus/ui-state/latency-actions/*": [
+          "write"
+        ]
+      },
       "uci": [
         "podkop-plus"
       ]

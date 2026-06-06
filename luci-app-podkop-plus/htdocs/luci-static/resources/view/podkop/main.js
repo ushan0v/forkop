@@ -2176,6 +2176,12 @@ var Podkop;
     AvailableMethods2["GET_SYSTEM_INFO"] = "get_system_info";
     AvailableMethods2["GET_SERVER_CAPABILITIES"] = "get_server_capabilities";
     AvailableMethods2["GET_UI_CAPABILITIES"] = "get_ui_capabilities";
+    AvailableMethods2["GET_UI_STATE"] = "get_ui_state";
+    AvailableMethods2["SERVICE_ACTION_ASYNC"] = "service_action_async";
+    AvailableMethods2["SERVICE_ACTION_STATUS"] = "service_action_status";
+    AvailableMethods2["LATENCY_TEST_ASYNC"] = "latency_test_async";
+    AvailableMethods2["LATENCY_TEST_STATUS"] = "latency_test_status";
+    AvailableMethods2["UI_ACTION_ACK"] = "ui_action_ack";
     AvailableMethods2["COMPONENT_ACTION"] = "component_action";
     AvailableMethods2["COMPONENT_ACTION_ASYNC"] = "component_action_async";
     AvailableMethods2["COMPONENT_ACTION_STATUS"] = "component_action_status";
@@ -2199,6 +2205,11 @@ var Podkop;
 var SUBSCRIPTION_UPDATE_TIMEOUT_MS = 10 * 60 * 1e3;
 var SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS = 15e3;
 var SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS = 1500;
+var UI_ACTION_RPC_TIMEOUT_MS = 15e3;
+var SERVICE_ACTION_TIMEOUT_MS = 2 * 60 * 1e3;
+var SERVICE_ACTION_POLL_INTERVAL_MS = 1e3;
+var LATENCY_TEST_TIMEOUT_MS = 30 * 1e3;
+var LATENCY_TEST_POLL_INTERVAL_MS = 1e3;
 var COMPONENT_ACTION_TIMEOUT_MS = 10 * 60 * 1e3;
 var COMPONENT_ACTION_RPC_TIMEOUT_MS = 15e3;
 var COMPONENT_ACTION_POLL_INTERVAL_MS = 1500;
@@ -2248,6 +2259,15 @@ function parseSubscriptionUpdateJobState(response) {
     response.stdout
   );
 }
+function parseUiActionStartResult(response) {
+  return parseJsonObjectOutput(response.stdout);
+}
+function parseServiceActionState(response) {
+  return parseJsonObjectOutput(response.stdout);
+}
+function parseLatencyActionState(response) {
+  return parseJsonObjectOutput(response.stdout);
+}
 function isComponentActionJobId(jobId) {
   return /^[A-Za-z0-9._-]+$/.test(jobId) && jobId !== "." && jobId !== "..";
 }
@@ -2278,6 +2298,12 @@ function componentActionFailure(response, parsedResponse) {
   return {
     success: false,
     error: parsedResponse?.message || response.stderr || _("Failed to execute")
+  };
+}
+function uiActionFailure(response, parsedResponse, fallback = _("Failed to execute")) {
+  return {
+    success: false,
+    error: parsedResponse?.message || response.stderr || fallback
   };
 }
 var PodkopShellMethods = {
@@ -2401,29 +2427,204 @@ var PodkopShellMethods = {
   getUiCapabilities: async () => callBaseMethod(
     Podkop.AvailableMethods.GET_UI_CAPABILITIES
   ),
-  componentAction: async (component, action, expectedLatestVersion) => {
-    const startedAt = Date.now();
-    let selfUpdateVersionMatchedAt = 0;
-    const startResponse = await executeShellCommand({
+  getUiState: async () => callBaseMethod(Podkop.AvailableMethods.GET_UI_STATE),
+  serviceActionStart: async (action) => {
+    const response = await executeShellCommand({
+      command: "/usr/bin/podkop-plus",
+      args: [Podkop.AvailableMethods.SERVICE_ACTION_ASYNC, action],
+      timeout: UI_ACTION_RPC_TIMEOUT_MS
+    });
+    const parsedResponse = parseUiActionStartResult(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse?.success || !parsedResponse.job_id) {
+      return uiActionFailure(
+        response,
+        parsedResponse,
+        _("Service action failed")
+      );
+    }
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  serviceActionStatus: async (jobId) => {
+    const response = await executeShellCommand({
+      command: "/usr/bin/podkop-plus",
+      args: [Podkop.AvailableMethods.SERVICE_ACTION_STATUS, jobId],
+      timeout: UI_ACTION_RPC_TIMEOUT_MS
+    });
+    const parsedResponse = parseServiceActionState(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse) {
+      return uiActionFailure(
+        response,
+        parsedResponse,
+        _("Service action failed")
+      );
+    }
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  waitServiceActionJob: async (jobId, startedAt = Date.now()) => {
+    while (Date.now() - startedAt < SERVICE_ACTION_TIMEOUT_MS) {
+      await sleep(SERVICE_ACTION_POLL_INTERVAL_MS);
+      const response = await PodkopShellMethods.serviceActionStatus(jobId);
+      if (!response.success) {
+        return response;
+      }
+      if (response.data.running) {
+        continue;
+      }
+      return response;
+    }
+    return {
+      success: false,
+      error: _("Operation timed out")
+    };
+  },
+  serviceAction: async (action) => {
+    const startResponse = await PodkopShellMethods.serviceActionStart(action);
+    if (!startResponse.success) {
+      return startResponse;
+    }
+    return PodkopShellMethods.waitServiceActionJob(
+      startResponse.data.job_id
+    ).then((response) => {
+      if (!response.success) {
+        return response;
+      }
+      if (response.data.success === false) {
+        return {
+          success: false,
+          error: response.data.message || _("Service action failed")
+        };
+      }
+      return response;
+    });
+  },
+  latencyTestStart: async (latencyType, section, tag) => {
+    const response = await executeShellCommand({
+      command: "/usr/bin/podkop-plus",
+      args: [
+        Podkop.AvailableMethods.LATENCY_TEST_ASYNC,
+        latencyType,
+        section,
+        tag
+      ],
+      timeout: UI_ACTION_RPC_TIMEOUT_MS
+    });
+    const parsedResponse = parseUiActionStartResult(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse?.success || !parsedResponse.job_id) {
+      return uiActionFailure(
+        response,
+        parsedResponse,
+        _("Latency test failed")
+      );
+    }
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  latencyTestStatus: async (jobId) => {
+    const response = await executeShellCommand({
+      command: "/usr/bin/podkop-plus",
+      args: [Podkop.AvailableMethods.LATENCY_TEST_STATUS, jobId],
+      timeout: UI_ACTION_RPC_TIMEOUT_MS
+    });
+    const parsedResponse = parseLatencyActionState(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse) {
+      return uiActionFailure(
+        response,
+        parsedResponse,
+        _("Latency test failed")
+      );
+    }
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  waitLatencyTestJob: async (jobId, startedAt = Date.now()) => {
+    while (Date.now() - startedAt < LATENCY_TEST_TIMEOUT_MS) {
+      await sleep(LATENCY_TEST_POLL_INTERVAL_MS);
+      const response = await PodkopShellMethods.latencyTestStatus(jobId);
+      if (!response.success) {
+        return response;
+      }
+      if (response.data.running) {
+        continue;
+      }
+      return response;
+    }
+    return {
+      success: false,
+      error: _("Operation timed out")
+    };
+  },
+  latencyTest: async (latencyType, section, tag) => {
+    const startResponse = await PodkopShellMethods.latencyTestStart(
+      latencyType,
+      section,
+      tag
+    );
+    if (!startResponse.success) {
+      return startResponse;
+    }
+    return PodkopShellMethods.waitLatencyTestJob(startResponse.data.job_id);
+  },
+  uiActionAck: async (kind, jobId) => {
+    const response = await executeShellCommand({
+      command: "/usr/bin/podkop-plus",
+      args: [Podkop.AvailableMethods.UI_ACTION_ACK, kind, jobId],
+      timeout: UI_ACTION_RPC_TIMEOUT_MS
+    });
+    const parsedResponse = parseUiActionStartResult(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse?.success) {
+      return uiActionFailure(response, parsedResponse);
+    }
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  componentActionStart: async (component, action) => {
+    const response = await executeShellCommand({
       command: "/usr/bin/podkop-plus",
       args: [Podkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
     });
-    const parsedStartResponse = parseComponentActionStartResult(startResponse);
-    if ((startResponse.code ?? 0) !== 0 || !parsedStartResponse?.success || !parsedStartResponse.job_id) {
-      return componentActionFailure(startResponse, parsedStartResponse);
+    const parsedResponse = parseComponentActionStartResult(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse?.success || !parsedResponse.job_id) {
+      return componentActionFailure(response, parsedResponse);
     }
-    const jobId = parsedStartResponse.job_id;
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  componentActionStatus: async (jobId) => {
+    const response = await executeShellCommand({
+      command: "/usr/bin/podkop-plus",
+      args: [Podkop.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
+      timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
+    });
+    const parsedResponse = parseComponentActionResult(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse) {
+      return componentActionFailure(response, parsedResponse);
+    }
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  waitComponentActionJob: async (jobId, component, action, expectedLatestVersion, startedAt = Date.now()) => {
+    let selfUpdateVersionMatchedAt = 0;
     while (Date.now() - startedAt < COMPONENT_ACTION_TIMEOUT_MS) {
       await sleep(COMPONENT_ACTION_POLL_INTERVAL_MS);
       const stateResponse = await readComponentActionState(jobId);
       if (stateResponse) {
-        if (stateResponse.success === false) {
-          return {
-            success: false,
-            error: stateResponse.message || _("Failed to execute")
-          };
-        }
         if (stateResponse.running) {
           continue;
         }
@@ -2438,9 +2639,6 @@ var PodkopShellMethods = {
         timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
       });
       const parsedResponse = parseComponentActionResult(statusResponse);
-      if (parsedResponse?.success === false) {
-        return componentActionFailure(statusResponse, parsedResponse);
-      }
       if ((statusResponse.code ?? 0) !== 0 || !parsedResponse) {
         if (component === "podkop" && action === "install") {
           const installedVersion = expectedLatestVersion ? await readPodkopVersion() : "";
@@ -2481,62 +2679,113 @@ var PodkopShellMethods = {
       error: _("Operation timed out")
     };
   },
-  subscriptionUpdate: async (section, sourceIndex) => {
-    const startedAt = Date.now();
+  componentAction: async (component, action, expectedLatestVersion) => {
+    const startResponse = await PodkopShellMethods.componentActionStart(
+      component,
+      action
+    );
+    if (!startResponse.success) {
+      return startResponse;
+    }
+    return PodkopShellMethods.waitComponentActionJob(
+      startResponse.data.job_id,
+      component,
+      action,
+      expectedLatestVersion
+    ).then((response) => {
+      if (!response.success) {
+        return response;
+      }
+      if (response.data.success === false) {
+        return {
+          success: false,
+          error: response.data.message || _("Failed to execute")
+        };
+      }
+      return response;
+    });
+  },
+  subscriptionUpdateStart: async (section, sourceIndex) => {
     const startArgs = [
       Podkop.AvailableMethods.SUBSCRIPTION_UPDATE_ASYNC,
       ...section ? [section] : [],
       ...section && sourceIndex !== void 0 ? [String(sourceIndex)] : []
     ];
-    const startResponse = await executeShellCommand({
+    const response = await executeShellCommand({
       command: "/usr/bin/podkop-plus",
       args: startArgs,
       timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS
     });
-    const parsedStartResponse = parseSubscriptionUpdateStartResult(startResponse);
-    if ((startResponse.code ?? 0) !== 0 || !parsedStartResponse?.success || !parsedStartResponse.job_id) {
+    const parsedResponse = parseSubscriptionUpdateStartResult(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse?.success || !parsedResponse.job_id) {
       return {
         success: false,
-        error: parsedStartResponse?.message || startResponse.stderr || _("Subscription update failed")
+        error: parsedResponse?.message || response.stderr || _("Subscription update failed")
       };
     }
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  subscriptionUpdateStatus: async (jobId) => {
+    const response = await executeShellCommand({
+      command: "/usr/bin/podkop-plus",
+      args: [Podkop.AvailableMethods.SUBSCRIPTION_UPDATE_STATUS, jobId],
+      timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS
+    });
+    const parsedResponse = parseSubscriptionUpdateJobState(response);
+    if ((response.code ?? 0) !== 0 || !parsedResponse) {
+      return {
+        success: false,
+        error: response.stderr || _("Subscription update failed")
+      };
+    }
+    return {
+      success: true,
+      data: parsedResponse
+    };
+  },
+  waitSubscriptionUpdateJob: async (jobId, startedAt = Date.now()) => {
     while (Date.now() - startedAt < SUBSCRIPTION_UPDATE_TIMEOUT_MS) {
       await sleep(SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS);
-      const statusResponse = await executeShellCommand({
-        command: "/usr/bin/podkop-plus",
-        args: [
-          Podkop.AvailableMethods.SUBSCRIPTION_UPDATE_STATUS,
-          parsedStartResponse.job_id
-        ],
-        timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS
-      });
-      const stateResponse = parseSubscriptionUpdateJobState(statusResponse);
-      if (!stateResponse) {
-        if ((statusResponse.code ?? 0) !== 0) {
-          return {
-            success: false,
-            error: statusResponse.stderr || _("Subscription update failed")
-          };
-        }
+      const response = await PodkopShellMethods.subscriptionUpdateStatus(jobId);
+      if (!response.success) {
+        return response;
+      }
+      if (response.data.running) {
         continue;
       }
-      if (stateResponse.running) {
-        continue;
-      }
-      if (stateResponse.success === false) {
-        return {
-          success: false,
-          error: stateResponse.message || _("Subscription update failed")
-        };
-      }
-      return {
-        success: true,
-        data: stateResponse.message || parsedStartResponse.message || _("Subscription update completed")
-      };
+      return response;
     }
     return {
       success: false,
       error: _("Operation timed out")
+    };
+  },
+  subscriptionUpdate: async (section, sourceIndex) => {
+    const startResponse = await PodkopShellMethods.subscriptionUpdateStart(
+      section,
+      sourceIndex
+    );
+    if (!startResponse.success) {
+      return startResponse;
+    }
+    const response = await PodkopShellMethods.waitSubscriptionUpdateJob(
+      startResponse.data.job_id
+    );
+    if (!response.success) {
+      return response;
+    }
+    if (response.data.success === false) {
+      return {
+        success: false,
+        error: response.data.message || _("Subscription update failed")
+      };
+    }
+    return {
+      success: true,
+      data: response.data.message || startResponse.data.message || _("Subscription update completed")
     };
   }
 };
@@ -3141,7 +3390,7 @@ function createDiagnosticCheck(code, description) {
 }
 function getDiagnosticsChecks(description, options = {}) {
   const checks = ["DNS" /* DNS */, "SINGBOX" /* SINGBOX */];
-  if (options.includeInbounds !== false) {
+  if (options.includeInbounds === true) {
     checks.push("INBOUNDS" /* INBOUNDS */);
   }
   checks.push("NFT" /* NFT */);
@@ -3753,6 +4002,135 @@ var SocketManager = class _SocketManager {
 };
 var socket = SocketManager.getInstance();
 
+// src/podkop/helpers/getComponentActionKey.ts
+var componentActionKeyMap = {
+  "podkop:check_update": "podkopCheck",
+  "podkop:install": "podkopInstall",
+  "sing_box:check_update": "singBoxCheck",
+  "sing_box:install": "singBoxInstall",
+  "sing_box:install_extended": "singBoxInstallExtended",
+  "sing_box:install_stable": "singBoxInstallStable",
+  "zapret:check_update": "zapretCheck",
+  "zapret:install": "zapretInstall",
+  "zapret:remove": "zapretRemove",
+  "zapret2:check_update": "zapret2Check",
+  "zapret2:install": "zapret2Install",
+  "zapret2:remove": "zapret2Remove",
+  "byedpi:check_update": "byedpiCheck",
+  "byedpi:install": "byedpiInstall",
+  "byedpi:remove": "byedpiRemove"
+};
+function getComponentActionKey(component, action) {
+  return componentActionKeyMap[`${component}:${action}`];
+}
+
+// src/podkop/services/uiState.service.ts
+function isRunningAction(state) {
+  return state.running === true;
+}
+function getEmptyUpdatesActions() {
+  return {
+    podkopCheck: { loading: false },
+    podkopInstall: { loading: false },
+    singBoxCheck: { loading: false },
+    singBoxInstall: { loading: false },
+    singBoxInstallExtended: { loading: false },
+    singBoxInstallStable: { loading: false },
+    zapretCheck: { loading: false },
+    zapretInstall: { loading: false },
+    zapretRemove: { loading: false },
+    zapret2Check: { loading: false },
+    zapret2Install: { loading: false },
+    zapret2Remove: { loading: false },
+    byedpiCheck: { loading: false },
+    byedpiInstall: { loading: false },
+    byedpiRemove: { loading: false }
+  };
+}
+function getEmptyDiagnosticsActions() {
+  return {
+    ...store.get().diagnosticsActions,
+    restart: { loading: false },
+    start: { loading: false },
+    stop: { loading: false }
+  };
+}
+function applyServiceState(uiState) {
+  const currentSystemInfo = store.get().diagnosticsSystemInfo;
+  store.set({
+    servicesInfoWidget: {
+      loading: false,
+      failed: false,
+      data: {
+        singbox: uiState.service.sing_box.running,
+        podkopRunning: uiState.service.podkop.running,
+        podkopEnabled: uiState.service.podkop.enabled,
+        podkopStatus: uiState.service.podkop.status
+      }
+    },
+    diagnosticsSystemInfo: {
+      ...currentSystemInfo,
+      providerInfoLoaded: true,
+      sing_box_extended: uiState.capabilities.sing_box_extended,
+      zapret_installed: uiState.capabilities.zapret_installed,
+      zapret2_installed: uiState.capabilities.zapret2_installed,
+      byedpi_installed: uiState.capabilities.byedpi_installed,
+      server_inbounds_enabled_count: uiState.capabilities.server_inbounds_enabled_count
+    }
+  });
+}
+function applyActionState(actions = {}) {
+  const current = store.get();
+  const subscriptionUpdatingSections = {};
+  const latencyFetchingSections = {};
+  const updatesActions = getEmptyUpdatesActions();
+  const diagnosticsActions = getEmptyDiagnosticsActions();
+  for (const state of actions.subscription || []) {
+    if (isRunningAction(state) && state.section) {
+      subscriptionUpdatingSections[state.section] = true;
+    }
+  }
+  for (const state of actions.latency || []) {
+    if (isRunningAction(state) && state.section) {
+      latencyFetchingSections[state.section] = true;
+    }
+  }
+  for (const state of actions.component || []) {
+    if (!isRunningAction(state)) {
+      continue;
+    }
+    const key = getComponentActionKey(state.component, state.action);
+    if (key) {
+      updatesActions[key] = { loading: true };
+    }
+  }
+  for (const state of actions.service || []) {
+    if (!isRunningAction(state)) {
+      continue;
+    }
+    if (state.action === "start") {
+      diagnosticsActions.start = { loading: true };
+    } else if (state.action === "stop") {
+      diagnosticsActions.stop = { loading: true };
+    } else if (state.action === "restart" || state.action === "reload") {
+      diagnosticsActions.restart = { loading: true };
+    }
+  }
+  store.set({
+    sectionsWidget: {
+      ...current.sectionsWidget,
+      subscriptionUpdatingSections,
+      latencyFetchingSections
+    },
+    updatesActions,
+    diagnosticsActions
+  });
+}
+function applyUiStateToStore(uiState) {
+  applyServiceState(uiState);
+  applyActionState(uiState.actions);
+}
+
 // src/podkop/fetchers/fetchServicesInfo.ts
 var latestServicesInfoRequestId = 0;
 function getSettledMethodResponse(scope, result) {
@@ -3767,6 +4145,14 @@ function getSettledMethodResponse(scope, result) {
 }
 async function fetchServicesInfo() {
   const requestId = ++latestServicesInfoRequestId;
+  const uiState = await PodkopShellMethods.getUiState();
+  if (requestId !== latestServicesInfoRequestId) {
+    return;
+  }
+  if (uiState.success) {
+    applyUiStateToStore(uiState.data);
+    return uiState.data;
+  }
   const [podkopResult, singboxResult] = await Promise.allSettled([
     PodkopShellMethods.getStatus(),
     PodkopShellMethods.getSingBoxStatus()
@@ -3788,6 +4174,19 @@ async function fetchServicesInfo() {
       }
     }
   });
+  return void 0;
+}
+
+// src/podkop/helpers/isActiveLuciTab.ts
+function isActiveLuciTab(tabId) {
+  if (typeof document === "undefined") {
+    return false;
+  }
+  return Boolean(
+    document.querySelector(
+      `.cbi-tab[data-tab="${tabId}"]:not(.cbi-tab-disabled)`
+    )
+  );
 }
 
 // src/podkop/tabs/dashboard/initController.ts
@@ -3797,6 +4196,17 @@ var sectionsRefreshPromise = null;
 var sectionsRefreshQueued = false;
 var dashboardMounted = false;
 var dashboardMountId = 0;
+var pageUnloading = false;
+var followedSubscriptionJobs = /* @__PURE__ */ new Set();
+var followedLatencyJobs = /* @__PURE__ */ new Set();
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    pageUnloading = true;
+  });
+  window.addEventListener("pageshow", () => {
+    pageUnloading = false;
+  });
+}
 async function fetchDashboardSectionsOnce(mountId) {
   const prev = store.get().sectionsWidget;
   const hasRenderedData = prev.data.length > 0;
@@ -3918,6 +4328,95 @@ function setLatencyFetching(sectionName, fetching) {
     }
   });
 }
+async function completeSubscriptionUpdateJob(jobId, sectionName, response) {
+  setSubscriptionUpdating(sectionName, false);
+  if (pageUnloading) {
+    return;
+  }
+  if (jobId && response.success) {
+    void PodkopShellMethods.uiActionAck("subscription", jobId);
+  }
+  if (!response.success || response.data.success === false) {
+    showToast(_("Failed to update subscriptions"), "error");
+    return;
+  }
+  showToast(_("Subscription update completed"), "success");
+  void fetchDashboardSections({ force: true });
+  void fetchServicesInfo();
+}
+async function followSubscriptionUpdateState(state) {
+  const jobId = state.job_id;
+  const sectionName = state.section || "";
+  if (!jobId || !sectionName || followedSubscriptionJobs.has(jobId)) {
+    return;
+  }
+  followedSubscriptionJobs.add(jobId);
+  setSubscriptionUpdating(sectionName, true);
+  try {
+    const response = state.running ? await PodkopShellMethods.waitSubscriptionUpdateJob(jobId) : {
+      success: true,
+      data: state
+    };
+    await completeSubscriptionUpdateJob(jobId, sectionName, response);
+  } catch (error) {
+    logger.error("[DASHBOARD]", "followSubscriptionUpdateState failed", error);
+    if (!pageUnloading) {
+      setSubscriptionUpdating(sectionName, false);
+      showToast(_("Failed to update subscriptions"), "error");
+    }
+  } finally {
+    followedSubscriptionJobs.delete(jobId);
+  }
+}
+async function completeLatencyTestJob(jobId, sectionName) {
+  setLatencyFetching(sectionName, false);
+  if (pageUnloading) {
+    return;
+  }
+  if (jobId) {
+    void PodkopShellMethods.uiActionAck("latency", jobId);
+  }
+  void fetchDashboardSections({ force: true });
+}
+async function followLatencyTestState(state) {
+  const jobId = state.job_id;
+  const sectionName = state.section || "";
+  if (!jobId || !sectionName || followedLatencyJobs.has(jobId)) {
+    return;
+  }
+  followedLatencyJobs.add(jobId);
+  setLatencyFetching(sectionName, true);
+  try {
+    if (state.running) {
+      await PodkopShellMethods.waitLatencyTestJob(jobId);
+    }
+    await completeLatencyTestJob(jobId, sectionName);
+  } catch (error) {
+    logger.error("[DASHBOARD]", "followLatencyTestState failed", error);
+    if (!pageUnloading) {
+      setLatencyFetching(sectionName, false);
+    }
+  } finally {
+    followedLatencyJobs.delete(jobId);
+  }
+}
+async function restoreDashboardActionState() {
+  const response = await PodkopShellMethods.getUiState();
+  if (!response.success) {
+    return;
+  }
+  applyUiStateToStore(response.data);
+  for (const state of response.data.actions.subscription || []) {
+    if (state.running === false || state.running) {
+      void followSubscriptionUpdateState(state);
+    }
+  }
+  for (const state of response.data.actions.latency || []) {
+    if (state.running === false || state.running) {
+      void followLatencyTestState(state);
+    }
+  }
+}
 async function connectToClashSockets() {
   const clashApiSecret = await getClashApiSecret2();
   socket.subscribe(
@@ -4017,11 +4516,26 @@ async function handleTestGroupLatency(sectionName, tag) {
     return;
   }
   setLatencyFetching(sectionName, true);
+  let jobId = "";
   try {
-    await PodkopShellMethods.getClashApiGroupLatency(tag);
-    await fetchDashboardSections({ force: true });
+    const startResponse = await PodkopShellMethods.latencyTestStart(
+      "group",
+      sectionName,
+      tag
+    );
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
+    }
+    jobId = startResponse.data.job_id;
+    await PodkopShellMethods.waitLatencyTestJob(jobId);
+    await completeLatencyTestJob(jobId, sectionName);
+    jobId = "";
+  } catch (error) {
+    logger.error("[DASHBOARD]", "handleTestGroupLatency: failed", error);
   } finally {
-    setLatencyFetching(sectionName, false);
+    if (jobId) {
+      setLatencyFetching(sectionName, false);
+    }
   }
 }
 async function handleTestProxyLatency(sectionName, tag) {
@@ -4029,11 +4543,26 @@ async function handleTestProxyLatency(sectionName, tag) {
     return;
   }
   setLatencyFetching(sectionName, true);
+  let jobId = "";
   try {
-    await PodkopShellMethods.getClashApiProxyLatency(tag);
-    await fetchDashboardSections({ force: true });
+    const startResponse = await PodkopShellMethods.latencyTestStart(
+      "proxy",
+      sectionName,
+      tag
+    );
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
+    }
+    jobId = startResponse.data.job_id;
+    await PodkopShellMethods.waitLatencyTestJob(jobId);
+    await completeLatencyTestJob(jobId, sectionName);
+    jobId = "";
+  } catch (error) {
+    logger.error("[DASHBOARD]", "handleTestProxyLatency: failed", error);
   } finally {
-    setLatencyFetching(sectionName, false);
+    if (jobId) {
+      setLatencyFetching(sectionName, false);
+    }
   }
 }
 async function handleCopyOutbound(section, outbound) {
@@ -4057,23 +4586,24 @@ async function handleUpdateSubscription(section) {
     return;
   }
   setSubscriptionUpdating(section.sectionName, true);
+  let jobId = "";
   try {
-    const response = await PodkopShellMethods.subscriptionUpdate(
+    const startResponse = await PodkopShellMethods.subscriptionUpdateStart(
       section.sectionName
     );
-    if (!response.success) {
-      setSubscriptionUpdating(section.sectionName, false);
-      showToast(_("Failed to update subscriptions"), "error");
-      return;
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
     }
-    setSubscriptionUpdating(section.sectionName, false);
-    showToast(_("Subscription update completed"), "success");
-    void fetchDashboardSections({ force: true });
-    void fetchServicesInfo();
+    jobId = startResponse.data.job_id;
+    const response = await PodkopShellMethods.waitSubscriptionUpdateJob(jobId);
+    await completeSubscriptionUpdateJob(jobId, section.sectionName, response);
+    jobId = "";
   } catch (error) {
     logger.error("[DASHBOARD]", "handleUpdateSubscription: failed", error);
-    setSubscriptionUpdating(section.sectionName, false);
-    showToast(_("Failed to update subscriptions"), "error");
+    if (!pageUnloading) {
+      setSubscriptionUpdating(section.sectionName, false);
+      showToast(_("Failed to update subscriptions"), "error");
+    }
   }
 }
 async function renderSectionsWidget() {
@@ -4299,6 +4829,7 @@ async function onPageMount() {
   store.subscribe(onStoreUpdate);
   void fetchDashboardSections({ force: true });
   void fetchServicesInfo();
+  void restoreDashboardActionState();
   void connectToClashSockets();
   sectionsRefreshTimer = setInterval(() => {
     void fetchDashboardSections();
@@ -4317,9 +4848,7 @@ function onPageUnmount() {
   store.reset([
     "bandwidthWidget",
     "trafficTotalWidget",
-    "systemInfoWidget",
-    "servicesInfoWidget",
-    "sectionsWidget"
+    "systemInfoWidget"
   ]);
   socket.resetAll();
 }
@@ -4365,7 +4894,7 @@ async function initController() {
   onMount("dashboard-status").then(() => {
     logger.debug("[DASHBOARD]", "initController", "onMount");
     registerLifecycleListeners();
-    if (store.get().tabService.current === "dashboard") {
+    if (store.get().tabService.current === "dashboard" || isActiveLuciTab("dashboard")) {
       onPageMount();
     }
   });
@@ -6468,6 +6997,49 @@ async function runSectionsCheck() {
   }
 }
 
+// src/podkop/tabs/diagnostic/serviceTransition.ts
+function isServiceTransitionStatus(status) {
+  return ["starting", "stopping", "restarting", "reloading"].includes(status);
+}
+function getServiceTransition(status) {
+  return {
+    starting: status === "starting",
+    stopping: status === "stopping",
+    restarting: status === "restarting" || status === "reloading"
+  };
+}
+function hasLocalMutatingServiceActionLoading(actions) {
+  return actions.restart.loading || actions.start.loading || actions.stop.loading || actions.enable.loading || actions.disable.loading;
+}
+function shouldSkipServicesInfoAutoRefresh({
+  force,
+  localMutatingActionLoading
+}) {
+  return !force && localMutatingActionLoading;
+}
+function shouldShowRestartAction({
+  podkopRunning,
+  restartLoading
+}) {
+  return restartLoading || podkopRunning;
+}
+function shouldShowStartAction({
+  podkopRunning,
+  restartLoading,
+  startLoading,
+  stopLoading
+}) {
+  return startLoading || !restartLoading && !podkopRunning && !stopLoading;
+}
+function shouldShowStopAction({
+  podkopRunning,
+  restartLoading,
+  startLoading,
+  stopLoading
+}) {
+  return stopLoading || restartLoading || podkopRunning && !startLoading;
+}
+
 // src/podkop/tabs/diagnostic/initController.ts
 var SERVICE_STATUS_REFRESH_INTERVAL_MS = 2e3;
 var SERVICE_ACTION_STATUS_TIMEOUT_MS = 45e3;
@@ -6476,8 +7048,10 @@ var diagnosticLifecycleRegistered = false;
 var diagnosticControllerInitialized = false;
 var diagnosticMounted = false;
 var diagnosticMountId = 0;
+var diagnosticCompletedWhileHidden = false;
 var servicesInfoRefreshTimer = null;
 var servicesInfoRefreshPromise = null;
+var followedServiceActionJobs = /* @__PURE__ */ new Set();
 function sleep2(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -6486,7 +7060,7 @@ function getDiagnosticsProviderOptions(systemInfo = store.get().diagnosticsSyste
     includeZapret: Boolean(systemInfo.zapret_installed),
     includeZapret2: Boolean(systemInfo.zapret2_installed),
     includeByedpi: Boolean(systemInfo.byedpi_installed),
-    includeInbounds: systemInfo.server_inbounds_enabled_count !== 0
+    includeInbounds: systemInfo.server_inbounds_enabled_count > 0
   };
 }
 function getNotRunningDiagnosticsChecks() {
@@ -6512,9 +7086,12 @@ function setDiagnosticActionLoading(action, loading2) {
 function isDiagnosticMountActive(mountId = diagnosticMountId) {
   return diagnosticMounted && diagnosticMountId === mountId;
 }
-function isMutatingServiceActionLoading() {
+function isLocalMutatingServiceActionLoading() {
   const actions = store.get().diagnosticsActions;
-  return actions.restart.loading || actions.start.loading || actions.stop.loading || actions.enable.loading || actions.disable.loading;
+  return hasLocalMutatingServiceActionLoading(actions);
+}
+function isMutatingServiceActionLoading() {
+  return isLocalMutatingServiceActionLoading() || isServiceTransitionStatus(store.get().servicesInfoWidget.data.podkopStatus);
 }
 function getPodkopStatusText(running, enabled) {
   if (running) {
@@ -6545,13 +7122,18 @@ async function refreshDiagnosticServicesInfo({
   if (!allowInactive && !isDiagnosticMountActive(mountId)) {
     return;
   }
-  if (!force && isMutatingServiceActionLoading()) {
+  if (shouldSkipServicesInfoAutoRefresh({
+    force,
+    localMutatingActionLoading: isLocalMutatingServiceActionLoading()
+  })) {
     return;
   }
   if (servicesInfoRefreshPromise) {
     return servicesInfoRefreshPromise;
   }
-  const promise = fetchServicesInfo().catch((error) => {
+  const promise = fetchServicesInfo().then((uiState) => {
+    followServiceActionsFromUiState(uiState);
+  }).catch((error) => {
     logger.error(
       "[DIAGNOSTIC]",
       "refreshDiagnosticServicesInfo failed",
@@ -6594,6 +7176,61 @@ function stopServicesInfoRefreshTimer() {
   clearInterval(servicesInfoRefreshTimer);
   servicesInfoRefreshTimer = null;
 }
+function isVisibleServiceRuntimeAction(action) {
+  return action === "restart" || action === "start" || action === "stop";
+}
+function setServiceActionStateLoading(state, loading2) {
+  if (!isVisibleServiceRuntimeAction(state.action)) {
+    return;
+  }
+  setDiagnosticActionLoading(state.action, loading2);
+}
+async function followServiceActionState(state) {
+  const jobId = state.job_id;
+  if (!jobId || followedServiceActionJobs.has(jobId)) {
+    return;
+  }
+  followedServiceActionJobs.add(jobId);
+  if (state.running) {
+    setServiceActionStateLoading(state, true);
+  }
+  try {
+    if (state.running) {
+      await PodkopShellMethods.waitServiceActionJob(jobId);
+    }
+  } catch (error) {
+    logger.error("[DIAGNOSTIC]", "followServiceActionState failed", error);
+  } finally {
+    setServiceActionStateLoading(state, false);
+    await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
+    void PodkopShellMethods.uiActionAck("service", jobId);
+    followedServiceActionJobs.delete(jobId);
+    resetDiagnosticsChecks();
+  }
+}
+function followServiceActionsFromUiState(uiState) {
+  if (!uiState) {
+    return;
+  }
+  for (const action of uiState.actions.service || []) {
+    if (action.running) {
+      void followServiceActionState(action);
+    }
+  }
+}
+async function restoreServiceActionState() {
+  const response = await PodkopShellMethods.getUiState();
+  if (!response.success) {
+    return;
+  }
+  const serviceActions = response.data.actions.service || [];
+  for (const action of serviceActions) {
+    if (action.running) {
+      setServiceActionStateLoading(action, true);
+    }
+    void followServiceActionState(action);
+  }
+}
 async function fetchSystemInfo() {
   const systemInfo = await ensureSystemInfo();
   store.set({
@@ -6608,6 +7245,42 @@ async function fetchDiagnosticsProviderInfo({
 } = {}) {
   const requestId = ++latestProviderInfoRequestId;
   try {
+    const uiState = await PodkopShellMethods.getUiState();
+    if (requestId !== latestProviderInfoRequestId) {
+      return;
+    }
+    if (uiState.success) {
+      const currentSystemInfo2 = store.get().diagnosticsSystemInfo;
+      const nextSystemInfo2 = {
+        ...currentSystemInfo2,
+        providerInfoLoaded: true,
+        sing_box_extended: uiState.data.capabilities.sing_box_extended,
+        zapret_installed: uiState.data.capabilities.zapret_installed,
+        zapret2_installed: uiState.data.capabilities.zapret2_installed,
+        byedpi_installed: uiState.data.capabilities.byedpi_installed,
+        server_inbounds_enabled_count: uiState.data.capabilities.server_inbounds_enabled_count
+      };
+      if (!nextSystemInfo2.zapret_installed) {
+        nextSystemInfo2.zapret_version = "not installed";
+      }
+      if (!nextSystemInfo2.zapret2_installed) {
+        nextSystemInfo2.zapret2_version = "not installed";
+      }
+      if (!nextSystemInfo2.byedpi_installed) {
+        nextSystemInfo2.byedpi_version = "not installed";
+      }
+      const nextState2 = {
+        diagnosticsSystemInfo: nextSystemInfo2
+      };
+      if (resetChecks) {
+        nextState2.diagnosticsChecks = getDiagnosticsChecks(
+          _("Not running"),
+          getDiagnosticsProviderOptions(nextSystemInfo2)
+        );
+      }
+      store.set(nextState2);
+      return;
+    }
     const [zapretRuntime, zapret2Runtime, byedpiRuntime, inboundsConfig] = await Promise.all([
       PodkopShellMethods.checkZapretRuntime(),
       PodkopShellMethods.checkZapret2Runtime(),
@@ -6696,10 +7369,13 @@ function renderDiagnosticRunActionWidget() {
   logger.debug("[DIAGNOSTIC]", "renderDiagnosticRunActionWidget");
   const { loading: loading2 } = store.get().diagnosticsRunAction;
   const providerInfoLoaded = store.get().diagnosticsSystemInfo.providerInfoLoaded;
+  const servicesInfoWidget = store.get().servicesInfoWidget;
+  const podkopRunning = Boolean(servicesInfoWidget.data.podkopRunning);
+  const podkopEnabled = Boolean(servicesInfoWidget.data.podkopEnabled);
   const container = document.getElementById("pdk_diagnostic-page-run-check");
   const renderedAction = renderRunAction({
     loading: loading2,
-    disabled: !providerInfoLoaded,
+    disabled: !providerInfoLoaded || servicesInfoWidget.loading || !podkopEnabled || !podkopRunning || isMutatingServiceActionLoading(),
     click: () => runChecks()
   });
   return preserveScrollForPage(() => {
@@ -6708,28 +7384,42 @@ function renderDiagnosticRunActionWidget() {
 }
 async function handleServiceRuntimeAction({
   action,
-  command,
   expectedRunning,
   optimisticRunning
 }) {
   setDiagnosticActionLoading(action, true);
+  let jobId = "";
   if (optimisticRunning !== void 0) {
     setDisplayedPodkopRunning(optimisticRunning);
   }
   try {
-    await command();
+    const startResponse = await PodkopShellMethods.serviceActionStart(action);
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
+    }
+    jobId = startResponse.data.job_id;
+    const result = await PodkopShellMethods.waitServiceActionJob(jobId);
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+    if (result.data.success === false) {
+      throw new Error(result.data.message || _("Service action failed"));
+    }
     await waitForPodkopRunningState(expectedRunning);
   } catch (e) {
     logger.error("[DIAGNOSTIC]", `handleServiceRuntimeAction(${action})`, e);
   } finally {
     setDiagnosticActionLoading(action, false);
+    await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
+    if (jobId) {
+      void PodkopShellMethods.uiActionAck("service", jobId);
+    }
     resetDiagnosticsChecks();
   }
 }
 async function handleRestart() {
   await handleServiceRuntimeAction({
     action: "restart",
-    command: PodkopShellMethods.restart,
     expectedRunning: true,
     optimisticRunning: false
   });
@@ -6737,14 +7427,12 @@ async function handleRestart() {
 async function handleStart() {
   await handleServiceRuntimeAction({
     action: "start",
-    command: PodkopShellMethods.start,
     expectedRunning: true
   });
 }
 async function handleStop() {
   await handleServiceRuntimeAction({
     action: "stop",
-    command: PodkopShellMethods.stop,
     expectedRunning: false
   });
 }
@@ -6873,27 +7561,47 @@ function renderDiagnosticAvailableActionsWidget() {
   logger.debug("[DIAGNOSTIC]", "renderDiagnosticAvailableActionsWidget");
   const podkopEnabled = Boolean(servicesInfoWidget.data.podkopEnabled);
   const podkopRunning = Boolean(servicesInfoWidget.data.podkopRunning);
-  const restartLoading = diagnosticsActions.restart.loading;
-  const atLeastOneMutatingActionLoading = restartLoading || diagnosticsActions.start.loading || diagnosticsActions.stop.loading || diagnosticsActions.enable.loading || diagnosticsActions.disable.loading;
+  const serviceTransition = getServiceTransition(
+    servicesInfoWidget.data.podkopStatus
+  );
+  const restartLoading = diagnosticsActions.restart.loading || serviceTransition.restarting;
+  const startLoading = diagnosticsActions.start.loading || serviceTransition.starting;
+  const stopLoading = diagnosticsActions.stop.loading || serviceTransition.stopping;
+  const atLeastOneMutatingActionLoading = restartLoading || startLoading || stopLoading || diagnosticsActions.enable.loading || diagnosticsActions.disable.loading;
   const serviceControlsDisabled = servicesInfoWidget.loading || atLeastOneMutatingActionLoading;
   const utilityActionsDisabled = atLeastOneMutatingActionLoading;
+  const startVisible = shouldShowStartAction({
+    podkopRunning,
+    restartLoading,
+    startLoading,
+    stopLoading
+  });
+  const stopVisible = shouldShowStopAction({
+    podkopRunning,
+    restartLoading,
+    startLoading,
+    stopLoading
+  });
   const container = document.getElementById("pdk_diagnostic-page-actions");
   const renderedActions = renderAvailableActions({
     restart: {
       loading: restartLoading,
-      visible: true,
+      visible: shouldShowRestartAction({
+        podkopRunning,
+        restartLoading
+      }),
       onClick: handleRestart,
       disabled: serviceControlsDisabled
     },
     start: {
-      loading: diagnosticsActions.start.loading,
-      visible: !podkopRunning,
+      loading: startLoading,
+      visible: startVisible,
       onClick: handleStart,
       disabled: serviceControlsDisabled
     },
     stop: {
-      loading: diagnosticsActions.stop.loading,
-      visible: podkopRunning,
+      loading: stopLoading,
+      visible: stopVisible,
       onClick: handleStop,
       disabled: serviceControlsDisabled
     },
@@ -6995,59 +7703,84 @@ async function onStoreUpdate2(_next, _prev, diff) {
   }
   if (diff.diagnosticsActions || diff.servicesInfoWidget) {
     renderDiagnosticAvailableActionsWidget();
+    renderDiagnosticRunActionWidget();
   }
   if (diff.diagnosticsSystemInfo) {
     renderDiagnosticSystemInfoWidget();
     renderDiagnosticRunActionWidget();
   }
 }
+function getDiagnosticRunners(providerOptions) {
+  return [
+    { code: "DNS" /* DNS */, run: runDnsCheck },
+    { code: "SINGBOX" /* SINGBOX */, run: runSingBoxCheck },
+    ...providerOptions.includeInbounds ? [{ code: "INBOUNDS" /* INBOUNDS */, run: runInboundsCheck }] : [],
+    { code: "NFT" /* NFT */, run: runNftCheck },
+    ...providerOptions.includeZapret ? [{ code: "ZAPRET" /* ZAPRET */, run: runZapretCheck }] : [],
+    ...providerOptions.includeZapret2 ? [{ code: "ZAPRET2" /* ZAPRET2 */, run: runZapret2Check }] : [],
+    ...providerOptions.includeByedpi ? [{ code: "BYEDPI" /* BYEDPI */, run: runByedpiCheck }] : [],
+    { code: "OUTBOUNDS" /* OUTBOUNDS */, run: runSectionsCheck },
+    { code: "FAKEIP" /* FAKEIP */, run: runFakeIPCheck }
+  ];
+}
 async function runChecks() {
-  const initialProviderOptions = getDiagnosticsProviderOptions();
+  if (store.get().diagnosticsRunAction.loading) {
+    return;
+  }
+  let providerOptions = getDiagnosticsProviderOptions();
   store.set({
     diagnosticsRunAction: { loading: true },
-    diagnosticsChecks: getLoadingDiagnosticsChecks(initialProviderOptions).diagnosticsChecks
+    diagnosticsChecks: getLoadingDiagnosticsChecks(providerOptions).diagnosticsChecks
   });
   try {
     await fetchDiagnosticsProviderInfo({ resetChecks: false });
-    const providerOptions = getDiagnosticsProviderOptions();
-    const runners = [
-      runDnsCheck,
-      runSingBoxCheck,
-      ...providerOptions.includeInbounds ? [runInboundsCheck] : [],
-      runNftCheck,
-      ...providerOptions.includeZapret ? [runZapretCheck] : [],
-      ...providerOptions.includeZapret2 ? [runZapret2Check] : [],
-      ...providerOptions.includeByedpi ? [runByedpiCheck] : [],
-      runSectionsCheck,
-      runFakeIPCheck
-    ];
+    providerOptions = getDiagnosticsProviderOptions();
     store.set({
       diagnosticsChecks: getLoadingDiagnosticsChecks(providerOptions).diagnosticsChecks
     });
-    for (const runner of runners) {
+    const runners = getDiagnosticRunners(providerOptions);
+    for (let index = 0; index < runners.length; index += 1) {
+      const runner = runners[index];
       try {
-        await runner();
+        await runner.run();
       } catch (e) {
-        logger.error("[DIAGNOSTIC]", `runChecks - ${runner.name} failed`, e);
+        logger.error(
+          "[DIAGNOSTIC]",
+          `runChecks - ${runner.run.name} failed`,
+          e
+        );
       }
     }
   } catch (e) {
     logger.error("[DIAGNOSTIC]", "runChecks - e", e);
   } finally {
     store.set({ diagnosticsRunAction: { loading: false } });
+    if (!diagnosticMounted) {
+      diagnosticCompletedWhileHidden = true;
+    }
   }
 }
 async function loadInitialDiagnosticData() {
   const diagnosticStatus = document.getElementById("diagnostic-status");
   if (diagnosticStatus?.isConnected && diagnosticStatus.offsetParent !== null) {
+    if (store.get().diagnosticsRunAction.loading) {
+      return;
+    }
     await fetchSystemInfo();
     await fetchDiagnosticsProviderInfo();
   }
 }
 function onPageMount2() {
-  onPageUnmount2();
+  const preserveHiddenResult = diagnosticCompletedWhileHidden;
+  onPageUnmount2({ preserveCompletedResult: preserveHiddenResult });
   diagnosticMounted = true;
   diagnosticMountId += 1;
+  if (preserveHiddenResult) {
+    diagnosticCompletedWhileHidden = false;
+  } else if (!store.get().diagnosticsRunAction.loading) {
+    store.reset(["diagnosticsRunAction"]);
+    resetDiagnosticsChecks();
+  }
   store.subscribe(onStoreUpdate2);
   renderDiagnosticsChecks();
   renderDiagnosticRunActionWidget();
@@ -7055,17 +7788,25 @@ function onPageMount2() {
   renderDiagnosticSystemInfoWidget();
   renderWikiDisclaimerWidget();
   void refreshDiagnosticServicesInfo({ force: true });
+  void restoreServiceActionState();
   startServicesInfoRefreshTimer();
-  void loadInitialDiagnosticData();
+  if (!preserveHiddenResult) {
+    void loadInitialDiagnosticData();
+  }
 }
-function onPageUnmount2() {
+function onPageUnmount2({
+  preserveCompletedResult = false
+} = {}) {
   diagnosticMounted = false;
   diagnosticMountId += 1;
   stopServicesInfoRefreshTimer();
   servicesInfoRefreshPromise = null;
   store.unsubscribe(onStoreUpdate2);
-  store.reset(["diagnosticsRunAction"]);
-  resetDiagnosticsChecks();
+  if (!preserveCompletedResult && !store.get().diagnosticsRunAction.loading) {
+    store.reset(["diagnosticsRunAction"]);
+    resetDiagnosticsChecks();
+    diagnosticCompletedWhileHidden = false;
+  }
 }
 function registerLifecycleListeners2() {
   if (diagnosticLifecycleRegistered) {
@@ -7107,7 +7848,7 @@ async function initController2() {
   onMount("diagnostic-status").then(() => {
     logger.debug("[DIAGNOSTIC]", "initController", "onMount");
     registerLifecycleListeners2();
-    if (store.get().tabService.current === "diagnostic") {
+    if (store.get().tabService.current === "diagnostic" || isActiveLuciTab("diagnostic")) {
       onPageMount2();
     }
   });
@@ -9121,6 +9862,16 @@ function render4() {
 var updatesLifecycleRegistered = false;
 var updatesControllerInitialized = false;
 var updatesMounted = false;
+var pageUnloading2 = false;
+var followedComponentJobs = /* @__PURE__ */ new Set();
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    pageUnloading2 = true;
+  });
+  window.addEventListener("pageshow", () => {
+    pageUnloading2 = false;
+  });
+}
 function isNotInstalled(version) {
   return !version || version === "not installed";
 }
@@ -9277,59 +10028,124 @@ function patchSystemInfoAfterMutation(result) {
     notifyActionProvidersAvailabilityChanged(nextSystemInfo);
   }
 }
+async function applyCompletedComponentAction(key, result) {
+  if (result.action === "check_update") {
+    const status = result.status || null;
+    if (status === "latest" || status === "outdated" || status === "dev") {
+      setCheckResult(
+        result.component,
+        status,
+        result.latest_version || "",
+        result.release_url || ""
+      );
+    }
+    setActionLoading(key, false);
+    showToast(getCheckToastMessage(status), "success");
+    return;
+  }
+  if (result.action === "install" || result.action.startsWith("install_")) {
+    setCheckResult(result.component, "latest", result.latest_version || "");
+  } else {
+    resetCheckResult(result.component);
+  }
+  patchSystemInfoAfterMutation(result);
+  setActionLoading(key, false);
+  if (result.component === "podkop" && result.action === "install") {
+    if (result.message) {
+      showToast(result.message, "success", 1200);
+    }
+    reloadPageAfterPodkopUpdate();
+    return;
+  }
+  if (result.message) {
+    showToast(result.message, "success");
+  }
+  void refreshSystemInfoAfterMutation();
+}
+async function completeComponentActionJob(key, jobId, response) {
+  if (pageUnloading2) {
+    return;
+  }
+  if (!response.success || response.data.success === false) {
+    setActionLoading(key, false);
+    showToast(
+      response.success ? response.data.message || _("Failed to execute") : response.error || _("Failed to execute"),
+      "error"
+    );
+    return;
+  }
+  await PodkopShellMethods.uiActionAck("component", jobId);
+  await applyCompletedComponentAction(key, response.data);
+}
+async function followComponentActionState(state) {
+  const jobId = state.job_id;
+  const key = getComponentActionKey(state.component, state.action);
+  if (!jobId || !key || followedComponentJobs.has(jobId)) {
+    return;
+  }
+  followedComponentJobs.add(jobId);
+  setActionLoading(key, true);
+  try {
+    const response = state.running ? await PodkopShellMethods.waitComponentActionJob(
+      jobId,
+      state.component,
+      state.action,
+      state.latest_version || void 0
+    ) : {
+      success: true,
+      data: state
+    };
+    await completeComponentActionJob(key, jobId, response);
+  } catch (error) {
+    logger.error("[UPDATES]", "followComponentActionState failed", error);
+    if (!pageUnloading2) {
+      setActionLoading(key, false);
+      showToast(_("Failed to execute"), "error");
+    }
+  } finally {
+    followedComponentJobs.delete(jobId);
+  }
+}
+async function restoreComponentActionState() {
+  const response = await PodkopShellMethods.getUiState();
+  if (!response.success) {
+    return;
+  }
+  applyUiStateToStore(response.data);
+  for (const state of response.data.actions.component || []) {
+    if (state.running === false || state.running) {
+      void followComponentActionState(state);
+    }
+  }
+}
 async function handleComponentAction(button) {
   if (isAnyActionLoading()) {
     return;
   }
   setActionLoading(button.key, true);
+  let jobId = "";
   try {
-    const response = await PodkopShellMethods.componentAction(
+    const startResponse = await PodkopShellMethods.componentActionStart(
+      button.component,
+      button.action
+    );
+    if (!startResponse.success) {
+      throw new Error(startResponse.error);
+    }
+    jobId = startResponse.data.job_id;
+    const response = await PodkopShellMethods.waitComponentActionJob(
+      jobId,
       button.component,
       button.action,
       getExpectedLatestVersionForAction(button)
     );
-    if (!response.success) {
-      setActionLoading(button.key, false);
-      showToast(response.error || _("Failed to execute"), "error");
-      return;
-    }
-    const result = response.data;
-    if (button.action === "check_update") {
-      const status = result.status || null;
-      if (status === "latest" || status === "outdated" || status === "dev") {
-        setCheckResult(
-          button.component,
-          status,
-          result.latest_version || "",
-          result.release_url || ""
-        );
-      }
-      setActionLoading(button.key, false);
-      showToast(getCheckToastMessage(status), "success");
-      return;
-    }
-    if (button.action === "install" || button.action.startsWith("install_")) {
-      setCheckResult(button.component, "latest", result.latest_version || "");
-    } else {
-      resetCheckResult(button.component);
-    }
-    patchSystemInfoAfterMutation(result);
-    setActionLoading(button.key, false);
-    if (result.component === "podkop" && result.action === "install") {
-      if (result.message) {
-        showToast(result.message, "success", 1200);
-      }
-      reloadPageAfterPodkopUpdate();
-      return;
-    }
-    if (result.message) {
-      showToast(result.message, "success");
-    }
-    void refreshSystemInfoAfterMutation();
+    await completeComponentActionJob(button.key, jobId, response);
   } catch (error) {
     logger.error("[UPDATES]", "handleComponentAction failed", error);
-    setActionLoading(button.key, false);
-    showToast(_("Failed to execute"), "error");
+    if (!pageUnloading2) {
+      setActionLoading(button.key, false);
+      showToast(_("Failed to execute"), "error");
+    }
   }
 }
 function getPrimaryUpdateAction(component, checkKey, installKey) {
@@ -9562,9 +10378,13 @@ function onStoreUpdate3(_next, _prev, diff) {
 function onPageMount4() {
   onPageUnmount4();
   updatesMounted = true;
+  if (!isAnyActionLoading()) {
+    store.reset(["updatesChecks"]);
+  }
   store.subscribe(onStoreUpdate3);
   renderUpdatesComponents();
   void ensureSystemInfo();
+  void restoreComponentActionState();
 }
 function onPageUnmount4() {
   updatesMounted = false;
@@ -9595,7 +10415,7 @@ async function initController4() {
   onMount("updates-status").then(() => {
     logger.debug("[UPDATES]", "initController", "onMount");
     registerLifecycleListeners4();
-    if (store.get().tabService.current === "updates") {
+    if (store.get().tabService.current === "updates" || isActiveLuciTab("updates")) {
       onPageMount4();
     }
   });
@@ -9923,6 +10743,7 @@ return baseclass.extend({
   PodkopShellMethods,
   REGIONAL_OPTIONS,
   UpdatesTab,
+  applyUiStateToStore,
   bulkValidate,
   coreService,
   getClashUIUrl,

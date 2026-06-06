@@ -115,10 +115,13 @@ check_required_file /lib/functions.sh
 check_required_file /lib/config/uci.sh
 check_required_file "$PODKOP_LIB/constants.sh"
 check_required_file "$PODKOP_LIB/status_diagnostics.uc"
+check_required_file "$PODKOP_LIB/ui_runtime.sh"
+check_required_file "$PODKOP_LIB/ui_runtime.uc"
 
 . /lib/functions.sh
 . /lib/config/uci.sh
 . "$PODKOP_LIB/constants.sh"
+. "$PODKOP_LIB/ui_runtime.sh"
 
 podkop_fast_status_diagnostics_ucode() {
     ucode "$PODKOP_LIB/status_diagnostics.uc" "$@"
@@ -133,35 +136,109 @@ podkop_fast_ui_capabilities_server_handler() {
     PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT=$((PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT + 1))
 }
 
-podkop_fast_get_ui_capabilities() {
-    local sing_box_version sing_box_extended=0 zapret_installed=0 zapret2_installed=0 byedpi_installed=0
+podkop_fast_collect_ui_capabilities() {
+    local sing_box_version
+
+    PODKOP_FAST_SING_BOX_EXTENDED=0
+    PODKOP_FAST_ZAPRET_INSTALLED=0
+    PODKOP_FAST_ZAPRET2_INSTALLED=0
+    PODKOP_FAST_BYEDPI_INSTALLED=0
+    PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT=0
 
     if command -v sing-box >/dev/null 2>&1; then
-        sing_box_version="$(sing-box version 2>/dev/null | podkop_fast_status_diagnostics_ucode stdin-first-line-last-field)"
+        sing_box_version="$(ui_runtime_sing_box_version 2>/dev/null || true)"
         case "$sing_box_version" in
-        *extended*) sing_box_extended=1 ;;
+        *extended*) PODKOP_FAST_SING_BOX_EXTENDED=1 ;;
         esac
     fi
 
-    [ -x "$ZAPRET_PROVIDER_NFQWS_BIN" ] && zapret_installed=1
-    [ -x "$ZAPRET2_PROVIDER_NFQWS2_BIN" ] && zapret2_installed=1
-    [ -x "$BYEDPI_BIN" ] && byedpi_installed=1
+    [ -x "$ZAPRET_PROVIDER_NFQWS_BIN" ] && PODKOP_FAST_ZAPRET_INSTALLED=1
+    [ -x "$ZAPRET2_PROVIDER_NFQWS2_BIN" ] && PODKOP_FAST_ZAPRET2_INSTALLED=1
+    [ -x "$BYEDPI_BIN" ] && PODKOP_FAST_BYEDPI_INSTALLED=1
 
-    PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT=0
     config_load "$PODKOP_CONFIG_NAME"
     config_foreach podkop_fast_ui_capabilities_server_handler "server"
+}
+
+podkop_fast_get_ui_capabilities() {
+    podkop_fast_collect_ui_capabilities
 
     podkop_fast_status_diagnostics_ucode ui-capabilities-json \
-        "$sing_box_extended" \
-        "$zapret_installed" \
-        "$zapret2_installed" \
-        "$byedpi_installed" \
+        "$PODKOP_FAST_SING_BOX_EXTENDED" \
+        "$PODKOP_FAST_ZAPRET_INSTALLED" \
+        "$PODKOP_FAST_ZAPRET2_INSTALLED" \
+        "$PODKOP_FAST_BYEDPI_INSTALLED" \
+        "${PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT:-0}"
+}
+
+podkop_fast_get_ui_state() {
+    local podkop_running=0 podkop_enabled=0 podkop_status dns_configured=0
+    local sing_box_running=0 sing_box_enabled=0 sing_box_status active_action
+
+    podkop_fast_collect_ui_capabilities
+    ui_runtime_ensure_dirs
+    ui_runtime_refresh_action_dirs
+
+    ui_runtime_sing_box_running && sing_box_running=1
+    ui_runtime_sing_box_enabled && sing_box_enabled=1
+
+    ui_runtime_podkop_running && podkop_running=1
+    ui_runtime_service_enabled && podkop_enabled=1
+    ui_runtime_dns_configured && dns_configured=1
+
+    podkop_status="$(ui_runtime_status_text "$podkop_running" "$podkop_enabled")"
+    sing_box_status="$(ui_runtime_status_text "$sing_box_running" "$sing_box_enabled")"
+
+    active_action="$(ui_runtime_active_service_action 2>/dev/null || true)"
+    case "$active_action" in
+    start) podkop_status="starting" ;;
+    stop) podkop_status="stopping" ;;
+    restart) podkop_status="restarting" ;;
+    reload) podkop_status="reloading" ;;
+    esac
+
+    ui_runtime_write_ui_state \
+        "$podkop_running" \
+        "$podkop_enabled" \
+        "$podkop_status" \
+        "$dns_configured" \
+        "$sing_box_running" \
+        "$sing_box_enabled" \
+        "$sing_box_status" \
+        "$PODKOP_FAST_SING_BOX_EXTENDED" \
+        "$PODKOP_FAST_ZAPRET_INSTALLED" \
+        "$PODKOP_FAST_ZAPRET2_INSTALLED" \
+        "$PODKOP_FAST_BYEDPI_INSTALLED" \
         "${PODKOP_FAST_SERVER_INBOUNDS_ENABLED_COUNT:-0}"
 }
 
 case "$PODKOP_COMMAND" in
 get_ui_capabilities)
     podkop_fast_get_ui_capabilities
+    exit $?
+    ;;
+get_ui_state)
+    podkop_fast_get_ui_state
+    exit $?
+    ;;
+service_action_async)
+    ui_runtime_service_action_async "$2"
+    exit $?
+    ;;
+service_action_status)
+    ui_runtime_service_action_status "$2"
+    exit $?
+    ;;
+latency_test_async)
+    ui_runtime_latency_test_async "$2" "$3" "$4"
+    exit $?
+    ;;
+latency_test_status)
+    ui_runtime_latency_test_status "$2"
+    exit $?
+    ;;
+ui_action_ack)
+    ui_runtime_action_ack "$2" "$3"
     exit $?
     ;;
 esac
@@ -721,6 +798,51 @@ reload() {
     return 0
 }
 
+reload_tracked() {
+    local reload_reason="${1:-}"
+    local job_id="" state_file="" status job_pid
+
+    if [ "${PODKOP_UI_ACTION_TRACKED:-0}" = "1" ]; then
+        reload "$reload_reason"
+        return "$?"
+    fi
+
+    job_id="$(ui_runtime_service_action_begin reload "runtime_reload" 2>/dev/null || true)"
+    if [ -n "$job_id" ]; then
+        state_file="$(ui_runtime_job_state_path "$PODKOP_UI_SERVICE_ACTION_DIR" "$job_id" 2>/dev/null || true)"
+        [ -n "$state_file" ] && ui_runtime_update_running_pid "$state_file" "$$" >/dev/null 2>&1 || true
+    fi
+
+    reload "$reload_reason"
+    status="$?"
+
+    if [ -z "$job_id" ] || [ -z "$state_file" ]; then
+        return "$status"
+    fi
+
+    if [ "$status" -ne 0 ]; then
+        ui_runtime_service_action_finish_job "$job_id" false "Service reload failed" "$status" >/dev/null 2>&1 || true
+        return "$status"
+    fi
+
+    if ui_runtime_service_enabled || ui_runtime_podkop_running; then
+        (
+            trap '' HUP
+            if ui_runtime_service_action_wait_for_expected_state reload; then
+                ui_runtime_service_action_finish_job "$job_id" true "Service reload completed" 0
+            else
+                ui_runtime_service_action_finish_job "$job_id" false "Service reload did not reach expected state" 1
+            fi
+        ) >/dev/null 2>&1 &
+        job_pid="$!"
+        ui_runtime_update_running_pid "$state_file" "$job_pid" >/dev/null 2>&1 || true
+    else
+        ui_runtime_service_action_finish_job "$job_id" true "Service reload completed" 0 >/dev/null 2>&1 || true
+    fi
+
+    return "$status"
+}
+
 restart() {
     local status
 
@@ -849,6 +971,12 @@ Available commands:
     get_system_info         Get system information in JSON format
     get_server_capabilities Get server UI capabilities in JSON format
     get_ui_capabilities     Get lightweight UI capabilities in JSON format
+    get_ui_state            Get lightweight UI service/action state in JSON format
+    service_action_async    Start a service action in the background
+    service_action_status   Get background service action status
+    latency_test_async      Start a dashboard latency test in the background
+    latency_test_status     Get background latency test status
+    ui_action_ack           Acknowledge and remove a finished UI action state
     generate_reality_keypair
                             Generate a sing-box Reality key pair in JSON format
     get_tls_certificate_sha256 [server]
@@ -875,7 +1003,7 @@ stop)
     stop
     ;;
 reload)
-    reload "$2"
+    reload_tracked "$2"
     ;;
 restart)
     restart
@@ -1002,6 +1130,24 @@ get_server_capabilities)
     ;;
 get_ui_capabilities)
     get_ui_capabilities
+    ;;
+get_ui_state)
+    podkop_fast_get_ui_state
+    ;;
+service_action_async)
+    ui_runtime_service_action_async "$2"
+    ;;
+service_action_status)
+    ui_runtime_service_action_status "$2"
+    ;;
+latency_test_async)
+    ui_runtime_latency_test_async "$2" "$3" "$4"
+    ;;
+latency_test_status)
+    ui_runtime_latency_test_status "$2"
+    ;;
+ui_action_ack)
+    ui_runtime_action_ack "$2" "$3"
     ;;
 generate_reality_keypair)
     generate_reality_keypair
