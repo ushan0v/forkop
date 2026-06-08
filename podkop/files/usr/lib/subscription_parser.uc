@@ -1081,6 +1081,8 @@ function set_record_field(record, key, value) {
     record.fields[key] = value;
 }
 
+let parse_clash_map;
+
 function parse_clash_pair(record, part, prefix) {
     part = trim(part);
     let colon = find_top_level_colon(part);
@@ -1094,7 +1096,7 @@ function parse_clash_pair(record, part, prefix) {
         set_record_field(record, prefix + key, value);
 }
 
-function parse_clash_map(record, value, prefix) {
+parse_clash_map = function(record, value, prefix) {
     value = trim(value);
     if (substr(value, 0, 1) == "{")
         value = substr(value, 1);
@@ -1103,7 +1105,7 @@ function parse_clash_map(record, value, prefix) {
 
     for (let part in split_top_level(value, ","))
         parse_clash_pair(record, part, prefix);
-}
+};
 
 function empty_clash_record() {
     return {
@@ -1455,10 +1457,6 @@ function normalize_uri_list_data(data, output_file) {
         return false;
     }
     return true;
-}
-
-function normalize_uri_list(input_file, output_file) {
-    return normalize_uri_list_file(input_file, output_file, false);
 }
 
 let metadata_allowed_keys = {
@@ -1873,6 +1871,10 @@ function normalize_uri_list_file(input_file, output_file, strip_metadata) {
     let ok = normalize_uri_list_stream(input, output_file, strip_metadata);
     input.close();
     return ok;
+}
+
+function normalize_uri_list(input_file, output_file) {
+    return normalize_uri_list_file(input_file, output_file, false);
 }
 
 function strip_metadata_preamble_data(data) {
