@@ -1030,7 +1030,7 @@ function service_list_instance_running(name) {
     exit(1);
 }
 
-function write_dns_check_json(dns_type, dns_server, dns_status, dns_on_router, bootstrap_dns_server, bootstrap_dns_status, dhcp_config_status) {
+function write_dns_check_json(dns_type, dns_server, dns_status, dns_on_router, bootstrap_dns_server, bootstrap_dns_status, dhcp_config_status, dont_touch_dhcp) {
     write_json({
         dns_type: as_string(dns_type),
         dns_server: as_string(dns_server),
@@ -1038,7 +1038,8 @@ function write_dns_check_json(dns_type, dns_server, dns_status, dns_on_router, b
         dns_on_router: arg_number(dns_on_router),
         bootstrap_dns_server: as_string(bootstrap_dns_server),
         bootstrap_dns_status: arg_number(bootstrap_dns_status),
-        dhcp_config_status: arg_number(dhcp_config_status)
+        dhcp_config_status: arg_number(dhcp_config_status),
+        dont_touch_dhcp: arg_number(dont_touch_dhcp)
     });
 }
 
@@ -1714,7 +1715,7 @@ else if (mode == "service-status-running")
 else if (mode == "service-list-instance-running")
     service_list_instance_running(ARGV[1]);
 else if (mode == "dns-check-json")
-    write_dns_check_json(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
+    write_dns_check_json(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7], ARGV[8]);
 else if (mode == "nft-check-json")
     write_nft_check_json(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7], ARGV[8]);
 else if (mode == "sing-box-check-json")

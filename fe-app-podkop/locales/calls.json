@@ -235,7 +235,7 @@
     "call": "Bootsrap DNS",
     "key": "Bootsrap DNS",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:65"
+      "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:53"
     ]
   },
   {
@@ -482,6 +482,13 @@
     ]
   },
   {
+    "call": "Checks passed with manual DHCP",
+    "key": "Checks passed with manual DHCP",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:25"
+    ]
+  },
+  {
     "call": "ciadpi command options. Podkop Plus manages the listen address and port.",
     "key": "ciadpi command options. Podkop Plus manages the listen address and port.",
     "places": [
@@ -704,7 +711,14 @@
     "call": "DHCP has DNS server",
     "key": "DHCP has DNS server",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:82"
+      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:35"
+    ]
+  },
+  {
+    "call": "DHCP is managed manually",
+    "key": "DHCP is managed manually",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:34"
     ]
   },
   {
@@ -753,7 +767,7 @@
     "call": "DNS on router",
     "key": "DNS on router",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:77"
+      "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:65"
     ]
   },
   {
@@ -1880,7 +1894,7 @@
     "call": "Main DNS",
     "key": "Main DNS",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:72"
+      "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:60"
     ]
   },
   {

@@ -594,8 +594,8 @@ reload() {
     local force_runtime_reload=0
     local previous_service_trigger_signature previous_dnsmasq_signature previous_sing_box_signature previous_nft_signature
     local previous_zapret_queue_signature previous_zapret_runtime_signature previous_zapret2_queue_signature previous_zapret2_runtime_signature previous_byedpi_runtime_signature previous_list_signature previous_cron_signature
-    local previous_urltest_enabled_sections previous_urltest_enabled_sections_known previous_dont_touch_dhcp needs_sing_box_reload needs_nft_rebuild needs_zapret_restart needs_zapret2_restart needs_byedpi_restart
-    local needs_dnsmasq_configure needs_dnsmasq_restore needs_cron_refresh needs_list_update
+    local previous_urltest_enabled_sections previous_urltest_enabled_sections_known needs_sing_box_reload needs_nft_rebuild needs_zapret_restart needs_zapret2_restart needs_byedpi_restart
+    local needs_dnsmasq_configure needs_cron_refresh needs_list_update
     local changed_service_triggers changed_dnsmasq changed_sing_box changed_nft changed_zapret_queue changed_zapret_runtime changed_zapret2_queue changed_zapret2_runtime changed_byedpi_runtime changed_cron changed_list
 
     log "Podkop Plus reload"
@@ -644,7 +644,6 @@ reload() {
     else
         previous_urltest_enabled_sections=""
     fi
-    previous_dont_touch_dhcp="$(read_reload_state_value "dont_touch_dhcp")"
     capture_reload_state
     if [ "$previous_urltest_enabled_sections_known" -eq 1 ]; then
         PODKOP_URLTEST_NEW_ENABLED_SECTIONS="$(
@@ -660,7 +659,6 @@ reload() {
     needs_zapret2_restart=0
     needs_byedpi_restart=0
     needs_dnsmasq_configure=0
-    needs_dnsmasq_restore=0
     needs_cron_refresh=0
     needs_list_update=0
     changed_service_triggers=0
@@ -720,8 +718,6 @@ reload() {
         changed_dnsmasq=1
         if [ "$RELOAD_STATE_DONT_TOUCH_DHCP" -eq 0 ]; then
             needs_dnsmasq_configure=1
-        elif [ "$previous_dont_touch_dhcp" = "0" ]; then
-            needs_dnsmasq_restore=1
         fi
     fi
 
@@ -745,13 +741,12 @@ reload() {
         [ "$needs_zapret_restart" -eq 0 ] &&
         [ "$needs_zapret2_restart" -eq 0 ] &&
         [ "$needs_byedpi_restart" -eq 0 ] &&
-        [ "$needs_dnsmasq_configure" -eq 0 ] &&
-        [ "$needs_dnsmasq_restore" -eq 0 ]; then
+        [ "$needs_dnsmasq_configure" -eq 0 ]; then
         needs_sing_box_reload=1
     fi
 
     log "Reload signature changes: service_triggers=$changed_service_triggers sing-box=$changed_sing_box nft=$changed_nft zapret_queue=$changed_zapret_queue zapret_runtime=$changed_zapret_runtime zapret2_queue=$changed_zapret2_queue zapret2_runtime=$changed_zapret2_runtime byedpi_runtime=$changed_byedpi_runtime dnsmasq=$changed_dnsmasq cron=$changed_cron list=$changed_list forced=$force_runtime_reload" "debug"
-    log "Reload plan: sing-box=$needs_sing_box_reload nft=$needs_nft_rebuild zapret=$needs_zapret_restart zapret2=$needs_zapret2_restart byedpi=$needs_byedpi_restart dnsmasq_configure=$needs_dnsmasq_configure dnsmasq_restore=$needs_dnsmasq_restore cron=$needs_cron_refresh list_update=$needs_list_update" "debug"
+    log "Reload plan: sing-box=$needs_sing_box_reload nft=$needs_nft_rebuild zapret=$needs_zapret_restart zapret2=$needs_zapret2_restart byedpi=$needs_byedpi_restart dnsmasq_configure=$needs_dnsmasq_configure cron=$needs_cron_refresh list_update=$needs_list_update" "debug"
 
     if [ "$needs_sing_box_reload" -eq 0 ] &&
         [ "$needs_nft_rebuild" -eq 0 ] &&
@@ -759,16 +754,11 @@ reload() {
         [ "$needs_zapret2_restart" -eq 0 ] &&
         [ "$needs_byedpi_restart" -eq 0 ] &&
         [ "$needs_dnsmasq_configure" -eq 0 ] &&
-        [ "$needs_dnsmasq_restore" -eq 0 ] &&
         [ "$needs_cron_refresh" -eq 0 ] &&
         [ "$needs_list_update" -eq 0 ]; then
         write_reload_state
         log "Reload skipped: runtime-relevant configuration is unchanged"
         return 0
-    fi
-
-    if [ "$needs_dnsmasq_restore" -eq 1 ]; then
-        dnsmasq_restore force
     fi
 
     if [ "$needs_zapret_restart" -eq 1 ]; then

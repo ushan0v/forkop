@@ -1,9 +1,9 @@
 import { insertIf } from '../../../../helpers';
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
 import { PodkopShellMethods } from '../../../methods';
-import { IDiagnosticsChecksItem } from '../../../services';
+import type { IDiagnosticsChecksItem } from '../../../services';
 import { updateCheckStore } from './updateCheckStore';
-import { getMeta } from '../helpers/getMeta';
+import { getDnsCheckPresentation } from './getDnsCheckPresentation';
 
 export async function runDnsCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.DNS;
@@ -33,20 +33,8 @@ export async function runDnsCheck() {
   }
 
   const data = dnsChecks.data;
-
-  const allGood =
-    Boolean(data.dns_on_router) &&
-    Boolean(data.dhcp_config_status) &&
-    Boolean(data.bootstrap_dns_status) &&
-    Boolean(data.dns_status);
-
-  const atLeastOneGood =
-    Boolean(data.dns_on_router) ||
-    Boolean(data.dhcp_config_status) ||
-    Boolean(data.bootstrap_dns_status) ||
-    Boolean(data.dns_status);
-
-  const { state, description } = getMeta({ atLeastOneGood, allGood });
+  const { state, description, dhcpItemState, dhcpItemKey } =
+    getDnsCheckPresentation(data);
 
   updateCheckStore({
     order,
@@ -78,14 +66,14 @@ export async function runDnsCheck() {
         value: '',
       },
       {
-        state: data.dhcp_config_status ? 'success' : 'error',
-        key: _('DHCP has DNS server'),
+        state: dhcpItemState,
+        key: dhcpItemKey,
         value: '',
       },
     ],
   });
 
-  if (!atLeastOneGood) {
+  if (state === 'error') {
     throw new Error('DNS checks failed');
   }
 }

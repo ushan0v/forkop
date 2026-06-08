@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-07 02:17+0300\n"
-"PO-Revision-Date: 2026-06-07 02:17+0300\n"
+"POT-Creation-Date: 2026-06-08 03:31+0300\n"
+"PO-Revision-Date: 2026-06-08 03:31+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -206,6 +206,9 @@ msgstr "Проверки не выполнены"
 msgid "Checks passed"
 msgstr "Проверки пройдены"
 
+msgid "Checks passed with manual DHCP"
+msgstr "Проверки пройдены с ручным DHCP"
+
 msgid "ciadpi command options. Podkop Plus manages the listen address and port."
 msgstr "Параметры команды ciadpi. Адрес и порт прослушивания управляются Podkop Plus."
 
@@ -298,6 +301,9 @@ msgstr "Устройство, IP или подсеть"
 
 msgid "DHCP has DNS server"
 msgstr "DHCP содержит DNS сервер"
+
+msgid "DHCP is managed manually"
+msgstr "DHCP управляется вручную"
 
 msgid "Diagnostics"
 msgstr "Диагностика"

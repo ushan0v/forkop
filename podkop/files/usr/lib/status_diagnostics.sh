@@ -1114,10 +1114,11 @@ dns_check_router_resolver_available() {
 }
 
 check_dns_available() {
-    local dns_type dns_server bootstrap_dns_server dns_server_host bootstrap_check_domain display_dns_server
+    local dns_type dns_server bootstrap_dns_server dns_server_host bootstrap_check_domain display_dns_server dont_touch_dhcp
     config_get dns_type "settings" "dns_type"
     config_get dns_server "settings" "dns_server"
     config_get bootstrap_dns_server "settings" "bootstrap_dns_server"
+    config_get_bool dont_touch_dhcp "settings" "dont_touch_dhcp" 0
 
     local dns_status=0
     local dns_on_router=0
@@ -1172,7 +1173,8 @@ check_dns_available() {
         "$dns_on_router" \
         "$bootstrap_dns_server" \
         "$bootstrap_dns_status" \
-        "$dhcp_config_status"
+        "$dhcp_config_status" \
+        "$dont_touch_dhcp"
 }
 
 check_dhcp_has_podkop_dns() {

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-07 23:17+0300\n"
-"PO-Revision-Date: 2026-06-07 23:17+0300\n"
+"POT-Creation-Date: 2026-06-08 00:31+0300\n"
+"PO-Revision-Date: 2026-06-08 00:31+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -152,7 +152,7 @@ msgstr ""
 msgid "Backend validation failed: %s"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:65
+#: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:53
 msgid "Bootsrap DNS"
 msgstr ""
 
@@ -309,6 +309,10 @@ msgstr ""
 msgid "Checks passed"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:25
+msgid "Checks passed with manual DHCP"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3343
 msgid "ciadpi command options. Podkop Plus manages the listen address and port."
 msgstr ""
@@ -438,8 +442,12 @@ msgstr ""
 msgid "Device, IP, or subnet"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:82
+#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:35
 msgid "DHCP has DNS server"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:34
+msgid "DHCP is managed manually"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:461
@@ -466,7 +474,7 @@ msgstr ""
 msgid "Disabling interception is incompatible with action=zapret2 because Podkop Plus sends matched traffic through NFQUEUE."
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:77
+#: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:65
 msgid "DNS on router"
 msgstr ""
 
@@ -1125,7 +1133,7 @@ msgstr ""
 msgid "Log Level"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:72
+#: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:60
 msgid "Main DNS"
 msgstr ""
 
