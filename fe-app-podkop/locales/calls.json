@@ -568,6 +568,7 @@
     "call": "Components",
     "key": "Components",
     "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:497",
       "src/podkop/tabs/updates/render.ts:3"
     ]
   },
@@ -3750,13 +3751,6 @@
     "key": "Unsupported security mode for this protocol",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2018"
-    ]
-  },
-  {
-    "call": "Update",
-    "key": "Update",
-    "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:497"
     ]
   },
   {
