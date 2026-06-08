@@ -3651,6 +3651,7 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
     this.running = false;
     this.paused = false;
     this.checking = false;
+    this.primed = false;
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) this.pause();
@@ -3670,6 +3671,7 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
     this.intervalMs = options?.intervalMs ?? 5e3;
     this.maxTrackedLines = options?.maxTrackedLines ?? 500;
     this.lastLines = /* @__PURE__ */ new Set();
+    this.primed = false;
     logger.info(
       "[PodkopLogWatcher]",
       `initialized (interval: ${this.intervalMs}ms)`
@@ -3698,6 +3700,11 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
     try {
       const raw = await this.fetcher();
       const lines = this.normalizeLines(raw);
+      if (!this.primed) {
+        this.lastLines = new Set(lines);
+        this.primed = true;
+        return;
+      }
       for (const line of lines) {
         if (this.lastLines.has(line)) {
           continue;
@@ -3750,6 +3757,7 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
   reset() {
     this.lastLines = /* @__PURE__ */ new Set();
     this.checking = false;
+    this.primed = false;
     logger.info("[PodkopLogWatcher]", "log history reset");
   }
 };
@@ -10509,7 +10517,6 @@ var MonitoringTab = {
 // src/podkop/tabs/updates/render.ts
 function render4() {
   return E("div", { id: "updates-status", class: "pdk_updates-page" }, [
-    E("h3", { class: "pdk_updates-page__title" }, _("Components")),
     E("div", {
       id: "pdk_updates-components",
       class: "pdk_updates-page__components"
@@ -11357,13 +11364,6 @@ var styles6 = `
 
 .pdk_updates-page {
     width: 100%;
-}
-
-.pdk_updates-page__title {
-    margin: 0 0 10px;
-    color: var(--text-color-high);
-    font-size: 1.1rem;
-    line-height: 1.3;
 }
 
 .pdk_updates-page__components {

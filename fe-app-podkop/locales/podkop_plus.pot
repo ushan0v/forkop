@@ -359,11 +359,6 @@ msgstr ""
 msgid "Closed"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:497
-#: src/podkop/tabs/updates/render.ts:3
-msgid "Components"
-msgstr ""
-
 #: src/podkop/helpers/singBoxVariant.ts:52
 msgid "compressed"
 msgstr ""

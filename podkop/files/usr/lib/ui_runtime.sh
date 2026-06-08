@@ -416,7 +416,7 @@ ui_runtime_sing_box_tiny_package_installed() {
         return $?
     fi
 
-    opkg list-installed sing-box-tiny >/dev/null 2>&1
+    opkg list-installed 2>/dev/null | awk '$1 == "sing-box-tiny" { found = 1 } END { exit(found ? 0 : 1) }'
 }
 
 ui_runtime_component_action_running_for() {

@@ -807,6 +807,11 @@ check_byedpi_runtime() {
     check_byedpi_runtime_json
 }
 
+sing_box_process_is_running() {
+    pgrep -x "sing-box" >/dev/null 2>&1 ||
+        pgrep -f "^/usr/bin/sing-box[[:space:]]" >/dev/null 2>&1
+}
+
 get_sing_box_status() {
     local running=0
     local enabled=0
@@ -819,7 +824,7 @@ get_sing_box_status() {
     fi
 
     # Check if service is running
-    if pgrep -f "sing-box" > /dev/null; then
+    if sing_box_process_is_running; then
         running=1
     fi
 
@@ -1302,7 +1307,7 @@ check_sing_box() {
     fi
 
     # Check if process is running
-    if pgrep "sing-box" > /dev/null 2>&1; then
+    if sing_box_process_is_running; then
         sing_box_process_running=1
     fi
 

@@ -914,6 +914,11 @@ uninstall() {
     package_manager_remove_if_installed "luci-i18n-podkop-plus-ru"
     package_manager_remove_if_installed "luci-app-podkop-plus"
 
+    if command -v sing_box_managed_service_installed >/dev/null 2>&1 && sing_box_managed_service_installed; then
+        sing_box_remove_managed_service_script >/dev/null 2>&1 || true
+        rm -f /usr/bin/sing-box /usr/lib/libcronet.so
+    fi
+
     rm -rf /usr/lib/podkop-plus
     rm -rf "$PODKOP_LUCI_VIEW_DIR"
     rm -f "$PODKOP_SERVICE_INIT"

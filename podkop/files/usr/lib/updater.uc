@@ -684,24 +684,42 @@ function sing_box_extended_arch_suffix(host_arch, distrib_arch) {
         exit(1);
 }
 
-function sing_box_extended_asset_url(arch_suffix, prefer_musl, compressed) {
+function sing_box_extended_asset_url(arch_suffix, _unused, compressed) {
     let release = object_or_empty(read_stdin_json());
-    let patterns = [];
+
+    if (as_string(compressed) != "1")
+        exit(1);
 
     arch_suffix = as_string(arch_suffix);
     if (arch_suffix == "")
         exit(1);
 
-    if (as_string(compressed) == "1")
-        push(patterns, "linux-" + arch_suffix + "-compressed.tar.gz");
-    else if (as_string(prefer_musl) == "1")
-        push(patterns, "linux-" + arch_suffix + "-musl.tar.gz");
-    if (as_string(compressed) != "1")
-        push(patterns, "linux-" + arch_suffix + ".tar.gz");
+    let url = release_asset_url_by_suffix_from_release(release, "linux-" + arch_suffix + "-compressed.tar.gz");
+    if (url != "") {
+        print(url, "\n");
+        return;
+    }
 
-    for (let suffix in patterns) {
-        let url = release_asset_url_by_suffix_from_release(release, suffix);
-        if (url != "") {
+    exit(1);
+}
+
+function sing_box_extended_package_asset_url(distrib_arch, asset_ext) {
+    let release = object_or_empty(read_stdin_json());
+    let suffix;
+
+    distrib_arch = as_string(distrib_arch);
+    asset_ext = as_string(asset_ext);
+    if (distrib_arch == "" || asset_ext == "")
+        exit(1);
+
+    suffix = "_openwrt_" + distrib_arch + "." + asset_ext;
+    for (let asset in array_or_empty(release.assets)) {
+        if (type(asset) != "object")
+            continue;
+
+        let name = as_string(asset.name || "");
+        let url = as_string(asset.browser_download_url || "");
+        if (url != "" && str_startswith(name, "sing-box-extended_") && str_endswith(name, suffix)) {
             print(url, "\n");
             return;
         }
@@ -1165,6 +1183,8 @@ else if (mode == "sing-box-extended-arch-suffix")
     sing_box_extended_arch_suffix(ARGV[1], ARGV[2]);
 else if (mode == "sing-box-extended-asset-url")
     sing_box_extended_asset_url(ARGV[1], ARGV[2], ARGV[3]);
+else if (mode == "sing-box-extended-package-asset-url")
+    sing_box_extended_package_asset_url(ARGV[1], ARGV[2]);
 else if (mode == "updates-opkg-package-installed")
     updates_opkg_package_installed(ARGV[1]);
 else if (mode == "updates-opkg-package-version")

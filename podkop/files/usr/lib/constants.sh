@@ -34,6 +34,7 @@ NFT_OUTBOUND_MARK="0x00200000"
 
 ## sing-box
 SB_REQUIRED_VERSION="1.12.0"
+SB_MANAGED_SERVICE_MARKER="Podkop Plus managed sing-box service for binary variants"
 # DNS
 SB_DNS_SERVER_TAG="dns-server"
 SB_FAKEIP_DNS_SERVER_TAG="fakeip-server"
@@ -57,6 +58,7 @@ SB_DIRECT_OUTBOUND_TAG="direct-out"
 # Experimental
 SB_CLASH_API_CONTROLLER_PORT=9090
 SB_VARIANT_STATE_FILE="/etc/podkop-plus/sing-box-variant"
+SB_VERSION_STATE_FILE="/etc/podkop-plus/sing-box-version"
 
 ## Lists
 GITHUB_RAW_URL="https://raw.githubusercontent.com/itdoginfo/allow-domains/main"

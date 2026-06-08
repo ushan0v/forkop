@@ -24,7 +24,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/podkop-plus
 	SECTION:=net
 	CATEGORY:=Network
-	DEPENDS:=sing-box +curl +ucode +ucode-mod-fs +kmod-nft-tproxy +coreutils-base64 +coreutils-sort +bind-dig +nftables +kmod-nft-nat +kmod-nft-offload
+	DEPENDS:=+ca-bundle +kmod-inet-diag +kmod-netlink-diag +kmod-tun +curl +ucode +ucode-mod-fs +kmod-nft-tproxy +coreutils-base64 +coreutils-sort +bind-dig +nftables +kmod-nft-nat +kmod-nft-offload
 	CONFLICTS:=https-dns-proxy nextdns luci-app-passwall luci-app-passwall2
 	TITLE:=Podkop Plus backend service
 	URL:=https://github.com/ushan0v/podkop-plus
@@ -109,6 +109,12 @@ case "$$podkop_dont_touch_dhcp" in
 		fi
 		;;
 esac
+
+if [ -r /etc/init.d/sing-box ] && grep -q "Podkop Plus managed sing-box service for binary variants" /etc/init.d/sing-box 2>/dev/null; then
+	/etc/init.d/sing-box stop >/dev/null 2>&1 || true
+	/etc/init.d/sing-box disable >/dev/null 2>&1 || true
+	rm -f /etc/init.d/sing-box /usr/bin/sing-box /usr/lib/libcronet.so
+fi
 
 exit 0
 endef

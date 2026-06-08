@@ -14,13 +14,6 @@ export const styles = `
     width: 100%;
 }
 
-.pdk_updates-page__title {
-    margin: 0 0 10px;
-    color: var(--text-color-high);
-    font-size: 1.1rem;
-    line-height: 1.3;
-}
-
 .pdk_updates-page__components {
     display: flex;
     align-items: flex-start;

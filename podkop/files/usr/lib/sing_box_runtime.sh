@@ -4,8 +4,87 @@ sing_box_runtime_ucode() {
     ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/sing_box_runtime.uc" "$@"
 }
 
+sing_box_managed_service_installed() {
+    [ -r /etc/init.d/sing-box ] || return 1
+    grep -q "${SB_MANAGED_SERVICE_MARKER:-Podkop Plus managed sing-box service for binary variants}" /etc/init.d/sing-box 2>/dev/null
+}
+
+sing_box_install_managed_service_script() {
+    local tmp_file
+
+    tmp_file="/etc/init.d/sing-box.podkop-plus.$$"
+    cat >"$tmp_file" <<'EOF'
+#!/bin/sh /etc/rc.common
+# Podkop Plus managed sing-box service for binary variants
+
+USE_PROCD=1
+START=99
+PROG="/usr/bin/sing-box"
+
+start_service() {
+    config_load "sing-box"
+    local enabled config_file working_directory
+    local log_stderr
+
+    config_get_bool enabled "main" "enabled" "0"
+    [ "$enabled" -eq "1" ] || return 0
+
+    config_get config_file "main" "conffile" "/etc/sing-box/config.json"
+    config_get working_directory "main" "workdir" "/usr/share/sing-box"
+    config_get_bool log_stderr "main" "log_stderr" "1"
+
+    procd_open_instance
+    procd_set_param command "$PROG" run -c "$config_file" -D "$working_directory"
+    procd_set_param file "$config_file"
+    procd_set_param stderr "$log_stderr"
+    procd_set_param limits core="unlimited"
+    procd_set_param limits nofile="1000000 1000000"
+    procd_set_param respawn
+    procd_close_instance
+}
+
+service_triggers() {
+    procd_add_reload_trigger "sing-box"
+}
+EOF
+
+    chmod 0755 "$tmp_file" &&
+        mv -f "$tmp_file" /etc/init.d/sing-box
+}
+
+sing_box_remove_managed_service_script() {
+    sing_box_managed_service_installed || return 0
+
+    /etc/init.d/sing-box stop >/dev/null 2>&1 || true
+    /etc/init.d/sing-box disable >/dev/null 2>&1 || true
+    rm -f /etc/init.d/sing-box
+}
+
+sing_box_disable_service_config() {
+    command -v uci >/dev/null 2>&1 || return 0
+
+    uci -q get sing-box.main >/dev/null 2>&1 ||
+        uci -q set sing-box.main=sing-box >/dev/null 2>&1 || true
+    uci -q set sing-box.main.enabled='0' >/dev/null 2>&1 || true
+    uci -q commit sing-box >/dev/null 2>&1 || true
+}
+
+sing_box_prepare_service_disabled() {
+    sing_box_disable_service_config
+    [ -x /etc/init.d/sing-box ] && /etc/init.d/sing-box stop >/dev/null 2>&1 || true
+    [ -x /etc/init.d/sing-box ] && /etc/init.d/sing-box disable >/dev/null 2>&1 || true
+}
+
 sing_box_configure_service() {
     local sing_box_enabled sing_box_user sing_box_config_path sing_box_conffile
+
+    if is_sing_box_compressed_marker_set; then
+        sing_box_install_managed_service_script || {
+            log "Failed to install managed sing-box service for compressed binary. Aborted." "fatal"
+            exit 1
+        }
+    fi
+
     sing_box_enabled="$(uci_get "sing-box" "main" "enabled")"
     sing_box_user="$(uci_get "sing-box" "main" "user")"
 

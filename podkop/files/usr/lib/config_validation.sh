@@ -611,8 +611,13 @@ check_requirements() {
         exit 1
     fi
 
+    if ! service_exists "sing-box" && is_sing_box_compressed_marker_set &&
+        command -v sing_box_install_managed_service_script >/dev/null 2>&1; then
+        sing_box_install_managed_service_script >/dev/null 2>&1 || true
+    fi
+
     if ! service_exists "sing-box"; then
-        log "Service 'sing-box' is missing. Please install the official package to ensure the service is available. Aborted." "error"
+        log "Service 'sing-box' is missing. Install a sing-box package or reinstall the compressed sing-box-extended binary variant. Aborted." "error"
         exit 1
     fi
 

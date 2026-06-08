@@ -41,8 +41,8 @@ APP_DESCRIPTION="Rule-based Podkop Plus LuCI app with hybrid sing-box + zapret o
 I18N_DESCRIPTION="Translation for luci-app-podkop-plus - Русский (Russian)"
 MAINTAINER="ushan0v <ushan0v@users.noreply.github.com>"
 PROJECT_URL="https://github.com/ushan0v/podkop-plus"
-BACKEND_DEPENDS_IPK="libc, sing-box, curl, ucode, ucode-mod-fs, kmod-nft-tproxy, coreutils-base64, coreutils-sort, bind-dig, nftables, kmod-nft-nat, kmod-nft-offload"
-BACKEND_DEPENDS_APK="bind-dig coreutils-base64 coreutils-sort curl ucode ucode-mod-fs kmod-nft-nat kmod-nft-offload kmod-nft-tproxy libc nftables sing-box"
+BACKEND_DEPENDS_IPK="libc, ca-bundle, kmod-inet-diag, kmod-netlink-diag, kmod-tun, curl, ucode, ucode-mod-fs, kmod-nft-tproxy, coreutils-base64, coreutils-sort, bind-dig, nftables, kmod-nft-nat, kmod-nft-offload"
+BACKEND_DEPENDS_APK="bind-dig ca-bundle coreutils-base64 coreutils-sort curl kmod-inet-diag kmod-netlink-diag kmod-nft-nat kmod-nft-offload kmod-nft-tproxy kmod-tun libc nftables ucode ucode-mod-fs"
 APP_DEPENDS_IPK="libc, luci-base, podkop-plus"
 APP_DEPENDS_APK="libc luci-base podkop-plus"
 
