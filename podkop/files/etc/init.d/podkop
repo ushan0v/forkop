@@ -9,6 +9,7 @@ EXTRA_HELP="        retry_start_on_wan_up Retry failed cold start after WAN come
 script=$(readlink "$initscript")
 NAME="$(basename ${script:-$initscript})"
 CONFIG_NAME="podkop-plus"
+PODKOP_LIB="/usr/lib/podkop-plus"
 PODKOP_BIN="/usr/bin/podkop-plus"
 PODKOP_SERVICE_INIT="/etc/init.d/podkop-plus"
 PODKOP_CONFIG_FILE="/etc/config/$CONFIG_NAME"
@@ -19,6 +20,8 @@ PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD="/var/run/podkop-plus.internal-config-chang
 PODKOP_CONFIG_CHANGE_REASON="on_config_change"
 PODKOP_DNSMASQ_FAILSAFE="/usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh"
 PODKOP_STATUS_DIAGNOSTICS_UC="/usr/lib/podkop-plus/status_diagnostics.uc"
+PODKOP_CONSTANTS_LIB="$PODKOP_LIB/constants.sh"
+PODKOP_UI_RUNTIME_LIB="$PODKOP_LIB/ui_runtime.sh"
 config_load "$CONFIG_NAME"
 
 dnsmasq_management_disabled() {
@@ -156,6 +159,59 @@ service_is_enabled() {
     [ -x "/etc/rc.d/S99$NAME" ]
 }
 
+load_ui_runtime() {
+    [ "${PODKOP_INITD_UI_RUNTIME_LOADED:-0}" = "1" ] && return 0
+    [ -r "$PODKOP_CONSTANTS_LIB" ] || return 1
+    [ -r "$PODKOP_UI_RUNTIME_LIB" ] || return 1
+
+    . "$PODKOP_CONSTANTS_LIB" || return 1
+    . "$PODKOP_UI_RUNTIME_LIB" || return 1
+    PODKOP_INITD_UI_RUNTIME_LOADED=1
+}
+
+begin_external_service_action() {
+    local action="$1"
+    local job_id state_file
+
+    [ "${PODKOP_UI_ACTION_TRACKED:-0}" = "1" ] && return 1
+    load_ui_runtime || return 1
+
+    job_id="$(ui_runtime_service_action_begin_if_idle "$action" "initd" 2>/dev/null)" || return 1
+    state_file="$(ui_runtime_job_state_path "$PODKOP_UI_SERVICE_ACTION_DIR" "$job_id" 2>/dev/null)" || return 1
+    ui_runtime_update_running_pid "$state_file" "$$" >/dev/null 2>&1 || true
+
+    printf '%s\n' "$job_id"
+}
+
+finish_external_service_action() {
+    local action="$1"
+    local job_id="$2"
+    local status="$3"
+    local state_file job_pid
+
+    [ -n "$job_id" ] || return 0
+    load_ui_runtime || return 0
+
+    state_file="$(ui_runtime_job_state_path "$PODKOP_UI_SERVICE_ACTION_DIR" "$job_id" 2>/dev/null)" || return 0
+    [ -f "$state_file" ] || return 0
+
+    if [ "$status" -ne 0 ]; then
+        ui_runtime_service_action_finish_job "$job_id" false "Service $action failed" "$status" >/dev/null 2>&1 || true
+        return 0
+    fi
+
+    (
+        trap '' HUP
+        if ui_runtime_service_action_wait_for_expected_state "$action"; then
+            ui_runtime_service_action_finish_job "$job_id" true "Service $action completed" 0
+        else
+            ui_runtime_service_action_finish_job "$job_id" false "Service $action did not reach expected state" 1
+        fi
+    ) >/dev/null 2>&1 &
+    job_pid="$!"
+    ui_runtime_update_running_pid "$state_file" "$job_pid" >/dev/null 2>&1 || true
+}
+
 consume_internal_config_guard() {
     rm -f "$PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD" 2> /dev/null
 }
@@ -225,10 +281,14 @@ should_restore_dnsmasq_on_start() {
 }
 
 start_service() {
+    local ui_job_id status
+
     echo "Start Podkop Plus"
+    ui_job_id="$(begin_external_service_action start 2>/dev/null || true)"
 
     if [ ! -x "$PODKOP_BIN" ]; then
         restore_dnsmasq_failsafe
+        finish_external_service_action start "$ui_job_id" 1
         return 1
     fi
 
@@ -246,13 +306,20 @@ start_service() {
     procd_set_param stdout 1
     procd_set_param stderr 1
     procd_close_instance
+    status="$?"
+
+    finish_external_service_action start "$ui_job_id" "$status"
+    return "$status"
 }
 
 stop_service() {
-    local status
+    local status ui_job_id
+
+    ui_job_id="$(begin_external_service_action stop 2>/dev/null || true)"
 
     if [ ! -x "$PODKOP_BIN" ]; then
         restore_dnsmasq_failsafe
+        finish_external_service_action stop "$ui_job_id" 1
         return 1
     fi
 
@@ -260,6 +327,7 @@ stop_service() {
     status="$?"
     [ "$status" -eq 0 ] || restore_dnsmasq_failsafe
 
+    finish_external_service_action stop "$ui_job_id" "$status"
     return "$status"
 }
 
