@@ -2,7 +2,7 @@
 
 [![Star](https://img.shields.io/github/stars/ushan0v/podkop-plus?style=social)](https://github.com/ushan0v/podkop-plus/stargazers)
 [![Releases](https://img.shields.io/github/v/release/ushan0v/podkop-plus?label=releases)](https://github.com/ushan0v/podkop-plus/releases)
-[![Telegram](https://img.shields.io/badge/Telegram-Flint%202-2CA5E0?logo=telegram&logoColor=white)](https://t.me/Flint_2/32152)
+[![Telegram](https://img.shields.io/badge/Telegram-Podkop%20Plus%20%7C%20Chat-2CA5E0?logo=telegram&logoColor=white)](https://t.me/podkop_plus_chat)
 [![podkop](https://img.shields.io/badge/podkop-itdoginfo-blue)](https://github.com/itdoginfo/podkop)
 [![zapret-openwrt](https://img.shields.io/badge/zapret--openwrt-remittor-blue)](https://github.com/remittor/zapret-openwrt/releases)
 [![ByeDPI-OpenWrt](https://img.shields.io/badge/ByeDPI--OpenWrt-DPITrickster-blue)](https://github.com/DPITrickster/ByeDPI-OpenWrt/releases)
@@ -21,7 +21,7 @@
 
 > **НЕ ПИШИТЕ** с проблемами Podkop Plus в официальный [Telegram-чат](https://t.me/itdogchat). Это независимый форк. Разработчики и участники оригинального чата не имеют отношения к этому проекту.
 > * Нашли баг или есть проблема? Создайте [Issue](https://github.com/ushan0v/podkop-plus/issues) в этом репозитории.
-> * Не хотите или не умеете создавать Issue? Напишите в специальный топик чата [Flint 2](https://t.me/Flint_2/32152).
+> * Не хотите или не умеете создавать Issue? Напишите в специальный топик чата [Podkop Plus](https://t.me/podkop_plus_chat).
 
 ### Установка
 
