@@ -7497,14 +7497,31 @@ async function runSectionsCheck() {
   for (const section of sections.data) {
     async function getLatency() {
       if (section.withTagSelect) {
-        const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
-          section.code
-        );
         const selectedOutbound2 = section.outbounds.find((item) => item.selected) ?? section.outbounds.find(
           (item) => item.type?.toLowerCase() === "urltest"
         ) ?? section.outbounds[0];
         const isUrlTest = selectedOutbound2?.type?.toLowerCase() === "urltest";
         const isSubscription = section.proxyConfigType === "subscription";
+        if (selectedOutbound2?.code && !isUrlTest) {
+          const latencyProxy2 = await PodkopShellMethods.getClashApiProxyLatency(
+            selectedOutbound2.code,
+            section.latencyTestTimeout
+          );
+          const proxySuccess = latencyProxy2.success && !latencyProxy2.data.message;
+          if (proxySuccess) {
+            return {
+              state: "success",
+              latency: `[${selectedOutbound2.displayName ?? ""}] ${latencyProxy2.data.delay}ms`
+            };
+          }
+          return {
+            state: "error",
+            latency: `[${selectedOutbound2.displayName ?? ""}] ${_("Not responding")}`
+          };
+        }
+        const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
+          section.code
+        );
         const success2 = latencyGroup.success && !latencyGroup.data.message;
         if (success2) {
           const latencyValues = Object.values(latencyGroup.data);

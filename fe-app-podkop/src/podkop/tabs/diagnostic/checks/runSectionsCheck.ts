@@ -61,10 +61,6 @@ export async function runSectionsCheck() {
       latency: string;
     }> {
       if (section.withTagSelect) {
-        const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
-          section.code,
-        );
-
         const selectedOutbound =
           section.outbounds.find((item) => item.selected) ??
           section.outbounds.find(
@@ -75,6 +71,30 @@ export async function runSectionsCheck() {
         const isUrlTest = selectedOutbound?.type?.toLowerCase() === 'urltest';
         const isSubscription = section.proxyConfigType === 'subscription';
 
+        if (selectedOutbound?.code && !isUrlTest) {
+          const latencyProxy = await PodkopShellMethods.getClashApiProxyLatency(
+            selectedOutbound.code,
+            section.latencyTestTimeout,
+          );
+          const proxySuccess =
+            latencyProxy.success && !latencyProxy.data.message;
+
+          if (proxySuccess) {
+            return {
+              state: 'success',
+              latency: `[${selectedOutbound.displayName ?? ''}] ${latencyProxy.data.delay}ms`,
+            };
+          }
+
+          return {
+            state: 'error',
+            latency: `[${selectedOutbound.displayName ?? ''}] ${_('Not responding')}`,
+          };
+        }
+
+        const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
+          section.code,
+        );
         const success = latencyGroup.success && !latencyGroup.data.message;
 
         if (success) {

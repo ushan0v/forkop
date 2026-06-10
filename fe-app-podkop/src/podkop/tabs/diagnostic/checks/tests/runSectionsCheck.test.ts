@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getDashboardSections: vi.fn(),
   getClashApiProxyLatency: vi.fn(),
+  getClashApiGroupLatency: vi.fn(),
   updateCheckStore: vi.fn(),
 }));
 
@@ -13,6 +14,7 @@ vi.mock('../../../../methods/custom/getDashboardSections', () => ({
 vi.mock('../../../../methods', () => ({
   PodkopShellMethods: {
     getClashApiProxyLatency: mocks.getClashApiProxyLatency,
+    getClashApiGroupLatency: mocks.getClashApiGroupLatency,
   },
 }));
 
@@ -26,6 +28,7 @@ describe('runSectionsCheck', () => {
   beforeEach(() => {
     mocks.getDashboardSections.mockReset();
     mocks.getClashApiProxyLatency.mockReset();
+    mocks.getClashApiGroupLatency.mockReset();
     mocks.updateCheckStore.mockReset();
   });
 
@@ -73,6 +76,123 @@ describe('runSectionsCheck', () => {
             state: 'warning',
             key: 'AWG',
             value: '[awg1] Connectivity probe failed',
+          },
+        ],
+      }),
+    );
+  });
+
+  it('checks only the selected concrete outbound for selectable proxy sections', async () => {
+    mocks.getDashboardSections.mockResolvedValue({
+      success: true,
+      data: [
+        {
+          withTagSelect: true,
+          code: 'main-out',
+          sectionName: 'main',
+          displayName: 'Main',
+          latencyTestTimeout: '7000',
+          outbounds: [
+            {
+              code: 'main-1-out',
+              displayName: 'Selected',
+              latency: 0,
+              type: 'VLESS',
+              selected: true,
+            },
+            {
+              code: 'main-2-out',
+              displayName: 'Other',
+              latency: 0,
+              type: 'VLESS',
+              selected: false,
+            },
+          ],
+        },
+      ],
+    });
+    mocks.getClashApiProxyLatency.mockResolvedValue({
+      success: true,
+      data: { delay: 123 },
+    });
+
+    await expect(runSectionsCheck()).resolves.toBeUndefined();
+
+    expect(mocks.getClashApiProxyLatency).toHaveBeenCalledWith(
+      'main-1-out',
+      '7000',
+    );
+    expect(mocks.getClashApiGroupLatency).not.toHaveBeenCalled();
+    expect(mocks.updateCheckStore).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        state: 'success',
+        items: [
+          {
+            state: 'success',
+            key: 'Main',
+            value: '[Selected] 123ms',
+          },
+        ],
+      }),
+    );
+  });
+
+  it('keeps URLTest selections on group latency checks', async () => {
+    mocks.getDashboardSections.mockResolvedValue({
+      success: true,
+      data: [
+        {
+          withTagSelect: true,
+          code: 'main-out',
+          sectionName: 'main',
+          displayName: 'Main',
+          proxyConfigType: 'selector',
+          outbounds: [
+            {
+              code: 'main-urltest-out',
+              displayName: 'Fastest',
+              latency: 10,
+              type: 'URLTest',
+              selected: true,
+            },
+            {
+              code: 'main-1-out',
+              displayName: 'One',
+              latency: 0,
+              type: 'VLESS',
+              selected: false,
+            },
+            {
+              code: 'main-2-out',
+              displayName: 'Two',
+              latency: 0,
+              type: 'VLESS',
+              selected: false,
+            },
+          ],
+        },
+      ],
+    });
+    mocks.getClashApiGroupLatency.mockResolvedValue({
+      success: true,
+      data: {
+        'main-1-out': 120,
+        'main-2-out': 140,
+      },
+    });
+
+    await expect(runSectionsCheck()).resolves.toBeUndefined();
+
+    expect(mocks.getClashApiProxyLatency).not.toHaveBeenCalled();
+    expect(mocks.getClashApiGroupLatency).toHaveBeenCalledWith('main-out');
+    expect(mocks.updateCheckStore).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        state: 'success',
+        items: [
+          {
+            state: 'success',
+            key: 'Main',
+            value: '[Fastest] 120ms / 140ms',
           },
         ],
       }),
