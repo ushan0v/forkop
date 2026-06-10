@@ -322,6 +322,37 @@ describe('getDashboardSections', () => {
     });
   });
 
+  it('does not expose ByeDPI sections on the dashboard', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection(),
+      {
+        '.name': 'dpi',
+        '.type': 'section',
+        enabled: '1',
+        action: 'byedpi',
+      },
+    ]);
+    mocks.getClashApiProxies.mockResolvedValue({
+      success: true,
+      data: {
+        proxies: {
+          ...clashProxies,
+          'dpi-out': proxy('Socks', {
+            name: 'dpi-out',
+            history: [{ time: '2026-06-10T00:00:00Z', delay: 20 }],
+          }),
+        },
+      },
+    });
+
+    const result = await getDashboardSections();
+
+    expect(result.success).toBe(true);
+    expect(result.data.map((section) => section.sectionName)).toEqual([
+      'main',
+    ]);
+  });
+
   it('fetches Clash API proxies directly in the browser to avoid rpcd output limits', async () => {
     mocks.getConfigSections.mockResolvedValue([
       { '.name': 'settings', '.type': 'settings', yacd_secret_key: 'secret' },

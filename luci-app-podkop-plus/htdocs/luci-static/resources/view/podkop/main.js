@@ -3199,9 +3199,7 @@ async function getDashboardSections(options = {}) {
   );
   const data = await Promise.all(
     configSections.filter(
-      (section) => section.enabled !== "0" && ["proxy", "outbound", "vpn", "byedpi"].includes(
-        getSectionAction(section)
-      )
+      (section) => section.enabled !== "0" && ["proxy", "outbound", "vpn"].includes(getSectionAction(section))
     ).map(async (section) => {
       const displayName = getDisplayName(section);
       const sectionName = section[".name"];
@@ -3226,27 +3224,6 @@ async function getDashboardSections(options = {}) {
               selected: true,
               canCopyLink: false,
               runtimeAvailable: Boolean(outbound)
-            }
-          ]
-        };
-      }
-      if (sectionAction === "byedpi") {
-        const outboundTag = getOutboundTagBySection(sectionName);
-        const outbound = proxies.find((proxy) => proxy.code === outboundTag);
-        return {
-          withTagSelect: false,
-          code: outbound?.code || sectionName,
-          sectionName,
-          displayName,
-          action: sectionAction,
-          outbounds: [
-            {
-              code: outbound?.code || sectionName,
-              displayName: "ByeDPI",
-              latency: outbound?.value?.history?.[0]?.delay || 0,
-              type: outbound?.value?.type || "",
-              selected: true,
-              canCopyLink: false
             }
           ]
         };
