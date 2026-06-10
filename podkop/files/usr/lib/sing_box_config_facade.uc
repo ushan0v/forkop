@@ -678,6 +678,7 @@ function prepare_validation(new_outbounds_path, updated_path, validation_path) {
     strip_runtime_fields(config);
 
     let validation = clone(config);
+    validation.inbounds = [];
     let route = type(validation.route) == "object" ? validation.route : {};
     route.rules = [];
     route.rule_set = [];
