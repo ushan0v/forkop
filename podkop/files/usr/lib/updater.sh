@@ -1813,9 +1813,28 @@ updates_restore_sing_box_package_variant() {
     esac
 }
 
+updates_sing_box_variant_is_package_managed() {
+    case "$1" in
+    stable | tiny | extended)
+        return 0
+        ;;
+    esac
+
+    return 1
+}
+
 updates_restore_sing_box_install_backup() {
     local previous_variant="$1"
     local backup_binary="$2"
+
+    if updates_sing_box_variant_is_package_managed "$previous_variant"; then
+        if updates_restore_sing_box_package_variant "$previous_variant"; then
+            return 0
+        fi
+
+        [ -n "$backup_binary" ] && updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+        return 1
+    fi
 
     if [ -n "$backup_binary" ]; then
         updates_restore_sing_box_backup "$backup_binary"
@@ -1833,26 +1852,22 @@ updates_restore_sing_box_after_failed_extended_install() {
     local previous_version_state="$5"
     local archive_file="${6:-}"
     local cronet_touched="${7:-0}"
+    local restore_status
 
     [ -n "$archive_file" ] && rm -f "$archive_file"
+    restore_status=0
 
     if [ "$cronet_touched" -eq 1 ]; then
         updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
     fi
 
-    if updates_restore_sing_box_install_backup "$previous_variant" "$backup_binary"; then
-        updates_restore_sing_box_variant_marker "$previous_marker" >/dev/null 2>&1 || true
-        updates_restore_sing_box_version_state "$previous_version_state" >/dev/null 2>&1 || true
-        updates_restore_sing_box_service_from_marker "$previous_marker" >/dev/null 2>&1 || true
-        updates_clear_version_caches
-        return 0
-    fi
+    updates_restore_sing_box_install_backup "$previous_variant" "$backup_binary" || restore_status=1
 
     updates_restore_sing_box_variant_marker "$previous_marker" >/dev/null 2>&1 || true
     updates_restore_sing_box_version_state "$previous_version_state" >/dev/null 2>&1 || true
     updates_restore_sing_box_service_from_marker "$previous_marker" >/dev/null 2>&1 || true
     updates_clear_version_caches
-    return 1
+    return "$restore_status"
 }
 
 updates_restore_sing_box_after_failed_extended_package_install() {
@@ -1863,15 +1878,13 @@ updates_restore_sing_box_after_failed_extended_package_install() {
     local previous_version_state="$5"
     local package_file="${6:-}"
     local cronet_touched="${7:-0}"
+    local restore_status
 
     [ -n "$package_file" ] && rm -f "$package_file"
     updates_pkg_remove_sing_box_conflict "sing-box-extended" >/dev/null 2>&1 || true
+    restore_status=0
 
-    if [ -n "$backup_binary" ]; then
-        updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
-    else
-        updates_restore_sing_box_package_variant "$previous_variant" >/dev/null 2>&1 || true
-    fi
+    updates_restore_sing_box_install_backup "$previous_variant" "$backup_binary" >/dev/null 2>&1 || restore_status=1
 
     if [ "$cronet_touched" -eq 1 ]; then
         updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
@@ -1882,6 +1895,7 @@ updates_restore_sing_box_after_failed_extended_package_install() {
     updates_restore_sing_box_version_state "$previous_version_state" >/dev/null 2>&1 || true
     updates_restore_sing_box_service_from_marker "$previous_marker" >/dev/null 2>&1 || true
     updates_clear_version_caches
+    return "$restore_status"
 }
 
 updates_extract_zapret_bundle_version() {

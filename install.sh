@@ -1301,6 +1301,39 @@ restore_sing_box_package_variant() {
     esac
 }
 
+sing_box_variant_is_package_managed() {
+    case "$1" in
+        stable | tiny | extended)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+restore_sing_box_install_backup() {
+    previous_variant="$1"
+    backup_binary="$2"
+
+    if sing_box_variant_is_package_managed "$previous_variant"; then
+        if restore_sing_box_package_variant "$previous_variant"; then
+            return 0
+        fi
+
+        [ -n "$backup_binary" ] && restore_file_backup /usr/bin/sing-box "$backup_binary" >/dev/null 2>&1 || true
+        [ -x /usr/bin/sing-box ] && chmod 0755 /usr/bin/sing-box >/dev/null 2>&1 || true
+        return 1
+    fi
+
+    if [ -n "$backup_binary" ]; then
+        restore_file_backup /usr/bin/sing-box "$backup_binary" >/dev/null 2>&1 || return 1
+        [ -x /usr/bin/sing-box ] && chmod 0755 /usr/bin/sing-box >/dev/null 2>&1 || true
+        return 0
+    fi
+
+    restore_sing_box_package_variant "$previous_variant"
+}
+
 restore_sing_box_after_failed_extended_install() {
     previous_variant="$1"
     backup_binary="$2"
@@ -1309,6 +1342,7 @@ restore_sing_box_after_failed_extended_install() {
     previous_version_state="$5"
     archive_file="${6:-}"
     cronet_touched="${7:-0}"
+    restore_status=0
 
     [ -n "$archive_file" ] && rm -f "$archive_file"
 
@@ -1316,17 +1350,13 @@ restore_sing_box_after_failed_extended_install() {
         restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
     fi
 
-    if [ -n "$backup_binary" ]; then
-        restore_file_backup /usr/bin/sing-box "$backup_binary" >/dev/null 2>&1 || true
-        [ -x /usr/bin/sing-box ] && chmod 0755 /usr/bin/sing-box >/dev/null 2>&1 || true
-    else
-        restore_sing_box_package_variant "$previous_variant" >/dev/null 2>&1 || true
-    fi
+    restore_sing_box_install_backup "$previous_variant" "$backup_binary" >/dev/null 2>&1 || restore_status=1
 
     restore_sing_box_variant_marker "$previous_marker" >/dev/null 2>&1 || true
     restore_sing_box_version_state "$previous_version_state" >/dev/null 2>&1 || true
     restore_sing_box_service_from_marker "$previous_marker" >/dev/null 2>&1 || true
     rm -f /var/run/podkop-plus/ui-state/sing-box-version 2>/dev/null || true
+    return "$restore_status"
 }
 
 restore_sing_box_after_failed_extended_package_install() {
@@ -1337,16 +1367,12 @@ restore_sing_box_after_failed_extended_package_install() {
     previous_version_state="$5"
     package_file="${6:-}"
     cronet_touched="${7:-0}"
+    restore_status=0
 
     [ -n "$package_file" ] && rm -f "$package_file"
     pkg_remove_sing_box_conflict "sing-box-extended" >/dev/null 2>&1 || true
 
-    if [ -n "$backup_binary" ]; then
-        restore_file_backup /usr/bin/sing-box "$backup_binary" >/dev/null 2>&1 || true
-        [ -x /usr/bin/sing-box ] && chmod 0755 /usr/bin/sing-box >/dev/null 2>&1 || true
-    else
-        restore_sing_box_package_variant "$previous_variant" >/dev/null 2>&1 || true
-    fi
+    restore_sing_box_install_backup "$previous_variant" "$backup_binary" >/dev/null 2>&1 || restore_status=1
 
     if [ "$cronet_touched" -eq 1 ]; then
         restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
@@ -1357,6 +1383,7 @@ restore_sing_box_after_failed_extended_package_install() {
     restore_sing_box_version_state "$previous_version_state" >/dev/null 2>&1 || true
     restore_sing_box_service_from_marker "$previous_marker" >/dev/null 2>&1 || true
     rm -f /var/run/podkop-plus/ui-state/sing-box-version 2>/dev/null || true
+    return "$restore_status"
 }
 
 install_sing_box_extended_package() {
