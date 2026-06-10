@@ -7,7 +7,10 @@ import { runFakeIPCheck } from './checks/runFakeIPCheck';
 import { runZapretCheck } from './checks/runZapretCheck';
 import { runZapret2Check } from './checks/runZapret2Check';
 import { runByedpiCheck } from './checks/runByedpiCheck';
-import { DIAGNOSTICS_CHECKS, DIAGNOSTICS_CHECKS_MAP } from './checks/contstants';
+import {
+  DIAGNOSTICS_CHECKS,
+  DIAGNOSTICS_CHECKS_MAP,
+} from './checks/contstants';
 import {
   DiagnosticsProviderOptions,
   getDiagnosticsChecks,
@@ -43,6 +46,7 @@ import {
   hasComponentActionLoading,
   hasLocalMutatingServiceActionLoading,
   isServiceTransitionStatus,
+  shouldResetDiagnosticsChecks,
   shouldDisableDiagnosticRunAction,
   shouldSkipServicesInfoAutoRefresh,
   shouldShowRestartAction,
@@ -328,6 +332,10 @@ function followServiceActionsFromUiState(uiState?: Podkop.UiState) {
 async function fetchSystemInfo() {
   const systemInfo = await ensureSystemInfo();
 
+  if (store.get().diagnosticsRunAction.loading) {
+    return;
+  }
+
   store.set({
     diagnosticsChecks: getDiagnosticsChecks(
       _('Not running'),
@@ -380,7 +388,12 @@ async function fetchDiagnosticsProviderInfo({
         diagnosticsSystemInfo: nextSystemInfo,
       };
 
-      if (resetChecks) {
+      if (
+        shouldResetDiagnosticsChecks({
+          resetChecks,
+          diagnosticsRunLoading: store.get().diagnosticsRunAction.loading,
+        })
+      ) {
         nextState.diagnosticsChecks = getDiagnosticsChecks(
           _('Not running'),
           getDiagnosticsProviderOptions(nextSystemInfo),
@@ -461,7 +474,12 @@ async function fetchDiagnosticsProviderInfo({
       diagnosticsSystemInfo: nextSystemInfo,
     };
 
-    if (resetChecks) {
+    if (
+      shouldResetDiagnosticsChecks({
+        resetChecks,
+        diagnosticsRunLoading: store.get().diagnosticsRunAction.loading,
+      })
+    ) {
       nextState.diagnosticsChecks = getDiagnosticsChecks(
         _('Not running'),
         getDiagnosticsProviderOptions(nextSystemInfo),
@@ -1011,14 +1029,13 @@ function getDiagnosticRunners(
   ];
 }
 
-async function runChecks({
-  resume,
-}: { resume?: PersistedDiagnosticRun } = {}) {
+async function runChecks({ resume }: { resume?: PersistedDiagnosticRun } = {}) {
   if (store.get().diagnosticsRunAction.loading && !resume) {
     return;
   }
 
-  let providerOptions = resume?.providerOptions ?? getDiagnosticsProviderOptions();
+  let providerOptions =
+    resume?.providerOptions ?? getDiagnosticsProviderOptions();
   let nextRunnerIndex = resume?.nextRunnerIndex ?? 0;
 
   store.set({
@@ -1145,7 +1162,10 @@ async function onPageMount() {
 
   if (preserveHiddenResult) {
     diagnosticCompletedWhileHidden = false;
-  } else if (!restoredPersistedRun && !store.get().diagnosticsRunAction.loading) {
+  } else if (
+    !restoredPersistedRun &&
+    !store.get().diagnosticsRunAction.loading
+  ) {
     store.reset(['diagnosticsRunAction']);
     resetDiagnosticsChecks();
   }

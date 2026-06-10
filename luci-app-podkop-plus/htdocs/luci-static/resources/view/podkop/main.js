@@ -7550,6 +7550,12 @@ function shouldSkipServicesInfoAutoRefresh({
 }) {
   return !force && localMutatingActionLoading;
 }
+function shouldResetDiagnosticsChecks({
+  resetChecks,
+  diagnosticsRunLoading
+}) {
+  return resetChecks && !diagnosticsRunLoading;
+}
 function shouldDisableDiagnosticRunAction({
   providerInfoLoaded,
   servicesInfoLoading,
@@ -7872,6 +7878,9 @@ function followServiceActionsFromUiState(uiState) {
 }
 async function fetchSystemInfo() {
   const systemInfo = await ensureSystemInfo();
+  if (store.get().diagnosticsRunAction.loading) {
+    return;
+  }
   store.set({
     diagnosticsChecks: getDiagnosticsChecks(
       _("Not running"),
@@ -7914,7 +7923,10 @@ async function fetchDiagnosticsProviderInfo({
       const nextState2 = {
         diagnosticsSystemInfo: nextSystemInfo2
       };
-      if (resetChecks) {
+      if (shouldResetDiagnosticsChecks({
+        resetChecks,
+        diagnosticsRunLoading: store.get().diagnosticsRunAction.loading
+      })) {
         nextState2.diagnosticsChecks = getDiagnosticsChecks(
           _("Not running"),
           getDiagnosticsProviderOptions(nextSystemInfo2)
@@ -7973,7 +7985,10 @@ async function fetchDiagnosticsProviderInfo({
     const nextState = {
       diagnosticsSystemInfo: nextSystemInfo
     };
-    if (resetChecks) {
+    if (shouldResetDiagnosticsChecks({
+      resetChecks,
+      diagnosticsRunLoading: store.get().diagnosticsRunAction.loading
+    })) {
       nextState.diagnosticsChecks = getDiagnosticsChecks(
         _("Not running"),
         getDiagnosticsProviderOptions(nextSystemInfo)
@@ -8418,9 +8433,7 @@ function getDiagnosticRunners(providerOptions) {
     { code: "FAKEIP" /* FAKEIP */, run: runFakeIPCheck }
   ];
 }
-async function runChecks({
-  resume
-} = {}) {
+async function runChecks({ resume } = {}) {
   if (store.get().diagnosticsRunAction.loading && !resume) {
     return;
   }
