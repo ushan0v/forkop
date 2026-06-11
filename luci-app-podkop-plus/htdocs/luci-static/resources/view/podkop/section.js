@@ -3976,6 +3976,12 @@ function createSectionContent(section) {
     refreshOutboundDetourSectionOptionValues(this, section_id);
     return Promise.resolve();
   };
+  o.write = function (section_id, value) {
+    const selectedValue = value || this.cfgvalue(section_id);
+    if (selectedValue) {
+      uci.set(UCI_PACKAGE, section_id, "outbound_detour_section", selectedValue);
+    }
+  };
   o.validate = function (section_id, value) {
     if (!value) {
       return _("Select an intermediate section");
