@@ -1984,8 +1984,418 @@ function content_is_clash_yaml(data) {
     return false;
 }
 
+function xray_first_array_object(value) {
+    value = array_or_empty(value);
+    return length(value) > 0 && type(value[0]) == "object" ? value[0] : {};
+}
+
+function xray_first_string(values) {
+    for (let value in values) {
+        value = as_string(value);
+        if (value != "")
+            return value;
+    }
+    return "";
+}
+
+function xray_valid_port_value(value) {
+    let value_type = type(value);
+    if (value_type == "int" || value_type == "double")
+        return valid_port(value) ? int(value) : null;
+
+    value = as_string(value);
+    if (!is_integer_string(value))
+        return null;
+
+    let port = int(value, 10);
+    return valid_port(port) ? port : null;
+}
+
+function xray_alpn(value) {
+    if (type(value) == "array")
+        return value;
+
+    let text = as_string(value);
+    return text != "" ? split_csv(text) : [];
+}
+
+function xray_add_utls(tls, fingerprint) {
+    fingerprint = normalize_utls_fingerprint(fingerprint);
+    if (fingerprint != "")
+        tls.utls = { enabled: true, fingerprint: fingerprint };
+}
+
+function xray_tls_from_stream(stream, network) {
+    stream = object_or_empty(stream);
+    let security = lc(as_string(stream.security || ""));
+    let reality = object_or_empty(stream.realitySettings);
+    let tls_settings = object_or_empty(stream.tlsSettings);
+    let settings = security == "reality" ? reality : tls_settings;
+
+    if (security != "tls" && security != "xtls" && security != "reality" && length(keys(settings)) == 0)
+        return null;
+
+    let tls = { enabled: true };
+    let server_name = xray_first_string([settings.serverName, settings.server_name, settings.sni]);
+    let alpn = xray_alpn(settings.alpn);
+
+    if (network == "xhttp" && length(alpn) == 0)
+        alpn = ["h2", "http/1.1"];
+    if (server_name != "")
+        tls.server_name = server_name;
+    if (is_true(settings.allowInsecure) || is_true(settings.insecure))
+        tls.insecure = true;
+    if (length(alpn) > 0)
+        tls.alpn = alpn;
+
+    xray_add_utls(tls, settings.fingerprint || settings.fp || "");
+
+    if (security == "reality" || length(keys(reality)) > 0) {
+        tls.reality = { enabled: true };
+        let public_key = xray_first_string([reality.publicKey, reality.public_key, settings.publicKey, settings.public_key]);
+        let short_id = xray_first_string([reality.shortId, reality.short_id, settings.shortId, settings.short_id]);
+        if (public_key != "")
+            tls.reality.public_key = public_key;
+        if (short_id != "")
+            tls.reality.short_id = short_id;
+        if (!tls.utls)
+            tls.utls = { enabled: true, fingerprint: "chrome" };
+    }
+
+    return tls;
+}
+
+function xray_transport_from_stream(stream) {
+    stream = object_or_empty(stream);
+    let network = lc(as_string(stream.network || ""));
+    if (network == "" || network == "tcp")
+        return null;
+
+    if (network == "ws") {
+        let settings = object_or_empty(stream.wsSettings);
+        let headers = object_or_empty(settings.headers);
+        let result = { type: "ws", path: as_string(settings.path || "/") };
+        let host = as_string(headers.Host || headers.host || "");
+        if (host != "")
+            result.headers = { Host: host };
+        return result;
+    }
+
+    if (network == "grpc") {
+        let settings = object_or_empty(stream.grpcSettings);
+        let result = { type: "grpc" };
+        if (as_string(settings.serviceName || settings.service_name || "") != "")
+            result.service_name = as_string(settings.serviceName || settings.service_name);
+        return result;
+    }
+
+    if (network == "http" || network == "h2") {
+        let settings = object_or_empty(stream.httpSettings);
+        let result = { type: "http" };
+        if (type(settings.path) == "array" && length(settings.path) > 0)
+            result.path = as_string(settings.path[0]);
+        else if (as_string(settings.path || "") != "")
+            result.path = as_string(settings.path);
+        if (type(settings.host) == "array")
+            result.host = settings.host;
+        else if (as_string(settings.host || "") != "")
+            result.host = split_csv(settings.host);
+        return result;
+    }
+
+    if (network == "httpupgrade") {
+        let settings = object_or_empty(stream.httpupgradeSettings);
+        let result = { type: "httpupgrade" };
+        if (as_string(settings.path || "") != "")
+            result.path = as_string(settings.path);
+        if (as_string(settings.host || "") != "")
+            result.host = as_string(settings.host);
+        return result;
+    }
+
+    if (network == "xhttp") {
+        let settings = object_or_empty(stream.xhttpSettings);
+        let result = {
+            type: "xhttp",
+            mode: as_string(settings.mode || "auto"),
+            path: as_string(settings.path || "/"),
+            x_padding_bytes: "100-1000",
+            no_grpc_header: false,
+            sc_max_each_post_bytes: 1000000,
+            sc_min_posts_interval_ms: 30
+        };
+        if (result.mode != "auto" && result.mode != "packet-up" && result.mode != "stream-up" && result.mode != "stream-one")
+            result.mode = "auto";
+        if (as_string(settings.host || "") != "")
+            result.host = as_string(settings.host);
+        xhttp_optional_range(result, "x_padding_bytes", xhttp_setting_value(settings, settings, "xPaddingBytes", "x_padding_bytes"));
+        xhttp_optional_bool(result, "no_grpc_header", xhttp_setting_value(settings, settings, "noGRPCHeader", "no_grpc_header"));
+        xhttp_optional_range(result, "sc_max_each_post_bytes", xhttp_setting_value(settings, settings, "scMaxEachPostBytes", "sc_max_each_post_bytes"));
+        xhttp_optional_range(result, "sc_min_posts_interval_ms", xhttp_setting_value(settings, settings, "scMinPostsIntervalMs", "sc_min_posts_interval_ms"));
+        xhttp_optional_range(result, "sc_stream_up_server_secs", xhttp_setting_value(settings, settings, "scStreamUpServerSecs", "sc_stream_up_server_secs"));
+        let xmux = xhttp_normalize_xmux(settings.xmux);
+        if (xmux)
+            result.xmux = xmux;
+        return result;
+    }
+
+    return null;
+}
+
+function xray_display_name(original_tag, tag_counts, config_index) {
+    original_tag = as_string(original_tag);
+    if (original_tag == "")
+        return "";
+    if (int(tag_counts[original_tag] || 0) > 1)
+        return original_tag + " #" + (config_index + 1);
+    return original_tag;
+}
+
+function xray_source_tag(outbound, fallback) {
+    let tag = as_string(outbound.tag || "");
+    return tag != "" ? tag : fallback;
+}
+
+function xray_unique_tag(base, taken) {
+    base = as_string(base);
+    if (base == "")
+        base = "server";
+    if (!taken[base])
+        return base;
+
+    for (let suffix = 1; suffix < 100000; suffix++) {
+        let candidate = base + "-" + suffix;
+        if (!taken[candidate])
+            return candidate;
+    }
+
+    return base + "-overflow";
+}
+
+function xray_tag_base(original_tag, config_index, config_count) {
+    original_tag = as_string(original_tag);
+    if (original_tag == "")
+        original_tag = "server";
+    return config_count > 1 ? ("xray-" + (config_index + 1) + "-" + original_tag) : original_tag;
+}
+
+function xray_protocol_supported(protocol) {
+    protocol = lc(as_string(protocol));
+    return protocol == "vless" || protocol == "socks" || protocol == "hysteria";
+}
+
+function convert_xray_vless(outbound, tag) {
+    let vnext = xray_first_array_object(object_or_empty(outbound.settings).vnext);
+    let user = xray_first_array_object(vnext.users);
+    let server = as_string(vnext.address || "");
+    let port = xray_valid_port_value(vnext.port);
+    let uuid = as_string(user.id || "");
+    if (server == "" || port == null || uuid == "")
+        return null;
+
+    let result = {
+        type: "vless",
+        tag: tag,
+        server: server,
+        server_port: port,
+        uuid: uuid
+    };
+
+    let flow = as_string(user.flow || "");
+    if (flow != "")
+        result.flow = flow;
+
+    let stream = object_or_empty(outbound.streamSettings);
+    let transport = xray_transport_from_stream(stream);
+    let tls = xray_tls_from_stream(stream, lc(as_string(stream.network || "")));
+    if (tls)
+        result.tls = tls;
+    if (transport)
+        result.transport = transport;
+
+    return result;
+}
+
+function convert_xray_socks(outbound, tag) {
+    let server_config = xray_first_array_object(object_or_empty(outbound.settings).servers);
+    let server = as_string(server_config.address || "");
+    let port = xray_valid_port_value(server_config.port);
+    if (server == "" || port == null)
+        return null;
+
+    let result = {
+        type: "socks",
+        tag: tag,
+        server: server,
+        server_port: port,
+        version: "5"
+    };
+
+    let user = xray_first_array_object(server_config.users);
+    if (as_string(user.user || "") != "")
+        result.username = as_string(user.user);
+    if (as_string(user.pass || user.password || "") != "")
+        result.password = as_string(user.pass || user.password);
+
+    return result;
+}
+
+function convert_xray_hysteria2(outbound, tag) {
+    let settings = object_or_empty(outbound.settings);
+    let stream = object_or_empty(outbound.streamSettings);
+    let hysteria_settings = object_or_empty(stream.hysteriaSettings);
+    let version = int(settings.version || hysteria_settings.version || 0);
+    if (version != 2)
+        return null;
+
+    let server = as_string(settings.address || settings.server || "");
+    let port = xray_valid_port_value(settings.port);
+    let password = as_string(hysteria_settings.auth || settings.auth || settings.password || "");
+    if (server == "" || port == null || password == "")
+        return null;
+
+    let result = {
+        type: "hysteria2",
+        tag: tag,
+        server: server,
+        server_port: port,
+        password: password,
+        tls: { enabled: true }
+    };
+
+    let tls_settings = object_or_empty(stream.tlsSettings);
+    let server_name = xray_first_string([tls_settings.serverName, tls_settings.server_name, tls_settings.sni]);
+    if (server_name != "")
+        result.tls.server_name = server_name;
+    if (is_true(tls_settings.allowInsecure) || is_true(tls_settings.insecure))
+        result.tls.insecure = true;
+    let alpn = xray_alpn(tls_settings.alpn);
+    if (length(alpn) > 0)
+        result.tls.alpn = alpn;
+    xray_add_utls(result.tls, tls_settings.fingerprint || tls_settings.fp || "");
+
+    return result;
+}
+
+function convert_xray_outbound(outbound, tag) {
+    let protocol = lc(as_string(outbound.protocol || ""));
+    if (protocol == "vless")
+        return convert_xray_vless(outbound, tag);
+    if (protocol == "socks")
+        return convert_xray_socks(outbound, tag);
+    if (protocol == "hysteria")
+        return convert_xray_hysteria2(outbound, tag);
+    return null;
+}
+
+function xray_outbound_detour(outbound) {
+    let stream = object_or_empty(outbound.streamSettings);
+    let sockopt = object_or_empty(stream.sockopt);
+    if (as_string(sockopt.dialerProxy || "") != "")
+        return as_string(sockopt.dialerProxy);
+
+    sockopt = object_or_empty(outbound.sockopt);
+    return as_string(sockopt.dialerProxy || "");
+}
+
+function xray_tag_counts(configs) {
+    let counts = {};
+    for (let config in configs) {
+        for (let outbound in array_or_empty(config.outbounds)) {
+            if (type(outbound) != "object" || !xray_protocol_supported(outbound.protocol))
+                continue;
+
+            let tag = xray_source_tag(outbound, lc(as_string(outbound.protocol || "server")));
+            counts[tag] = (counts[tag] || 0) + 1;
+        }
+    }
+    return counts;
+}
+
+function xray_config_outbounds(config, config_index, config_count, tag_counts, taken) {
+    let source_outbounds = array_or_empty(config.outbounds);
+    let planned = [];
+    let tag_map = {};
+
+    for (let i = 0; i < length(source_outbounds); i++) {
+        let outbound = source_outbounds[i];
+        if (type(outbound) != "object" || !xray_protocol_supported(outbound.protocol))
+            continue;
+
+        let original_tag = xray_source_tag(outbound, lc(as_string(outbound.protocol || "server")) + "-" + (i + 1));
+        let tag = xray_unique_tag(xray_tag_base(original_tag, config_index, config_count), taken);
+        taken[tag] = true;
+        tag_map[original_tag] = tag;
+        push(planned, { outbound, original_tag, tag });
+    }
+
+    let result = [];
+    for (let item in planned) {
+        let converted = convert_xray_outbound(item.outbound, item.tag);
+        if (!converted)
+            continue;
+
+        let display_name = xray_display_name(item.original_tag, tag_counts, config_index);
+        if (display_name != "")
+            converted.remark = display_name;
+
+        let detour = xray_outbound_detour(item.outbound);
+        if (detour != "" && tag_map[detour])
+            converted.detour = tag_map[detour];
+
+        push(result, converted);
+    }
+
+    return result;
+}
+
+function is_xray_config(value) {
+    if (type(value) != "object" || type(value.outbounds) != "array")
+        return false;
+
+    for (let outbound in value.outbounds) {
+        if (type(outbound) == "object" && type(outbound.protocol) == "string")
+            return true;
+    }
+
+    return false;
+}
+
+function normalize_xray_configs(configs) {
+    configs = array_or_empty(configs);
+    let tag_counts = xray_tag_counts(configs);
+    let taken = {};
+    let outbounds = [];
+
+    for (let i = 0; i < length(configs); i++) {
+        let config = configs[i];
+        if (!is_xray_config(config))
+            continue;
+
+        for (let outbound in xray_config_outbounds(config, i, length(configs), tag_counts, taken))
+            push(outbounds, outbound);
+    }
+
+    return outbounds;
+}
+
 function normalize_sing_box_json_value(value, output_file) {
     let candidates = [];
+    let outbounds = [];
+
+    if (is_xray_config(value))
+        outbounds = normalize_xray_configs([value]);
+    else if (type(value) == "array" && length(value) > 0 && is_xray_config(value[0]))
+        outbounds = normalize_xray_configs(value);
+
+    if (length(outbounds) > 0) {
+        return write_json_file(output_file, {
+            version: 1,
+            format: "sing-box-json",
+            outbounds: outbounds
+        });
+    }
+
     if (type(value) == "object" && type(value.outbounds) == "array")
         candidates = value.outbounds;
     else if (type(value) == "array")
@@ -1993,7 +2403,6 @@ function normalize_sing_box_json_value(value, output_file) {
     else if (type(value) == "object" && type(value.type) == "string")
         candidates = [value];
 
-    let outbounds = [];
     for (let outbound in candidates) {
         if (type(outbound) == "object")
             push(outbounds, outbound);
