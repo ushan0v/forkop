@@ -137,7 +137,7 @@ describe('runSectionsCheck', () => {
     );
   });
 
-  it('checks the selected URLTest group directly', async () => {
+  it('checks the selected URLTest outbound directly', async () => {
     mocks.getDashboardSections.mockResolvedValue({
       success: true,
       data: [
@@ -173,20 +173,18 @@ describe('runSectionsCheck', () => {
         },
       ],
     });
-    mocks.getClashApiGroupLatency.mockResolvedValue({
+    mocks.getClashApiProxyLatency.mockResolvedValue({
       success: true,
-      data: {
-        'main-1-out': 120,
-        'main-2-out': 140,
-      },
+      data: { delay: 10 },
     });
 
     await expect(runSectionsCheck()).resolves.toBeUndefined();
 
-    expect(mocks.getClashApiProxyLatency).not.toHaveBeenCalled();
-    expect(mocks.getClashApiGroupLatency).toHaveBeenCalledWith(
+    expect(mocks.getClashApiProxyLatency).toHaveBeenCalledWith(
       'main-urltest-out',
+      undefined,
     );
+    expect(mocks.getClashApiGroupLatency).not.toHaveBeenCalled();
     expect(mocks.updateCheckStore).toHaveBeenLastCalledWith(
       expect.objectContaining({
         state: 'success',
@@ -194,7 +192,7 @@ describe('runSectionsCheck', () => {
           {
             state: 'success',
             key: 'Main',
-            value: '[Fastest] 120ms / 140ms',
+            value: '[Fastest] 10ms',
           },
         ],
       }),

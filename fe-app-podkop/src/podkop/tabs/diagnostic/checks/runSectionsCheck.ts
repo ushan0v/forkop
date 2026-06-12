@@ -68,10 +68,9 @@ export async function runSectionsCheck() {
           ) ??
           section.outbounds[0];
 
-        const isUrlTest = selectedOutbound?.type?.toLowerCase() === 'urltest';
         const isSubscription = section.proxyConfigType === 'subscription';
 
-        if (selectedOutbound?.code && !isUrlTest) {
+        if (selectedOutbound?.code) {
           const latencyProxy = await PodkopShellMethods.getClashApiProxyLatency(
             selectedOutbound.code,
             section.latencyTestTimeout,
@@ -92,12 +91,8 @@ export async function runSectionsCheck() {
           };
         }
 
-        const latencyGroupTag =
-          isUrlTest && selectedOutbound?.code
-            ? selectedOutbound.code
-            : section.code;
         const latencyGroup =
-          await PodkopShellMethods.getClashApiGroupLatency(latencyGroupTag);
+          await PodkopShellMethods.getClashApiGroupLatency(section.code);
         const success = latencyGroup.success && !latencyGroup.data.message;
 
         if (success) {
@@ -105,17 +100,6 @@ export async function runSectionsCheck() {
           const sectionState = isSubscription
             ? getSubscriptionLatencyState(latencyValues)
             : 'success';
-
-          if (isUrlTest) {
-            const latency = latencyValues
-              .map((item) => (item ? `${item}ms` : 'n/a'))
-              .join(' / ');
-
-            return {
-              state: sectionState,
-              latency: `[${_('Fastest')}] ${latency}`,
-            };
-          }
 
           const selectedProxyDelay =
             latencyGroup.data?.[selectedOutbound?.code ?? ''];
