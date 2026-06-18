@@ -907,9 +907,6 @@ function process_hysteria2(raw, url) {
         return null;
 
     let password = url.userinfo;
-    let colon = index(password, ":");
-    if (colon >= 0)
-        password = substr(password, colon + 1);
     if (password == "")
         return null;
 
