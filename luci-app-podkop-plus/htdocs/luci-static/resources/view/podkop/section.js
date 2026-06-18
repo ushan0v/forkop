@@ -781,8 +781,8 @@ function validateKeyword(_section_id, value) {
     return true;
   }
 
-  if (/\s/.test(value)) {
-    return _("Keyword must not contain spaces");
+  if (/[,\s]/.test(value)) {
+    return _("Keyword must not contain spaces or commas");
   }
 
   return true;
@@ -1514,14 +1514,113 @@ function analyzeTextListValue(value, validateItem, emptyMessage, options = {}) {
 }
 
 function analyzeDomainSuffixText(value) {
+  const validateDomainCondition = (domain) => {
+    const normalized = `${domain || ""}`.trim();
+    if (normalized.includes("/")) {
+      return { valid: false, message: _("Invalid domain address") };
+    }
+
+    return main.validateDomain(normalized, true);
+  };
+
   return analyzeTextListValue(
     value,
-    (item) => main.validateDomain(item, true),
+    (item) => {
+      const colonIndex = item.indexOf(":");
+      const prefix = colonIndex > 0 ? item.slice(0, colonIndex) : "";
+      const body = colonIndex > 0 ? item.slice(colonIndex + 1) : item;
+
+      if (!prefix) {
+        return validateDomainCondition(body);
+      }
+
+      if (!["full", "keyword", "regex"].includes(prefix)) {
+        return {
+          valid: false,
+          message: _("Allowed domain prefixes are full:, keyword:, and regex:"),
+        };
+      }
+
+      if (!body.length) {
+        return { valid: false, message: _("Value cannot be empty") };
+      }
+
+      if (prefix === "full") {
+        return validateDomainCondition(body);
+      }
+
+      if (prefix === "keyword") {
+        const validation = validateKeyword(null, body);
+        return validation === true
+          ? { valid: true, message: _("Valid") }
+          : { valid: false, message: validation };
+      }
+
+      if (/[,\s]/.test(body)) {
+        return {
+          valid: false,
+          message: _("Regular expression must not contain spaces or commas"),
+        };
+      }
+
+      const validation = validateRegex(null, body);
+      return validation === true
+        ? { valid: true, message: _("Valid") }
+        : { valid: false, message: validation };
+    },
     _("At least one valid domain must be specified."),
     {
       normalizeDuplicateValue: (item) => `${item}`.toLowerCase(),
     },
   );
+}
+
+function domainValuesWithPrefix(section_id, key, prefix) {
+  return getConfigListValues(section_id, key).map((value) =>
+    prefix ? `${prefix}:${value}` : value,
+  );
+}
+
+function domainTextValuesWithPrefix(section_id, key, prefix) {
+  const legacyText = uci.get(UCI_PACKAGE, section_id, `${key}_text`);
+  if (!legacyText) {
+    return [];
+  }
+
+  return main.parseValueList(legacyText).map((value) =>
+    prefix ? `${prefix}:${value}` : value,
+  );
+}
+
+function uniqueDomainTextValues(values) {
+  const seen = new Set();
+
+  return values.filter((value) => {
+    const key = `${value}`.toLowerCase();
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function loadCombinedDomainText(section_id) {
+  const textValue = uci.get(UCI_PACKAGE, section_id, "domain_suffix_text");
+  const values = uniqueDomainTextValues([
+    ...(textValue ? main.parseValueList(textValue) : []),
+    ...domainValuesWithPrefix(section_id, "domain_suffix", ""),
+    ...domainValuesWithPrefix(section_id, "domain", "full"),
+    ...domainValuesWithPrefix(section_id, "domain_keyword", "keyword"),
+    ...domainValuesWithPrefix(section_id, "domain_regex", "regex"),
+    ...domainTextValuesWithPrefix(section_id, "domain_suffix", ""),
+    ...domainTextValuesWithPrefix(section_id, "domain", "full"),
+    ...domainTextValuesWithPrefix(section_id, "domain_keyword", "keyword"),
+    ...domainTextValuesWithPrefix(section_id, "domain_regex", "regex"),
+  ]);
+
+  return valuesToText(values);
 }
 
 function analyzeIpCidrText(value) {
@@ -3109,6 +3208,10 @@ function addTextConditionField(section, config) {
   configureTextareaOption(o, config.textAnalyze);
 
   o.load = function (section_id) {
+    if (typeof config.loadText === "function") {
+      return config.loadText(section_id);
+    }
+
     const textValue = uci.get(UCI_PACKAGE, section_id, `${config.key}_text`);
     if (textValue) {
       return textValue;
@@ -3128,6 +3231,10 @@ function addTextConditionField(section, config) {
 
     uci.unset(UCI_PACKAGE, section_id, config.key);
     uci.unset(UCI_PACKAGE, section_id, `${config.key}_text_mode`);
+
+    if (typeof config.afterWrite === "function") {
+      config.afterWrite(section_id);
+    }
   };
 }
 
@@ -4234,8 +4341,26 @@ function createSectionContent(section) {
   addTextConditionField(section, {
     key: "domain_suffix",
     label: _("Domains"),
-    description: _("Match domains including all subdomains"),
+    description: _(
+      "Plain values match domain suffixes. Use full:, keyword:, or regex: for exact domains, keywords, and regular expressions.",
+    ),
     textAnalyze: analyzeDomainSuffixText,
+    loadText: loadCombinedDomainText,
+    afterWrite: function (section_id) {
+      [
+        "domain",
+        "domain_keyword",
+        "domain_regex",
+        "domain_text",
+        "domain_keyword_text",
+        "domain_regex_text",
+        "domain_text_mode",
+        "domain_keyword_text_mode",
+        "domain_regex_text_mode",
+      ].forEach((key) => {
+        uci.unset(UCI_PACKAGE, section_id, key);
+      });
+    },
   });
 
   addTextConditionField(section, {
@@ -4243,34 +4368,6 @@ function createSectionContent(section) {
     label: _("IPs"),
     description: _("Match destination IPs or subnets"),
     textAnalyze: analyzeIpCidrText,
-  });
-
-  addDynamicConditionField(section, {
-    key: "domain",
-    label: _("Exact full domain"),
-    description: _("Match only one exact full domain name"),
-    dynamicValidate: function (_section_id, value) {
-      if (!value || value.length === 0) {
-        return true;
-      }
-
-      const validation = main.validateDomain(value);
-      return validation.valid ? true : validation.message;
-    },
-  });
-
-  addDynamicConditionField(section, {
-    key: "domain_keyword",
-    label: _("Domain keyword"),
-    description: _("Match domains containing a substring"),
-    dynamicValidate: validateKeyword,
-  });
-
-  addDynamicConditionField(section, {
-    key: "domain_regex",
-    label: _("Domain regex"),
-    description: _("Match domains using a regular expression"),
-    dynamicValidate: validateRegex,
   });
 
   addLocalDeviceSubnetDynamicField(section, {

@@ -2585,8 +2585,13 @@ var PodkopShellMethods = {
     [],
     "/etc/init.d/podkop-plus"
   ),
-  globalCheck: async () => callBaseMethod(Podkop.AvailableMethods.GLOBAL_CHECK),
-  showSingBoxConfig: async () => callBaseMethod(Podkop.AvailableMethods.SHOW_SING_BOX_CONFIG),
+  globalCheck: async (masked = true) => callBaseMethod(
+    Podkop.AvailableMethods.GLOBAL_CHECK,
+    [masked ? "masked" : "raw"]
+  ),
+  showSingBoxConfig: async (masked = true) => callBaseMethod(Podkop.AvailableMethods.SHOW_SING_BOX_CONFIG, [
+    masked ? "masked" : "raw"
+  ]),
   checkLogs: async () => callBaseMethod(Podkop.AvailableMethods.CHECK_LOGS),
   checkSingBoxLogs: async () => callBaseMethod(Podkop.AvailableMethods.CHECK_SING_BOX_LOGS),
   getSystemInfo: async () => callBaseMethod(
@@ -6869,12 +6874,15 @@ function renderModal(text, name, options) {
   let currentText = text ?? "";
   let refreshInFlight = false;
   let pendingRefresh = false;
+  let pendingForcedRefresh = false;
   let refreshSessionId = 0;
   let timer;
   let observer;
   let autoRefreshEnabled = options?.initialAutoRefresh ?? Boolean(options?.getText);
+  let maskValuesEnabled = options?.initialMaskValues ?? true;
   let shouldScrollToBottomOnMount = Boolean(options?.startAtEnd);
   let autoRefreshInput;
+  let maskValuesInput;
   const codeEl = E("code", {}, currentText);
   const contentEl = E(
     "pre",
@@ -6890,6 +6898,7 @@ function renderModal(text, name, options) {
   const destroyLiveRefresh = () => {
     refreshSessionId += 1;
     pendingRefresh = false;
+    pendingForcedRefresh = false;
     stopRefreshTimer();
     observer?.disconnect();
     observer = void 0;
@@ -6925,8 +6934,8 @@ function renderModal(text, name, options) {
       });
     }
   };
-  const refreshText = async () => {
-    if (!options?.getText || !autoRefreshEnabled || refreshInFlight) {
+  const refreshText = async (force = false) => {
+    if (!options?.getText || !force && !autoRefreshEnabled || refreshInFlight) {
       return;
     }
     if (!body.isConnected) {
@@ -6935,8 +6944,10 @@ function renderModal(text, name, options) {
     refreshInFlight = true;
     const sessionId = refreshSessionId;
     try {
-      const nextText = await options.getText();
-      if (!body.isConnected || !autoRefreshEnabled) {
+      const nextText = await options.getText({
+        maskValues: maskValuesEnabled
+      });
+      if (!body.isConnected || !force && !autoRefreshEnabled) {
         return;
       }
       if (sessionId !== refreshSessionId) {
@@ -6948,9 +6959,11 @@ function renderModal(text, name, options) {
     } finally {
       refreshInFlight = false;
       if (pendingRefresh) {
+        const shouldForceRefresh = pendingForcedRefresh;
         pendingRefresh = false;
-        if (autoRefreshEnabled && body.isConnected) {
-          void refreshText();
+        pendingForcedRefresh = false;
+        if ((shouldForceRefresh || autoRefreshEnabled) && body.isConnected) {
+          void refreshText(shouldForceRefresh);
         }
       }
     }
@@ -6965,6 +6978,17 @@ function renderModal(text, name, options) {
     }
     void refreshText();
   };
+  const requestForcedRefresh = () => {
+    if (!options?.getText) {
+      return;
+    }
+    if (refreshInFlight) {
+      pendingRefresh = true;
+      pendingForcedRefresh = true;
+      return;
+    }
+    void refreshText(true);
+  };
   const startRefreshTimer = () => {
     if (!options?.getText || !autoRefreshEnabled || timer || typeof document === "undefined") {
       return;
@@ -6977,6 +7001,7 @@ function renderModal(text, name, options) {
     autoRefreshEnabled = nextValue;
     refreshSessionId += 1;
     pendingRefresh = false;
+    pendingForcedRefresh = false;
     if (autoRefreshInput) {
       autoRefreshInput.checked = nextValue;
     }
@@ -6986,6 +7011,16 @@ function renderModal(text, name, options) {
       return;
     }
     stopRefreshTimer();
+  };
+  const setMaskValuesEnabled = (nextValue) => {
+    maskValuesEnabled = nextValue;
+    refreshSessionId += 1;
+    pendingRefresh = false;
+    pendingForcedRefresh = false;
+    if (maskValuesInput) {
+      maskValuesInput.checked = nextValue;
+    }
+    requestForcedRefresh();
   };
   const footerChildren = [
     renderButton({
@@ -7024,6 +7059,25 @@ ${currentText}
           "span",
           { class: "pdk-partial-modal__checkbox-text" },
           options.autoRefreshLabel ?? _("Auto refresh")
+        )
+      ])
+    );
+  }
+  if (options?.getText && options?.showMaskValuesToggle) {
+    maskValuesInput = document.createElement("input");
+    maskValuesInput.type = "checkbox";
+    maskValuesInput.className = "cbi-input-checkbox";
+    maskValuesInput.checked = maskValuesEnabled;
+    maskValuesInput.addEventListener("change", () => {
+      setMaskValuesEnabled(maskValuesInput.checked);
+    });
+    footerChildren.unshift(
+      E("label", { class: "pdk-partial-modal__checkbox" }, [
+        maskValuesInput,
+        E(
+          "span",
+          { class: "pdk-partial-modal__checkbox-text" },
+          options.maskValuesLabel ?? _("Hide values")
         )
       ])
     );
@@ -8149,9 +8203,20 @@ async function handleShowGlobalCheck() {
   try {
     const globalCheck = await PodkopShellMethods.globalCheck();
     if (globalCheck.success) {
+      const getGlobalCheckText = async ({ maskValues = true } = {}) => {
+        const latestGlobalCheck = await PodkopShellMethods.globalCheck(maskValues);
+        if (!latestGlobalCheck.success) {
+          throw latestGlobalCheck;
+        }
+        return latestGlobalCheck.data ?? "";
+      };
       ui.showModal(
         _("Global check"),
-        renderModal(globalCheck.data, "global_check")
+        renderModal(globalCheck.data, "global_check", {
+          getText: getGlobalCheckText,
+          initialAutoRefresh: false,
+          showMaskValuesToggle: true
+        })
       );
     } else {
       logger.error("[DIAGNOSTIC]", "handleShowGlobalCheck - e", globalCheck);
@@ -8198,11 +8263,23 @@ async function handleShowSingBoxConfig() {
   try {
     const showSingBoxConfig = await PodkopShellMethods.showSingBoxConfig();
     if (showSingBoxConfig.success) {
+      const getSingBoxConfigText = async ({ maskValues = true } = {}) => {
+        const latestSingBoxConfig = await PodkopShellMethods.showSingBoxConfig(maskValues);
+        if (!latestSingBoxConfig.success) {
+          throw latestSingBoxConfig;
+        }
+        return JSON.stringify(latestSingBoxConfig.data, null, 2);
+      };
       ui.showModal(
         _("Show sing-box config"),
         renderModal(
           JSON.stringify(showSingBoxConfig.data, null, 2),
-          "show_sing_box_config"
+          "show_sing_box_config",
+          {
+            getText: getSingBoxConfigText,
+            initialAutoRefresh: false,
+            showMaskValuesToggle: true
+          }
         )
       );
     } else {

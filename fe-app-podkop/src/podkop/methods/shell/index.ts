@@ -334,10 +334,15 @@ export const PodkopShellMethods = {
       [],
       '/etc/init.d/podkop-plus',
     ),
-  globalCheck: async () =>
-    callBaseMethod<unknown>(Podkop.AvailableMethods.GLOBAL_CHECK),
-  showSingBoxConfig: async () =>
-    callBaseMethod<unknown>(Podkop.AvailableMethods.SHOW_SING_BOX_CONFIG),
+  globalCheck: async (masked = true) =>
+    callBaseMethod<unknown>(
+      Podkop.AvailableMethods.GLOBAL_CHECK,
+      [masked ? 'masked' : 'raw'],
+    ),
+  showSingBoxConfig: async (masked = true) =>
+    callBaseMethod<unknown>(Podkop.AvailableMethods.SHOW_SING_BOX_CONFIG, [
+      masked ? 'masked' : 'raw',
+    ]),
   checkLogs: async () =>
     callBaseMethod<unknown>(Podkop.AvailableMethods.CHECK_LOGS),
   checkSingBoxLogs: async () =>

@@ -60,12 +60,9 @@ sh <(wget -O - https://raw.githubusercontent.com/ushan0v/podkop-plus/main/instal
 
 Podkop Plus расширяет набор условий, которые можно использовать в правилах:
 
-- Домены (`domain_suffix`)
+- Домены (`domain_suffix`): обычные значения работают как суффиксы доменов. Для других типов используйте теги `full:example.com`, `keyword:example` и `regex:^example\.`.
 - IP-адреса (`ip_cidr`)
-- Точный полный домен (`domain`)
-- Ключевое слово домена (`domain_keyword`)
-- Регулярное выражение домена (`domain_regex`)
-- Исходные IP-адреса (`source_cidr`)
+- Исходные IP-адреса (`source_ip_cidr`)
 - Порт (`port` / `port_range`)
 - Полностью маршрутизированные IP-адреса
 - Встроенные наборы правил

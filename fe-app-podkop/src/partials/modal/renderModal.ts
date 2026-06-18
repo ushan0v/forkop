@@ -2,13 +2,20 @@ import { renderButton } from '../button/renderButton';
 import { copyToClipboard } from '../../helpers/copyToClipboard';
 import { downloadAsTxt } from '../../helpers/downloadAsTxt';
 
+interface ModalTextContext {
+  maskValues: boolean;
+}
+
 interface RenderModalOptions {
-  getText?: () => string | Promise<string>;
+  getText?: (context: ModalTextContext) => string | Promise<string>;
   refreshMs?: number;
   initialAutoRefresh?: boolean;
   showAutoRefreshToggle?: boolean;
+  showMaskValuesToggle?: boolean;
+  initialMaskValues?: boolean;
   startAtEnd?: boolean;
   autoRefreshLabel?: string;
+  maskValuesLabel?: string;
 }
 
 export function renderModal(
@@ -19,13 +26,16 @@ export function renderModal(
   let currentText = text ?? '';
   let refreshInFlight = false;
   let pendingRefresh = false;
+  let pendingForcedRefresh = false;
   let refreshSessionId = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
   let observer: MutationObserver | undefined;
   let autoRefreshEnabled =
     options?.initialAutoRefresh ?? Boolean(options?.getText);
+  let maskValuesEnabled = options?.initialMaskValues ?? true;
   let shouldScrollToBottomOnMount = Boolean(options?.startAtEnd);
   let autoRefreshInput: HTMLInputElement | undefined;
+  let maskValuesInput: HTMLInputElement | undefined;
 
   const codeEl = E('code', {}, currentText) as HTMLElement;
   const contentEl = E(
@@ -44,6 +54,7 @@ export function renderModal(
   const destroyLiveRefresh = () => {
     refreshSessionId += 1;
     pendingRefresh = false;
+    pendingForcedRefresh = false;
     stopRefreshTimer();
 
     observer?.disconnect();
@@ -94,8 +105,12 @@ export function renderModal(
     }
   };
 
-  const refreshText = async () => {
-    if (!options?.getText || !autoRefreshEnabled || refreshInFlight) {
+  const refreshText = async (force = false) => {
+    if (
+      !options?.getText ||
+      (!force && !autoRefreshEnabled) ||
+      refreshInFlight
+    ) {
       return;
     }
 
@@ -107,9 +122,11 @@ export function renderModal(
     const sessionId = refreshSessionId;
 
     try {
-      const nextText = await options.getText();
+      const nextText = await options.getText({
+        maskValues: maskValuesEnabled,
+      });
 
-      if (!body.isConnected || !autoRefreshEnabled) {
+      if (!body.isConnected || (!force && !autoRefreshEnabled)) {
         return;
       }
 
@@ -124,10 +141,12 @@ export function renderModal(
       refreshInFlight = false;
 
       if (pendingRefresh) {
+        const shouldForceRefresh = pendingForcedRefresh;
         pendingRefresh = false;
+        pendingForcedRefresh = false;
 
-        if (autoRefreshEnabled && body.isConnected) {
-          void refreshText();
+        if ((shouldForceRefresh || autoRefreshEnabled) && body.isConnected) {
+          void refreshText(shouldForceRefresh);
         }
       }
     }
@@ -144,6 +163,20 @@ export function renderModal(
     }
 
     void refreshText();
+  };
+
+  const requestForcedRefresh = () => {
+    if (!options?.getText) {
+      return;
+    }
+
+    if (refreshInFlight) {
+      pendingRefresh = true;
+      pendingForcedRefresh = true;
+      return;
+    }
+
+    void refreshText(true);
   };
 
   const startRefreshTimer = () => {
@@ -165,6 +198,7 @@ export function renderModal(
     autoRefreshEnabled = nextValue;
     refreshSessionId += 1;
     pendingRefresh = false;
+    pendingForcedRefresh = false;
 
     if (autoRefreshInput) {
       autoRefreshInput.checked = nextValue;
@@ -177,6 +211,19 @@ export function renderModal(
     }
 
     stopRefreshTimer();
+  };
+
+  const setMaskValuesEnabled = (nextValue: boolean) => {
+    maskValuesEnabled = nextValue;
+    refreshSessionId += 1;
+    pendingRefresh = false;
+    pendingForcedRefresh = false;
+
+    if (maskValuesInput) {
+      maskValuesInput.checked = nextValue;
+    }
+
+    requestForcedRefresh();
   };
 
   const footerChildren: HTMLElement[] = [
@@ -216,6 +263,27 @@ export function renderModal(
           'span',
           { class: 'pdk-partial-modal__checkbox-text' },
           options.autoRefreshLabel ?? _('Auto refresh'),
+        ),
+      ]) as HTMLElement,
+    );
+  }
+
+  if (options?.getText && options?.showMaskValuesToggle) {
+    maskValuesInput = document.createElement('input');
+    maskValuesInput.type = 'checkbox';
+    maskValuesInput.className = 'cbi-input-checkbox';
+    maskValuesInput.checked = maskValuesEnabled;
+    maskValuesInput.addEventListener('change', () => {
+      setMaskValuesEnabled(maskValuesInput!.checked);
+    });
+
+    footerChildren.unshift(
+      E('label', { class: 'pdk-partial-modal__checkbox' }, [
+        maskValuesInput,
+        E(
+          'span',
+          { class: 'pdk-partial-modal__checkbox-text' },
+          options.maskValuesLabel ?? _('Hide values'),
         ),
       ]) as HTMLElement,
     );

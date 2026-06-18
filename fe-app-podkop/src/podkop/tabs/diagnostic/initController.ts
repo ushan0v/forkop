@@ -670,9 +670,24 @@ async function handleShowGlobalCheck() {
     const globalCheck = await PodkopShellMethods.globalCheck();
 
     if (globalCheck.success) {
+      const getGlobalCheckText = async ({ maskValues = true } = {}) => {
+        const latestGlobalCheck =
+          await PodkopShellMethods.globalCheck(maskValues);
+
+        if (!latestGlobalCheck.success) {
+          throw latestGlobalCheck;
+        }
+
+        return (latestGlobalCheck.data as string) ?? '';
+      };
+
       ui.showModal(
         _('Global check'),
-        renderModal(globalCheck.data as string, 'global_check'),
+        renderModal(globalCheck.data as string, 'global_check', {
+          getText: getGlobalCheckText,
+          initialAutoRefresh: false,
+          showMaskValuesToggle: true,
+        }),
       );
     } else {
       logger.error('[DIAGNOSTIC]', 'handleShowGlobalCheck - e', globalCheck);
@@ -728,11 +743,27 @@ async function handleShowSingBoxConfig() {
     const showSingBoxConfig = await PodkopShellMethods.showSingBoxConfig();
 
     if (showSingBoxConfig.success) {
+      const getSingBoxConfigText = async ({ maskValues = true } = {}) => {
+        const latestSingBoxConfig =
+          await PodkopShellMethods.showSingBoxConfig(maskValues);
+
+        if (!latestSingBoxConfig.success) {
+          throw latestSingBoxConfig;
+        }
+
+        return JSON.stringify(latestSingBoxConfig.data, null, 2);
+      };
+
       ui.showModal(
         _('Show sing-box config'),
         renderModal(
           JSON.stringify(showSingBoxConfig.data, null, 2),
           'show_sing_box_config',
+          {
+            getText: getSingBoxConfigText,
+            initialAutoRefresh: false,
+            showMaskValuesToggle: true,
+          },
         ),
       );
     } else {
