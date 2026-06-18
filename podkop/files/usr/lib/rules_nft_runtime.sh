@@ -41,6 +41,20 @@ parse_domain_or_subnet_file_to_comma_string() {
     rules_nft_runtime_ucode domain-subnet-file-csv "$filepath" "$type"
 }
 
+parse_combined_domain_string_to_commas_string() {
+    local string="$1"
+    local type="$2"
+
+    rules_nft_runtime_ucode combined-domain-text-csv "$string" "$type"
+}
+
+parse_combined_domain_list_to_commas_string() {
+    local list_value="$1"
+    local type="$2"
+
+    rules_nft_runtime_ucode combined-domain-csv "$(rule_list_value_to_commas_string "$list_value")" "$type"
+}
+
 split_domain_or_subnet_file() {
     local filepath="$1"
     local domains_output="$2"
@@ -53,12 +67,104 @@ rule_list_value_to_commas_string() {
     printf '%s\n' "$1" | tr ' ' ','
 }
 
+get_legacy_domain_condition_commas_string() {
+    local section="$1"
+    local key="$2"
+    local kind="$3"
+
+    local text_mode conditions_text_mode text_value list_value
+    config_get_bool text_mode "$section" "${key}_text_mode" 0
+    config_get_bool conditions_text_mode "$section" "conditions_text_mode" 0
+    config_get text_value "$section" "${key}_text"
+    config_get list_value "$section" "$key"
+
+    if [ "$text_mode" -eq 1 ] || [ "$conditions_text_mode" -eq 1 ]; then
+        case "$kind" in
+        domains) parse_domain_or_subnet_string_to_commas_string "$text_value" "domains" ;;
+        *)
+            parse_generic_string_to_commas_string "$text_value"
+            ;;
+        esac
+        return 0
+    fi
+
+    if [ -n "$list_value" ]; then
+        rule_list_value_to_commas_string "$list_value"
+        return 0
+    fi
+
+    if [ -n "$text_value" ]; then
+        case "$kind" in
+        domains) parse_domain_or_subnet_string_to_commas_string "$text_value" "domains" ;;
+        *)
+            parse_generic_string_to_commas_string "$text_value"
+            ;;
+        esac
+        return 0
+    fi
+
+    rule_list_value_to_commas_string "$list_value"
+}
+
+get_combined_domain_condition_commas_string() {
+    local section="$1"
+    local requested_key="$2"
+    local legacy_kind="$3"
+
+    local combined_text_mode conditions_text_mode combined_text_value combined_list_value
+    local combined_text_values combined_list_values combined_values legacy_values
+    config_get_bool combined_text_mode "$section" "domain_suffix_text_mode" 0
+    config_get_bool conditions_text_mode "$section" "conditions_text_mode" 0
+    config_get combined_text_value "$section" "domain_suffix_text"
+    config_get combined_list_value "$section" "domain_suffix"
+
+    combined_text_values="$(parse_combined_domain_string_to_commas_string "$combined_text_value" "$requested_key")"
+    combined_list_values="$(parse_combined_domain_list_to_commas_string "$combined_list_value" "$requested_key")"
+    if [ -n "$combined_text_values" ] && [ -n "$combined_list_values" ]; then
+        combined_values="${combined_text_values},${combined_list_values}"
+    else
+        combined_values="${combined_text_values}${combined_list_values}"
+    fi
+
+    if [ "$requested_key" = "domain_suffix" ]; then
+        printf '%s\n' "$combined_values"
+        return 0
+    fi
+
+    legacy_values="$(get_legacy_domain_condition_commas_string "$section" "$requested_key" "$legacy_kind")"
+    if [ -n "$combined_values" ] && [ -n "$legacy_values" ]; then
+        printf '%s,%s\n' "$combined_values" "$legacy_values"
+    else
+        printf '%s%s\n' "$combined_values" "$legacy_values"
+    fi
+}
+
 get_rule_condition_commas_string() {
     local section="$1"
     local key="$2"
     local kind="$3"
 
     local text_mode conditions_text_mode text_value list_value
+
+    case "$key" in
+    domain)
+        get_combined_domain_condition_commas_string "$section" "domain" "domains"
+        return 0
+        ;;
+    domain_suffix)
+        get_combined_domain_condition_commas_string "$section" "domain_suffix" "domains"
+        return 0
+        ;;
+    domain_keyword)
+        get_combined_domain_condition_commas_string "$section" "domain_keyword" "generic"
+        return 0
+        ;;
+    domain_regex)
+        get_combined_domain_condition_commas_string "$section" "domain_regex" "generic"
+        return 0
+        ;;
+    esac
+
     config_get_bool text_mode "$section" "${key}_text_mode" 0
     config_get_bool conditions_text_mode "$section" "conditions_text_mode" 0
     config_get text_value "$section" "${key}_text"
@@ -395,6 +501,7 @@ create_nft_rules() {
     nft add chain inet "$NFT_TABLE_NAME" proxy '{ type filter hook prerouting priority -100; policy accept; }'
 
     nft add rule inet "$NFT_TABLE_NAME" mangle ct status dnat return
+    nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr "@$NFT_LOCALV4_SET_NAME" return
     nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr "@$NFT_COMMON_SET_NAME" meta l4proto tcp meta mark set "$NFT_FAKEIP_MARK" counter
     nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr "@$NFT_COMMON_SET_NAME" meta l4proto udp meta mark set "$NFT_FAKEIP_MARK" counter
     nft add rule inet "$NFT_TABLE_NAME" mangle iifname "@$NFT_INTERFACE_SET_NAME" ip daddr . tcp dport "@$NFT_IP_PORT_SET_NAME" meta mark set "$NFT_FAKEIP_MARK" counter

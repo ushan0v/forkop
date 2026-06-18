@@ -611,6 +611,43 @@ migrate_0_7_17_8_zapret_nfqws_default() {
     podkop_uci_set_option "$section" "nfqws_opt" "$ZAPRET_DEFAULT_NFQWS_OPT"
 }
 
+podkop_uci_add_domain_values_with_prefix() {
+    local section="$1"
+    local option="$2"
+    local prefix="$3"
+    local kind="$4"
+    local values value
+
+    values="$(get_legacy_domain_condition_commas_string "$section" "$option" "$kind")"
+    [ -n "$values" ] || return 0
+
+    while IFS= read -r value || [ -n "$value" ]; do
+        value="$(printf '%s' "$value" | trim_string)"
+        [ -n "$value" ] || continue
+        podkop_uci_add_list_unique "$section" "domain_suffix" "${prefix}${value}"
+    done <<EOF
+$(printf '%s' "$values" | tr ',' '\n')
+EOF
+}
+
+migrate_combined_domain_conditions() {
+    local section="$1"
+
+    podkop_uci_add_domain_values_with_prefix "$section" "domain" "full:" "domains"
+    podkop_uci_add_domain_values_with_prefix "$section" "domain_keyword" "keyword:" "generic"
+    podkop_uci_add_domain_values_with_prefix "$section" "domain_regex" "regex:" "generic"
+
+    podkop_uci_delete_option "$section" "domain"
+    podkop_uci_delete_option "$section" "domain_keyword"
+    podkop_uci_delete_option "$section" "domain_regex"
+    podkop_uci_delete_option "$section" "domain_text"
+    podkop_uci_delete_option "$section" "domain_keyword_text"
+    podkop_uci_delete_option "$section" "domain_regex_text"
+    podkop_uci_delete_option "$section" "domain_text_mode"
+    podkop_uci_delete_option "$section" "domain_keyword_text_mode"
+    podkop_uci_delete_option "$section" "domain_regex_text_mode"
+}
+
 migrate_0_7_17_8_rule() {
     local section="$1"
     local converted_from_rule="${2:-0}"
@@ -835,6 +872,7 @@ migration() {
 
     config_foreach migrate_0_7_17_8_rule_section "rule"
     config_foreach migrate_0_7_17_8_rule "section"
+    config_foreach migrate_combined_domain_conditions "section"
 
     if [ "$podkop_config_migration_changed" -eq 1 ]; then
         log "Migrated Podkop Plus UCI config"
@@ -980,6 +1018,33 @@ validate_urltest_regex_option() {
     fi
 
     log "Invalid URLTest regular expression '$value' in rule '$section'. Aborted." "fatal"
+    exit 1
+}
+
+validate_combined_domain_option() {
+    local value="$1"
+    local section="$2"
+
+    [ -n "$value" ] || return 0
+    if config_validation_ucode combined-domain-valid "$value" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "Invalid domain condition '$value' in rule '$section'. Use plain domains or full:, keyword:, regex: prefixes. Aborted." "fatal"
+    exit 1
+}
+
+validate_combined_domain_text_option() {
+    local section="$1"
+    local text_value
+
+    config_get text_value "$section" "domain_suffix_text"
+    [ -n "$text_value" ] || return 0
+    if config_validation_ucode combined-domain-text-valid "$text_value" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "Invalid domain conditions in rule '$section'. Use plain domains or full:, keyword:, regex: prefixes. Aborted." "fatal"
     exit 1
 }
 
@@ -1237,6 +1302,8 @@ process_validate_rule() {
 
     validate_outbound_detour_rule "$section"
 
+    config_list_foreach "$section" "domain_suffix" validate_combined_domain_option "$section"
+    validate_combined_domain_text_option "$section"
     config_list_foreach "$section" "community_lists" validate_service
     config_list_foreach "$section" "rule_set" validate_ruleset_reference
     config_list_foreach "$section" "rule_set_with_subnets" validate_ruleset_reference

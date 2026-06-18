@@ -221,6 +221,51 @@ function domain_subnet_value_valid(value, kind) {
     exit(1);
 }
 
+function prefixed_domain_value(value, requested_kind) {
+    value = trim(as_string(value));
+    requested_kind = as_string(requested_kind);
+
+    if (value == "")
+        return null;
+
+    let colon = index(value, ":");
+    let prefix = "";
+    let body = value;
+    if (colon > 0) {
+        let candidate = ascii_lower(substr(value, 0, colon));
+        if (candidate == "full" || candidate == "keyword" || candidate == "regex") {
+            prefix = candidate;
+            body = substr(value, colon + 1);
+        }
+        else {
+            return null;
+        }
+    }
+
+    body = trim(body);
+    if (body == "")
+        return null;
+
+    if (prefix == "") {
+        if (requested_kind != "domain_suffix")
+            return null;
+        let normalized = ascii_lower(body);
+        return valid_domain_suffix(normalized) ? normalized : null;
+    }
+
+    if (prefix == "full") {
+        if (requested_kind != "domain")
+            return null;
+        let normalized = ascii_lower(body);
+        return valid_domain_suffix(normalized) ? normalized : null;
+    }
+
+    if (prefix == "keyword")
+        return requested_kind == "domain_keyword" ? body : null;
+
+    return requested_kind == "domain_regex" ? body : null;
+}
+
 function normalize_domain_subnet_value(value, kind) {
     kind = as_string(kind);
     if (kind == "domains") {
@@ -247,6 +292,30 @@ function filter_domain_subnet_values(values, kind) {
     }
 
     return result;
+}
+
+function combined_domain_text_csv(value, requested_kind) {
+    let result = [];
+
+    for (let item in text_list_values(value, "comma-space")) {
+        let normalized = prefixed_domain_value(item, requested_kind);
+        if (normalized != null)
+            push(result, normalized);
+    }
+
+    print_csv(result);
+}
+
+function combined_domain_csv(value, requested_kind) {
+    let result = [];
+
+    for (let item in split(as_string(value), ",")) {
+        let normalized = prefixed_domain_value(item, requested_kind);
+        if (normalized != null)
+            push(result, normalized);
+    }
+
+    print_csv(result);
 }
 
 function domain_subnet_text_csv(value, kind) {
@@ -650,6 +719,10 @@ else if (mode == "stdin-contains")
     exit(stdin_contains(ARGV[1]) ? 0 : 1);
 else if (mode == "domain-subnet-text-csv")
     domain_subnet_text_csv(ARGV[1], ARGV[2]);
+else if (mode == "combined-domain-text-csv")
+    combined_domain_text_csv(ARGV[1], ARGV[2]);
+else if (mode == "combined-domain-csv")
+    combined_domain_csv(ARGV[1], ARGV[2]);
 else if (mode == "domain-subnet-file-csv")
     domain_subnet_file_csv(ARGV[1], ARGV[2]);
 else if (mode == "split-domain-subnet-file")

@@ -80,6 +80,68 @@ function regex_valid(pattern) {
     }
 }
 
+function strip_list_comment(line) {
+    line = replace(as_string(line), /[[:space:]]*\/\/.*$/, "");
+    return replace(line, /[[:space:]]*#.*$/, "");
+}
+
+function text_list_values(value) {
+    let result = [];
+
+    for (let line in split(as_string(value), "\n")) {
+        line = replace(strip_list_comment(line), /[ ,]/g, "\n");
+        for (let item in split(line, "\n")) {
+            item = trim(replace(item, /\r/g, ""));
+            if (item != "")
+                push(result, item);
+        }
+    }
+
+    return result;
+}
+
+function valid_domain_suffix(value) {
+    value = lc(as_string(value));
+    if (substr(value, 0, 1) == ".")
+        value = substr(value, 1);
+
+    return match(value, /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/) != null;
+}
+
+function combined_domain_valid(value) {
+    value = trim(as_string(value));
+    if (value == "")
+        return true;
+
+    let colon = index(value, ":");
+    if (colon < 0)
+        return valid_domain_suffix(value);
+
+    let prefix = lc(substr(value, 0, colon));
+    let body = substr(value, colon + 1);
+
+    if (body == "")
+        return false;
+
+    if (prefix == "full")
+        return valid_domain_suffix(body);
+
+    if (prefix == "keyword")
+        return match(body, /[,[:space:]]/) == null;
+
+    if (prefix == "regex")
+        return match(body, /[,[:space:]]/) == null && regex_valid(body);
+
+    return false;
+}
+
+function combined_domain_text_valid(value) {
+    for (let item in text_list_values(value))
+        if (!combined_domain_valid(item))
+            return false;
+    return true;
+}
+
 function valid_outbound() {
     let value = read_stdin_json();
     return type(value) == "object" && type(value.type) == "string";
@@ -160,6 +222,10 @@ else if (mode == "enum-valid")
     exit(enum_valid(ARGV[1], 2) ? 0 : 1);
 else if (mode == "regex-valid")
     exit(regex_valid(ARGV[1]) ? 0 : 1);
+else if (mode == "combined-domain-valid")
+    exit(combined_domain_valid(ARGV[1]) ? 0 : 1);
+else if (mode == "combined-domain-text-valid")
+    exit(combined_domain_text_valid(ARGV[1]) ? 0 : 1);
 else if (mode == "valid-outbound")
     exit(valid_outbound() ? 0 : 1);
 else if (mode == "outbound-detour-supported")

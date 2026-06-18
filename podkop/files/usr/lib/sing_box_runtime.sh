@@ -1178,7 +1178,6 @@ sing_box_configure_route() {
         config_list_foreach "settings" "routing_excluded_ips" exclude_source_ip_from_routing_handler "$rule_tag"
     fi
 
-    config_foreach configure_fully_routed_rule_handler "section"
     config_foreach configure_route_rule_handler "section"
     config_foreach configure_server_route "server"
 }
@@ -1579,6 +1578,8 @@ configure_route_rule_handler() {
 
     log "Configuring route rule '$section' with action '$action'"
 
+    configure_fully_routed_ips_for_section "$section" "$action"
+
     if ! rule_has_primary_matchers "$section"; then
         log "Rule '$section' has no destination matchers and action '$action', skipping regular route creation" "warn"
         return 0
@@ -1659,19 +1660,6 @@ configure_route_rule_handler() {
             fi
         fi
     fi
-}
-
-configure_fully_routed_rule_handler() {
-    local section="$1"
-
-    rule_is_enabled "$section" || return 0
-    subscription_section_is_deferred "$section" && return 0
-
-    local action
-    action="$(get_rule_action "$section")"
-    [ -n "$action" ] || return 0
-
-    configure_fully_routed_ips_for_section "$section" "$action"
 }
 
 configure_fully_routed_ips_for_section() {
