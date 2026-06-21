@@ -488,6 +488,7 @@ append_sing_box_rule_signature() {
 append_sing_box_server_signature() {
     local section="$1"
     local enabled label protocol listen listen_port public_host routing_mode routing_section security \
+        inbound_json \
         users tls_server_name tls_alpn tls_certificate_path tls_key_path reality_handshake_server \
         reality_handshake_server_port reality_private_key reality_public_key reality_short_id \
         reality_max_time_difference transport transport_path transport_host transport_service_name transport_hosts transport_xhttp_mode \
@@ -510,6 +511,7 @@ append_sing_box_server_signature() {
     config_get listen "$section" "listen" "0.0.0.0"
     config_get listen_port "$section" "listen_port"
     config_get public_host "$section" "public_host"
+    config_get inbound_json "$section" "inbound_json"
     config_get routing_mode "$section" "routing_mode" "rules"
     config_get routing_section "$section" "routing_section"
     config_get security "$section" "security" "reality"
@@ -566,6 +568,7 @@ append_sing_box_server_signature() {
     signature_add "server.$section.listen" "$listen"
     signature_add "server.$section.listen_port" "$listen_port"
     signature_add "server.$section.public_host" "$public_host"
+    signature_add "server.$section.inbound_json" "$inbound_json"
     signature_add "server.$section.routing_mode" "$routing_mode"
     signature_add "server.$section.routing_section" "$routing_section"
     signature_add "server.$section.security" "$security"

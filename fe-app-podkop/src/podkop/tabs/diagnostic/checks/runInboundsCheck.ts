@@ -108,6 +108,16 @@ function getServerItems(
     return items;
   }
 
+  if (item.protocol === 'json_inbound') {
+    items.push({
+      state: item.routes_configured ? 'success' : 'warning',
+      key: `${prefix} ${_('Routing rules')}`,
+      value: item.routing_mode,
+    });
+
+    return items;
+  }
+
   items.push(
     {
       state:

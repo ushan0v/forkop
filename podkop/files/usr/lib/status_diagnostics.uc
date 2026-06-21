@@ -533,12 +533,18 @@ function firewall_port_open_for_proto(port, proto) {
 }
 
 function server_required_inbound_proto(protocol) {
-    print(as_string(protocol) == "hysteria2" ? "udp" : "tcp", "\n");
+    protocol = as_string(protocol);
+    if (protocol == "json_inbound")
+        print("\n");
+    else
+        print(protocol == "hysteria2" ? "udp" : "tcp", "\n");
 }
 
 function server_runtime_type_for_protocol(protocol) {
     protocol = as_string(protocol);
-    if (protocol == "mtproto")
+    if (protocol == "json_inbound")
+        print("\n");
+    else if (protocol == "mtproto")
         print("mtproxy\n");
     else
         print(protocol, "\n");
@@ -870,7 +876,10 @@ function render_inbound_item(item, wan_ip) {
     else
         print_line("[FAIL] " + label + ": generated inbound is missing or differs from UCI");
 
-    if (protocol != "tailscale") {
+    if (protocol == "json_inbound") {
+        print_line("[OK] " + label + ": JSON inbound uses custom listen settings");
+    }
+    else if (protocol != "tailscale") {
         if (flag_is_one(listening))
             print_line("[OK] " + label + ": listening on " + listen + ":" + listen_port + " [" + required_proto + "]");
         else
@@ -900,7 +909,7 @@ function render_inbound_item(item, wan_ip) {
     else
         print_line("[WARN] " + label + ": route rules for inbound were not found");
 
-    if (protocol != "tailscale") {
+    if (protocol != "tailscale" && protocol != "json_inbound") {
         if (public_host != "") {
             if (public_host_resolved == "0")
                 print_line("[WARN] " + label + ": public host does not resolve: " + public_host);
@@ -918,7 +927,13 @@ function render_inbound_item(item, wan_ip) {
 }
 
 function inbound_runtime_ok(protocol, runtime_exists, runtime_type, runtime_listen, runtime_port_text, expected_type, listen, listen_port) {
-    if (!flag_is_one(runtime_exists) || runtime_type != expected_type)
+    if (!flag_is_one(runtime_exists))
+        return 0;
+
+    if (protocol == "json_inbound")
+        return 1;
+
+    if (runtime_type != expected_type)
         return 0;
 
     if (protocol == "tailscale")

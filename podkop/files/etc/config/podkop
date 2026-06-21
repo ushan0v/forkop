@@ -55,6 +55,13 @@ config settings 'settings'
 #        option outbound_json '{"type":"socks","server":"127.0.0.1","server_port":1080,"version":"5"}'
 #        list community_lists 'russia_inside'
 
+#config server 'server_json_inbound_example'
+#        option label 'JSON inbound'
+#        option enabled '1'
+#        option protocol 'json_inbound'
+#        option routing_mode 'rules'
+#        option inbound_json '{"type":"mixed","listen":"0.0.0.0","listen_port":1080}'
+
 #config server 'server_vless_reality_example'
 #        option label 'VLESS Reality server'
 #        option enabled '1'

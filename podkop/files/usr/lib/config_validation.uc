@@ -147,6 +147,11 @@ function valid_outbound() {
     return type(value) == "object" && type(value.type) == "string";
 }
 
+function valid_inbound() {
+    let value = read_stdin_json();
+    return type(value) == "object" && type(value.type) == "string";
+}
+
 function outbound_detour_supported() {
     let value = read_stdin_json();
     if (type(value) != "object" || type(value.type) != "string")
@@ -228,6 +233,8 @@ else if (mode == "combined-domain-text-valid")
     exit(combined_domain_text_valid(ARGV[1]) ? 0 : 1);
 else if (mode == "valid-outbound")
     exit(valid_outbound() ? 0 : 1);
+else if (mode == "valid-inbound")
+    exit(valid_inbound() ? 0 : 1);
 else if (mode == "outbound-detour-supported")
     exit(outbound_detour_supported() ? 0 : 1);
 else if (mode == "dhcp-has-https-dns-proxy-options")

@@ -121,6 +121,11 @@ function array_file_arg(path) {
     return type(parsed) == "array" ? parsed : [];
 }
 
+function object_file_arg(path) {
+    let parsed = read_json_file(path);
+    return type(parsed) == "object" ? parsed : {};
+}
+
 function optional_string(object, key, value) {
     value = as_string(value);
     if (value != "")
@@ -381,6 +386,20 @@ function add_mixed_inbound(config, args) {
             password
         }];
     }
+    push(ensure_array(config, "inbounds"), inbound);
+}
+
+function add_raw_inbound(config, args) {
+    let inbound = json_arg(args[1]);
+    if (type(inbound) != "object")
+        inbound = {};
+    inbound.tag = as_string(args[0]);
+    push(ensure_array(config, "inbounds"), inbound);
+}
+
+function add_raw_inbound_file(config, args) {
+    let inbound = object_file_arg(args[1]);
+    inbound.tag = as_string(args[0]);
     push(ensure_array(config, "inbounds"), inbound);
 }
 
@@ -1099,6 +1118,8 @@ let handlers = {
     "add-tproxy-inbound": add_tproxy_inbound,
     "add-direct-inbound": add_direct_inbound,
     "add-mixed-inbound": add_mixed_inbound,
+    "add-raw-inbound": add_raw_inbound,
+    "add-raw-inbound-file": add_raw_inbound_file,
     "add-vless-inbound-file": add_vless_inbound_file,
     "add-trojan-inbound-file": add_trojan_inbound_file,
     "add-vmess-inbound-file": add_vmess_inbound_file,

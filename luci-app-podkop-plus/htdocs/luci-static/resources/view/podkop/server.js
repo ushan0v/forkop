@@ -412,12 +412,16 @@ const BASE_PROTOCOL_LABELS = {
 const EXTENDED_PROTOCOL_LABELS = {
   mtproto: "MTProto",
 };
+const CUSTOM_PROTOCOL_LABELS = {
+  json_inbound: "JSON Inbound",
+};
 const TAILSCALE_PROTOCOL_LABELS = {
   tailscale: "Tailscale",
 };
 const PROTOCOL_LABELS = {
   ...BASE_PROTOCOL_LABELS,
   ...EXTENDED_PROTOCOL_LABELS,
+  ...CUSTOM_PROTOCOL_LABELS,
   ...TAILSCALE_PROTOCOL_LABELS,
 };
 
@@ -430,6 +434,7 @@ const SECURITY_BY_PROTOCOL = {
   socks: ["none"],
   mtproto: ["none"],
   tailscale: ["none"],
+  json_inbound: ["none"],
 };
 
 function getSecurityLabel(security) {
@@ -550,6 +555,10 @@ function populateProtocolValues(option, capabilities) {
       addOptionValue(option, value, label);
     });
   }
+
+  Object.entries(CUSTOM_PROTOCOL_LABELS).forEach(([value, label]) => {
+    addOptionValue(option, value, label);
+  });
 }
 
 function populateTransportValues(option, singBoxExtended) {
@@ -620,7 +629,8 @@ function getEffectiveSecurity(sectionId) {
     protocol === "shadowsocks" ||
     protocol === "socks" ||
     protocol === "mtproto" ||
-    protocol === "tailscale"
+    protocol === "tailscale" ||
+    protocol === "json_inbound"
   ) {
     return "none";
   }
@@ -955,10 +965,16 @@ function ensureProtocolDefaults(sectionId, protocol, forceProtocolDefaults) {
   setValue(sectionId, "protocol", protocol);
   setDefault(sectionId, "enabled", "1");
   setDefault(sectionId, "label", sectionId);
+  setDefault(sectionId, "routing_mode", "rules");
+
+  if (protocol === "json_inbound") {
+    setValue(sectionId, "security", getDefaultSecurity(protocol));
+    return;
+  }
+
   setDefault(sectionId, "listen", "0.0.0.0");
   setDefault(sectionId, "listen_port", randomPort());
   setDefault(sectionId, "public_host", getBrowserHost());
-  setDefault(sectionId, "routing_mode", "rules");
   setDefault(
     sectionId,
     "tls_certificate_path",
@@ -1345,7 +1361,7 @@ function buildClientLink(sectionId, options = {}) {
   const protocol = getProtocol(sectionId);
   const identity = getServerIdentity(sectionId);
 
-  if (protocol === "tailscale") {
+  if (protocol === "tailscale" || protocol === "json_inbound") {
     return "";
   }
 
@@ -1676,7 +1692,7 @@ function renderServerRowActions(sectionRef, sectionId) {
   const actionsEl = tdEl.lastElementChild;
   const actionButtons = [];
 
-  if (getProtocol(sectionId) !== "tailscale") {
+  if (!["tailscale", "json_inbound"].includes(getProtocol(sectionId))) {
     actionButtons.push(
       E(
         "button",
@@ -1883,6 +1899,25 @@ function validateHttpUrl(_sectionId, value) {
       : _("Use an HTTP or HTTPS URL");
   } catch (_err) {
     return _("Use an HTTP or HTTPS URL");
+  }
+}
+
+function validateInboundJson(_sectionId, value) {
+  if (isEmptyValue(value)) {
+    return _("Inbound JSON cannot be empty");
+  }
+
+  try {
+    const parsed = JSON.parse(`${value}`);
+    return parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed) &&
+      typeof parsed.type === "string" &&
+      parsed.type
+      ? true
+      : _("Inbound JSON must be an object with a type field");
+  } catch (_err) {
+    return _("Invalid JSON format");
   }
 }
 
@@ -2236,6 +2271,37 @@ function addMtprotoDepends(option) {
   option.depends("protocol", "mtproto");
 }
 
+function configureServerTextareaOption(option) {
+  const originalRenderWidget = option.renderWidget;
+
+  option.renderWidget = function (sectionId, optionIndex, cfgvalue) {
+    const node = originalRenderWidget.call(
+      this,
+      sectionId,
+      optionIndex,
+      cfgvalue,
+    );
+    const textarea =
+      node && typeof node.querySelector === "function"
+        ? node.querySelector("textarea")
+        : node;
+
+    if (textarea) {
+      textarea.setAttribute("spellcheck", "false");
+      textarea.setAttribute("autocomplete", "off");
+      textarea.setAttribute("autocorrect", "off");
+      textarea.setAttribute("autocapitalize", "off");
+      textarea.setAttribute("data-gramm", "false");
+      textarea.setAttribute("data-gramm_editor", "false");
+      textarea.setAttribute("data-enable-grammarly", "false");
+      textarea.style.resize = "vertical";
+      textarea.style.maxWidth = "100%";
+    }
+
+    return node;
+  };
+}
+
 function configureServerSection(sectionRef, options = {}) {
   sectionRef.sortable = false;
   sectionRef.nodescriptions = true;
@@ -2446,6 +2512,21 @@ function createServerContent(section, options = {}) {
   o.load = function () {
     return loadRoutingSectionChoices(this);
   };
+
+  o = section.option(
+    form.TextValue,
+    "inbound_json",
+    _("Inbound JSON"),
+    _("Enter a complete sing-box inbound object"),
+  );
+  o.depends("protocol", "json_inbound");
+  o.rows = 10;
+  o.wrap = "soft";
+  o.textarea = true;
+  o.modalonly = true;
+  o.rmempty = false;
+  o.validate = validateInboundJson;
+  configureServerTextareaOption(o);
 
   o = section.option(form.ListValue, "security", _("Security"));
   o.value("reality", "Reality");

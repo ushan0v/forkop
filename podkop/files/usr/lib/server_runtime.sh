@@ -7,6 +7,7 @@ server_runtime_ucode() {
 configure_server_inbound() {
     local section="$1"
     local protocol listen listen_port public_host inbound_tag required_proto port_conflict_owners users_tmp status \
+        inbound_json inbound_json_tmp \
         shadowsocks_method server_password hysteria2_up_mbps hysteria2_down_mbps \
         hysteria2_obfs_type hysteria2_obfs_password mtproto_faketls mtproto_padding mtproto_concurrency \
         mtproto_domain_fronting_port mtproto_domain_fronting_ip \
@@ -18,15 +19,46 @@ configure_server_inbound() {
 
     config_get protocol "$section" "protocol" "vless"
     case "$protocol" in
-    shadowsocks | socks | vmess | vless | trojan | hysteria2 | mtproto | tailscale) ;;
+    shadowsocks | socks | vmess | vless | trojan | hysteria2 | mtproto | tailscale | json_inbound) ;;
     *)
         log "Server '$section' has unsupported protocol '$protocol'. Aborted." "fatal"
         exit 1
         ;;
     esac
 
+    inbound_tag="$(get_server_inbound_tag_by_section "$section")"
+
     if [ "$protocol" = "tailscale" ]; then
         configure_tailscale_server_endpoint "$section"
+        return 0
+    fi
+
+    if [ "$protocol" = "json_inbound" ]; then
+        config_get inbound_json "$section" "inbound_json"
+        if [ -z "$inbound_json" ]; then
+            log "JSON inbound server '$section' has empty inbound_json. Aborted." "fatal"
+            exit 1
+        fi
+        if ! printf '%s' "$inbound_json" | config_validation_ucode valid-inbound >/dev/null 2>&1; then
+            log "JSON inbound server '$section' must contain a valid sing-box inbound JSON object with a type field. Aborted." "fatal"
+            exit 1
+        fi
+        inbound_json_tmp="$(mktemp)" || {
+            log "Failed to create temporary JSON inbound file for server '$section'. Aborted." "fatal"
+            exit 1
+        }
+        printf '%s' "$inbound_json" > "$inbound_json_tmp" || {
+            rm -f "$inbound_json_tmp"
+            log "Failed to write temporary JSON inbound file for server '$section'. Aborted." "fatal"
+            exit 1
+        }
+        config=$(sing_box_cm_add_raw_inbound_file "$config" "$inbound_tag" "$inbound_json_tmp")
+        status=$?
+        rm -f "$inbound_json_tmp"
+        [ "$status" -eq 0 ] || {
+            log "Failed to configure JSON inbound server '$section'. Aborted." "fatal"
+            exit 1
+        }
         return 0
     fi
 
@@ -53,8 +85,6 @@ configure_server_inbound() {
         log "Server '$section' cannot listen on $listen:$listen_port [$required_proto]: port is already used by $port_conflict_owners. Aborted." "fatal"
         exit 1
     fi
-
-    inbound_tag="$(get_server_inbound_tag_by_section "$section")"
 
     case "$protocol" in
     shadowsocks)
@@ -369,6 +399,9 @@ server_effective_security() {
 
     case "$protocol" in
     shadowsocks | socks | mtproto | tailscale)
+        security="none"
+        ;;
+    json_inbound)
         security="none"
         ;;
     hysteria2)
@@ -717,7 +750,7 @@ prepare_server_defaults() {
 
     config_get protocol "$section" "protocol" "vless"
     case "$protocol" in
-    shadowsocks | socks | vmess | vless | trojan | hysteria2 | mtproto | tailscale) ;;
+    shadowsocks | socks | vmess | vless | trojan | hysteria2 | mtproto | tailscale | json_inbound) ;;
     *)
         log "Server '$section' has unsupported protocol '$protocol'. Aborted." "fatal"
         exit 1
@@ -727,10 +760,16 @@ prepare_server_defaults() {
     server_default_set_option "$section" "protocol" "$protocol"
     server_default_set_option "$section" "label" "$section"
     server_default_set_option "$section" "enabled" "1"
+    server_default_set_option "$section" "routing_mode" "rules"
+
+    if [ "$protocol" = "json_inbound" ]; then
+        server_set_option "$section" "security" "none"
+        return 0
+    fi
+
     server_default_set_option "$section" "listen" "0.0.0.0"
     server_default_set_option "$section" "listen_port" "443"
     server_default_set_option "$section" "public_host" "$(server_detect_default_public_host)"
-    server_default_set_option "$section" "routing_mode" "rules"
 
     security="$(server_effective_security "$section" "$protocol")"
     server_set_option "$section" "security" "$security"

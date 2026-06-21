@@ -69,6 +69,14 @@ sing_box_cm_add_mixed_inbound() {
     sing_box_cm_ucode add-mixed-inbound "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
+sing_box_cm_add_raw_inbound() {
+    sing_box_cm_ucode add-raw-inbound "$1" "$2" "$3"
+}
+
+sing_box_cm_add_raw_inbound_file() {
+    sing_box_cm_ucode add-raw-inbound-file "$1" "$2" "$3"
+}
+
 sing_box_cm_add_vless_inbound() {
     sing_box_cm_ucode add-vless-inbound-file "$1" "$2" "$3" "$4" "$5"
 }

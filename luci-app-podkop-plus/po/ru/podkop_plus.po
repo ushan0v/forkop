@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-18 06:38+0300\n"
-"PO-Revision-Date: 2026-06-18 06:38+0300\n"
+"POT-Creation-Date: 2026-06-21 01:47+0300\n"
+"PO-Revision-Date: 2026-06-21 01:47+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -434,6 +434,9 @@ msgstr "Включить YACD"
 msgid "Enable YACD WAN Access"
 msgstr "Включить доступ YACD WAN"
 
+msgid "Enter a complete sing-box inbound object"
+msgstr "Введите полный объект inbound sing-box"
+
 msgid "Enter a complete sing-box outbound object"
 msgstr "Введите полный объект outbound sing-box"
 
@@ -556,6 +559,15 @@ msgstr "HTTP-хосты"
 
 msgid "Idle timeout"
 msgstr "Таймаут простоя"
+
+msgid "Inbound JSON"
+msgstr "Inbound JSON"
+
+msgid "Inbound JSON cannot be empty"
+msgstr "Inbound JSON не может быть пустым"
+
+msgid "Inbound JSON must be an object with a type field"
+msgstr "Inbound JSON должен быть объектом с полем type"
 
 msgid "Include country in URLTest"
 msgstr "Включить страну в URLTest"

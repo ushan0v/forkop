@@ -158,7 +158,7 @@ check_inbounds_server_handler() {
     firewall_open=-1
     port_conflict=0
     port_conflict_owners=""
-    if [ "$protocol" != "tailscale" ]; then
+    if [ "$protocol" != "tailscale" ] && [ "$protocol" != "json_inbound" ]; then
         port_conflict_owners="$(server_required_port_conflict_owners "$listen" "$listen_port" "$required_proto")"
         [ -z "$port_conflict_owners" ] || port_conflict=1
 
@@ -184,7 +184,11 @@ check_inbounds_server_handler() {
         routes_configured=0
     fi
 
-    public_host_ips="$(resolve_public_host_ipv4s "$public_host" | status_diagnostics_ucode stdin-sorted-unique-space-list 2>/dev/null)"
+    if [ "$protocol" != "json_inbound" ]; then
+        public_host_ips="$(resolve_public_host_ipv4s "$public_host" | status_diagnostics_ucode stdin-sorted-unique-space-list 2>/dev/null)"
+    else
+        public_host_ips=""
+    fi
     public_host_resolved=-1
     public_host_public=-1
     public_host_matches_wan=-1
