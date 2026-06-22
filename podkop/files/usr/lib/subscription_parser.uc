@@ -216,6 +216,13 @@ function xhttp_positive_range_or_default(value, default_value) {
     return normalized != null ? normalized : default_value;
 }
 
+function xhttp_present_positive_range_or_default(value, default_value) {
+    if (!xhttp_value_present(value))
+        return null;
+
+    return xhttp_positive_range_or_default(value, default_value);
+}
+
 function xhttp_optional_bool(object, key, value) {
     if (xhttp_value_present(value))
         object[key] = is_true(value);
@@ -646,7 +653,7 @@ function add_transport(url) {
         let extra_settings = xhttp_extra_settings(query);
         xhttp_optional_positive_range(result, "x_padding_bytes", xhttp_setting_value(query, extra_settings, "xPaddingBytes", "x_padding_bytes"));
         xhttp_optional_bool(result, "no_grpc_header", xhttp_setting_value(query, extra_settings, "noGRPCHeader", "no_grpc_header"));
-        xhttp_optional_range(result, "sc_max_each_post_bytes", xhttp_setting_value(query, extra_settings, "scMaxEachPostBytes", "sc_max_each_post_bytes"));
+        xhttp_optional_positive_range(result, "sc_max_each_post_bytes", xhttp_setting_value(query, extra_settings, "scMaxEachPostBytes", "sc_max_each_post_bytes"));
         xhttp_optional_range(result, "sc_min_posts_interval_ms", xhttp_setting_value(query, extra_settings, "scMinPostsIntervalMs", "sc_min_posts_interval_ms"));
         xhttp_optional_range(result, "sc_stream_up_server_secs", xhttp_setting_value(query, extra_settings, "scStreamUpServerSecs", "sc_stream_up_server_secs"));
         let xmux = xhttp_normalize_xmux(xhttp_setting_value(query, extra_settings, "xmux", "xmux"));
@@ -2143,7 +2150,7 @@ function xray_transport_from_stream(stream) {
             result.host = as_string(settings.host);
         xhttp_optional_positive_range(result, "x_padding_bytes", xhttp_setting_value(settings, settings, "xPaddingBytes", "x_padding_bytes"));
         xhttp_optional_bool(result, "no_grpc_header", xhttp_setting_value(settings, settings, "noGRPCHeader", "no_grpc_header"));
-        xhttp_optional_range(result, "sc_max_each_post_bytes", xhttp_setting_value(settings, settings, "scMaxEachPostBytes", "sc_max_each_post_bytes"));
+        xhttp_optional_positive_range(result, "sc_max_each_post_bytes", xhttp_setting_value(settings, settings, "scMaxEachPostBytes", "sc_max_each_post_bytes"));
         xhttp_optional_range(result, "sc_min_posts_interval_ms", xhttp_setting_value(settings, settings, "scMinPostsIntervalMs", "sc_min_posts_interval_ms"));
         xhttp_optional_range(result, "sc_stream_up_server_secs", xhttp_setting_value(settings, settings, "scStreamUpServerSecs", "sc_stream_up_server_secs"));
         let xmux = xhttp_normalize_xmux(settings.xmux);
@@ -2573,6 +2580,9 @@ function normalize_sing_box_xhttp_transport(outbound) {
         return outbound;
 
     outbound.transport.x_padding_bytes = xhttp_positive_range_or_default(outbound.transport.x_padding_bytes, "100-1000");
+    let sc_max_each_post_bytes = xhttp_present_positive_range_or_default(outbound.transport.sc_max_each_post_bytes, 1000000);
+    if (sc_max_each_post_bytes != null)
+        outbound.transport.sc_max_each_post_bytes = sc_max_each_post_bytes;
     return outbound;
 }
 

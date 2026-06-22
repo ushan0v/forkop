@@ -262,6 +262,11 @@ function xhttp_range_value(value, positive) {
     return from != null && to != null && from <= to ? from + "-" + to : null;
 }
 
+function xhttp_positive_range_or_default(value, default_value) {
+    let normalized = xhttp_range_value(value, true);
+    return normalized != null ? normalized : default_value;
+}
+
 function xhttp_arg_value(value) {
     if (value == null)
         return "";
@@ -322,7 +327,7 @@ function xhttp_transport_extra(url) {
     let values = [
         xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "xPaddingBytes", "x_padding_bytes"), true)),
         xhttp_bool_arg(xhttp_setting_value(query, extra_settings, "noGRPCHeader", "no_grpc_header")),
-        xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "scMaxEachPostBytes", "sc_max_each_post_bytes"), false)),
+        xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "scMaxEachPostBytes", "sc_max_each_post_bytes"), true)),
         xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "scMinPostsIntervalMs", "sc_min_posts_interval_ms"), false)),
         xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "scStreamUpServerSecs", "sc_stream_up_server_secs"), false)),
         xhttp_arg_value(xmux)
@@ -525,6 +530,18 @@ function unique_tag(base, taken) {
     return base + "-overflow";
 }
 
+function normalize_outbound(outbound) {
+    if (type(outbound) != "object" || type(outbound.transport) != "object")
+        return;
+    if (outbound.transport.type != "xhttp")
+        return;
+
+    if (xhttp_value_present(outbound.transport.sc_max_each_post_bytes)) {
+        outbound.transport = clone(outbound.transport);
+        outbound.transport.sc_max_each_post_bytes = xhttp_positive_range_or_default(outbound.transport.sc_max_each_post_bytes, 1000000);
+    }
+}
+
 function copy_outbound(outbound) {
     let copy = {};
     for (let key, value in outbound) {
@@ -532,6 +549,7 @@ function copy_outbound(outbound) {
             key != "__podkop_hidden" && key != "__podkop_allow_group")
             copy[key] = value;
     }
+    normalize_outbound(copy);
     return copy;
 }
 
