@@ -986,7 +986,7 @@ configure_outbound_handler() {
                 fi
 
                 config="$(sing_box_cm_add_urltest_outbound "$config" "$urltest_tag" "$urltest_outbounds" \
-                    "$urltest_testing_url" "$urltest_check_interval" "$urltest_tolerance" "$urltest_idle_timeout")"
+                    "$urltest_testing_url" "$urltest_check_interval" "$urltest_tolerance" "$urltest_idle_timeout" "true")"
                 if list_has_item "$PODKOP_URLTEST_NEW_ENABLED_SECTIONS" "$section"; then
                     schedule_urltest_selector_switch "$selector_tag" "$urltest_tag"
                 fi
