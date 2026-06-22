@@ -23,14 +23,13 @@ _validate_download_lists_via_proxy_section_handler() {
 }
 
 validate_download_lists_via_proxy_section() {
-    local download_lists_via_proxy download_lists_via_proxy_section
+    local download_lists_via_proxy_section
 
-    config_get_bool download_lists_via_proxy "settings" "download_lists_via_proxy" 0
-    [ "$download_lists_via_proxy" -eq 1 ] || return 0
+    download_via_proxy_any_enabled || return 0
 
     config_get download_lists_via_proxy_section "settings" "download_lists_via_proxy_section"
     if [ -z "$download_lists_via_proxy_section" ]; then
-        log "Download lists/updates/subscriptions via Proxy/VPN is enabled, but no proxy/VPN/JSON outbound rule is selected. Aborted." "fatal"
+        log "Downloading external resources via Proxy/VPN is enabled, but no proxy/VPN/JSON outbound rule is selected. Aborted." "fatal"
         exit 1
     fi
 
@@ -41,17 +40,17 @@ validate_download_lists_via_proxy_section() {
     config_foreach _validate_download_lists_via_proxy_section_handler "section"
 
     if [ "$PODKOP_VALIDATE_DOWNLOAD_SECTION_FOUND" -eq 0 ]; then
-        log "Download lists/updates/subscriptions via Proxy/VPN references missing rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
+        log "Downloading external resources via Proxy/VPN references missing rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
         exit 1
     fi
 
     if [ "$PODKOP_VALIDATE_DOWNLOAD_SECTION_ENABLED" -eq 0 ]; then
-        log "Download lists/updates/subscriptions via Proxy/VPN references disabled rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
+        log "Downloading external resources via Proxy/VPN references disabled rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
         exit 1
     fi
 
     if [ "$PODKOP_VALIDATE_DOWNLOAD_SECTION_OUTBOUND" -eq 0 ]; then
-        log "Download lists/updates/subscriptions via Proxy/VPN references rule '$download_lists_via_proxy_section', but it is not a proxy/VPN/JSON outbound rule. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
+        log "Downloading external resources via Proxy/VPN references rule '$download_lists_via_proxy_section', but it is not a proxy/VPN/JSON outbound rule. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
         exit 1
     fi
 }
@@ -717,6 +716,15 @@ migrate_list_update_enabled() {
     fi
 }
 
+migrate_download_via_proxy_flags() {
+    local download_via_proxy_enabled
+
+    config_get_bool download_via_proxy_enabled "settings" "download_lists_via_proxy" 0
+    podkop_uci_set_option_if_missing "settings" "download_lists_via_proxy" "$download_via_proxy_enabled"
+    podkop_uci_set_option_if_missing "settings" "download_subscriptions_via_proxy" "$download_via_proxy_enabled"
+    podkop_uci_set_option_if_missing "settings" "download_components_via_proxy" "$download_via_proxy_enabled"
+}
+
 validate_extended_server_features_handler() {
     local section="$1"
     local protocol transport
@@ -869,6 +877,7 @@ migration() {
     ensure_runtime_cache_format
     remove_legacy_server_country_cache
     migrate_list_update_enabled
+    migrate_download_via_proxy_flags
 
     config_foreach migrate_0_7_17_8_rule_section "rule"
     config_foreach migrate_0_7_17_8_rule "section"

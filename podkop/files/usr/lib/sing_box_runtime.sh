@@ -1410,7 +1410,7 @@ import_domain_ip_list_reference_into_rulesets() {
     case "$reference" in
     http://* | https://*)
         tmpfile="$(mktemp)"
-        http_proxy_address="$(get_service_proxy_address)"
+        http_proxy_address="$(get_service_proxy_address lists)"
         download_to_file "$reference" "$tmpfile" "$http_proxy_address"
         download_status="$?"
         if [ "$download_status" -eq 0 ] && [ -s "$tmpfile" ]; then
@@ -1768,9 +1768,7 @@ sing_box_configure_experimental() {
 sing_box_additional_inbounds() {
     log "Configure the additional inbounds of a sing-box JSON configuration"
 
-    local download_lists_via_proxy
-    config_get_bool download_lists_via_proxy "settings" "download_lists_via_proxy" 0
-    if [ "$download_lists_via_proxy" -eq 1 ]; then
+    if download_via_proxy_any_enabled; then
         local download_lists_via_proxy_section section_outbound_tag
         config_get download_lists_via_proxy_section "settings" "download_lists_via_proxy_section"
         section_outbound_tag="$(get_outbound_tag_by_section "$download_lists_via_proxy_section")"
@@ -2012,7 +2010,7 @@ import_custom_ruleset_subnets_from_remote() {
     json_tmpfile="$(mktemp)"
     unscoped_tmpfile="$(mktemp)"
     scoped_tmpfile="$(mktemp)"
-    http_proxy_address="$(get_service_proxy_address)"
+    http_proxy_address="$(get_service_proxy_address lists)"
 
     download_to_file "$url" "$remote_tmpfile" "$http_proxy_address"
     download_status="$?"
@@ -2107,7 +2105,7 @@ import_community_service_subnet_list_handler() {
 
     local tmpfile http_proxy_address
     tmpfile=$(mktemp)
-    http_proxy_address="$(get_service_proxy_address)"
+    http_proxy_address="$(get_service_proxy_address lists)"
 
     download_to_file "$URL" "$tmpfile" "$http_proxy_address"
     download_status="$?"
@@ -2168,7 +2166,7 @@ import_domains_from_remote_plain_file() {
 
     local tmpfile http_proxy_address download_status ruleset_tag ruleset_filepath
     tmpfile=$(mktemp)
-    http_proxy_address="$(get_service_proxy_address)"
+    http_proxy_address="$(get_service_proxy_address lists)"
 
     download_to_file "$url" "$tmpfile" "$http_proxy_address"
     download_status="$?"
@@ -2235,7 +2233,7 @@ import_subnets_from_remote_json_file() {
     json_tmpfile="$(mktemp)"
     unscoped_tmpfile="$(mktemp)"
     scoped_tmpfile="$(mktemp)"
-    http_proxy_address="$(get_service_proxy_address)"
+    http_proxy_address="$(get_service_proxy_address lists)"
 
     download_to_file "$url" "$json_tmpfile" "$http_proxy_address"
     download_status="$?"
@@ -2270,7 +2268,7 @@ import_subnets_from_remote_srs_file() {
     json_tmpfile="$(mktemp)"
     unscoped_tmpfile="$(mktemp)"
     scoped_tmpfile="$(mktemp)"
-    http_proxy_address="$(get_service_proxy_address)"
+    http_proxy_address="$(get_service_proxy_address lists)"
 
     download_to_file "$url" "$binary_tmpfile" "$http_proxy_address"
     download_status="$?"
@@ -2308,7 +2306,7 @@ import_subnets_from_remote_plain_file() {
 
     local tmpfile http_proxy_address ruleset_tag ruleset_filepath status download_status
     tmpfile=$(mktemp)
-    http_proxy_address="$(get_service_proxy_address)"
+    http_proxy_address="$(get_service_proxy_address lists)"
 
     download_to_file "$url" "$tmpfile" "$http_proxy_address"
     download_status="$?"
@@ -2333,9 +2331,9 @@ import_subnets_from_remote_plain_file() {
 
 ## Support functions
 get_service_proxy_address() {
-    local download_lists_via_proxy
-    config_get_bool download_lists_via_proxy "settings" "download_lists_via_proxy" 0
-    if [ "$download_lists_via_proxy" -eq 1 ]; then
+    local purpose="${1:-lists}"
+
+    if download_via_proxy_enabled_for_purpose "$purpose"; then
         echo "$SB_SERVICE_MIXED_INBOUND_ADDRESS:$SB_SERVICE_MIXED_INBOUND_PORT"
     else
         echo ""
@@ -2343,8 +2341,7 @@ get_service_proxy_address() {
 }
 
 get_download_detour_tag() {
-    config_get_bool download_lists_via_proxy "settings" "download_lists_via_proxy" 0
-    if [ "$download_lists_via_proxy" -eq 1 ]; then
+    if download_via_proxy_enabled_for_purpose lists; then
         local download_lists_via_proxy_section section_outbound_tag
         config_get download_lists_via_proxy_section "settings" "download_lists_via_proxy_section"
         section_outbound_tag="$(get_outbound_tag_by_section "$download_lists_via_proxy_section")"

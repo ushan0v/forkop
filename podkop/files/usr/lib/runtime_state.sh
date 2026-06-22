@@ -624,7 +624,8 @@ append_sing_box_server_signature() {
 build_sing_box_signature() {
     local dns_type dns_server bootstrap_dns_server rewrite_ttl output_network_interface disable_quic routing_excluded_ips \
         update_interval cache_path config_path log_level enable_yacd enable_yacd_wan_access yacd_secret_key \
-        download_lists_via_proxy download_lists_via_proxy_section service_listen_address mwan3_active
+        download_lists_via_proxy download_subscriptions_via_proxy download_components_via_proxy \
+        download_lists_via_proxy_section service_listen_address mwan3_active
 
     signature_begin
 
@@ -643,6 +644,8 @@ build_sing_box_signature() {
     config_get_bool enable_yacd "settings" "enable_yacd" 0
     config_get_bool enable_yacd_wan_access "settings" "enable_yacd_wan_access" 0
     config_get_bool download_lists_via_proxy "settings" "download_lists_via_proxy" 0
+    config_get_bool download_subscriptions_via_proxy "settings" "download_subscriptions_via_proxy" 0
+    config_get_bool download_components_via_proxy "settings" "download_components_via_proxy" 0
     mwan3_active=0
     mwan3_is_active && mwan3_active=1
 
@@ -669,7 +672,9 @@ build_sing_box_signature() {
     fi
 
     signature_add "settings.download_lists_via_proxy" "$download_lists_via_proxy"
-    if [ "$download_lists_via_proxy" -eq 1 ]; then
+    signature_add "settings.download_subscriptions_via_proxy" "$download_subscriptions_via_proxy"
+    signature_add "settings.download_components_via_proxy" "$download_components_via_proxy"
+    if download_via_proxy_any_enabled; then
         config_get download_lists_via_proxy_section "settings" "download_lists_via_proxy_section"
         signature_add "settings.download_lists_via_proxy_section" "$download_lists_via_proxy_section"
     fi

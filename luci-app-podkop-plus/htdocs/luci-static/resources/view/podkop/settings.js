@@ -327,8 +327,26 @@ function createSettingsContent(section) {
   o = section.option(
     form.Flag,
     "download_lists_via_proxy",
-    _("Download lists/updates/subscriptions via Proxy/VPN"),
-    _("Download external lists/updates/subscriptions via the selected section"),
+    _("Download list updates via Proxy/VPN"),
+    _("Download remote lists and rule sets via the selected section"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = section.option(
+    form.Flag,
+    "download_subscriptions_via_proxy",
+    _("Download subscription updates via Proxy/VPN"),
+    _("Download subscriptions via the selected section"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = section.option(
+    form.Flag,
+    "download_components_via_proxy",
+    _("Download component updates via Proxy/VPN"),
+    _("Download Podkop Plus and component packages via the selected section"),
   );
   o.default = "0";
   o.rmempty = false;
@@ -336,14 +354,16 @@ function createSettingsContent(section) {
   o = section.option(
     form.ListValue,
     "download_lists_via_proxy_section",
-    _("Select a specific section for downloading external resources"),
+    _("Select a section for downloading external resources"),
     _(
-      "Download external lists/updates/subscriptions via one of the enabled proxy/VPN sections",
+      "Use one enabled proxy, JSON outbound, or VPN section for the selected download types",
     ),
   );
 
   o.rmempty = false;
   o.depends("download_lists_via_proxy", "1");
+  o.depends("download_subscriptions_via_proxy", "1");
+  o.depends("download_components_via_proxy", "1");
   o.cfgvalue = function (section_id) {
     return uci.get(UCI_PACKAGE, section_id, "download_lists_via_proxy_section");
   };

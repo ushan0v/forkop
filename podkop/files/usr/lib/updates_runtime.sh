@@ -155,7 +155,7 @@ list_update() {
     local i service_proxy_address dns_probe_answer dns_probe_ok curl_ok
 
     # DNS Check
-    service_proxy_address="$(get_service_proxy_address)"
+    service_proxy_address="$(get_service_proxy_address lists)"
     if [ -n "$service_proxy_address" ]; then
         echolog "DNS check skipped because list downloads use service proxy"
     else

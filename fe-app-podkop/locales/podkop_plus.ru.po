@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-21 01:47+0300\n"
-"PO-Revision-Date: 2026-06-21 01:47+0300\n"
+"POT-Creation-Date: 2026-06-22 03:37+0300\n"
+"PO-Revision-Date: 2026-06-22 03:37+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -383,14 +383,23 @@ msgstr "Входящий"
 msgid "Download"
 msgstr "Скачать"
 
-msgid "Download external lists/updates/subscriptions via one of the enabled proxy/VPN sections"
-msgstr "Скачивать внешние списки/обновления/подписки через одну из включенных секций proxy/VPN"
+msgid "Download component updates via Proxy/VPN"
+msgstr "Скачивать обновления компонентов через Proxy/VPN"
 
-msgid "Download external lists/updates/subscriptions via the selected section"
-msgstr "Скачивать внешние списки/обновления/подписки через выбранную секцию"
+msgid "Download list updates via Proxy/VPN"
+msgstr "Скачивать обновления списков через Proxy/VPN"
 
-msgid "Download lists/updates/subscriptions via Proxy/VPN"
-msgstr "Скачивать списки/обновления/подписки через Proxy/VPN"
+msgid "Download Podkop Plus and component packages via the selected section"
+msgstr "Скачивать пакеты Podkop Plus и компонентов через выбранную секцию"
+
+msgid "Download remote lists and rule sets via the selected section"
+msgstr "Скачивать удаленные списки и наборы правил через выбранную секцию"
+
+msgid "Download subscription updates via Proxy/VPN"
+msgstr "Скачивать обновления подписок через Proxy/VPN"
+
+msgid "Download subscriptions via the selected section"
+msgstr "Скачивать подписки через выбранную секцию"
 
 msgid "Downloaded"
 msgstr "Загружено"
@@ -1253,8 +1262,8 @@ msgstr "Выберите загруженный сервер или введит
 msgid "Select a predefined list for routing"
 msgstr "Выберите предустановленный набор правил для маршрутизации"
 
-msgid "Select a specific section for downloading external resources"
-msgstr "Выберите конкретную секцию для скачки внешних ресурсов"
+msgid "Select a section for downloading external resources"
+msgstr "Выберите секцию для скачивания внешних ресурсов"
 
 msgid "Select a transit section"
 msgstr "Выберите секцию-транзит"
@@ -1687,6 +1696,9 @@ msgstr "Используйте формат: URL | User-Agent"
 
 msgid "Use letters, digits, dots, underscores, or hyphens"
 msgstr "Используйте буквы, цифры, точки, подчёркивания или дефисы"
+
+msgid "Use one enabled proxy, JSON outbound, or VPN section for the selected download types"
+msgstr "Использовать одну включенную секцию proxy, JSON outbound или VPN для выбранных типов скачивания"
 
 msgid "Use sing-box duration format like 1d, 12h or 30m"
 msgstr "Используйте формат длительности sing-box, например 1d, 12h или 30m"

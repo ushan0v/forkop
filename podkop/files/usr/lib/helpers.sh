@@ -4,6 +4,37 @@ helpers_ucode() {
     ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/helpers.uc" "$@"
 }
 
+download_via_proxy_option_for_purpose() {
+    case "${1:-lists}" in
+    lists)
+        printf '%s\n' "download_lists_via_proxy"
+        ;;
+    subscriptions)
+        printf '%s\n' "download_subscriptions_via_proxy"
+        ;;
+    components)
+        printf '%s\n' "download_components_via_proxy"
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+download_via_proxy_enabled_for_purpose() {
+    local option enabled
+
+    option="$(download_via_proxy_option_for_purpose "$1")" || return 1
+    config_get_bool enabled "settings" "$option" 0
+    [ "$enabled" -eq 1 ]
+}
+
+download_via_proxy_any_enabled() {
+    download_via_proxy_enabled_for_purpose lists ||
+        download_via_proxy_enabled_for_purpose subscriptions ||
+        download_via_proxy_enabled_for_purpose components
+}
+
 trim_string() {
     helpers_ucode stdin-trim-string
 }

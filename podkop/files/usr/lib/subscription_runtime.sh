@@ -654,11 +654,10 @@ subscription_section_has_current_usable_cache() {
 }
 
 subscription_bootstrap_download_section_is_ready() {
-    local download_lists_via_proxy download_lists_via_proxy_section action selector_proxy_links outbound_json interface_name
+    local download_lists_via_proxy_section action selector_proxy_links outbound_json interface_name
 
-    config_get_bool download_lists_via_proxy "settings" "download_lists_via_proxy" 0
-    [ "$download_lists_via_proxy" -eq 1 ] || {
-        log "Subscription startup cannot be deferred because Download lists/updates/subscriptions via Proxy/VPN is disabled" "error"
+    download_via_proxy_enabled_for_purpose subscriptions || {
+        log "Subscription startup cannot be deferred because subscription downloads via Proxy/VPN are disabled" "error"
         return 1
     }
 
@@ -725,14 +724,14 @@ get_subscription_download_proxy_address() {
     local phase="${3:-runtime}"
     local service_proxy_address download_lists_via_proxy_section selector_proxy_links
 
-    service_proxy_address="$(get_service_proxy_address)"
+    service_proxy_address="$(get_service_proxy_address subscriptions)"
     [ -n "$service_proxy_address" ] || return 0
 
     if ! sing_box_service_is_running; then
         if [ "$phase" = "startup" ]; then
-            log "download_lists_via_proxy is enabled, but sing-box is not running yet; bootstrapping subscription for rule '$section' directly" "info"
+            log "download_subscriptions_via_proxy is enabled, but sing-box is not running yet; bootstrapping subscription for rule '$section' directly" "info"
         else
-            log "download_lists_via_proxy is enabled, but sing-box service proxy is not running; downloading subscription for rule '$section' directly" "warn"
+            log "download_subscriptions_via_proxy is enabled, but sing-box service proxy is not running; downloading subscription for rule '$section' directly" "warn"
         fi
         return 0
     fi

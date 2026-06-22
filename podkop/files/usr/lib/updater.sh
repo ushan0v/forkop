@@ -554,7 +554,7 @@ updates_get_service_proxy_address() {
         return 0
     fi
 
-    service_proxy_address="$(get_service_proxy_address 2>/dev/null || true)"
+    service_proxy_address="$(get_service_proxy_address components 2>/dev/null || true)"
     printf '%s' "$service_proxy_address"
 }
 
