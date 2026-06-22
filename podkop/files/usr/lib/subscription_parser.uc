@@ -66,6 +66,15 @@ function split_csv(value) {
     return result;
 }
 
+function tls_alpn_for_transport(alpn, transport) {
+    transport = lc(as_string(transport));
+    if (transport == "xhttp" && length(alpn) == 0)
+        return ["h2", "http/1.1"];
+    if ((transport == "ws" || transport == "httpupgrade") && length(alpn) > 0)
+        return ["http/1.1"];
+    return alpn;
+}
+
 function is_true(value) {
     if (value == null || value == "")
         return false;
@@ -544,10 +553,8 @@ function add_tls(url, security, default_tls) {
     let query = object_or_empty(url.query);
     let sni = query.sni || query.peer || "";
     let insecure = query.allowInsecure || query.insecure || "";
-    let alpn = query.alpn || "";
     let transport = query.type || "";
-    if (transport == "xhttp" && alpn == "")
-        alpn = "h2,http/1.1";
+    let alpn = tls_alpn_for_transport(split_csv(query.alpn || ""), transport);
 
     let fingerprint = normalize_utls_fingerprint(query.fp || "");
     let public_key = query.pbk || "";
@@ -562,7 +569,7 @@ function add_tls(url, security, default_tls) {
     if (security == "tls" || security == "xtls" || security == "reality")
         tls_enabled = true;
     else if (security == null || security == "")
-        tls_enabled = default_tls || sni != "" || alpn != "" || fingerprint != "" || public_key != "";
+        tls_enabled = default_tls || sni != "" || length(alpn) > 0 || fingerprint != "" || public_key != "";
 
     if (!tls_enabled)
         return [null, true];
@@ -572,8 +579,8 @@ function add_tls(url, security, default_tls) {
         tls.server_name = sni;
     if (is_true(insecure))
         tls.insecure = true;
-    if (alpn != "")
-        tls.alpn = split_csv(alpn);
+    if (length(alpn) > 0)
+        tls.alpn = alpn;
     if (fingerprint != "")
         tls.utls = { enabled: true, fingerprint: fingerprint };
     if (security == "reality" || public_key != "") {
@@ -981,19 +988,20 @@ function process_vmess_json(raw, decoded) {
     if (as_string(vmess.aid) != "")
         outbound.alter_id = alter_id;
 
+    let network = string_value(vmess.net);
     if (vmess.tls === true || vmess.tls == "tls" || vmess.tls == "true") {
         let fingerprint = normalize_utls_fingerprint(string_value(vmess.fp));
         let tls = { enabled: true };
         if (string_value(vmess.sni) != "")
             tls.server_name = string_value(vmess.sni);
-        if (string_value(vmess.alpn) != "")
-            tls.alpn = split_csv(string_value(vmess.alpn));
+        let alpn = tls_alpn_for_transport(split_csv(string_value(vmess.alpn)), network);
+        if (length(alpn) > 0)
+            tls.alpn = alpn;
         if (fingerprint != "")
             tls.utls = { enabled: true, fingerprint: fingerprint };
         outbound.tls = tls;
     }
 
-    let network = string_value(vmess.net);
     if (network == "ws") {
         outbound.transport = {
             type: "ws",
@@ -1307,7 +1315,8 @@ function normalized_clash_alpn(value) {
 
 function add_clash_tls(outbound, options) {
     let enabled = options.always || is_true(options.tls) || options.sni != "" ||
-        options.alpn != "" || options.fingerprint != "" || options.reality_public_key != "";
+        length(tls_alpn_for_transport(split_csv(options.alpn), options.network)) > 0 ||
+        options.fingerprint != "" || options.reality_public_key != "";
     if (!enabled)
         return;
 
@@ -1316,8 +1325,9 @@ function add_clash_tls(outbound, options) {
         tls.server_name = options.sni;
     if (is_true(options.skip_verify))
         tls.insecure = true;
-    if (options.alpn != "")
-        tls.alpn = split_csv(options.alpn);
+    let alpn = tls_alpn_for_transport(split_csv(options.alpn), options.network);
+    if (length(alpn) > 0)
+        tls.alpn = alpn;
 
     if (options.reality_public_key != "") {
         tls.utls = {
@@ -2057,10 +2067,7 @@ function xray_tls_from_stream(stream, network) {
 
     let tls = { enabled: true };
     let server_name = xray_first_string([settings.serverName, settings.server_name, settings.sni]);
-    let alpn = xray_alpn(settings.alpn);
-
-    if (network == "xhttp" && length(alpn) == 0)
-        alpn = ["h2", "http/1.1"];
+    let alpn = tls_alpn_for_transport(xray_alpn(settings.alpn), network);
     if (server_name != "")
         tls.server_name = server_name;
     if (is_true(settings.allowInsecure) || is_true(settings.insecure))

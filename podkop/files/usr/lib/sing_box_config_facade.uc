@@ -52,6 +52,20 @@ function csv_to_json_array(value) {
     write_compact_string_array(value == "" ? [] : split(value, ","));
 }
 
+function tls_alpn_json_array(value, transport) {
+    value = as_string(value);
+    transport = lc(as_string(transport));
+    if (value == "" && transport == "xhttp") {
+        write_compact_string_array(["h2", "http/1.1"]);
+        return;
+    }
+    if (value != "" && (transport == "ws" || transport == "httpupgrade")) {
+        write_compact_string_array(["http/1.1"]);
+        return;
+    }
+    write_compact_string_array(value == "" ? [] : split(value, ","));
+}
+
 function hex_digit_value(value) {
     value = ord(lc(as_string(value)));
     if (value >= 48 && value <= 57)
@@ -998,6 +1012,8 @@ if (mode == "candidate-outbounds")
     candidate_outbounds(ARGV[1]);
 else if (mode == "csv-to-json-array")
     csv_to_json_array(ARGV[1]);
+else if (mode == "tls-alpn-json-array")
+    tls_alpn_json_array(ARGV[1], ARGV[2]);
 else if (mode == "url-decode")
     print(url_decode(ARGV[1]));
 else if (mode == "xhttp-transport-extra")

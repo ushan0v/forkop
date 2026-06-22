@@ -272,10 +272,7 @@ _add_outbound_security() {
         local sni insecure alpn fingerprint public_key short_id
         sni=$(url_get_query_param "$url" "sni")
         insecure=$(_get_insecure_query_param_from_url "$url")
-        alpn=$(sing_box_cf_ucode csv-to-json-array "$(url_get_query_param "$url" "alpn")")
-        if [ "$alpn" = "[]" ] && [ "$(url_get_query_param "$url" "type")" = "xhttp" ]; then
-            alpn='["h2","http/1.1"]'
-        fi
+        alpn=$(sing_box_cf_ucode tls-alpn-json-array "$(url_get_query_param "$url" "alpn")" "$(url_get_query_param "$url" "type")")
         fingerprint=$(url_get_query_param "$url" "fp")
         if [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ]; then
             fingerprint=""
