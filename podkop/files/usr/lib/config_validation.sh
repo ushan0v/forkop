@@ -214,8 +214,39 @@ validate_list_update_settings() {
 }
 
 validate_runtime_settings() {
+    validate_runtime_mark_ranges
     validate_list_update_settings
     validate_download_lists_via_proxy_section
+}
+
+validate_route_mark_range() {
+    local label="$1"
+    local base="$2"
+    local range_size="$3"
+    local mark_mask="$4"
+    local mark_mask_label="$5"
+    local base_value range_size_value mark_mask_value index mark_value
+
+    base_value=$((base))
+    range_size_value=$((range_size))
+    mark_mask_value=$((mark_mask))
+
+    index=1
+    while [ "$index" -le "$range_size_value" ]; do
+        mark_value=$((base_value + index))
+        if [ $((mark_value & mark_mask_value)) -ne 0 ]; then
+            log "$label route mark range overlaps $mark_mask_label. Aborted." "fatal"
+            exit 1
+        fi
+        index=$((index + 1))
+    done
+}
+
+validate_runtime_mark_ranges() {
+    validate_route_mark_range "Zapret" "$ZAPRET_ROUTE_MARK_BASE" "$ZAPRET_QUEUE_RANGE_SIZE" "$NFT_FAKEIP_MARK" "FakeIP mark $NFT_FAKEIP_MARK"
+    validate_route_mark_range "Zapret" "$ZAPRET_ROUTE_MARK_BASE" "$ZAPRET_QUEUE_RANGE_SIZE" "$NFT_OUTBOUND_MARK" "outbound mark $NFT_OUTBOUND_MARK"
+    validate_route_mark_range "Zapret2" "$ZAPRET2_ROUTE_MARK_BASE" "$ZAPRET2_QUEUE_RANGE_SIZE" "$NFT_FAKEIP_MARK" "FakeIP mark $NFT_FAKEIP_MARK"
+    validate_route_mark_range "Zapret2" "$ZAPRET2_ROUTE_MARK_BASE" "$ZAPRET2_QUEUE_RANGE_SIZE" "$NFT_OUTBOUND_MARK" "outbound mark $NFT_OUTBOUND_MARK"
 }
 
 podkop_current_config_hash() {
