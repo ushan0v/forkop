@@ -177,8 +177,8 @@ list_update() {
         done
 
         if [ "$dns_probe_ok" -ne 1 ]; then
-            echolog "DNS check failed after $dns_probe_attempts attempts"
-            return 1
+            echolog "DNS check failed after $dns_probe_attempts attempts; skipping remote lists update until the next attempt"
+            return 0
         fi
     fi
 
@@ -209,8 +209,7 @@ list_update() {
     done
 
     if [ "$curl_ok" -ne 1 ]; then
-        echolog "GitHub connection check failed after $curl_attempts attempts"
-        return 1
+        echolog "GitHub connection check failed after $curl_attempts attempts; trying configured list downloads individually"
     fi
 
     echolog "Downloading and processing lists..."

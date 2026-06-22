@@ -232,19 +232,22 @@ download_to_file() {
     local http_proxy_address="$3"
     local retries="${4:-3}"
     local wait="${5:-2}"
+    local attempt
 
     attempt=1
     while [ "$attempt" -le "$retries" ]; do
         if [ -n "$http_proxy_address" ]; then
-            http_proxy="http://$http_proxy_address" https_proxy="http://$http_proxy_address" wget -O "$filepath" "$url" && break
+            http_proxy="http://$http_proxy_address" https_proxy="http://$http_proxy_address" wget -O "$filepath" "$url" && return 0
         else
-            wget -O "$filepath" "$url" && break
+            wget -O "$filepath" "$url" && return 0
         fi
 
         log "Attempt $attempt/$retries to download $url failed" "warn"
         sleep "$wait"
         attempt=$((attempt + 1))
     done
+
+    return 1
 }
 
 get_device_model() {

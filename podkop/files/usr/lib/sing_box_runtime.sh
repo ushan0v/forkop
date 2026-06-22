@@ -1404,7 +1404,7 @@ import_domain_ip_list_file_into_rulesets() {
 import_domain_ip_list_reference_into_rulesets() {
     local reference="$1"
     local section="$2"
-    local tmpfile http_proxy_address status
+    local tmpfile http_proxy_address status download_status
     status=0
 
     case "$reference" in
@@ -1412,12 +1412,12 @@ import_domain_ip_list_reference_into_rulesets() {
         tmpfile="$(mktemp)"
         http_proxy_address="$(get_service_proxy_address)"
         download_to_file "$reference" "$tmpfile" "$http_proxy_address"
-        if [ $? -eq 0 ] && [ -s "$tmpfile" ]; then
+        download_status="$?"
+        if [ "$download_status" -eq 0 ] && [ -s "$tmpfile" ]; then
             convert_crlf_to_lf "$tmpfile"
             import_domain_ip_list_file_into_rulesets "$tmpfile" "$section" || status=1
         else
-            log "Download $reference list failed" "error"
-            status=1
+            log "Failed to download remote domain/IP list $reference; skipping it until the next successful update" "warn"
         fi
         rm -f "$tmpfile"
         return "$status"
@@ -2006,7 +2006,7 @@ import_custom_ruleset_subnets_from_remote() {
     local url="$1"
     local format="$2"
     local section="$3"
-    local remote_tmpfile json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address
+    local remote_tmpfile json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address download_status
 
     remote_tmpfile="$(mktemp)"
     json_tmpfile="$(mktemp)"
@@ -2015,11 +2015,12 @@ import_custom_ruleset_subnets_from_remote() {
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$url" "$remote_tmpfile" "$http_proxy_address"
+    download_status="$?"
 
-    if [ $? -ne 0 ] || [ ! -s "$remote_tmpfile" ]; then
-        log "Download $url rule set failed" "error"
+    if [ "$download_status" -ne 0 ] || [ ! -s "$remote_tmpfile" ]; then
+        log "Failed to download remote rule set $url; skipping it until the next successful update" "warn"
         rm -f "$remote_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
-        return 1
+        return 0
     fi
 
     if [ "$format" = "binary" ]; then
@@ -2065,7 +2066,7 @@ ensure_discord_udp_fakeip_rule() {
 import_community_service_subnet_list_handler() {
     local service="$1"
     local section="$2"
-    local ports status
+    local ports status download_status
 
     ports="$(get_rule_ports_commas_string "$section")"
 
@@ -2109,11 +2110,12 @@ import_community_service_subnet_list_handler() {
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$URL" "$tmpfile" "$http_proxy_address"
+    download_status="$?"
 
-    if [ $? -ne 0 ] || [ ! -s "$tmpfile" ]; then
-        log "Download $service list failed" "error"
+    if [ "$download_status" -ne 0 ] || [ ! -s "$tmpfile" ]; then
+        log "Failed to download built-in $service subnet list; skipping it until the next successful update" "warn"
         rm -f "$tmpfile"
-        return 1
+        return 0
     fi
 
     status=0
@@ -2164,15 +2166,17 @@ import_domains_from_remote_plain_file() {
     local url="$1"
     local section="$2"
 
-    local tmpfile http_proxy_address items json_array
+    local tmpfile http_proxy_address download_status ruleset_tag ruleset_filepath
     tmpfile=$(mktemp)
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$url" "$tmpfile" "$http_proxy_address"
+    download_status="$?"
 
-    if [ $? -ne 0 ] || [ ! -s "$tmpfile" ]; then
-        log "Download $url list failed" "error"
-        return 1
+    if [ "$download_status" -ne 0 ] || [ ! -s "$tmpfile" ]; then
+        log "Failed to download remote domain list $url; skipping it until the next successful update" "warn"
+        rm -f "$tmpfile"
+        return 0
     fi
 
     convert_crlf_to_lf "$tmpfile"
@@ -2227,18 +2231,19 @@ import_subnets_from_remote_subnet_list_handler() {
 import_subnets_from_remote_json_file() {
     local url="$1"
     local section="$2"
-    local json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address
+    local json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address download_status
     json_tmpfile="$(mktemp)"
     unscoped_tmpfile="$(mktemp)"
     scoped_tmpfile="$(mktemp)"
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$url" "$json_tmpfile" "$http_proxy_address"
+    download_status="$?"
 
-    if [ $? -ne 0 ] || [ ! -s "$json_tmpfile" ]; then
-        log "Download $url list failed" "error"
+    if [ "$download_status" -ne 0 ] || [ ! -s "$json_tmpfile" ]; then
+        log "Failed to download remote JSON subnet list $url; skipping it until the next successful update" "warn"
         rm -f "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
-        return 1
+        return 0
     fi
 
     if ! extract_json_ruleset_nft_files_for_section "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile" "$section"; then
@@ -2260,7 +2265,7 @@ import_subnets_from_remote_srs_file() {
     local url="$1"
     local section="$2"
 
-    local binary_tmpfile json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address
+    local binary_tmpfile json_tmpfile unscoped_tmpfile scoped_tmpfile http_proxy_address download_status
     binary_tmpfile="$(mktemp)"
     json_tmpfile="$(mktemp)"
     unscoped_tmpfile="$(mktemp)"
@@ -2268,11 +2273,12 @@ import_subnets_from_remote_srs_file() {
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$url" "$binary_tmpfile" "$http_proxy_address"
+    download_status="$?"
 
-    if [ $? -ne 0 ] || [ ! -s "$binary_tmpfile" ]; then
-        log "Download $url list failed" "error"
+    if [ "$download_status" -ne 0 ] || [ ! -s "$binary_tmpfile" ]; then
+        log "Failed to download remote SRS subnet list $url; skipping it until the next successful update" "warn"
         rm -f "$binary_tmpfile" "$json_tmpfile" "$unscoped_tmpfile" "$scoped_tmpfile"
-        return 1
+        return 0
     fi
 
     if ! decompile_binary_ruleset "$binary_tmpfile" "$json_tmpfile"; then
@@ -2300,16 +2306,17 @@ import_subnets_from_remote_plain_file() {
     local url="$1"
     local section="$2"
 
-    local tmpfile http_proxy_address ruleset_tag ruleset_filepath status
+    local tmpfile http_proxy_address ruleset_tag ruleset_filepath status download_status
     tmpfile=$(mktemp)
     http_proxy_address="$(get_service_proxy_address)"
 
     download_to_file "$url" "$tmpfile" "$http_proxy_address"
+    download_status="$?"
 
-    if [ $? -ne 0 ] || [ ! -s "$tmpfile" ]; then
-        log "Download $url list failed" "error"
+    if [ "$download_status" -ne 0 ] || [ ! -s "$tmpfile" ]; then
+        log "Failed to download remote plain subnet list $url; skipping it until the next successful update" "warn"
         rm -f "$tmpfile"
-        return 1
+        return 0
     fi
 
     convert_crlf_to_lf "$tmpfile"
