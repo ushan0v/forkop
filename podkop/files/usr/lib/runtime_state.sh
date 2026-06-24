@@ -218,6 +218,55 @@ reload_state_is_compatible() {
     [ "$(read_reload_state_value "format")" = "$PODKOP_RELOAD_STATE_FORMAT" ]
 }
 
+load_previous_reload_state() {
+    local line key value
+
+    PREVIOUS_RELOAD_STATE_FORMAT=""
+    PREVIOUS_RELOAD_STATE_SERVICE_TRIGGER_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_RESTART_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_DNSMASQ_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_SING_BOX_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_NFT_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_ZAPRET_QUEUE_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_ZAPRET_RUNTIME_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_ZAPRET2_QUEUE_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_ZAPRET2_RUNTIME_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_BYEDPI_RUNTIME_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_LIST_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_CRON_SIGNATURE=""
+    PREVIOUS_RELOAD_STATE_URLTEST_ENABLED_SECTIONS=""
+    PREVIOUS_RELOAD_STATE_URLTEST_ENABLED_SECTIONS_KNOWN=0
+
+    [ -f "$PODKOP_RELOAD_STATE_FILE" ] || return 1
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        key="${line%%=*}"
+        [ "$line" != "$key" ] && value="${line#*=}" || value=""
+
+        case "$key" in
+        format) PREVIOUS_RELOAD_STATE_FORMAT="$value" ;;
+        service_trigger_signature) PREVIOUS_RELOAD_STATE_SERVICE_TRIGGER_SIGNATURE="$value" ;;
+        restart_signature) PREVIOUS_RELOAD_STATE_RESTART_SIGNATURE="$value" ;;
+        dnsmasq_signature) PREVIOUS_RELOAD_STATE_DNSMASQ_SIGNATURE="$value" ;;
+        sing_box_signature) PREVIOUS_RELOAD_STATE_SING_BOX_SIGNATURE="$value" ;;
+        nft_signature) PREVIOUS_RELOAD_STATE_NFT_SIGNATURE="$value" ;;
+        zapret_queue_signature) PREVIOUS_RELOAD_STATE_ZAPRET_QUEUE_SIGNATURE="$value" ;;
+        zapret_runtime_signature) PREVIOUS_RELOAD_STATE_ZAPRET_RUNTIME_SIGNATURE="$value" ;;
+        zapret2_queue_signature) PREVIOUS_RELOAD_STATE_ZAPRET2_QUEUE_SIGNATURE="$value" ;;
+        zapret2_runtime_signature) PREVIOUS_RELOAD_STATE_ZAPRET2_RUNTIME_SIGNATURE="$value" ;;
+        byedpi_runtime_signature) PREVIOUS_RELOAD_STATE_BYEDPI_RUNTIME_SIGNATURE="$value" ;;
+        list_signature) PREVIOUS_RELOAD_STATE_LIST_SIGNATURE="$value" ;;
+        cron_signature) PREVIOUS_RELOAD_STATE_CRON_SIGNATURE="$value" ;;
+        urltest_enabled_sections)
+            PREVIOUS_RELOAD_STATE_URLTEST_ENABLED_SECTIONS="$value"
+            PREVIOUS_RELOAD_STATE_URLTEST_ENABLED_SECTIONS_KNOWN=1
+            ;;
+        esac
+    done < "$PODKOP_RELOAD_STATE_FILE"
+
+    [ "$PREVIOUS_RELOAD_STATE_FORMAT" = "$PODKOP_RELOAD_STATE_FORMAT" ]
+}
+
 signature_begin() {
     RELOAD_SIGNATURE_TMPFILE="$(mktemp)"
 }
@@ -230,11 +279,12 @@ signature_add() {
 }
 
 signature_finish() {
-    local hash
+    local hash_line
 
-    hash="$(md5sum "$RELOAD_SIGNATURE_TMPFILE" | runtime_state_ucode stdin-first-field)"
+    hash_line="$(md5sum "$RELOAD_SIGNATURE_TMPFILE")"
     rm -f "$RELOAD_SIGNATURE_TMPFILE"
-    echo "$hash"
+    set -- $hash_line
+    echo "$1"
 }
 
 build_service_trigger_signature() {
@@ -1122,6 +1172,8 @@ capture_reload_state() {
 }
 
 write_reload_state() {
+    local status
+
     mkdir -p "$PODKOP_RUNTIME_STATE_DIR"
     runtime_state_ucode write-reload-state \
         "$PODKOP_RELOAD_STATE_FILE" \
@@ -1139,6 +1191,13 @@ write_reload_state() {
         "$RELOAD_STATE_CRON_SIGNATURE" \
         "$RELOAD_STATE_URLTEST_ENABLED_SECTIONS" \
         "$RELOAD_STATE_DONT_TOUCH_DHCP"
+    status="$?"
+    if [ -n "${PODKOP_RULE_CONDITION_CACHE_DIR:-}" ]; then
+        rm -rf "$PODKOP_RULE_CONDITION_CACHE_DIR" 2>/dev/null || true
+        PODKOP_RULE_CONDITION_CACHE_DIR=""
+    fi
+    rm -rf /tmp/podkop-plus-rule-cache.* 2>/dev/null || true
+    return "$status"
 }
 
 enabled_rule_has_list_sources() {

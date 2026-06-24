@@ -338,6 +338,7 @@ PODKOP_RUNTIME_STATE_DIR="/var/run/podkop-plus"
 PODKOP_SYSTEM_INFO_CACHE_FILE="$PODKOP_RUNTIME_STATE_DIR/system-info.json"
 PODKOP_RELOAD_STATE_FILE="$PODKOP_RUNTIME_STATE_DIR/reload-state"
 PODKOP_PENDING_RELOAD_FILE="$PODKOP_RUNTIME_STATE_DIR/reload.pending"
+PODKOP_SERVICE_TRIGGER_SYNC_FILE="$PODKOP_RUNTIME_STATE_DIR/service-triggers.sync"
 PODKOP_LIST_UPDATE_STATE_FILE="$PODKOP_RUNTIME_STATE_DIR/list-update.timestamp"
 PODKOP_SUBSCRIPTION_UPDATE_STATE_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-update"
 PODKOP_SUBSCRIPTION_UPDATE_JOB_DIR="$PODKOP_RUNTIME_STATE_DIR/subscription-update-jobs"
@@ -423,8 +424,6 @@ start_main() {
 
     # Sync time only when the system clock is clearly invalid.
     sync_time_if_needed
-
-    sleep 1
 
     ensure_runtime_dirs
     acquire_start_subscription_update_lock
@@ -639,6 +638,13 @@ restart_runtime_for_reload() {
     write_reload_state
 }
 
+write_service_trigger_sync_state() {
+    local changed="$1"
+
+    mkdir -p "$PODKOP_RUNTIME_STATE_DIR"
+    printf '%s\n' "$changed" > "$PODKOP_SERVICE_TRIGGER_SYNC_FILE" 2>/dev/null || true
+}
+
 reload() {
     local reload_reason="${1:-}"
     local status
@@ -652,6 +658,7 @@ reload() {
     log "Podkop Plus reload"
 
     [ "$reload_reason" = "on_config_change" ] || force_runtime_reload=1
+    PODKOP_RULE_CONDITION_CACHE_ENABLED="$force_runtime_reload"
 
     migration
     config_load "$PODKOP_CONFIG_NAME"
@@ -668,33 +675,28 @@ reload() {
         return "$status"
     fi
 
-    if ! reload_state_is_compatible; then
+    if ! load_previous_reload_state; then
         log "Reload state is missing or incompatible, falling back to in-process restart"
         restart_runtime_for_reload
         status="$?"
         return "$status"
     fi
 
-    previous_service_trigger_signature="$(read_reload_state_value "service_trigger_signature")"
+    previous_service_trigger_signature="$PREVIOUS_RELOAD_STATE_SERVICE_TRIGGER_SIGNATURE"
     [ -n "$previous_service_trigger_signature" ] ||
-        previous_service_trigger_signature="$(read_reload_state_value "restart_signature")"
-    previous_dnsmasq_signature="$(read_reload_state_value "dnsmasq_signature")"
-    previous_sing_box_signature="$(read_reload_state_value "sing_box_signature")"
-    previous_nft_signature="$(read_reload_state_value "nft_signature")"
-    previous_zapret_queue_signature="$(read_reload_state_value "zapret_queue_signature")"
-    previous_zapret_runtime_signature="$(read_reload_state_value "zapret_runtime_signature")"
-    previous_zapret2_queue_signature="$(read_reload_state_value "zapret2_queue_signature")"
-    previous_zapret2_runtime_signature="$(read_reload_state_value "zapret2_runtime_signature")"
-    previous_byedpi_runtime_signature="$(read_reload_state_value "byedpi_runtime_signature")"
-    previous_list_signature="$(read_reload_state_value "list_signature")"
-    previous_cron_signature="$(read_reload_state_value "cron_signature")"
-    previous_urltest_enabled_sections_known=0
-    if reload_state_has_key "urltest_enabled_sections"; then
-        previous_urltest_enabled_sections_known=1
-        previous_urltest_enabled_sections="$(read_reload_state_value "urltest_enabled_sections")"
-    else
-        previous_urltest_enabled_sections=""
-    fi
+        previous_service_trigger_signature="$PREVIOUS_RELOAD_STATE_RESTART_SIGNATURE"
+    previous_dnsmasq_signature="$PREVIOUS_RELOAD_STATE_DNSMASQ_SIGNATURE"
+    previous_sing_box_signature="$PREVIOUS_RELOAD_STATE_SING_BOX_SIGNATURE"
+    previous_nft_signature="$PREVIOUS_RELOAD_STATE_NFT_SIGNATURE"
+    previous_zapret_queue_signature="$PREVIOUS_RELOAD_STATE_ZAPRET_QUEUE_SIGNATURE"
+    previous_zapret_runtime_signature="$PREVIOUS_RELOAD_STATE_ZAPRET_RUNTIME_SIGNATURE"
+    previous_zapret2_queue_signature="$PREVIOUS_RELOAD_STATE_ZAPRET2_QUEUE_SIGNATURE"
+    previous_zapret2_runtime_signature="$PREVIOUS_RELOAD_STATE_ZAPRET2_RUNTIME_SIGNATURE"
+    previous_byedpi_runtime_signature="$PREVIOUS_RELOAD_STATE_BYEDPI_RUNTIME_SIGNATURE"
+    previous_list_signature="$PREVIOUS_RELOAD_STATE_LIST_SIGNATURE"
+    previous_cron_signature="$PREVIOUS_RELOAD_STATE_CRON_SIGNATURE"
+    previous_urltest_enabled_sections_known="$PREVIOUS_RELOAD_STATE_URLTEST_ENABLED_SECTIONS_KNOWN"
+    previous_urltest_enabled_sections="$PREVIOUS_RELOAD_STATE_URLTEST_ENABLED_SECTIONS"
     capture_reload_state
     if [ "$previous_urltest_enabled_sections_known" -eq 1 ]; then
         PODKOP_URLTEST_NEW_ENABLED_SECTIONS="$(
@@ -726,6 +728,7 @@ reload() {
     changed_list=0
 
     [ "$RELOAD_STATE_SERVICE_TRIGGER_SIGNATURE" != "$previous_service_trigger_signature" ] && changed_service_triggers=1
+    write_service_trigger_sync_state "$changed_service_triggers"
 
     if [ "$RELOAD_STATE_SING_BOX_SIGNATURE" != "$previous_sing_box_signature" ]; then
         changed_sing_box=1

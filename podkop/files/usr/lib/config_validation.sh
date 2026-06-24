@@ -947,7 +947,7 @@ migration() {
 validate_service() {
     local service="$1"
 
-    helpers_ucode whitespace-list-contains "$COMMUNITY_SERVICES" "$service" >/dev/null 2>&1 && return 0
+    list_has_item "$COMMUNITY_SERVICES" "$service" && return 0
 
     log "Invalid service in community lists: $service. Check config and LuCI cache. Aborted." "fatal"
     exit 1
@@ -960,7 +960,7 @@ validate_ruleset_reference() {
         return 0
     fi
 
-    if helpers_ucode whitespace-list-contains "$COMMUNITY_SERVICES" "$reference" >/dev/null 2>&1; then
+    if list_has_item "$COMMUNITY_SERVICES" "$reference"; then
         return 0
     fi
 

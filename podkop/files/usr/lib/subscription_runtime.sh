@@ -191,10 +191,11 @@ persist_subscription_cache() {
     local subscription_json_path="$2"
     local subscription_url="$3"
     local effective_user_agent="$4"
+    local already_validated="${5:-0}"
     local persistent_json_path persistent_url_path persistent_user_agent_path
 
     subscription_cache_section_is_safe "$source_section" || return 1
-    subscription_cache_is_usable "$subscription_json_path" || return 1
+    [ "$already_validated" -eq 1 ] || subscription_cache_is_usable "$subscription_json_path" || return 1
     mkdir -p "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR" || return 1
     chmod 700 "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR" 2>/dev/null || true
 
@@ -518,9 +519,11 @@ subscription_config_is_current() {
 
 subscription_auto_user_agent_is_supported() {
     local user_agent="$1"
+    local default_user_agent="${2:-}"
 
     [ -n "$user_agent" ] || return 1
-    [ "$user_agent" = "$(get_subscription_user_agent)" ] && return 0
+    [ -n "$default_user_agent" ] || default_user_agent="$(get_subscription_user_agent)"
+    [ "$user_agent" = "$default_user_agent" ] && return 0
 
     case "$user_agent" in
     Happ | v2rayN | Hiddify | Clash.Meta | ClashMetaForAndroid)
@@ -559,10 +562,23 @@ subscription_write_user_agent_candidates() {
     default_user_agent="$(get_subscription_user_agent)"
     for candidate in "$default_user_agent" "v2rayN" "$preferred_user_agent" "Happ" "Hiddify" "Clash.Meta" "ClashMetaForAndroid"; do
         [ -n "$candidate" ] || continue
-        subscription_auto_user_agent_is_supported "$candidate" || continue
-        subscription_cache_ucode file-has-exact-line "$output_path" "$candidate" >/dev/null 2>&1 && continue
+        subscription_auto_user_agent_is_supported "$candidate" "$default_user_agent" || continue
+        file_has_exact_line "$output_path" "$candidate" && continue
         printf '%s\n' "$candidate" >> "$output_path" || return 1
     done
+}
+
+file_has_exact_line() {
+    local path="$1"
+    local needle="$2"
+    local line
+
+    [ -f "$path" ] || return 1
+    while IFS= read -r line || [ -n "$line" ]; do
+        [ "$line" = "$needle" ] && return 0
+    done < "$path"
+
+    return 1
 }
 
 subscription_cache_is_usable() {
@@ -851,16 +867,6 @@ download_subscription_into_cache() {
             continue
         fi
 
-        if ! validate_subscription_file "$normalized_tmpfile"; then
-            [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
-            if [ -n "$subscription_user_agent" ]; then
-                log "Normalized subscription for rule '$section' is invalid with configured User-Agent" "error"
-            else
-                log "Normalized subscription for rule '$section' is invalid with User-Agent '$effective_user_agent'; trying next fallback candidate" "warn"
-            fi
-            continue
-        fi
-
         if ! subscription_config_is_current "$section" "$subscription_url" "$subscription_user_agent"; then
             log "Subscription source settings changed while updating rule '$section'; discarding superseded download" "warn"
             [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
@@ -878,7 +884,7 @@ download_subscription_into_cache() {
             rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
             printf '%s' "$subscription_url" > "$subscription_url_cache_path"
             printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
-            persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" ||
+            persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" 1 ||
                 log "Failed to persist last working subscription cache for source '$cache_section'" "warn"
             log "Subscription for rule '$section' is unchanged" "info"
             return 2
@@ -895,7 +901,7 @@ download_subscription_into_cache() {
             rm -f "$raw_tmpfile" "$headers_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
             printf '%s' "$subscription_url" > "$subscription_url_cache_path"
             printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
-            persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" ||
+            persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" 1 ||
                 log "Failed to persist last working subscription cache for source '$cache_section'" "warn"
             log "Subscription runtime outbounds for rule '$section' are unchanged" "info"
             return 2
@@ -910,7 +916,7 @@ download_subscription_into_cache() {
         rm -f "$raw_tmpfile" "$headers_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
         printf '%s' "$subscription_url" > "$subscription_url_cache_path"
         printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
-        persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" ||
+        persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" 1 ||
             log "Failed to persist last working subscription cache for source '$cache_section'" "warn"
         return 0
     done < "$user_agents_tmpfile"

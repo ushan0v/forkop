@@ -16,6 +16,7 @@ PODKOP_CONFIG_FILE="/etc/config/$CONFIG_NAME"
 PODKOP_RELOAD_LOCK_DIR="/var/run/podkop-plus.reload.lock"
 PODKOP_RUNTIME_STATE_DIR="/var/run/podkop-plus"
 PODKOP_PENDING_RELOAD_FILE="$PODKOP_RUNTIME_STATE_DIR/reload.pending"
+PODKOP_SERVICE_TRIGGER_SYNC_FILE="$PODKOP_RUNTIME_STATE_DIR/service-triggers.sync"
 PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD="/var/run/podkop-plus.internal-config-change"
 PODKOP_CONFIG_CHANGE_REASON="on_config_change"
 PODKOP_DNSMASQ_FAILSAFE="/usr/lib/podkop-plus/dnsmasq_failsafe_restore.sh"
@@ -134,6 +135,15 @@ run_pending_reload_if_requested() {
 sync_service_triggers() {
     config_load "$CONFIG_NAME"
     _procd_call sync_service_triggers_payload
+}
+
+service_trigger_sync_requested() {
+    local value
+
+    [ -f "$PODKOP_SERVICE_TRIGGER_SYNC_FILE" ] || return 0
+    value="$(sed -n '1p' "$PODKOP_SERVICE_TRIGGER_SYNC_FILE" 2>/dev/null)"
+    rm -f "$PODKOP_SERVICE_TRIGGER_SYNC_FILE" 2>/dev/null || true
+    [ "$value" = "1" ]
 }
 
 sync_service_triggers_payload() {
@@ -347,10 +357,11 @@ reload_service() {
         return 0
     fi
 
+    rm -f "$PODKOP_SERVICE_TRIGGER_SYNC_FILE" 2>/dev/null || true
     trap 'release_reload_lock' EXIT INT TERM
-    "$PODKOP_BIN" reload "$reason" > /dev/null 2>&1
+    PODKOP_UI_ACTION_TRACKED=1 "$PODKOP_BIN" reload "$reason" > /dev/null 2>&1
     local status="$?"
-    if [ "$status" -eq 0 ] && is_config_change_reload "$reason"; then
+    if [ "$status" -eq 0 ] && is_config_change_reload "$reason" && service_trigger_sync_requested; then
         sync_service_triggers
     fi
     trap - EXIT INT TERM

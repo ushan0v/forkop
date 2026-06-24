@@ -119,7 +119,15 @@ service_exists() {
 list_has_item() {
     local list="$1"
     local needle="$2"
-    helpers_ucode whitespace-list-contains "$list" "$needle" >/dev/null 2>&1
+    local item
+
+    [ -n "$needle" ] || return 1
+
+    for item in $list; do
+        [ "$item" = "$needle" ] && return 0
+    done
+
+    return 1
 }
 
 allocate_runtime_tag() {
@@ -298,25 +306,45 @@ get_kernel_version() {
 get_sing_box_version() {
     local version=""
 
+    if [ "${PODKOP_SING_BOX_VERSION_CACHED:-0}" = "1" ]; then
+        printf '%s\n' "$PODKOP_SING_BOX_VERSION"
+        return 0
+    fi
+
     if command -v sing-box >/dev/null 2>&1; then
         if is_sing_box_compressed_marker_set; then
-            read_sing_box_version_state 2>/dev/null || true
+            version="$(read_sing_box_version_state 2>/dev/null || true)"
+            PODKOP_SING_BOX_VERSION="$version"
+            PODKOP_SING_BOX_VERSION_CACHED=1
+            printf '%s\n' "$version"
             return 0
         fi
 
         version="$(sing_box_version_output | sing_box_version_from_output)"
     fi
 
-    echo "$version"
+    PODKOP_SING_BOX_VERSION="$version"
+    PODKOP_SING_BOX_VERSION_CACHED=1
+    printf '%s\n' "$version"
 }
 
 sing_box_version_from_output() {
-    helpers_ucode stdin-first-line-last-field
+    local line field last=""
+
+    IFS= read -r line || return 0
+    for field in $line; do
+        last="$field"
+    done
+    printf '%s\n' "$last"
 }
 
 sing_box_version_output() {
     command -v sing-box >/dev/null 2>&1 || return 1
-    sing-box version 2>/dev/null
+    if [ "${PODKOP_SING_BOX_VERSION_OUTPUT_CACHED:-0}" != "1" ]; then
+        PODKOP_SING_BOX_VERSION_OUTPUT="$(sing-box version 2>/dev/null || true)"
+        PODKOP_SING_BOX_VERSION_OUTPUT_CACHED=1
+    fi
+    printf '%s\n' "$PODKOP_SING_BOX_VERSION_OUTPUT"
 }
 
 sing_box_output_has_build_tag() {

@@ -4,6 +4,85 @@ rules_nft_runtime_ucode() {
     ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/rules_nft_runtime.uc" "$@"
 }
 
+rules_nft_cache_enabled() {
+    case "${PODKOP_RULE_CONDITION_CACHE_ENABLED:-0}" in
+    1 | true | yes)
+        return 0
+        ;;
+    esac
+
+    return 1
+}
+
+rules_nft_cache_init() {
+    if [ -z "${PODKOP_RULE_CONDITION_CACHE_DIR:-}" ]; then
+        if [ -z "${PODKOP_RULE_CONDITION_CACHE_CLEANED:-}" ]; then
+            rm -rf /tmp/podkop-plus-rule-cache.* 2>/dev/null || true
+            PODKOP_RULE_CONDITION_CACHE_CLEANED=1
+        fi
+        PODKOP_RULE_CONDITION_CACHE_DIR="/tmp/podkop-plus-rule-cache.$$"
+        mkdir -p "$PODKOP_RULE_CONDITION_CACHE_DIR" 2>/dev/null || return 1
+    fi
+}
+
+rules_nft_cache_dir() {
+    rules_nft_cache_init || return 1
+
+    printf '%s\n' "$PODKOP_RULE_CONDITION_CACHE_DIR"
+}
+
+rule_condition_cache_clear() {
+    [ -z "${PODKOP_RULE_CONDITION_CACHE_DIR:-}" ] || rm -rf "$PODKOP_RULE_CONDITION_CACHE_DIR" 2>/dev/null || true
+    rm -rf /tmp/podkop-plus-rule-cache.* 2>/dev/null || true
+    PODKOP_RULE_CONDITION_CACHE_DIR=""
+    PODKOP_RULE_CONDITION_CACHE_CLEANED=""
+}
+
+rules_nft_cache_key_is_safe() {
+    case "$1" in
+    "" | *[!A-Za-z0-9_]*)
+        return 1
+        ;;
+    esac
+
+    return 0
+}
+
+rules_nft_cache_path() {
+    local namespace="$1"
+    local section="$2"
+    local key="$3"
+    local kind="${4:-value}"
+    local cache_dir
+
+    rules_nft_cache_enabled || return 1
+    rules_nft_cache_key_is_safe "$namespace" || return 1
+    rules_nft_cache_key_is_safe "$section" || return 1
+    rules_nft_cache_key_is_safe "$key" || return 1
+    rules_nft_cache_key_is_safe "$kind" || return 1
+
+    rules_nft_cache_init || return 1
+    cache_dir="$PODKOP_RULE_CONDITION_CACHE_DIR"
+    printf '%s/%s_%s_%s_%s\n' "$cache_dir" "$namespace" "$section" "$key" "$kind"
+}
+
+rules_nft_cache_get() {
+    local path="$1"
+    local value
+
+    [ -f "$path" ] || return 1
+    value=""
+    IFS= read -r value < "$path" || true
+    printf '%s\n' "$value"
+}
+
+rules_nft_cache_put() {
+    local path="$1"
+    local value="$2"
+
+    printf '%s\n' "$value" > "$path" 2>/dev/null || return 1
+}
+
 normalize_port_condition_for_nft() {
     rules_nft_runtime_ucode normalize-port-condition-for-nft "$1"
 }
@@ -24,6 +103,7 @@ br_netfilter_disable() {
 parse_generic_string_to_commas_string() {
     local string="$1"
 
+    [ -n "$string" ] || return 0
     rules_nft_runtime_ucode text-list-to-csv "$string" comma
 }
 
@@ -31,6 +111,7 @@ parse_domain_or_subnet_string_to_commas_string() {
     local string="$1"
     local type="$2"
 
+    [ -n "$string" ] || return 0
     rules_nft_runtime_ucode domain-subnet-text-csv "$string" "$type"
 }
 
@@ -45,6 +126,7 @@ parse_combined_domain_string_to_commas_string() {
     local string="$1"
     local type="$2"
 
+    [ -n "$string" ] || return 0
     rules_nft_runtime_ucode combined-domain-text-csv "$string" "$type"
 }
 
@@ -52,6 +134,7 @@ parse_combined_domain_list_to_commas_string() {
     local list_value="$1"
     local type="$2"
 
+    [ -n "$list_value" ] || return 0
     rules_nft_runtime_ucode combined-domain-csv "$(rule_list_value_to_commas_string "$list_value")" "$type"
 }
 
@@ -139,7 +222,7 @@ get_combined_domain_condition_commas_string() {
     fi
 }
 
-get_rule_condition_commas_string() {
+get_rule_condition_commas_string_uncached() {
     local section="$1"
     local key="$2"
     local kind="$3"
@@ -200,40 +283,119 @@ get_rule_condition_commas_string() {
     rule_list_value_to_commas_string "$list_value"
 }
 
+get_rule_condition_commas_string() {
+    local section="$1"
+    local key="$2"
+    local kind="$3"
+    local cache_path value
+
+    cache_path="$(rules_nft_cache_path condition "$section" "$key" "$kind" 2>/dev/null || true)"
+    if [ -n "$cache_path" ]; then
+        if value="$(rules_nft_cache_get "$cache_path")"; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    fi
+
+    value="$(get_rule_condition_commas_string_uncached "$section" "$key" "$kind")"
+    [ -z "$cache_path" ] || rules_nft_cache_put "$cache_path" "$value" || true
+    printf '%s\n' "$value"
+}
+
 get_rule_condition_json_array() {
     local section="$1"
     local key="$2"
     local kind="$3"
-    local values
+    local values cache_path value
+
+    cache_path="$(rules_nft_cache_path condition_json "$section" "$key" "$kind" 2>/dev/null || true)"
+    if [ -n "$cache_path" ]; then
+        if value="$(rules_nft_cache_get "$cache_path")"; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    fi
 
     values="$(get_rule_condition_commas_string "$section" "$key" "$kind")"
-    rules_nft_runtime_ucode csv-to-json-array "$values"
+    if [ -n "$values" ]; then
+        value="$(rules_nft_runtime_ucode csv-to-json-array "$values")"
+    else
+        value="[]"
+    fi
+    [ -z "$cache_path" ] || rules_nft_cache_put "$cache_path" "$value" || true
+    printf '%s\n' "$value"
 }
 
-get_rule_ports_commas_string() {
+get_rule_ports_commas_string_uncached() {
     local section="$1"
     local values text_value
 
     config_get values "$section" "ports"
     config_get text_value "$section" "ports_text"
 
+    [ -n "$values$text_value" ] || return 0
     rules_nft_runtime_ucode rule-ports-csv "$values" "$text_value"
+}
+
+get_rule_ports_commas_string() {
+    local section="$1"
+    local cache_path value
+
+    cache_path="$(rules_nft_cache_path ports "$section" ports value 2>/dev/null || true)"
+    if [ -n "$cache_path" ]; then
+        if value="$(rules_nft_cache_get "$cache_path")"; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    fi
+
+    value="$(get_rule_ports_commas_string_uncached "$section")"
+    [ -z "$cache_path" ] || rules_nft_cache_put "$cache_path" "$value" || true
+    printf '%s\n' "$value"
 }
 
 get_rule_port_values_json_array() {
     local section="$1"
-    local ports
+    local ports cache_path value
+
+    cache_path="$(rules_nft_cache_path ports_json "$section" values value 2>/dev/null || true)"
+    if [ -n "$cache_path" ]; then
+        if value="$(rules_nft_cache_get "$cache_path")"; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    fi
 
     ports="$(get_rule_ports_commas_string "$section")"
-    rules_nft_runtime_ucode rule-port-values-json "$ports"
+    if [ -n "$ports" ]; then
+        value="$(rules_nft_runtime_ucode rule-port-values-json "$ports")"
+    else
+        value="[]"
+    fi
+    [ -z "$cache_path" ] || rules_nft_cache_put "$cache_path" "$value" || true
+    printf '%s\n' "$value"
 }
 
 get_rule_port_ranges_json_array() {
     local section="$1"
-    local ports
+    local ports cache_path value
+
+    cache_path="$(rules_nft_cache_path ports_json "$section" ranges value 2>/dev/null || true)"
+    if [ -n "$cache_path" ]; then
+        if value="$(rules_nft_cache_get "$cache_path")"; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    fi
 
     ports="$(get_rule_ports_commas_string "$section")"
-    rules_nft_runtime_ucode rule-port-ranges-json "$ports"
+    if [ -n "$ports" ]; then
+        value="$(rules_nft_runtime_ucode rule-port-ranges-json "$ports")"
+    else
+        value="[]"
+    fi
+    [ -z "$cache_path" ] || rules_nft_cache_put "$cache_path" "$value" || true
+    printf '%s\n' "$value"
 }
 
 section_has_destination_matchers() {
@@ -397,7 +559,7 @@ resolve_ruleset_reference() {
     ENSURED_RULESET_TAG=""
     ENSURED_RULESET_KIND="unknown"
 
-    if helpers_ucode whitespace-list-contains "$COMMUNITY_SERVICES" "$reference" >/dev/null 2>&1; then
+    if list_has_item "$COMMUNITY_SERVICES" "$reference"; then
         ensure_builtin_ruleset "$reference"
         return 0
     fi

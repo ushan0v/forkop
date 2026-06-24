@@ -116,6 +116,11 @@ sing_box_configure_service() {
 sing_box_init_config() {
     local config='{"log":{},"dns":{},"ntp":{},"certificate":{},"endpoints":[],"inbounds":[],"outbounds":[],"route":{},"services":[],"experimental":{}}'
 
+    PODKOP_RULE_CONDITION_CACHE_ENABLED=1
+    rm -rf /tmp/podkop-plus-rule-cache.* 2>/dev/null || true
+    PODKOP_RULE_CONDITION_CACHE_DIR=""
+    PODKOP_RULE_CONDITION_CACHE_CLEANED=1
+    PODKOP_DNS_ROUTE_RULE_TAGS=""
     PODKOP_URLTEST_SELECTOR_SWITCHES=""
     configured_rulesets=""
     sing_box_configure_log
@@ -1272,21 +1277,58 @@ create_route_rule_for_action() {
     esac
 }
 
+resolve_route_rule_action_target() {
+    local section="$1"
+    local action="$2"
+
+    ROUTE_RULE_BUILDER_ACTION="route"
+    ROUTE_RULE_BUILDER_OUTBOUND_TAG=""
+
+    case "$action" in
+    proxy | outbound | vpn | byedpi | zapret | zapret2 | direct)
+        ROUTE_RULE_BUILDER_OUTBOUND_TAG="$(get_outbound_tag_by_section "$section")"
+        ;;
+    block)
+        ROUTE_RULE_BUILDER_ACTION="reject"
+        ;;
+    *)
+        log "Unsupported action '$action' for rule '$section'. Aborted." "fatal"
+        exit 1
+        ;;
+    esac
+}
+
 dns_route_rule_exists() {
     local tag="$1"
 
     printf '%s' "$config" | sing_box_runtime_ucode dns-route-rule-exists "$SERVICE_TAG" "$tag" >/dev/null 2>&1
 }
 
+dns_route_rule_is_known() {
+    list_has_item "$PODKOP_DNS_ROUTE_RULE_TAGS" "$1"
+}
+
+mark_dns_route_rule_known() {
+    local tag="$1"
+
+    dns_route_rule_is_known "$tag" && return 0
+    PODKOP_DNS_ROUTE_RULE_TAGS="${PODKOP_DNS_ROUTE_RULE_TAGS}${PODKOP_DNS_ROUTE_RULE_TAGS:+ }$tag"
+}
+
 ensure_fakeip_dns_route_rule() {
     local tag="$1"
     local rewrite_ttl
 
-    dns_route_rule_exists "$tag" && return 0
+    dns_route_rule_is_known "$tag" && return 0
+    if dns_route_rule_exists "$tag"; then
+        mark_dns_route_rule_known "$tag"
+        return 0
+    fi
 
     config=$(sing_box_cm_add_dns_route_rule "$config" "$SB_FAKEIP_DNS_SERVER_TAG" "$tag")
     config_get rewrite_ttl "settings" "dns_rewrite_ttl" "60"
     config=$(sing_box_cm_patch_dns_route_rule "$config" "$tag" "rewrite_ttl" "$rewrite_ttl")
+    mark_dns_route_rule_known "$tag"
 }
 
 route_rule_has_resolve_matchers() {
@@ -1298,16 +1340,17 @@ route_rule_has_resolve_matchers() {
 configure_rule_set_reference_handler() {
     local reference="$1"
     local route_rule_tag="$2"
+    local dns_rule_tag=""
 
     resolve_ruleset_reference "$reference"
     if [ -n "$ENSURED_RULESET_TAG" ]; then
-        config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "rule_set" "$ENSURED_RULESET_TAG")
         if [ "$ENSURED_RULESET_KIND" = "domains" ]; then
             ensure_fakeip_dns_route_rule "$SB_FAKEIP_RULESET_DNS_RULE_TAG"
-            config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_RULESET_DNS_RULE_TAG" "rule_set" "$ENSURED_RULESET_TAG")
+            dns_rule_tag="$SB_FAKEIP_RULESET_DNS_RULE_TAG"
         else
             log "Skip DNS FakeIP rule patch for '$reference' ruleset kind '$ENSURED_RULESET_KIND'" "debug"
         fi
+        config=$(sing_box_cm_patch_rule_set_reference "$config" "$route_rule_tag" "$dns_rule_tag" "$ENSURED_RULESET_TAG")
     fi
 }
 
@@ -1359,7 +1402,7 @@ cleanup_empty_domain_ip_list_ruleset() {
 ensure_domain_ip_list_ruleset() {
     local section="$1"
     local route_rule_tag="$2"
-    local ruleset_tag ruleset_filepath
+    local ruleset_tag ruleset_filepath dns_rule_tag=""
 
     ruleset_tag="$(get_domain_ip_list_ruleset_tag "$section")"
     ruleset_filepath="$(get_domain_ip_list_ruleset_path "$section")"
@@ -1369,13 +1412,11 @@ ensure_domain_ip_list_ruleset() {
         return 0
     fi
 
-    config=$(sing_box_cm_add_local_ruleset "$config" "$ruleset_tag" "source" "$ruleset_filepath")
-    config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "rule_set" "$ruleset_tag")
-
     if source_ruleset_has_domain_matchers "$ruleset_filepath"; then
         ensure_fakeip_dns_route_rule "$SB_FAKEIP_RULESET_DNS_RULE_TAG"
-        config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_RULESET_DNS_RULE_TAG" "rule_set" "$ruleset_tag")
+        dns_rule_tag="$SB_FAKEIP_RULESET_DNS_RULE_TAG"
     fi
+    config=$(sing_box_cm_add_local_ruleset_reference "$config" "$route_rule_tag" "$dns_rule_tag" "$ruleset_tag" "source" "$ruleset_filepath")
 }
 
 import_domain_ip_list_file_into_rulesets() {
@@ -1553,7 +1594,9 @@ rule_has_primary_matchers() {
 
 configure_route_rule_handler() {
     local section="$1"
-    local action route_rule_tag ip_values_json ip_values port_values_json port_ranges_json
+    local action route_rule_tag ip_values_json ip_values port_values_json port_ranges_json \
+        domain_json domain_suffix_json domain_keyword_json domain_regex_json source_ip_values_json \
+        ports community_lists rule_set rule_set_with_subnets domain_ip_lists
 
     rule_is_enabled "$section" || return 0
     if subscription_section_is_deferred "$section"; then
@@ -1580,63 +1623,78 @@ configure_route_rule_handler() {
 
     configure_fully_routed_ips_for_section "$section" "$action"
 
-    if ! rule_has_primary_matchers "$section"; then
+    domain_json="$(get_rule_condition_json_array "$section" "domain" "domains")"
+    domain_suffix_json="$(get_rule_condition_json_array "$section" "domain_suffix" "domains")"
+    domain_keyword_json="$(get_rule_condition_json_array "$section" "domain_keyword" "generic")"
+    domain_regex_json="$(get_rule_condition_json_array "$section" "domain_regex" "generic")"
+    ip_values_json="$(get_rule_condition_json_array "$section" "ip_cidr" "subnets")"
+    port_values_json="$(get_rule_port_values_json_array "$section")"
+    port_ranges_json="$(get_rule_port_ranges_json_array "$section")"
+    source_ip_values_json="$(get_rule_condition_json_array "$section" "source_ip_cidr" "subnets")"
+    ports="$(get_rule_ports_commas_string "$section")"
+    config_get community_lists "$section" "community_lists"
+    config_get rule_set "$section" "rule_set"
+    config_get rule_set_with_subnets "$section" "rule_set_with_subnets"
+    config_get domain_ip_lists "$section" "domain_ip_lists"
+
+    if [ "$domain_json" = "[]" ] &&
+        [ "$domain_suffix_json" = "[]" ] &&
+        [ "$domain_keyword_json" = "[]" ] &&
+        [ "$domain_regex_json" = "[]" ] &&
+        [ "$ip_values_json" = "[]" ] &&
+        [ "$port_values_json" = "[]" ] &&
+        [ "$port_ranges_json" = "[]" ] &&
+        [ -z "$community_lists" ] &&
+        [ -z "$rule_set" ] &&
+        [ -z "$rule_set_with_subnets" ] &&
+        [ -z "$domain_ip_lists" ]; then
         log "Rule '$section' has no destination matchers and action '$action', skipping regular route creation" "warn"
         return 0
     fi
 
     route_rule_tag="$(gen_id)"
-    create_route_rule_for_action "$section" "$action" "$route_rule_tag"
+    resolve_route_rule_action_target "$section" "$action"
 
-    local domain_json domain_suffix_json domain_keyword_json domain_regex_json
-    domain_json="$(get_rule_condition_json_array "$section" "domain" "domains")"
-    [ "$domain_json" != "[]" ] && config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "domain" "$domain_json") && \
-        ensure_fakeip_dns_route_rule "$SB_FAKEIP_DNS_RULE_TAG" && \
-        config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_DNS_RULE_TAG" "domain" "$domain_json")
+    config=$(sing_box_cm_add_route_rule_with_matchers \
+        "$config" \
+        "$route_rule_tag" \
+        "$SB_TPROXY_INBOUND_TAG" \
+        "$ROUTE_RULE_BUILDER_OUTBOUND_TAG" \
+        "$ROUTE_RULE_BUILDER_ACTION" \
+        "$domain_json" \
+        "$domain_suffix_json" \
+        "$domain_keyword_json" \
+        "$domain_regex_json" \
+        "$ip_values_json" \
+        "$port_values_json" \
+        "$port_ranges_json" \
+        "$source_ip_values_json")
 
-    domain_suffix_json="$(get_rule_condition_json_array "$section" "domain_suffix" "domains")"
-    [ "$domain_suffix_json" != "[]" ] && config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "domain_suffix" "$domain_suffix_json") && \
-        ensure_fakeip_dns_route_rule "$SB_FAKEIP_DNS_RULE_TAG" && \
-        config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_DNS_RULE_TAG" "domain_suffix" "$domain_suffix_json")
+    if [ "$domain_json" != "[]" ] ||
+        [ "$domain_suffix_json" != "[]" ] ||
+        [ "$domain_keyword_json" != "[]" ] ||
+        [ "$domain_regex_json" != "[]" ]; then
+        ensure_fakeip_dns_route_rule "$SB_FAKEIP_DNS_RULE_TAG"
+        config=$(sing_box_cm_patch_dns_route_rule_matchers \
+            "$config" \
+            "$SB_FAKEIP_DNS_RULE_TAG" \
+            "$domain_json" \
+            "$domain_suffix_json" \
+            "$domain_keyword_json" \
+            "$domain_regex_json")
+    fi
 
-    domain_keyword_json="$(get_rule_condition_json_array "$section" "domain_keyword" "generic")"
-    [ "$domain_keyword_json" != "[]" ] && config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "domain_keyword" "$domain_keyword_json") && \
-        ensure_fakeip_dns_route_rule "$SB_FAKEIP_DNS_RULE_TAG" && \
-        config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_DNS_RULE_TAG" "domain_keyword" "$domain_keyword_json")
-
-    domain_regex_json="$(get_rule_condition_json_array "$section" "domain_regex" "generic")"
-    [ "$domain_regex_json" != "[]" ] && config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "domain_regex" "$domain_regex_json") && \
-        ensure_fakeip_dns_route_rule "$SB_FAKEIP_DNS_RULE_TAG" && \
-        config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_DNS_RULE_TAG" "domain_regex" "$domain_regex_json")
-
-    ip_values_json="$(get_rule_condition_json_array "$section" "ip_cidr" "subnets")"
     if [ "$ip_values_json" != "[]" ]; then
-        config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "ip_cidr" "$ip_values_json")
         if [ "$PODKOP_NFT_POPULATE_ENABLED" = "1" ]; then
             ip_values="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
             add_section_ip_cidr_to_nft_sets "$section" "$ip_values"
         fi
     fi
 
-    port_values_json="$(get_rule_port_values_json_array "$section")"
-    [ "$port_values_json" != "[]" ] && config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "port" "$port_values_json")
-
-    port_ranges_json="$(get_rule_port_ranges_json_array "$section")"
-    [ "$port_ranges_json" != "[]" ] && config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "port_range" "$port_ranges_json")
-
     if [ "$PODKOP_NFT_POPULATE_ENABLED" = "1" ]; then
         add_section_ports_to_nft_set_if_needed "$section"
     fi
 
-    local source_ip_values_json
-    source_ip_values_json="$(get_rule_condition_json_array "$section" "source_ip_cidr" "subnets")"
-    if [ "$source_ip_values_json" != "[]" ]; then
-        config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "source_ip_cidr" "$source_ip_values_json")
-    fi
-
-    local domain_ip_lists rule_set_with_subnets
-    config_get domain_ip_lists "$section" "domain_ip_lists"
-    config_get rule_set_with_subnets "$section" "rule_set_with_subnets"
     config_list_foreach "$section" "community_lists" configure_community_list_handler "$section" "$route_rule_tag"
     config_list_foreach "$section" "rule_set" configure_rule_set_reference_handler "$route_rule_tag"
     config_list_foreach "$section" "rule_set_with_subnets" configure_rule_set_reference_handler "$route_rule_tag"
@@ -1715,10 +1773,16 @@ configure_community_list_handler() {
     detour="$(get_download_detour_tag)"
     update_interval="$(get_remote_ruleset_update_interval)"
 
-    config=$(sing_box_cm_add_remote_ruleset "$config" "$ruleset_tag" "$format" "$url" "$detour" "$update_interval")
-    config=$(sing_box_cm_patch_route_rule "$config" "$route_rule_tag" "rule_set" "$ruleset_tag")
     ensure_fakeip_dns_route_rule "$SB_FAKEIP_RULESET_DNS_RULE_TAG"
-    config=$(sing_box_cm_patch_dns_route_rule "$config" "$SB_FAKEIP_RULESET_DNS_RULE_TAG" "rule_set" "$ruleset_tag")
+    config=$(sing_box_cm_add_remote_ruleset_reference \
+        "$config" \
+        "$route_rule_tag" \
+        "$SB_FAKEIP_RULESET_DNS_RULE_TAG" \
+        "$ruleset_tag" \
+        "$format" \
+        "$url" \
+        "$detour" \
+        "$update_interval")
 }
 
 sing_box_configure_experimental() {
@@ -1839,7 +1903,7 @@ configure_section_mixed_proxy() {
 }
 
 sing_box_save_config() {
-    local sing_box_config_path temp_file_path current_config_hash temp_config_hash
+    local sing_box_config_path temp_file_path current_config_hash temp_config_hash hash_line
     config_get sing_box_config_path "settings" "config_path"
     temp_file_path="$(mktemp)"
 
@@ -1848,8 +1912,12 @@ sing_box_save_config() {
 
     sing_box_config_check "$temp_file_path"
 
-    current_config_hash=$(md5sum "$sing_box_config_path" 2> /dev/null | sing_box_runtime_ucode stdin-first-field)
-    temp_config_hash=$(md5sum "$temp_file_path" | sing_box_runtime_ucode stdin-first-field)
+    hash_line="$(md5sum "$sing_box_config_path" 2> /dev/null || true)"
+    set -- $hash_line
+    current_config_hash="$1"
+    hash_line="$(md5sum "$temp_file_path")"
+    set -- $hash_line
+    temp_config_hash="$1"
     log "Current sing-box config hash: $current_config_hash" "debug"
     log "Temporary sing-box config hash: $temp_config_hash" "debug"
     if [ "$current_config_hash" != "$temp_config_hash" ]; then
@@ -1883,7 +1951,7 @@ import_builtin_subnets_reference_handler() {
     local reference="$1"
     local section="$2"
 
-    if helpers_ucode whitespace-list-contains "$COMMUNITY_SERVICES" "$reference" >/dev/null 2>&1; then
+    if list_has_item "$COMMUNITY_SERVICES" "$reference"; then
         import_community_service_subnet_list_handler "$reference" "$section" || BUILTIN_SUBNET_IMPORT_STATUS=1
     fi
     return 0

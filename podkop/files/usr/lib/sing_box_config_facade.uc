@@ -587,8 +587,7 @@ function rewrite_prepared_outbound_references(outbounds, tag_map) {
     }
 }
 
-function candidate_outbounds(path) {
-    let subscription = object_or_empty(read_json_file(path));
+function candidate_outbound_list(subscription) {
     let result = [];
     let skipped_types = {
         selector: true,
@@ -607,16 +606,19 @@ function candidate_outbounds(path) {
             push(result, outbound);
     }
 
+    return result;
+}
+
+function candidate_outbounds(path) {
+    let subscription = object_or_empty(read_json_file(path));
+    let result = candidate_outbound_list(subscription);
+
     write_json(result);
 }
 
-function prepare_subscription(config_path, outbounds_path, output_path, supports_xhttp_arg, plugin_supports_path) {
-    let config = read_json_file(config_path);
-    let outbounds = read_json_file(outbounds_path);
-    let plugin_supports = object_or_empty(read_json_file(plugin_supports_path));
-
+function prepare_subscription_object(config, outbounds, supports_xhttp_arg, plugin_supports) {
     if (type(config) != "object" || type(outbounds) != "array")
-        exit(1);
+        return null;
 
     let supports_xhttp = supports_xhttp_arg == "true" || supports_xhttp_arg == "1";
     let taken = {};
@@ -667,7 +669,7 @@ function prepare_subscription(config_path, outbounds_path, output_path, supports
 
     rewrite_prepared_outbound_references(prepared, tag_map);
 
-    if (!write_file_json(output_path, {
+    return {
         outbounds: prepared,
         links,
         source_indices,
@@ -677,17 +679,52 @@ function prepare_subscription(config_path, outbounds_path, output_path, supports
         skipped_reason_counts: length(keys(skipped_reason_counts)) > 0 ? skipped_reason_counts : [],
         tags,
         visible
-    }))
+    };
+}
+
+function prepare_subscription(config_path, outbounds_path, output_path, supports_xhttp_arg, plugin_supports_path) {
+    let prepared = prepare_subscription_object(
+        read_json_file(config_path),
+        read_json_file(outbounds_path),
+        supports_xhttp_arg,
+        object_or_empty(read_json_file(plugin_supports_path))
+    );
+
+    if (prepared == null || !write_file_json(output_path, prepared))
         exit(1);
 }
 
-function skip_count() {
-    let prepared = object_or_empty(read_stdin_json());
+function prepare_subscription_file(config_path, subscription_path, output_path, count_path, supports_xhttp_arg, plugin_supports_path) {
+    let subscription = object_or_empty(read_json_file(subscription_path));
+    let outbounds = candidate_outbound_list(subscription);
+    let prepared = prepare_subscription_object(
+        read_json_file(config_path),
+        outbounds,
+        supports_xhttp_arg,
+        object_or_empty(read_json_file(plugin_supports_path))
+    );
+
+    if (prepared == null)
+        exit(1);
+    if (as_string(count_path) != "" && !write_text_file(count_path, length(outbounds) + "\n"))
+        exit(1);
+    if (!write_file_json(output_path, prepared))
+        exit(1);
+}
+
+function print_skip_count(prepared) {
     print(as_string(prepared.skipped || 0), "\n");
 }
 
-function skip_summary() {
-    let prepared = object_or_empty(read_stdin_json());
+function skip_count() {
+    print_skip_count(object_or_empty(read_stdin_json()));
+}
+
+function skip_count_file(path) {
+    print_skip_count(object_or_empty(read_json_file(path)));
+}
+
+function print_skip_summary(prepared) {
     let counts = object_or_empty(prepared.skipped_reason_counts);
     let entries = [];
 
@@ -707,8 +744,15 @@ function skip_summary() {
     print(join("; ", parts), "\n");
 }
 
-function plugin_names() {
-    let outbounds = array_or_empty(read_stdin_json());
+function skip_summary() {
+    print_skip_summary(object_or_empty(read_stdin_json()));
+}
+
+function skip_summary_file(path) {
+    print_skip_summary(object_or_empty(read_json_file(path)));
+}
+
+function print_plugin_names_from_outbounds(outbounds) {
     let seen = {};
     for (let outbound in outbounds) {
         if (type(outbound) != "object" || outbound.type != "shadowsocks")
@@ -723,6 +767,15 @@ function plugin_names() {
 
     for (let name in sort_strings(keys(seen)))
         print(name, "\n");
+}
+
+function plugin_names() {
+    print_plugin_names_from_outbounds(array_or_empty(read_stdin_json()));
+}
+
+function subscription_plugin_names(path) {
+    let subscription = object_or_empty(read_json_file(path));
+    print_plugin_names_from_outbounds(candidate_outbound_list(subscription));
 }
 
 function plugin_supports_from_records(path) {
@@ -963,6 +1016,44 @@ function prepared_state_to_files(source_section, tags_path, tags_csv_path, names
         exit(1);
 }
 
+function prepared_outbounds_state_to_files(source_section, outbounds_path, count_path, tags_path, tags_csv_path, names_lines_path, link_refs_path, names_path, servers_path) {
+    let prepared = object_or_empty(read_stdin_json());
+    prepared_outbounds_state_value_to_files(prepared, source_section, outbounds_path, count_path, tags_path, tags_csv_path, names_lines_path, link_refs_path, names_path, servers_path);
+}
+
+function prepared_outbounds_state_value_to_files(prepared, source_section, outbounds_path, count_path, tags_path, tags_csv_path, names_lines_path, link_refs_path, names_path, servers_path) {
+    let outbounds = array_or_empty(prepared.outbounds);
+    let tags = prepared_visible_tags(prepared);
+    let tag_values = [];
+    for (let tag in tags)
+        push(tag_values, as_string(tag));
+
+    if (!write_file_json(outbounds_path, outbounds) ||
+        !write_text_file(count_path, length(outbounds) + "\n") ||
+        !write_file_json(tags_path, tags) ||
+        !write_text_file(tags_csv_path, join(",", tag_values) + "\n") ||
+        !write_text_file(names_lines_path, prepared_names_text(prepared)) ||
+        !write_file_json(link_refs_path, prepared_link_refs(prepared, source_section)) ||
+        !write_file_json(names_path, prepared_names(prepared)) ||
+        !write_file_json(servers_path, prepared_servers(prepared)))
+        exit(1);
+}
+
+function prepared_outbounds_state_file_to_files(prepared_path, source_section, outbounds_path, count_path, tags_path, tags_csv_path, names_lines_path, link_refs_path, names_path, servers_path) {
+    prepared_outbounds_state_value_to_files(
+        object_or_empty(read_json_file(prepared_path)),
+        source_section,
+        outbounds_path,
+        count_path,
+        tags_path,
+        tags_csv_path,
+        names_lines_path,
+        link_refs_path,
+        names_path,
+        servers_path
+    );
+}
+
 function append_prepared_state_to_files(source_section, tags_path, names_lines_path, link_refs_path, names_path, servers_path) {
     let prepared = object_or_empty(read_stdin_json());
     let tags = array_or_empty(read_json_file(tags_path));
@@ -1010,6 +1101,8 @@ let mode = ARGV[0] || "";
 
 if (mode == "candidate-outbounds")
     candidate_outbounds(ARGV[1]);
+else if (mode == "subscription-plugin-names")
+    subscription_plugin_names(ARGV[1]);
 else if (mode == "csv-to-json-array")
     csv_to_json_array(ARGV[1]);
 else if (mode == "tls-alpn-json-array")
@@ -1022,14 +1115,20 @@ else if (mode == "shadowsocks-userinfo-format-valid")
     exit(shadowsocks_userinfo_format_valid(ARGV[1]) ? 0 : 1);
 else if (mode == "skip-count")
     skip_count();
+else if (mode == "skip-count-file")
+    skip_count_file(ARGV[1]);
 else if (mode == "skip-summary")
     skip_summary();
+else if (mode == "skip-summary-file")
+    skip_summary_file(ARGV[1]);
 else if (mode == "plugin-names")
     plugin_names();
 else if (mode == "plugin-supports-from-records")
     plugin_supports_from_records(ARGV[1]);
 else if (mode == "prepare-subscription")
     prepare_subscription(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]);
+else if (mode == "prepare-subscription-file")
+    prepare_subscription_file(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6]);
 else if (mode == "prepare-validation")
     prepare_validation(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "prepared-slice")
@@ -1052,6 +1151,10 @@ else if (mode == "validation-error-summary")
     validation_error_summary();
 else if (mode == "prepared-state-to-files")
     prepared_state_to_files(as_string(ARGV[1]), ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
+else if (mode == "prepared-outbounds-state-to-files")
+    prepared_outbounds_state_to_files(as_string(ARGV[1]), ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7], ARGV[8], ARGV[9]);
+else if (mode == "prepared-outbounds-state-file-to-files")
+    prepared_outbounds_state_file_to_files(ARGV[1], as_string(ARGV[2]), ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7], ARGV[8], ARGV[9], ARGV[10]);
 else if (mode == "append-prepared-state-to-files")
     append_prepared_state_to_files(as_string(ARGV[1]), ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6]);
 else if (mode == "prepared-display-name")

@@ -486,19 +486,7 @@ ui_runtime_status_text() {
 }
 
 ui_runtime_active_service_action() {
-    local state_file action
-
-    for state_file in "$PODKOP_UI_SERVICE_ACTION_DIR"/*.json; do
-        [ -f "$state_file" ] || continue
-        [ "$(ui_runtime_json_field "$state_file" running false)" = "true" ] || continue
-        action="$(ui_runtime_json_field "$state_file" action "")"
-        [ -n "$action" ] && {
-            printf '%s\n' "$action"
-            return 0
-        }
-    done
-
-    return 1
+    ui_runtime_ucode active-service-action "$PODKOP_UI_SERVICE_ACTION_DIR" 2>/dev/null
 }
 
 ui_runtime_write_ui_state() {

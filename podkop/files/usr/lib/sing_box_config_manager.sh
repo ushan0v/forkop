@@ -243,12 +243,25 @@ sing_box_cm_add_route_rule() {
     sing_box_cm_ucode add-route-rule "$1" "$2" "$3" "$4"
 }
 
+sing_box_cm_add_route_rule_with_matchers() {
+    sing_box_cm_ucode add-route-rule-with-matchers \
+        "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}"
+}
+
 sing_box_cm_add_resolve_rule() {
     sing_box_cm_ucode add-resolve-rule "$1" "$2" "$3" "${4:-dns-server}"
 }
 
 sing_box_cm_patch_route_rule() {
     sing_box_cm_ucode patch-route-rule "$1" "$2" "$3" "$4"
+}
+
+sing_box_cm_patch_rule_set_reference() {
+    sing_box_cm_ucode patch-rule-set-reference "$1" "$2" "$3" "$4"
+}
+
+sing_box_cm_patch_dns_route_rule_matchers() {
+    sing_box_cm_ucode patch-dns-route-rule-matchers "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 sing_box_cm_add_reject_route_rule() {
@@ -285,6 +298,14 @@ sing_box_cm_add_local_ruleset() {
 
 sing_box_cm_add_remote_ruleset() {
     sing_box_cm_ucode add-remote-ruleset "$1" "$2" "$3" "$4" "$5" "$6"
+}
+
+sing_box_cm_add_remote_ruleset_reference() {
+    sing_box_cm_ucode add-remote-ruleset-reference "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+}
+
+sing_box_cm_add_local_ruleset_reference() {
+    sing_box_cm_ucode add-local-ruleset-reference "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 sing_box_cm_configure_cache_file() {

@@ -933,6 +933,62 @@ function add_route_rule(config, args) {
     add_rule(config, "route", rule);
 }
 
+function json_arg_nonempty(value) {
+    let parsed = json_arg(value);
+
+    if (type(parsed) == "array")
+        return length(parsed) > 0 ? parsed : null;
+    if (type(parsed) == "object")
+        return length(keys(parsed)) > 0 ? parsed : null;
+
+    let string_value = as_string(parsed);
+    return string_value != "" ? parsed : null;
+}
+
+function patch_tagged_rule_if_nonempty(rules, tag, key, value) {
+    value = json_arg_nonempty(value);
+    if (value != null)
+        patch_tagged_rule(rules, tag, key, value);
+}
+
+function add_route_rule_with_matchers(config, args) {
+    let tag = as_string(args[0]);
+    let inbound = as_string(args[1]);
+    let outbound = as_string(args[2]);
+    let action = as_string(args[3]);
+    let route = ensure_object(config, "route");
+    let rules = ensure_array(route, "rules");
+
+    if (action == "reject") {
+        let rule = { action: "reject" };
+        optional_string(rule, "inbound", inbound);
+        rule[SERVICE_TAG] = tag;
+        push(rules, rule);
+    }
+    else {
+        let rule = {
+            action: "route",
+            inbound,
+            outbound
+        };
+        rule[SERVICE_TAG] = tag;
+        push(rules, rule);
+    }
+
+    let matcher_keys = [
+        "domain",
+        "domain_suffix",
+        "domain_keyword",
+        "domain_regex",
+        "ip_cidr",
+        "port",
+        "port_range",
+        "source_ip_cidr"
+    ];
+    for (let i = 0; i < length(matcher_keys); i++)
+        patch_tagged_rule_if_nonempty(rules, tag, matcher_keys[i], args[4 + i]);
+}
+
 function copy_rule_matchers(rule) {
     let copied = {};
     for (let key in ["inbound", "source_ip_cidr", "domain", "domain_suffix", "domain_keyword", "domain_regex", "rule_set", "port", "port_range"]) {
@@ -963,6 +1019,30 @@ function add_resolve_rule(config, args) {
 
 function patch_route_rule(config, args) {
     patch_tagged_rule(ensure_array(ensure_object(config, "route"), "rules"), as_string(args[0]), as_string(args[1]), json_arg(args[2]));
+}
+
+function patch_rule_set_reference(config, args) {
+    let route_tag = as_string(args[0]);
+    let dns_tag = as_string(args[1]);
+    let rule_set_tag = as_string(args[2]);
+
+    if (route_tag != "" && rule_set_tag != "")
+        patch_tagged_rule(ensure_array(ensure_object(config, "route"), "rules"), route_tag, "rule_set", rule_set_tag);
+    if (dns_tag != "" && rule_set_tag != "")
+        patch_tagged_rule(ensure_array(ensure_object(config, "dns"), "rules"), dns_tag, "rule_set", rule_set_tag);
+}
+
+function patch_dns_route_rule_matchers(config, args) {
+    let rules = ensure_array(ensure_object(config, "dns"), "rules");
+    let tag = as_string(args[0]);
+    let matcher_keys = [
+        "domain",
+        "domain_suffix",
+        "domain_keyword",
+        "domain_regex"
+    ];
+    for (let i = 0; i < length(matcher_keys); i++)
+        patch_tagged_rule_if_nonempty(rules, tag, matcher_keys[i], args[1 + i]);
 }
 
 function add_reject_route_rule(config, args) {
@@ -1086,6 +1166,34 @@ function add_remote_ruleset(config, args) {
     add_rule_set(config, rule_set);
 }
 
+function add_remote_ruleset_reference(config, args) {
+    add_remote_ruleset(config, [
+        args[2],
+        args[3],
+        args[4],
+        args[5],
+        args[6]
+    ]);
+    patch_rule_set_reference(config, [
+        args[0],
+        args[1],
+        args[2]
+    ]);
+}
+
+function add_local_ruleset_reference(config, args) {
+    add_local_ruleset(config, [
+        args[2],
+        args[3],
+        args[4]
+    ]);
+    patch_rule_set_reference(config, [
+        args[0],
+        args[1],
+        args[2]
+    ]);
+}
+
 function configure_cache_file(config, args) {
     let experimental = ensure_object(config, "experimental");
     experimental.cache_file = {
@@ -1153,8 +1261,11 @@ let handlers = {
     "add-selector-outbound-file": add_selector_outbound_file,
     "configure-route": configure_route,
     "add-route-rule": add_route_rule,
+    "add-route-rule-with-matchers": add_route_rule_with_matchers,
     "add-resolve-rule": add_resolve_rule,
     "patch-route-rule": patch_route_rule,
+    "patch-rule-set-reference": patch_rule_set_reference,
+    "patch-dns-route-rule-matchers": patch_dns_route_rule_matchers,
     "add-reject-route-rule": add_reject_route_rule,
     "add-hijack-dns-route-rule": add_hijack_dns_route_rule,
     "add-options-route-rule": add_options_route_rule,
@@ -1164,6 +1275,8 @@ let handlers = {
     "add-inline-ruleset-rule": add_inline_ruleset_rule,
     "add-local-ruleset": add_local_ruleset,
     "add-remote-ruleset": add_remote_ruleset,
+    "add-remote-ruleset-reference": add_remote_ruleset_reference,
+    "add-local-ruleset-reference": add_local_ruleset_reference,
     "configure-cache-file": configure_cache_file,
     "configure-clash-api": configure_clash_api
 };

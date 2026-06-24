@@ -234,6 +234,18 @@ function json_file_field(path, key, fallback) {
         print(as_string(fallback), "\n");
 }
 
+function active_service_action(dir) {
+    for (let path in fs.glob(as_string(dir) + "/*.json")) {
+        let value = read_json_file(path);
+        if (type(value) == "object" && value.running === true && as_string(value.action) != "") {
+            print(as_string(value.action), "\n");
+            return;
+        }
+    }
+
+    exit(1);
+}
+
 let mode = ARGV[0] || "";
 
 if (mode == "ui-state-json")
@@ -254,6 +266,8 @@ else if (mode == "ack-action-state")
     ack_action_state(ARGV[1], ARGV[2]);
 else if (mode == "json-file-field")
     json_file_field(ARGV[1], ARGV[2], ARGV[3]);
+else if (mode == "active-service-action")
+    active_service_action(ARGV[1]);
 else {
     warn("Usage: ui_runtime.uc <operation> ...\n");
     exit(1);
