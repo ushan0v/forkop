@@ -64,6 +64,11 @@ import {
   readPersistedDiagnosticRun,
   savePersistedDiagnosticRun,
 } from './diagnosticRunPersistence';
+import {
+  formatMaskedSingBoxConfig,
+  maskGlobalCheckText,
+  stringifySingBoxConfig,
+} from './helpers/maskDiagnostics';
 
 const SERVICE_STATUS_REFRESH_INTERVAL_MS = 2000;
 const SERVICE_ACTION_STATUS_TIMEOUT_MS = 45000;
@@ -667,24 +672,16 @@ async function handleShowGlobalCheck() {
   setDiagnosticActionLoading('globalCheck', true);
 
   try {
-    const globalCheck = await PodkopShellMethods.globalCheck();
+    const globalCheck = await PodkopShellMethods.globalCheck(false);
 
     if (globalCheck.success) {
-      const getGlobalCheckText = async ({ maskValues = true } = {}) => {
-        const latestGlobalCheck =
-          await PodkopShellMethods.globalCheck(maskValues);
-
-        if (!latestGlobalCheck.success) {
-          throw latestGlobalCheck;
-        }
-
-        return (latestGlobalCheck.data as string) ?? '';
-      };
+      const rawGlobalCheckText = (globalCheck.data as string) ?? '';
+      const maskedGlobalCheckText = maskGlobalCheckText(rawGlobalCheckText);
 
       ui.showModal(
         _('Global check'),
-        renderModal(globalCheck.data as string, 'global_check', {
-          getText: getGlobalCheckText,
+        renderModal(rawGlobalCheckText, 'global_check', {
+          maskText: () => maskedGlobalCheckText,
           initialAutoRefresh: false,
           showMaskValuesToggle: true,
         }),
@@ -740,31 +737,23 @@ async function handleShowSingBoxConfig() {
   setDiagnosticActionLoading('showSingBoxConfig', true);
 
   try {
-    const showSingBoxConfig = await PodkopShellMethods.showSingBoxConfig();
+    const showSingBoxConfig = await PodkopShellMethods.showSingBoxConfig(false);
 
     if (showSingBoxConfig.success) {
-      const getSingBoxConfigText = async ({ maskValues = true } = {}) => {
-        const latestSingBoxConfig =
-          await PodkopShellMethods.showSingBoxConfig(maskValues);
-
-        if (!latestSingBoxConfig.success) {
-          throw latestSingBoxConfig;
-        }
-
-        return JSON.stringify(latestSingBoxConfig.data, null, 2);
-      };
+      const rawSingBoxConfigText = stringifySingBoxConfig(
+        showSingBoxConfig.data,
+      );
+      const maskedSingBoxConfigText = formatMaskedSingBoxConfig(
+        showSingBoxConfig.data,
+      );
 
       ui.showModal(
         _('Show sing-box config'),
-        renderModal(
-          JSON.stringify(showSingBoxConfig.data, null, 2),
-          'show_sing_box_config',
-          {
-            getText: getSingBoxConfigText,
-            initialAutoRefresh: false,
-            showMaskValuesToggle: true,
-          },
-        ),
+        renderModal(rawSingBoxConfigText, 'show_sing_box_config', {
+          maskText: () => maskedSingBoxConfigText,
+          initialAutoRefresh: false,
+          showMaskValuesToggle: true,
+        }),
       );
     } else {
       logger.error(

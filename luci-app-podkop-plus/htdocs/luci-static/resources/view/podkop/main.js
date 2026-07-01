@@ -6870,7 +6870,8 @@ function renderButton({
 
 // src/partials/modal/renderModal.ts
 function renderModal(text, name, options) {
-  let currentText = text ?? "";
+  let rawText = text ?? "";
+  let currentText = "";
   let refreshInFlight = false;
   let pendingRefresh = false;
   let pendingForcedRefresh = false;
@@ -6882,7 +6883,13 @@ function renderModal(text, name, options) {
   let shouldScrollToBottomOnMount = Boolean(options?.startAtEnd);
   let autoRefreshInput;
   let maskValuesInput;
-  const codeEl = E("code", {}, currentText);
+  const getDisplayText = (value) => {
+    if (maskValuesEnabled && options?.maskText) {
+      return options.maskText(value);
+    }
+    return value;
+  };
+  const codeEl = E("code", {}, "");
   const contentEl = E(
     "pre",
     { class: "pdk-partial-modal__content" },
@@ -6933,6 +6940,9 @@ function renderModal(text, name, options) {
       });
     }
   };
+  const updateDisplayedTextFromRaw = () => {
+    updateText(getDisplayText(rawText));
+  };
   const refreshText = async (force = false) => {
     if (!options?.getText || !force && !autoRefreshEnabled || refreshInFlight) {
       return;
@@ -6944,7 +6954,7 @@ function renderModal(text, name, options) {
     const sessionId = refreshSessionId;
     try {
       const nextText = await options.getText({
-        maskValues: maskValuesEnabled
+        maskValues: options.maskText ? false : maskValuesEnabled
       });
       if (!body.isConnected || !force && !autoRefreshEnabled) {
         return;
@@ -6952,7 +6962,9 @@ function renderModal(text, name, options) {
       if (sessionId !== refreshSessionId) {
         return;
       }
-      updateText(nextText ?? "");
+      const normalizedText = nextText ?? "";
+      rawText = normalizedText;
+      updateText(getDisplayText(normalizedText));
     } catch (error) {
       console.warn("[renderModal] failed to refresh modal content", error);
     } finally {
@@ -7019,6 +7031,10 @@ function renderModal(text, name, options) {
     if (maskValuesInput) {
       maskValuesInput.checked = nextValue;
     }
+    if (options?.maskText) {
+      updateDisplayedTextFromRaw();
+      return;
+    }
     requestForcedRefresh();
   };
   const footerChildren = [
@@ -7062,7 +7078,7 @@ ${currentText}
       ])
     );
   }
-  if (options?.getText && options?.showMaskValuesToggle) {
+  if ((options?.getText || options?.maskText) && options?.showMaskValuesToggle) {
     maskValuesInput = document.createElement("input");
     maskValuesInput.type = "checkbox";
     maskValuesInput.className = "cbi-input-checkbox";
@@ -7105,6 +7121,7 @@ ${currentText}
     startRefreshTimer();
     requestRefresh();
   }
+  updateDisplayedTextFromRaw();
   return body;
 }
 
@@ -7746,6 +7763,195 @@ function clearPersistedDiagnosticRun(storage = getSessionStorage3()) {
   }
 }
 
+// src/podkop/tabs/diagnostic/helpers/maskDiagnostics.ts
+var MASKED_VALUE = "MASKED";
+var SING_BOX_MASKED_KEYS = /* @__PURE__ */ new Set([
+  "auth_key",
+  "control_url",
+  "exit_node",
+  "hostname",
+  "listen",
+  "listen_port",
+  "username",
+  "uuid",
+  "server",
+  "server_name",
+  "secret",
+  "password",
+  "private_key",
+  "public_key",
+  "short_id",
+  "fingerprint",
+  "server_port",
+  "server_ports",
+  "advertise_routes",
+  "domain",
+  "domain_suffix",
+  "domain_keyword",
+  "domain_regex",
+  "ip_cidr",
+  "source_ip_cidr"
+]);
+var PODKOP_MASK_AFTER_TOKEN = [
+  "option proxy_string",
+  "option subscription_url",
+  "list subscription_urls",
+  "list urltest_proxy_links",
+  "list selector_proxy_links",
+  "list server_users",
+  "option server_uuid",
+  "option server_username",
+  "option server_password",
+  "option mtproto_secret",
+  "option hysteria2_obfs_password",
+  "option reality_private_key",
+  "option reality_public_key",
+  "option reality_short_id",
+  "list reality_short_id",
+  "option yacd_secret_key"
+];
+var PODKOP_MASK_AFTER_TOKEN_SPACE = [
+  "option outbound_json",
+  "list domain",
+  "list domain_suffix",
+  "list domain_keyword",
+  "list domain_regex",
+  "list ip_cidr",
+  "list source_ip_cidr",
+  "list fully_routed_ips",
+  "option dns_server",
+  "option bootstrap_dns_server",
+  "option domain_resolver_dns_server",
+  "option listen",
+  "option listen_port",
+  "option public_host",
+  "option mtproto_faketls",
+  "option mtproto_domain_fronting_ip",
+  "option tls_server_name",
+  "option reality_handshake_server",
+  "option reality_handshake_server_port",
+  "option transport_host",
+  "list transport_hosts",
+  "option tailscale_auth_key",
+  "option tailscale_control_url",
+  "option tailscale_hostname",
+  "list tailscale_advertise_routes",
+  "option tailscale_ephemeral",
+  "option tailscale_exit_node",
+  "option tailscale_exit_node_allow_lan_access",
+  "option mixed_proxy_username",
+  "option mixed_proxy_password",
+  "option ipaddr",
+  "option netmask",
+  "option gateway",
+  "option username",
+  "option password"
+];
+function isRecord2(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+function isSpaceChar(value) {
+  return value === " " || value === "	" || value === "\r" || value === "\n";
+}
+function maskAfterToken(line, token) {
+  const position = line.indexOf(token);
+  return position < 0 ? line : `${line.slice(0, position)}${token} '${MASKED_VALUE}'`;
+}
+function maskAfterTokenSpace(line, token) {
+  const position = line.indexOf(token);
+  if (position < 0) {
+    return line;
+  }
+  const spacePosition = position + token.length;
+  if (spacePosition >= line.length || !isSpaceChar(line.slice(spacePosition, spacePosition + 1))) {
+    return line;
+  }
+  return `${line.slice(0, spacePosition + 1)}'${MASKED_VALUE}'`;
+}
+function maskOptionPath(line, token) {
+  const position = line.indexOf(token);
+  if (position < 0) {
+    return line;
+  }
+  const slashOffset = line.slice(position + token.length).indexOf("/");
+  if (slashOffset < 0) {
+    return line;
+  }
+  const slash = slashOffset + position + token.length;
+  const quoteOffset = line.slice(slash + 1).indexOf("'");
+  if (quoteOffset < 0) {
+    return line;
+  }
+  const quote = quoteOffset + slash + 1;
+  return `${line.slice(0, slash)}/MASKED'${line.slice(quote + 1)}`;
+}
+function maskGlobalCheckLine(line) {
+  let maskedLine = line;
+  for (const token of PODKOP_MASK_AFTER_TOKEN) {
+    maskedLine = maskAfterToken(maskedLine, token);
+  }
+  for (const token of PODKOP_MASK_AFTER_TOKEN_SPACE) {
+    maskedLine = maskAfterTokenSpace(maskedLine, token);
+  }
+  maskedLine = maskOptionPath(maskedLine, "option dns_server '");
+  maskedLine = maskOptionPath(
+    maskedLine,
+    "option domain_resolver_dns_server '"
+  );
+  return maskedLine;
+}
+function maskMultilineContinuation(line) {
+  const leadingSpace = line.match(/^\s*/)?.[0] ?? "";
+  const hasClosingQuote = line.includes("'");
+  return `${leadingSpace}${MASKED_VALUE}${hasClosingQuote ? "'" : ""}`;
+}
+function maskSingBoxConfigValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => maskSingBoxConfigValue(item));
+  }
+  if (isRecord2(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        SING_BOX_MASKED_KEYS.has(key) ? MASKED_VALUE : maskSingBoxConfigValue(item)
+      ])
+    );
+  }
+  return value;
+}
+function stringifySingBoxConfig(value) {
+  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+function formatMaskedSingBoxConfig(value) {
+  if (typeof value === "string") {
+    try {
+      return JSON.stringify(maskSingBoxConfigValue(JSON.parse(value)), null, 2);
+    } catch (_error) {
+      return value;
+    }
+  }
+  return JSON.stringify(maskSingBoxConfigValue(value), null, 2);
+}
+function maskGlobalCheckText(text = "") {
+  let inMaskedMultiline = false;
+  return `${text}`.split("\n").map((line) => {
+    if (inMaskedMultiline) {
+      if (line.includes("'")) {
+        inMaskedMultiline = false;
+      }
+      return maskMultilineContinuation(line);
+    }
+    const maskedLine = maskGlobalCheckLine(line);
+    if (line.includes("option outbound_json")) {
+      const firstQuote = line.indexOf("'");
+      if (firstQuote >= 0 && line.slice(firstQuote + 1).indexOf("'") < 0) {
+        inMaskedMultiline = true;
+      }
+    }
+    return maskedLine;
+  }).join("\n");
+}
+
 // src/podkop/tabs/diagnostic/initController.ts
 var SERVICE_STATUS_REFRESH_INTERVAL_MS = 2e3;
 var SERVICE_ACTION_STATUS_TIMEOUT_MS = 45e3;
@@ -8200,19 +8406,14 @@ async function handleDisable() {
 async function handleShowGlobalCheck() {
   setDiagnosticActionLoading("globalCheck", true);
   try {
-    const globalCheck = await PodkopShellMethods.globalCheck();
+    const globalCheck = await PodkopShellMethods.globalCheck(false);
     if (globalCheck.success) {
-      const getGlobalCheckText = async ({ maskValues = true } = {}) => {
-        const latestGlobalCheck = await PodkopShellMethods.globalCheck(maskValues);
-        if (!latestGlobalCheck.success) {
-          throw latestGlobalCheck;
-        }
-        return latestGlobalCheck.data ?? "";
-      };
+      const rawGlobalCheckText = globalCheck.data ?? "";
+      const maskedGlobalCheckText = maskGlobalCheckText(rawGlobalCheckText);
       ui.showModal(
         _("Global check"),
-        renderModal(globalCheck.data, "global_check", {
-          getText: getGlobalCheckText,
+        renderModal(rawGlobalCheckText, "global_check", {
+          maskText: () => maskedGlobalCheckText,
           initialAutoRefresh: false,
           showMaskValuesToggle: true
         })
@@ -8260,26 +8461,21 @@ async function handleViewLogs() {
 async function handleShowSingBoxConfig() {
   setDiagnosticActionLoading("showSingBoxConfig", true);
   try {
-    const showSingBoxConfig = await PodkopShellMethods.showSingBoxConfig();
+    const showSingBoxConfig = await PodkopShellMethods.showSingBoxConfig(false);
     if (showSingBoxConfig.success) {
-      const getSingBoxConfigText = async ({ maskValues = true } = {}) => {
-        const latestSingBoxConfig = await PodkopShellMethods.showSingBoxConfig(maskValues);
-        if (!latestSingBoxConfig.success) {
-          throw latestSingBoxConfig;
-        }
-        return JSON.stringify(latestSingBoxConfig.data, null, 2);
-      };
+      const rawSingBoxConfigText = stringifySingBoxConfig(
+        showSingBoxConfig.data
+      );
+      const maskedSingBoxConfigText = formatMaskedSingBoxConfig(
+        showSingBoxConfig.data
+      );
       ui.showModal(
         _("Show sing-box config"),
-        renderModal(
-          JSON.stringify(showSingBoxConfig.data, null, 2),
-          "show_sing_box_config",
-          {
-            getText: getSingBoxConfigText,
-            initialAutoRefresh: false,
-            showMaskValuesToggle: true
-          }
-        )
+        renderModal(rawSingBoxConfigText, "show_sing_box_config", {
+          maskText: () => maskedSingBoxConfigText,
+          initialAutoRefresh: false,
+          showMaskValuesToggle: true
+        })
       );
     } else {
       logger.error(
