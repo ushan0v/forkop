@@ -362,7 +362,8 @@ const actionProvidersAvailabilityState = {
 };
 let actionProvidersAvailabilityPromise = null;
 let actionProvidersAvailabilityLoader = null;
-const outboundNameChoicesCache = {};
+const outboundNameChoicesCache = new Map();
+const outboundNameChoicesInflight = new Map();
 const COUNTRY_CODES =
   "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW XK".split(
     " ",
@@ -524,11 +525,15 @@ function validateCountryCode(_section_id, value) {
 }
 
 function loadOutboundNameChoices(section_id) {
-  if (outboundNameChoicesCache[section_id]) {
-    return Promise.resolve(outboundNameChoicesCache[section_id]);
+  if (outboundNameChoicesCache.has(section_id)) {
+    return Promise.resolve(outboundNameChoicesCache.get(section_id));
   }
 
-  return main.PodkopShellMethods.getOutboundMetadata(section_id)
+  if (outboundNameChoicesInflight.has(section_id)) {
+    return outboundNameChoicesInflight.get(section_id);
+  }
+
+  const task = main.PodkopShellMethods.getOutboundMetadata(section_id)
     .then((response) => {
       const names =
         response && response.success && response.data && response.data.names
@@ -540,35 +545,109 @@ function loadOutboundNameChoices(section_id) {
         .filter((name, index, values) => values.indexOf(name) === index)
         .sort((a, b) => `${a}`.localeCompare(`${b}`));
 
-      outboundNameChoicesCache[section_id] = choices;
+      outboundNameChoicesCache.set(section_id, choices);
 
       return choices;
     })
-    .catch(() => []);
+    .catch(() => [])
+    .finally(() => {
+      outboundNameChoicesInflight.delete(section_id);
+    });
+
+  outboundNameChoicesInflight.set(section_id, task);
+
+  return task;
 }
 
-function createOutboundNameDynamicListWidget(option, section_id, cfgvalue) {
+function renderOutboundNameDynamicListWidget(
+  option,
+  section_id,
+  cfgvalue,
+  choices,
+) {
   const values = normalizeOptionValues(
     cfgvalue != null ? cfgvalue : option.default,
   );
+  const choiceMap = {};
 
-  return loadOutboundNameChoices(section_id).then((choices) => {
-    const choiceMap = {};
-
-    choices.forEach((name) => {
-      choiceMap[name] = name;
-    });
-
-    return new ui.DynamicList(values, choiceMap, {
-      id: option.cbid(section_id),
-      sort: choices,
-      optional: option.optional || option.rmempty,
-      datatype: option.datatype,
-      placeholder: option.placeholder,
-      validate: option.validate.bind(option, section_id),
-      disabled: option.readonly != null ? option.readonly : option.map.readonly,
-    }).render();
+  choices.forEach((name) => {
+    choiceMap[name] = name;
   });
+
+  values.forEach((name) => {
+    choiceMap[name] = name;
+  });
+
+  return new ui.DynamicList(values, choiceMap, {
+    id: option.cbid(section_id),
+    sort: choices,
+    optional: option.optional || option.rmempty,
+    datatype: option.datatype,
+    placeholder: option.placeholder,
+    validate: option.validate.bind(option, section_id),
+    disabled: option.readonly != null ? option.readonly : option.map.readonly,
+  }).render();
+}
+
+function replaceNode(node, replacement) {
+  if (node.parentNode) {
+    node.parentNode.replaceChild(replacement, node);
+  }
+}
+
+function createOutboundNameDynamicListWidget(option, section_id, cfgvalue) {
+  const cachedChoices = outboundNameChoicesCache.has(section_id)
+    ? outboundNameChoicesCache.get(section_id)
+    : [];
+  const node = renderOutboundNameDynamicListWidget(
+    option,
+    section_id,
+    cfgvalue,
+    cachedChoices,
+  );
+
+  node.__podkopOutboundChoicesTouched = false;
+  node.addEventListener(
+    "input",
+    () => {
+      node.__podkopOutboundChoicesTouched = true;
+    },
+    true,
+  );
+  node.addEventListener(
+    "change",
+    () => {
+      node.__podkopOutboundChoicesTouched = true;
+    },
+    true,
+  );
+  node.addEventListener(
+    "focusin",
+    () => {
+      node.__podkopOutboundChoicesTouched = true;
+    },
+    true,
+  );
+
+  if (!outboundNameChoicesCache.has(section_id)) {
+    loadOutboundNameChoices(section_id).then((choices) => {
+      if (!node.isConnected || node.__podkopOutboundChoicesTouched) {
+        return;
+      }
+
+      replaceNode(
+        node,
+        renderOutboundNameDynamicListWidget(
+          option,
+          section_id,
+          cfgvalue,
+          choices,
+        ),
+      );
+    });
+  }
+
+  return node;
 }
 
 function ensureActionProvidersAvailabilityLoaded() {
