@@ -2214,16 +2214,12 @@ var RESERVED_RUNTIME_TAGS = /* @__PURE__ */ new Set([
   "service-mixed-in",
   "direct-out"
 ]);
-function hasReservedNumberedParent(base, postfix) {
-  const match = base.match(/^(.*)-\d+$/);
-  return Boolean(match && RESERVED_RUNTIME_TAGS.has(`${match[1]}-${postfix}`));
-}
 function allocateRuntimeTag(base, postfix) {
-  let suffix = hasReservedNumberedParent(base, postfix) ? 1 : 0;
-  let candidate = suffix > 0 ? `${base}-${suffix}-${postfix}` : `${base}-${postfix}`;
+  let suffix = 1;
+  let candidate = `${base}-${postfix}`;
   while (RESERVED_RUNTIME_TAGS.has(candidate)) {
+    candidate = `${base}-${postfix}-${suffix}`;
     suffix += 1;
-    candidate = `${base}-${suffix}-${postfix}`;
   }
   return candidate;
 }

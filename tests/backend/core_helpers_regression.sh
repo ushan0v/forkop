@@ -40,8 +40,14 @@ assert_eq server-edge-in \
 assert_eq server-edge-tailscale-dns \
   "$(ucode "$HELPERS_UC" tailscale-dns-tag edge)" \
   "tailscale DNS tag"
-assert_eq dns-server-1-out \
+assert_eq dns-server-out-1 \
   "$(SB_DIRECT_OUTBOUND_TAG=dns-server-out ucode "$HELPERS_UC" outbound-tag dns-server)" \
   "reserved outbound tag"
+assert_eq direct-out-1 \
+  "$(ucode "$HELPERS_UC" outbound-tag direct)" \
+  "reserved direct outbound tag"
+assert_eq direct-1-out \
+  "$(ucode "$HELPERS_UC" outbound-tag direct-1)" \
+  "numbered direct outbound tag"
 
 printf 'core helpers regression checks passed\n'

@@ -512,17 +512,8 @@ function allocate_runtime_tag_value(base, postfix, reserved) {
     let candidate = base + "-" + postfix;
     let suffix = 1;
 
-    if (match(base, /-[0-9]/) != null) {
-        let dash = str_last_index(base, "-");
-        let parent = dash >= 0 ? substr(base, 0, dash) : base;
-        if (tag_is_reserved(parent + "-" + postfix, reserved)) {
-            candidate = base + "-" + suffix + "-" + postfix;
-            suffix++;
-        }
-    }
-
     while (tag_is_reserved(candidate, reserved)) {
-        candidate = base + "-" + suffix + "-" + postfix;
+        candidate = base + "-" + postfix + "-" + suffix;
         suffix++;
     }
 

@@ -435,12 +435,12 @@ describe('getDashboardSections', () => {
       success: true,
       data: {
         proxies: {
-          'direct-1-out': proxy('Selector', {
-            name: 'direct-1-out',
-            now: 'direct-1-1-out',
-            all: ['direct-1-1-out'],
+          'direct-out-1': proxy('Selector', {
+            name: 'direct-out-1',
+            now: 'direct-1-out',
+            all: ['direct-1-out'],
           }),
-          'direct-1-1-out': proxy('VLESS', {
+          'direct-1-out': proxy('VLESS', {
             name: 'Direct manual',
             history: [{ time: '2026-05-27T00:00:00Z', delay: 100 }],
           }),
@@ -452,9 +452,9 @@ describe('getDashboardSections', () => {
     const [section] = result.data;
 
     expect(result.success).toBe(true);
-    expect(section.code).toBe('direct-1-out');
+    expect(section.code).toBe('direct-out-1');
     expect(section.outbounds.map((item) => item.code)).toEqual([
-      'direct-1-1-out',
+      'direct-1-out',
     ]);
   });
 

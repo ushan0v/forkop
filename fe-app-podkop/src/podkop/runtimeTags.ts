@@ -11,20 +11,13 @@ const RESERVED_RUNTIME_TAGS = new Set([
   'direct-out',
 ]);
 
-function hasReservedNumberedParent(base: string, postfix: string): boolean {
-  const match = base.match(/^(.*)-\d+$/);
-
-  return Boolean(match && RESERVED_RUNTIME_TAGS.has(`${match[1]}-${postfix}`));
-}
-
 export function allocateRuntimeTag(base: string, postfix: string): string {
-  let suffix = hasReservedNumberedParent(base, postfix) ? 1 : 0;
-  let candidate =
-    suffix > 0 ? `${base}-${suffix}-${postfix}` : `${base}-${postfix}`;
+  let suffix = 1;
+  let candidate = `${base}-${postfix}`;
 
   while (RESERVED_RUNTIME_TAGS.has(candidate)) {
+    candidate = `${base}-${postfix}-${suffix}`;
     suffix += 1;
-    candidate = `${base}-${suffix}-${postfix}`;
   }
 
   return candidate;
