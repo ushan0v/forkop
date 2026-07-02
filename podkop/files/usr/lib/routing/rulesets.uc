@@ -2,17 +2,10 @@
 
 let fs = require("fs");
 let ip = require("core.ip");
+let domain_config = require("config.domain");
 
 function as_string(value) {
     return value == null ? "" : "" + value;
-}
-
-function ascii_lower(value) {
-    let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let lower = "abcdefghijklmnopqrstuvwxyz";
-    return replace(as_string(value), /[A-Z]/g, function(ch) {
-        return substr(lower, index(upper, ch), 1);
-    });
 }
 
 function json_decode_text(text) {
@@ -144,19 +137,9 @@ function patch_source(path, key, value_text) {
     patch_source_values(path, key, json_decode_text(value_text));
 }
 
-function is_domain_suffix_text(value) {
-    let text = ascii_lower(value);
-    if (substr(text, 0, 1) == ".")
-        text = substr(text, 1);
-
-    return match(text, /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/);
-}
-
 function normalize_plain_ruleset_value(value, kind) {
-    if (kind == "domains") {
-        let normalized = ascii_lower(value);
-        return is_domain_suffix_text(normalized) ? normalized : null;
-    }
+    if (kind == "domains")
+        return domain_config.suffix_to_ascii(value);
     if (kind == "subnets")
         return ip.nft_ip_or_cidr(value) ? value : null;
 
@@ -165,7 +148,7 @@ function normalize_plain_ruleset_value(value, kind) {
 
 function is_plain_ruleset_value(value, kind) {
     if (kind == "domains")
-        return is_domain_suffix_text(value);
+        return domain_config.valid_suffix(value);
     if (kind == "subnets")
         return ip.nft_ip_or_cidr(value);
 

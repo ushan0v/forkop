@@ -1356,22 +1356,7 @@ function combined_domain_source_values(section) {
 }
 
 function domain_suffix_condition_value_kind(value) {
-    value = as_string(value);
-    let colon = index(value, ":");
-    if (colon < 0)
-        return { kind: "domain_suffix", value };
-
-    let prefix = substr(value, 0, colon);
-    let body = substr(value, colon + 1);
-    if (prefix == "domain" || prefix == "full")
-        return { kind: "domain", value: body };
-    if (prefix == "suffix")
-        return { kind: "domain_suffix", value: body };
-    if (prefix == "keyword")
-        return { kind: "domain_keyword", value: body };
-    if (prefix == "regexp" || prefix == "regex")
-        return { kind: "domain_regex", value: body };
-    return { kind: "domain_suffix", value };
+    return rule_config.prefixed_domain_kind_value(value);
 }
 
 function domain_condition_values(section, key) {
@@ -1380,18 +1365,21 @@ function domain_condition_values(section, key) {
     if (key == "domain_suffix") {
         for (let value in combined_domain_source_values(section)) {
             let normalized = domain_suffix_condition_value_kind(value);
-            if (normalized.kind == "domain_suffix")
+            if (normalized != null && normalized.kind == "domain_suffix")
                 push(result, normalized.value);
         }
         return result;
     }
 
-    for (let value in legacy_condition_values(section, key))
-        push(result, value);
+    for (let value in legacy_condition_values(section, key)) {
+        let normalized = rule_config.domain_value_for_key(value, key);
+        if (normalized != null)
+            push(result, normalized);
+    }
 
     for (let value in combined_domain_source_values(section)) {
         let normalized = domain_suffix_condition_value_kind(value);
-        if (normalized.kind == key)
+        if (normalized != null && normalized.kind == key)
             push(result, normalized.value);
     }
 

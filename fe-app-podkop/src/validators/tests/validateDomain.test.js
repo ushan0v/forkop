@@ -9,6 +9,10 @@ export const validDomains = [
   ['Deep subdomain', 'a.b.c.example.co.uk'],
   ['With path', 'example.com/path/to/resource'],
   ['Punycode RU', 'xn--d1acufc.xn--p1ai'],
+  ['Unicode RU', 'сайт.рф'],
+  ['Unicode RU uppercase', 'САЙТ.РФ'],
+  ['Unicode test domain', 'пример.испытание'],
+  ['Unicode latin label', 'münich.example'],
   ['Adguard dns', 'dns.adguard-dns.com'],
   ['Nextdns dns', 'dns.nextdns.io/xxxxxxx'],
   ['Long domain (63 chars in label)', 'a'.repeat(63) + '.com'],
@@ -31,8 +35,10 @@ export const invalidDomains = [
 
 export const dotTLDTests = [
   ['Dot TLD allowed (.net)', '.net', true, true],
+  ['Dot TLD allowed (.рф)', '.рф', true, true],
   ['Dot TLD not allowed (.net)', '.net', false, false],
   ['Invalid with double dot', '..net', true, false],
+  ['Invalid dot domain', '.example.com', true, false],
   ['Invalid single word TLD (net)', 'net', true, false],
 ];
 

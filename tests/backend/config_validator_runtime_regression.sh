@@ -74,8 +74,8 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
       "urltest_include_countries": [ "US" ],
       "urltest_exclude_regex": [ "bad.*" ],
       "detect_server_country": "flag_emoji",
-      "domain_suffix": [ "example.org", "full:exact.example", "keyword:video", "regex:^api[.]example$" ],
-      "domain_suffix_text": "text.example\nkeyword:stream",
+      "domain_suffix": [ "example.org", "сайт.рф", "full:exact.example", "full:пример.испытание", "keyword:video", "keyword:пример", "regex:^api[.]example$", "regex:^сайт[.]рф$" ],
+      "domain_suffix_text": "text.example\nmünich.example\nkeyword:stream",
       "community_lists": [ "discord" ],
       "rule_set": [ "https://example.com/rules.srs" ],
       "rule_set_with_subnets": [ "/tmp/local.json" ],
@@ -190,6 +190,7 @@ printf '%s\n' "$output" | grep -Fq "ByeDPI listen address and port are assigned"
 runtime_lib="$WORK_DIR/runtime-lib"
 mkdir -p "$runtime_lib"
 ln -s "$PODKOP_LIB/core" "$runtime_lib/core"
+ln -s "$PODKOP_LIB/config" "$runtime_lib/config"
 ln -s "$PODKOP_LIB/subscription" "$runtime_lib/subscription"
 ln -s "$PODKOP_LIB/providers" "$runtime_lib/providers"
 touch "$WORK_DIR/ciadpi-provider"

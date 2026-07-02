@@ -193,6 +193,18 @@ assert_eq "one.example,list.example,legacy.example" \
 assert_eq "suffix.example,list.example" \
   "$(nft_ucode rule-condition-csv domain_suffix domains 0 0 legacy.example legacy-list.example 'full:one.example suffix.example keyword:skip' 'full:list-full.example list.example')" \
   "combined suffix ignores legacy"
+assert_eq "xn--80aswg.xn--p1ai" \
+  "$(nft_ucode rule-condition-csv domain_suffix domains 0 0 '' '' 'сайт.рф full:пример.испытание keyword:пример regex:^сайт[.]рф$' '')" \
+  "combined IDN suffix is punycoded"
+assert_eq "xn--e1afmkfd.xn--80akhbyknj4f" \
+  "$(nft_ucode rule-condition-csv domain domains 0 0 '' '' 'сайт.рф full:пример.испытание keyword:пример regex:^сайт[.]рф$' '')" \
+  "combined IDN full domain is punycoded"
+assert_eq "xn--e1afmkfd" \
+  "$(nft_ucode rule-condition-csv domain_keyword generic 0 0 '' '' 'сайт.рф full:пример.испытание keyword:пример regex:^сайт[.]рф$' '')" \
+  "combined IDN keyword is punycoded"
+assert_eq "^xn--80aswg[.]xn--p1ai$" \
+  "$(nft_ucode rule-condition-csv domain_regex generic 0 0 '' '' 'сайт.рф full:пример.испытание keyword:пример regex:^сайт[.]рф$' '')" \
+  "combined IDN regex is punycoded"
 
 nft_ucode nft-create-runtime-base PodkopPlusTable localv4 podkop_plus_subnets podkop_plus_ports podkop_plus_ip_ports podkop_plus_interfaces "br-lan tun0" 0x00100000 0x00200000 198.18.0.0/15 1602 1
 assert_contains "$NFT_LOG" $'nft\tadd\ttable\tinet\tPodkopPlusTable' "runtime table"

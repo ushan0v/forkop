@@ -2,6 +2,7 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PODKOP_LIB="$ROOT_DIR/podkop/files/usr/lib"
 VALIDATOR="$ROOT_DIR/podkop/files/usr/lib/config/validator.uc"
 COMMUNITY_SERVICES="youtube twitter telegram"
 
@@ -14,7 +15,7 @@ assert_accepts() {
   local label="$1"
   shift
 
-  ucode "$VALIDATOR" "$@" >/dev/null ||
+  ucode -L "$PODKOP_LIB" "$VALIDATOR" "$@" >/dev/null ||
     fail "$label should be accepted"
 }
 
@@ -22,7 +23,7 @@ assert_rejects() {
   local label="$1"
   shift
 
-  if ucode "$VALIDATOR" "$@" >/dev/null 2>&1; then
+  if ucode -L "$PODKOP_LIB" "$VALIDATOR" "$@" >/dev/null 2>&1; then
     fail "$label should be rejected"
   fi
 }

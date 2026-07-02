@@ -4,6 +4,7 @@ let fs = require("fs");
 let common = require("core.common");
 let uci_core = require("core.uci");
 let constants_module = require("core.constants");
+let domain_config = require("config.domain");
 
 let as_string = common.as_string;
 let read_json_file = common.read_json_file;
@@ -433,25 +434,6 @@ function migrate_zapret_nfqws_default(ctx, section, constants) {
     set_option(ctx, section, "nfqws_opt", constants.zapret_default_nfqws_opt);
 }
 
-function ascii_lower(value) {
-    let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let lower = "abcdefghijklmnopqrstuvwxyz";
-    return replace(as_string(value), /[A-Z]/g, function(ch) {
-        return substr(lower, index(upper, ch), 1);
-    });
-}
-
-function valid_domain(value) {
-    return match(ascii_lower(value), /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/) != null;
-}
-
-function valid_domain_suffix(value) {
-    value = as_string(value);
-    if (substr(value, 0, 1) == ".")
-        value = substr(value, 1);
-    return valid_domain(value);
-}
-
 function strip_list_comment(line) {
     line = replace(as_string(line), /[[:space:]]*\/\/.*$/, "");
     return replace(line, /[[:space:]]*#.*$/, "");
@@ -480,8 +462,8 @@ function text_list_values(value, separator_mode) {
 function filter_domain_values(values) {
     let result = [];
     for (let value in values) {
-        let normalized = ascii_lower(value);
-        if (valid_domain_suffix(normalized))
+        let normalized = domain_config.suffix_to_ascii(value);
+        if (normalized != null)
             push(result, normalized);
     }
     return result;

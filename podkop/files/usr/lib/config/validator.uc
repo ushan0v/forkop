@@ -8,6 +8,7 @@ let zapret_validator_module = null;
 let zapret2_validator_module = null;
 let byedpi_validator_module = null;
 let constants_module = null;
+let rule_config = require("config.rule");
 
 const CONFIG_NAME = getenv("PODKOP_CONFIG_NAME") || "podkop-plus";
 
@@ -358,39 +359,16 @@ function text_list_values(value) {
     return result;
 }
 
-function valid_domain_suffix(value) {
-    value = lc(as_string(value));
-    if (substr(value, 0, 1) == ".")
-        value = substr(value, 1);
-
-    return match(value, /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/) != null;
-}
-
 function combined_domain_valid(value) {
     value = trim(as_string(value));
     if (value == "")
         return true;
 
-    let colon = index(value, ":");
-    if (colon < 0)
-        return valid_domain_suffix(value);
-
-    let prefix = lc(substr(value, 0, colon));
-    let body = substr(value, colon + 1);
-
-    if (body == "")
+    let normalized = rule_config.prefixed_domain_kind_value(value);
+    if (normalized == null)
         return false;
 
-    if (prefix == "full")
-        return valid_domain_suffix(body);
-
-    if (prefix == "keyword")
-        return match(body, /[,[:space:]]/) == null;
-
-    if (prefix == "regex")
-        return match(body, /[,[:space:]]/) == null && regex_valid(body);
-
-    return false;
+    return normalized.kind != "domain_regex" || regex_valid(normalized.value);
 }
 
 function combined_domain_text_valid(value) {

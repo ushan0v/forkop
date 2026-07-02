@@ -5,6 +5,7 @@ let common = require("core.common");
 let core_ip = require("core.ip");
 let uci_core = require("core.uci");
 let rule_config = require("config.rule");
+let domain_config = require("config.domain");
 let routing_rulesets = require("routing.rulesets");
 const CONFIG_NAME = getenv("PODKOP_CONFIG_NAME") || "podkop-plus";
 
@@ -47,14 +48,6 @@ function uci_sections(type_name) {
 
 function uci_settings() {
     return uci_section("settings");
-}
-
-function ascii_lower(value) {
-    let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let lower = "abcdefghijklmnopqrstuvwxyz";
-    return replace(as_string(value), /[A-Z]/g, function(ch) {
-        return substr(lower, index(upper, ch), 1);
-    });
 }
 
 function write_json(value) {
@@ -237,14 +230,6 @@ function valid_ipv4_cidr(value) {
     return core_ip.valid_ipv4_cidr(value, false);
 }
 
-function valid_domain_suffix(value) {
-    value = ascii_lower(value);
-    if (substr(value, 0, 1) == ".")
-        value = substr(value, 1);
-
-    return match(value, /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/) != null;
-}
-
 function nft_ipv4(value, allow_trailing_dot) {
     return core_ip.valid_ipv4(value, allow_trailing_dot, true);
 }
@@ -272,7 +257,7 @@ function domain_subnet_line_values(data) {
 function domain_subnet_value_valid(value, kind) {
     kind = as_string(kind);
     if (kind == "domains")
-        return valid_domain_suffix(value);
+        return domain_config.valid_suffix(value);
     if (kind == "subnets")
         return core_ip.valid_ip_or_cidr(value);
 
@@ -281,10 +266,8 @@ function domain_subnet_value_valid(value, kind) {
 
 function normalize_domain_subnet_value(value, kind) {
     kind = as_string(kind);
-    if (kind == "domains") {
-        let normalized = ascii_lower(value);
-        return valid_domain_suffix(normalized) ? normalized : null;
-    }
+    if (kind == "domains")
+        return domain_config.suffix_to_ascii(value);
     if (kind == "subnets")
         return core_ip.valid_ip_or_cidr(value) ? value : null;
 

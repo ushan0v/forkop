@@ -1,6 +1,7 @@
 #!/usr/bin/env ucode
 
 let ip = require("core.ip");
+let domain_config = require("config.domain");
 
 function as_string(value) {
     return value == null ? "" : "" + value;
@@ -39,25 +40,8 @@ function whitespace_fields(value) {
     return result;
 }
 
-function ascii_lower(value) {
-    let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let lower = "abcdefghijklmnopqrstuvwxyz";
-    return replace(as_string(value), /[A-Z]/g, function(ch) {
-        return substr(lower, index(upper, ch), 1);
-    });
-}
-
-function valid_domain_suffix(value) {
-    value = ascii_lower(value);
-    if (substr(value, 0, 1) == ".")
-        value = substr(value, 1);
-
-    return match(value, /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/) != null;
-}
-
-function prefixed_domain_value(value, requested_kind) {
+function prefixed_domain_kind_value(value) {
     value = trim(as_string(value));
-    requested_kind = as_string(requested_kind);
 
     if (value == "")
         return null;
@@ -66,7 +50,7 @@ function prefixed_domain_value(value, requested_kind) {
     let prefix = "";
     let body = value;
     if (colon > 0) {
-        let candidate = ascii_lower(substr(value, 0, colon));
+        let candidate = domain_config.ascii_lower(substr(value, 0, colon));
         if (candidate == "full" || candidate == "keyword" || candidate == "regex") {
             prefix = candidate;
             body = substr(value, colon + 1);
@@ -81,31 +65,48 @@ function prefixed_domain_value(value, requested_kind) {
         return null;
 
     if (prefix == "") {
-        if (requested_kind != "domain_suffix")
-            return null;
-        let normalized = ascii_lower(body);
-        return valid_domain_suffix(normalized) ? normalized : null;
+        let normalized = domain_config.suffix_to_ascii(body);
+        return normalized == null ? null : { kind: "domain_suffix", value: normalized };
     }
 
     if (prefix == "full") {
-        if (requested_kind != "domain")
-            return null;
-        let normalized = ascii_lower(body);
-        return valid_domain_suffix(normalized) ? normalized : null;
+        let normalized = domain_config.suffix_to_ascii(body);
+        return normalized == null ? null : { kind: "domain", value: normalized };
     }
 
-    if (prefix == "keyword")
-        return requested_kind == "domain_keyword" ? body : null;
+    if (prefix == "keyword") {
+        let normalized = domain_config.keyword_to_ascii(body);
+        return normalized == null ? null : { kind: "domain_keyword", value: normalized };
+    }
 
-    return requested_kind == "domain_regex" ? body : null;
+    let normalized = domain_config.regex_to_ascii(body);
+    return normalized == null ? null : { kind: "domain_regex", value: normalized };
+}
+
+function prefixed_domain_value(value, requested_kind) {
+    let normalized = prefixed_domain_kind_value(value);
+    requested_kind = as_string(requested_kind);
+
+    return normalized != null && normalized.kind == requested_kind ? normalized.value : null;
+}
+
+function domain_value_for_key(value, key) {
+    key = as_string(key);
+
+    if (key == "domain" || key == "domain_suffix")
+        return domain_config.suffix_to_ascii(value);
+    if (key == "domain_keyword")
+        return domain_config.keyword_to_ascii(value);
+    if (key == "domain_regex")
+        return domain_config.regex_to_ascii(value);
+
+    return null;
 }
 
 function normalize_domain_subnet_value(value, kind) {
     kind = as_string(kind);
-    if (kind == "domains") {
-        let normalized = ascii_lower(value);
-        return valid_domain_suffix(normalized) ? normalized : null;
-    }
+    if (kind == "domains")
+        return domain_config.suffix_to_ascii(value);
     if (kind == "subnets")
         return ip.valid_ip_or_cidr(value) ? value : null;
 
@@ -310,6 +311,10 @@ return {
     normalize_port_range_value,
     combined_domain_csv_value,
     combined_domain_text_csv_value,
+    prefixed_domain_kind_value,
+    prefixed_domain_value,
+    domain_value_for_key,
+    normalize_domain_subnet_value,
     legacy_condition_csv_value,
     rule_condition_csv_value,
     rule_ports_csv_value,

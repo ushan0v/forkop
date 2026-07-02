@@ -2,6 +2,7 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PODKOP_LIB="$ROOT_DIR/podkop/files/usr/lib"
 VALIDATOR="$ROOT_DIR/podkop/files/usr/lib/config/validator.uc"
 
 fail() {
@@ -20,7 +21,7 @@ assert_accepts() {
   local zapret2="$4"
   shift 4
 
-  rows "$@" | ucode "$VALIDATOR" validate-download-section "$target" "$byedpi" "$zapret" "$zapret2"
+  rows "$@" | ucode -L "$PODKOP_LIB" "$VALIDATOR" validate-download-section "$target" "$byedpi" "$zapret" "$zapret2"
 }
 
 assert_rejects() {
@@ -33,7 +34,7 @@ assert_rejects() {
   shift 6
   local output
 
-  if output="$(rows "$@" | ucode "$VALIDATOR" validate-download-section "$target" "$byedpi" "$zapret" "$zapret2" 2>/dev/null)"; then
+  if output="$(rows "$@" | ucode -L "$PODKOP_LIB" "$VALIDATOR" validate-download-section "$target" "$byedpi" "$zapret" "$zapret2" 2>/dev/null)"; then
     fail "$label should be rejected"
   fi
 

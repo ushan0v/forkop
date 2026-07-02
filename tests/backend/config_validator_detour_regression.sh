@@ -2,6 +2,7 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PODKOP_LIB="$ROOT_DIR/podkop/files/usr/lib"
 VALIDATOR="$ROOT_DIR/podkop/files/usr/lib/config/validator.uc"
 
 fail() {
@@ -19,7 +20,7 @@ assert_rejects() {
   shift 2
   local output
 
-  if output="$(rows "$@" | ucode "$VALIDATOR" validate-outbound-detours 2>/dev/null)"; then
+  if output="$(rows "$@" | ucode -L "$PODKOP_LIB" "$VALIDATOR" validate-outbound-detours 2>/dev/null)"; then
     fail "$label should be rejected"
   fi
 
@@ -30,12 +31,12 @@ assert_rejects() {
 rows \
   source 1 proxy 1 target '' \
   target 1 vpn 0 '' '' |
-  ucode "$VALIDATOR" validate-outbound-detours
+  ucode -L "$PODKOP_LIB" "$VALIDATOR" validate-outbound-detours
 
 rows \
   source 1 outbound 1 target '{"type":"direct"}' \
   target 1 proxy 0 '' '' |
-  ucode "$VALIDATOR" validate-outbound-detours
+  ucode -L "$PODKOP_LIB" "$VALIDATOR" validate-outbound-detours
 
 assert_rejects "unsupported source action" "supported only for proxy and JSON outbound rules" \
   source 1 vpn 1 target '' \
