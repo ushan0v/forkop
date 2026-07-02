@@ -245,13 +245,13 @@ function dnsmasq_configure(force) {
 
     if (as_string(force) != "force" && uci_get(CONFIG_NAME + ".settings.shutdown_correctly") == "0") {
         if (dnsmasq_default_config_is_complete()) {
-            log("Previous shutdown of Podkop Plus was not correct, dnsmasq is already configured", "info");
+            log("Previous Podkop Plus shutdown was unclean; dnsmasq already points to sing-box", "info");
             return true;
         }
-        log("Previous shutdown of Podkop Plus was not correct, but dnsmasq is not configured correctly. Applying Podkop Plus DNS settings", "info");
+        log("Previous Podkop Plus shutdown was unclean and dnsmasq is not ready; applying Podkop Plus DNS settings", "info");
     }
 
-    log("Configure dnsmasq for sing-box", "info");
+    log("Configuring dnsmasq to forward DNS to sing-box", "info");
     dnsmasq_cleanup_legacy_instance();
     dnsmasq_configure_default_instance();
     uci_commit("dhcp");
@@ -259,17 +259,18 @@ function dnsmasq_configure(force) {
     return restart_dnsmasq();
 }
 
-function dnsmasq_restore(force) {
+function dnsmasq_restore(force, quiet) {
     if (!uci_available())
         return true;
 
-    log("Restoring the dnsmasq configuration", "info");
+    if (!quiet)
+        log("Restoring DNS settings in dnsmasq", "info");
     if (as_string(force) != "force" && uci_get(CONFIG_NAME + ".settings.shutdown_correctly") == "1") {
         if (!dnsmasq_has_podkop_dns()) {
-            log("Previous shutdown of Podkop Plus was correct, reconfiguration of dnsmasq is not required", "info");
+            log("dnsmasq already uses non-Podkop DNS settings; restore is not required", "info");
             return true;
         }
-        log("Previous shutdown of Podkop Plus was correct, but Podkop Plus DNS is still present. Restoring dnsmasq", "info");
+        log("Podkop Plus DNS settings are still present after a clean shutdown; restoring DNS settings in dnsmasq", "info");
     }
 
     dnsmasq_cleanup_legacy_instance();
@@ -285,15 +286,17 @@ function failsafe_restore() {
 
     if (dnsmasq_management_disabled()) {
         if (!dnsmasq_has_podkop_managed_state()) {
-            log("Fail-safe: dont_touch_dhcp is enabled, leaving dnsmasq unchanged", "warn");
+            log("DNS rollback skipped: dont_touch_dhcp is enabled and no Podkop Plus dnsmasq changes were found", "info");
             return true;
         }
 
-        log("Fail-safe: dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes", "warn");
+        log("Rolling back previous Podkop Plus dnsmasq changes because dont_touch_dhcp is enabled", "warn");
+    }
+    else {
+        log("Rolling back Podkop Plus DNS changes in dnsmasq", "warn");
     }
 
-    log("Fail-safe: restoring dnsmasq away from Podkop Plus DNS", "warn");
-    dnsmasq_restore("force");
+    dnsmasq_restore("force", true);
     return true;
 }
 

@@ -211,8 +211,7 @@ cat >"$WORK_DIR/runtime-matchers-fixture.json" <<'JSON'
     ".type": "settings",
     "config_path": "/tmp/sing-box/config.json",
     "dns_server": "1.1.1.1",
-    "service_listen_address": "127.0.0.1",
-    "routing_excluded_ips": [ "192.168.1.5/32", "2001:db8::5/128" ]
+    "service_listen_address": "127.0.0.1"
   },
   "section": [
     {
@@ -224,12 +223,21 @@ cat >"$WORK_DIR/runtime-matchers-fixture.json" <<'JSON'
       "domain_suffix": [ "detour.example" ]
     },
     {
+      ".name": "bypass",
+      ".type": "section",
+      "enabled": "1",
+      "action": "bypass",
+      "domain_suffix": [ "example.org" ],
+      "ip_cidr": [ "198.51.100.0/24" ],
+      "source_ip_cidr": [ "10.0.0.3/32" ]
+    },
+    {
       ".name": "proxy",
       ".type": "section",
       "enabled": "1",
       "action": "outbound",
       "outbound_json": "{\"type\":\"socks\",\"server\":\"127.0.0.1\",\"server_port\":1080}",
-      "domain_suffix": [ "example.org" ],
+      "domain_suffix": [ "proxy.example.org" ],
       "source_ip_cidr": [ "10.0.0.2/32", "2001:db8::2/128" ],
       "outbound_detour_enabled": "1",
       "outbound_detour_section": "detour",
@@ -645,12 +653,16 @@ assert(matchers.dns.strategy == "prefer_ipv4", "DNS strategy allows IPv6 answers
 assert(dns_server(matchers, r => r.tag == "fakeip-server" && r.inet6_range == "fc00::/18") != null, "FakeIP IPv6 range");
 assert(inbound(matchers, "tproxy6-in") != null, "IPv6 TProxy inbound");
 assert(inbound(matchers, "tproxy6-in").listen == "::1", "IPv6 TProxy listen address");
+assert(outbound(matchers, "bypass-out").type == "direct", "bypass fallback outbound");
 assert(outbound(matchers, "proxy-out").detour == "detour-out", "outbound detour");
 let mixed = inbound(matchers, "proxy-mixed-in");
 assert(mixed && mixed.listen_port == 19090 && mixed.users[0].username == "user", "mixed inbound auth");
 assert(route_rule(matchers, r => r.inbound == "proxy-mixed-in" && r.outbound == "proxy-out") != null, "mixed inbound route");
+assert(dns_rule(matchers, r => contains(r.domain_suffix, "example.org")).server == "dns-server", "bypass domain real DNS rule");
+assert(dns_rule(matchers, r => contains(r.domain_suffix, "proxy.example.org")).server == "fakeip-server", "proxy domain FakeIP DNS rule");
+assert(route_rule(matchers, r => r.outbound == "bypass-out" && contains(r.domain_suffix, "example.org") && contains(r.source_ip_cidr, "10.0.0.3/32")) != null, "bypass fallback route");
 assert(route_rule(matchers, r => contains(r.inbound, "tproxy-in") && contains(r.inbound, "tproxy6-in") && r.outbound == "proxy-out") != null, "section route dual tproxy inbound");
-assert(route_rule(matchers, r => r.outbound == "direct-out" && contains(r.source_ip_cidr, "192.168.1.5/32") && contains(r.source_ip_cidr, "2001:db8::5/128")) != null, "routing excluded source");
+assert(route_rule(matchers, r => r.outbound == "direct-out" && contains(r.source_ip_cidr, "192.168.1.5/32")) == null, "routing excluded source removed");
 assert(route_rule(matchers, r => r.outbound == "proxy-out" && contains(r.source_ip_cidr, "10.0.0.2/32") && contains(r.source_ip_cidr, "2001:db8::2/128")) != null, "source_ip_cidr matcher");
 
 let urltest = cfg("urltest");

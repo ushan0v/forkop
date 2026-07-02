@@ -73,6 +73,7 @@ function constants_map() {
     c.SB_SERVICE_MIXED_INBOUND_ADDRESS = env("SB_SERVICE_MIXED_INBOUND_ADDRESS", "127.0.0.1");
     c.SB_SERVICE_MIXED_INBOUND_PORT = env("SB_SERVICE_MIXED_INBOUND_PORT", "4534");
     c.SB_DIRECT_OUTBOUND_TAG = env("SB_DIRECT_OUTBOUND_TAG", "direct-out");
+    c.SB_BYPASS_OUTBOUND_TAG = env("SB_BYPASS_OUTBOUND_TAG", "bypass-out");
     c.SB_CLASH_API_CONTROLLER_PORT = env("SB_CLASH_API_CONTROLLER_PORT", "9090");
     c.SB_VARIANT_STATE_FILE = env("SB_VARIANT_STATE_FILE", "/etc/podkop-plus/sing-box-variant");
     c.SB_VERSION_STATE_FILE = env("SB_VERSION_STATE_FILE", "/etc/podkop-plus/sing-box-version");

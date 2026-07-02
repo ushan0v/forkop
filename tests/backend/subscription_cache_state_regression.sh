@@ -104,6 +104,27 @@ if cache_ucode subscription-metadata-path '../bad' >/dev/null 2>&1; then
   fail "subscription metadata path mode should reject unsafe section names"
 fi
 
+cat >"$WORK_DIR/normalized-subscription.json" <<'JSON'
+{
+  "version": 1,
+  "format": "uri-list",
+  "skipped": 2,
+  "outbounds": [
+    { "type": "vless", "tag": "one" },
+    { "type": "trojan", "tag": "two" }
+  ]
+}
+JSON
+assert_eq "2 proxy entries, 2 skipped entries" \
+  "$(cache_ucode subscription-import-stats "$WORK_DIR/normalized-subscription.json")" \
+  "subscription import stats"
+assert_eq "Subscription source 1 for rule 'proxy' imported: 2 proxy entries, 2 skipped entries" \
+  "$(cache_ucode subscription-source-summary proxy 1 "$WORK_DIR/normalized-subscription.json" imported)" \
+  "subscription source imported summary"
+assert_eq "Subscription source 1 for rule 'proxy' is unchanged: 2 proxy entries, 2 skipped entries" \
+  "$(cache_ucode subscription-source-summary proxy 1 "$WORK_DIR/normalized-subscription.json" unchanged)" \
+  "subscription source unchanged summary"
+
 runtime_env() {
   TMP_SING_BOX_FOLDER="$WORK_DIR/runtime/tmp-sing-box" \
     TMP_RULESET_FOLDER="$WORK_DIR/runtime/tmp-sing-box/rulesets" \
@@ -172,7 +193,7 @@ cat >"$WORK_DIR/cache-maintenance.json" <<'JSON'
     {
       ".name": "direct",
       "enabled": "1",
-      "action": "direct"
+      "action": "bypass"
     },
     {
       ".name": "disabled",

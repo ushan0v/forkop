@@ -9367,6 +9367,7 @@ function getDisplayName2(section) {
 }
 function buildRouteDisplayNames(sections) {
   const map = {
+    "bypass-out": "Bypass",
     "direct-out": "direct"
   };
   const serverMap = {};

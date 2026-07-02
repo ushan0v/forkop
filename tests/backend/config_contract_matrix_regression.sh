@@ -84,13 +84,13 @@ function uiValues(field) {
   return [...result].sort();
 }
 
-function assertCurrentKeepsStableValues(name, required = []) {
+function assertCurrentKeepsStableValues(name, required = [], retired = []) {
   const field = matrix.fields.find((item) => item.name === name);
   if (!field) fail(`expected enum field is absent from matrix: ${name}`);
 
   const stableValues = uiValues(field.stable);
   const currentValues = uiValues(field.current);
-  const missingStable = stableValues.filter((value) => !currentValues.includes(value));
+  const missingStable = stableValues.filter((value) => !currentValues.includes(value) && !retired.includes(value));
   if (missingStable.length) {
     fail(`current UI contract for ${name} is missing stable values: ${missingStable.join(", ")}`);
   }
@@ -101,7 +101,7 @@ function assertCurrentKeepsStableValues(name, required = []) {
   }
 }
 
-assertCurrentKeepsStableValues("action", ["proxy", "vpn", "direct", "block", "zapret", "zapret2", "byedpi", "outbound"]);
+assertCurrentKeepsStableValues("action", ["proxy", "vpn", "bypass", "block", "zapret", "zapret2", "byedpi", "outbound"], ["direct"]);
 assertCurrentKeepsStableValues("protocol", ["tailscale", "vless", "vmess", "trojan", "shadowsocks", "hysteria2", "socks", "mtproto", "json_inbound"]);
 assertCurrentKeepsStableValues("security", ["reality", "tls", "none"]);
 assertCurrentKeepsStableValues("transport", ["tcp", "ws", "grpc", "http", "httpupgrade", "xhttp"]);

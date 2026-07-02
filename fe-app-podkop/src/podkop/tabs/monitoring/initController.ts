@@ -129,6 +129,7 @@ function getDisplayName(section: Podkop.ConfigSection) {
 
 function buildRouteDisplayNames(sections: Podkop.ConfigSection[]) {
   const map: Record<string, string> = {
+    'bypass-out': 'Bypass',
     'direct-out': 'direct',
   };
   const serverMap: Record<string, string> = {};

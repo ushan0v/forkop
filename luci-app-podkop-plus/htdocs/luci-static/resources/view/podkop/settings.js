@@ -3,7 +3,6 @@
 "require uci";
 "require baseclass";
 "require tools.widgets as widgets";
-"require view.podkop_plus.local_devices as localDevices";
 "require view.podkop_plus.main as main";
 
 const UCI_PACKAGE = main.PODKOP_UCI_PACKAGE;
@@ -490,46 +489,6 @@ function createSettingsContent(section, capabilities) {
   o.default = "0";
   o.rmempty = false;
 
-  o = section.option(
-    form.DynamicList,
-    "routing_excluded_ips",
-    _("Routing Excluded IPs"),
-    _(
-      "Select local devices or enter IP addresses/subnets to be excluded from routing",
-    ),
-  );
-  o.placeholder = _("Device, IP, or subnet");
-  o.rmempty = true;
-  o.validate = function (section_id, value) {
-    // Optional
-    if (!value || value.length === 0) {
-      return true;
-    }
-
-    const validation = main.validateSubnet(value);
-
-    if (validation.valid) {
-      return true;
-    }
-
-    return validation.message;
-  };
-  o.load = function (section_id) {
-    const values = localDevices.normalizeOptionValues(
-      uci.get(UCI_PACKAGE, section_id, "routing_excluded_ips"),
-    );
-
-    return localDevices
-      .preloadLocalDeviceChoicesForValues(values)
-      .then(() => values);
-  };
-  o.renderWidget = function (section_id, _option_index, cfgvalue) {
-    return localDevices.createLocalDeviceDynamicListWidget(
-      this,
-      section_id,
-      cfgvalue,
-    );
-  };
 }
 
 const EntryPoint = {

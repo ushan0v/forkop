@@ -374,6 +374,9 @@ function migrated_rule_action(section) {
             return "outbound";
     }
 
+    if (action == "direct")
+        return "bypass";
+
     if (action != "")
         return action;
 
@@ -389,7 +392,7 @@ function migrated_rule_action(section) {
     if (connection_type == "block")
         return "block";
     if (connection_type == "exclusion")
-        return "direct";
+        return "bypass";
 
     if (proxy_config_type == "interface")
         return "vpn";
@@ -558,7 +561,7 @@ function migrate_rule(ctx, section, converted_from_rule, constants) {
             delete_subscription_cache(ctx, section_name(section));
     }
     else if (action == "vpn" || action == "outbound" || action == "block" ||
-        action == "direct" || action == "zapret" || action == "zapret2" || action == "byedpi") {
+        action == "bypass" || action == "zapret" || action == "zapret2" || action == "byedpi") {
         delete_option(ctx, section, "proxy_config_type");
         delete_option(ctx, section, "proxy_string");
         delete_option(ctx, section, "urltest_proxy_links");
@@ -610,6 +613,7 @@ function migrate_model(model, constants) {
     let ctx = migration_context(model);
     constants = object_or_empty(constants);
 
+    delete_option(ctx, model.settings, "routing_excluded_ips");
     migrate_list_update_enabled(ctx);
     migrate_download_via_proxy_flags(ctx);
 

@@ -16,7 +16,7 @@ const ROUTING_SECTION_ACTIONS = [
   "byedpi",
   "zapret",
   "zapret2",
-  "direct",
+  "bypass",
   "block",
 ];
 const callNetworkInterfaceDump = rpc.declare({

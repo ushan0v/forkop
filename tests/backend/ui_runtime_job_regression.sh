@@ -103,7 +103,7 @@ if ui_ucode service-action-expected-running invalid >/dev/null 2>&1; then
 fi
 ui_ucode latency-type-valid proxy_list >/dev/null ||
   fail "proxy_list latency type should be valid"
-if ui_ucode latency-type-valid direct >/dev/null 2>&1; then
+if ui_ucode latency-type-valid invalid >/dev/null 2>&1; then
   fail "invalid latency type should be rejected"
 fi
 

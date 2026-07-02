@@ -30,7 +30,8 @@ const fixture = {
   settings: {
     '.name': 'settings',
     '.type': 'settings',
-    download_lists_via_proxy: '1'
+    download_lists_via_proxy: '1',
+    routing_excluded_ips: [ '192.0.2.0/24' ]
   },
   rule: [
     {
@@ -69,6 +70,18 @@ const fixture = {
       urltest_exclude_regex: [ 'bad.*' ],
       urltest_enabled: '1',
       detect_server_country: '0'
+    },
+    {
+      '.name': 'legacy-direct',
+      '.type': 'section',
+      action: 'direct',
+      ip_cidr: [ '198.51.100.0/24' ]
+    },
+    {
+      '.name': 'legacy-exclusion',
+      '.type': 'section',
+      connection_type: 'exclusion',
+      ip_cidr: [ '203.0.113.0/24' ]
     },
     {
       '.name': 'legacy-zap',
@@ -121,6 +134,7 @@ assert(config.settings.update_interval === '1d', 'missing update_interval should
 assert(config.settings.download_lists_via_proxy === '1', 'download_lists_via_proxy should be preserved');
 assert(config.settings.download_subscriptions_via_proxy === '1', 'download_subscriptions_via_proxy should be copied');
 assert(config.settings.download_components_via_proxy === '1', 'download_components_via_proxy should be copied');
+absent(config.settings, 'routing_excluded_ips', 'settings');
 
 const legacyUrl = sections['legacy-url'];
 assert(legacyUrl['.type'] === 'section', 'legacy rule should become section');
@@ -154,6 +168,13 @@ assert(legacyUrltest.detect_server_country === 'flag_emoji', 'detect server coun
 assert(JSON.stringify(legacyUrltest.selector_proxy_links) === JSON.stringify(['vmess://a', 'trojan://b']), 'urltest links deduped');
 absent(legacyUrltest, 'urltest_proxy_links', 'legacy-urltest');
 
+const legacyDirect = sections['legacy-direct'];
+assert(legacyDirect.action === 'bypass', 'direct action migrated to bypass');
+
+const legacyExclusion = sections['legacy-exclusion'];
+assert(legacyExclusion.action === 'bypass', 'legacy exclusion connection type migrated to bypass');
+absent(legacyExclusion, 'connection_type', 'legacy-exclusion');
+
 const legacyZap = sections['legacy-zap'];
 assert(legacyZap.nfqws_opt === process.env.ZAPRET_DEFAULT_NFQWS_OPT, 'zapret legacy default migrated');
 assert(legacyZap.byedpi_cmd_opts === '--legacy-bye', 'cmd_opts copied to byedpi_cmd_opts');
@@ -172,11 +193,15 @@ NODE
 
 cat >"$WORK_DIR/runtime-migrate.state" <<'EOF_UCI'
 podkop-plus.settings=settings
+podkop-plus.settings.routing_excluded_ips=192.0.2.0/24
 podkop-plus.legacy=rule
 podkop-plus.legacy.enabled=1
 podkop-plus.legacy.connection_type=proxy
 podkop-plus.legacy.proxy_config_type=url
 podkop-plus.legacy.proxy_string=vless://one
+podkop-plus.old_direct=section
+podkop-plus.old_direct.enabled=1
+podkop-plus.old_direct.action=direct
 EOF_UCI
 mkdir -p "$WORK_DIR/runtime" "$WORK_DIR/persistent-cache"
 : >"$WORK_DIR/runtime-migrate.log"
@@ -193,8 +218,13 @@ grep -Fxq 'podkop-plus.legacy=section' "$WORK_DIR/runtime-migrate.state" ||
   fail "runtime migration must convert legacy rule type through core.uci"
 grep -Fxq 'podkop-plus.legacy.action=proxy' "$WORK_DIR/runtime-migrate.state" ||
   fail "runtime migration must write migrated action through core.uci"
+grep -Fxq 'podkop-plus.old_direct.action=bypass' "$WORK_DIR/runtime-migrate.state" ||
+  fail "runtime migration must convert direct action to bypass through core.uci"
 grep -Fxq 'podkop-plus.legacy.selector_proxy_links=vless://one' "$WORK_DIR/runtime-migrate.state" ||
   fail "runtime migration must write migrated list option through core.uci"
+if grep -Fq 'podkop-plus.settings.routing_excluded_ips=' "$WORK_DIR/runtime-migrate.state"; then
+  fail "runtime migration must delete removed routing_excluded_ips through core.uci"
+fi
 if grep -Fq 'podkop-plus.legacy.proxy_string=' "$WORK_DIR/runtime-migrate.state"; then
   fail "runtime migration must delete legacy proxy_string through core.uci"
 fi

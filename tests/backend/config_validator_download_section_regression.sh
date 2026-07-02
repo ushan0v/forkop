@@ -52,6 +52,6 @@ assert_rejects "empty target" "no download section is selected" "" 0 0 0 proxy 1
 assert_rejects "missing target" "references missing rule 'missing'" missing 0 0 0 proxy 1 proxy
 assert_rejects "disabled target" "references disabled rule 'proxy'" proxy 0 0 0 proxy 0 proxy
 assert_rejects "provider missing" "cannot provide an outbound" zap 0 0 0 zap 1 zapret
-assert_rejects "unsupported action" "cannot provide an outbound" direct 0 0 0 direct 1 direct
+assert_rejects "unsupported action" "cannot provide an outbound" bypass 0 0 0 bypass 1 bypass
 
 printf 'config validator download section regression checks passed\n'

@@ -37,9 +37,11 @@ function config(settings, runtime) {
 
 function target(section, outbound_tag_name) {
     let action = option(section, "action", "");
-    if (action == "proxy" || action == "direct" || action == "outbound" || action == "vpn" ||
+    if (action == "proxy" || action == "outbound" || action == "vpn" ||
         action == "byedpi" || action == "zapret" || action == "zapret2")
         return { action: "route", outbound: outbound_tag_name };
+    if (action == "bypass")
+        return { action: "route", outbound: runtime_constants.BYPASS_OUTBOUND_TAG };
     if (action == "block")
         return { action: "reject" };
     return { unsupported: "unsupported action " + action };

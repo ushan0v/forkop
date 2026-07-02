@@ -1672,7 +1672,7 @@ function convert_crlf_to_lf(path) {
     if (data == null || index(data, "\r") < 0)
         return;
 
-    log_message("File '" + as_string(path) + "' contains CRLF line endings. Converting to LF...", "debug");
+        log_message("Converting CRLF line endings to LF in " + as_string(path), "debug");
     write_file(path, replace(data, /\r/g, ""));
 }
 
@@ -2187,7 +2187,7 @@ function write_list_update_timestamp(timestamp) {
 }
 
 function list_update() {
-    log_message("Starting lists update...", "info");
+    log_message("Starting lists update", "info");
     if (!list_update_pid_begin())
         exit(0);
 
@@ -2199,7 +2199,7 @@ function list_update() {
     }
     github_probe(proxy_address);
 
-    log_message("Downloading and processing lists...", "info");
+    log_message("Downloading and processing lists", "info");
     let sections = uci_sections("section");
     let ok = true;
 
@@ -2308,7 +2308,7 @@ function subscription_cache_success(args) {
     if (result.output != "")
         for (let line in split(result.output, "\n"))
             if (trim(as_string(line)) != "")
-                log_message("subscription/cache.uc: " + line, "debug");
+                log_message("subscription cache: " + line, "debug");
     return result.status == 0;
 }
 
@@ -2325,7 +2325,7 @@ function singbox_runtime_success(args) {
 
     let result = module_env_capture(subscription_cache_env(), command_args);
     if (result.output != "")
-        log_file_lines_from_text(result.output, "debug", "singbox/runtime.uc: ");
+        log_file_lines_from_text(result.output, "debug", "sing-box runtime: ");
     return result.status == 0;
 }
 
@@ -2354,7 +2354,7 @@ function subscription_update_common_locked(force, target_section, target_source_
         as_string(target_source_index)
     ]);
     if (result.status != 0) {
-        log_file_lines_from_text(result.output, "error", "subscription/cache.uc: ");
+        log_file_lines_from_text(result.output, "error", "subscription update: ");
         return false;
     }
 
@@ -2380,7 +2380,7 @@ function subscription_update_common_locked(force, target_section, target_source_
         return true;
     }
 
-    log_message("Reloading sing-box to apply updated subscriptions...", "info");
+    log_message("Reloading sing-box to apply updated subscriptions", "info");
     if (!module_success([ LIB_DIR + "/server/service.uc", "prepare-all-defaults" ]))
         return false;
     if (!module_success([ LIB_DIR + "/config/validator.uc", "validate-runtime" ])) {
@@ -2391,7 +2391,7 @@ function subscription_update_common_locked(force, target_section, target_source_
     if (!singbox_runtime_success([ "configure-service" ]))
         return false;
     if (!singbox_runtime_success([ "init-config", "0", "1", "1" ])) {
-        log_message("Failed to rebuild sing-box after subscription update", "info");
+        log_message("Failed to rebuild sing-box after subscription update", "error");
         return false;
     }
     if (!service_state_success([ "reload-sing-box-runtime" ]))
@@ -2438,15 +2438,15 @@ function subscription_update_common(force, target_section, target_source_index) 
 }
 
 function subscription_update_if_due() {
-    log_message("Starting due subscription update...", "info");
+    log_message("Starting due subscription update", "info");
     exit(subscription_update_common(false, "", ""));
 }
 
 function subscription_update(target_section, target_source_index) {
     if (as_string(target_section) != "")
-        log_message("Starting subscription update for rule '" + as_string(target_section) + "'...", "info");
+        log_message("Starting subscription update for rule '" + as_string(target_section) + "'", "info");
     else
-        log_message("Starting subscription update...", "info");
+        log_message("Starting subscription update", "info");
     exit(subscription_update_common(true, target_section, target_source_index));
 }
 

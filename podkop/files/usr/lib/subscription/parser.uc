@@ -2780,10 +2780,6 @@ function normalize_content_validated(input_file, output_file) {
     if (!ok)
         return false;
 
-    let message = normalized_skipped_message(output_file);
-    if (message != "")
-        warn(message, "\n");
-
     return validate_subscription(output_file);
 }
 
@@ -2867,6 +2863,7 @@ function module_exports() {
         parse_subscription_source_entry,
         validate_subscription,
         normalize_content_validated,
+        normalized_skipped_message,
         try_decode_gzip_content_file,
         extract_ui_metadata_file,
         runtime_outbounds_equal

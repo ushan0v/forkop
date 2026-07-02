@@ -264,7 +264,6 @@ cat >"$WORK_DIR/sing-box-signature.json" <<'JSON'
     "dns_rewrite_ttl": "120",
     "output_network_interface": "wan",
     "disable_quic": "on",
-    "routing_excluded_ips": [ "192.0.2.0/24" ],
     "list_update_enabled": "1",
     "update_interval": "2h",
     "cache_path": "/tmp/cache.db",
@@ -392,8 +391,6 @@ tcp
 wan
 [settings.disable_quic]
 1
-[settings.routing_excluded_ips]
-192.0.2.0/24
 [settings.update_interval]
 2h
 [settings.cache_path]

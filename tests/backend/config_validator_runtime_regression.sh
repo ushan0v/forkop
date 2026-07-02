@@ -84,6 +84,13 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
       "outbound_detour_section": "detour"
     },
     {
+      ".name": "bypass",
+      ".type": "section",
+      "enabled": "1",
+      "action": "bypass",
+      "domain_suffix": [ "bypass.example" ]
+    },
+    {
       ".name": "zap",
       ".type": "section",
       "enabled": "1",
@@ -95,6 +102,16 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
 JSON
 
 validate_fixture "$WORK_DIR/valid.json"
+
+cat >"$WORK_DIR/bad-direct-action.json" <<'JSON'
+{
+  "settings": { ".name": "settings", ".type": "settings" },
+  "section": [
+    { ".name": "old", ".type": "section", "enabled": "1", "action": "direct" }
+  ]
+}
+JSON
+assert_rejects "bad direct action" "$WORK_DIR/bad-direct-action.json" "unsupported action 'direct'"
 
 cat >"$WORK_DIR/bad-port.json" <<'JSON'
 {

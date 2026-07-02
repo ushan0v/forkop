@@ -963,6 +963,49 @@ function array_or_empty(value) {
     return type(value) == "array" ? value : [];
 }
 
+function int_or_zero(value) {
+    value = as_string(value);
+    if (match(value, /^[0-9]+$/) == null)
+        return 0;
+    return int(value);
+}
+
+function count_label(count, singular, plural) {
+    count = int(count || 0);
+    return as_string(count) + " " + (count == 1 ? singular : plural);
+}
+
+function subscription_file_stats(path) {
+    let value = object_or_empty(read_json(path));
+    return {
+        outbounds: length(array_or_empty(value.outbounds)),
+        skipped: int_or_zero(value.skipped)
+    };
+}
+
+function subscription_import_stats_text(path) {
+    let stats = subscription_file_stats(path);
+    let text = count_label(stats.outbounds, "proxy entry", "proxy entries");
+    if (stats.skipped > 0)
+        text += ", " + count_label(stats.skipped, "skipped entry", "skipped entries");
+    return text;
+}
+
+function subscription_source_summary(section_name_value, source_index, normalized_path, result) {
+    let prefix = "Subscription source " + as_string(source_index) + " for rule '" + as_string(section_name_value) + "'";
+    let stats = subscription_import_stats_text(normalized_path);
+
+    if (result == "unchanged")
+        return prefix + " is unchanged: " + stats;
+    if (result == "runtime-unchanged")
+        return prefix + " refreshed: runtime proxy entries are unchanged (" + stats + ")";
+    return prefix + " imported: " + stats;
+}
+
+function log_subscription_source_summary(section_name_value, source_index, normalized_path, result) {
+    log_message(subscription_source_summary(section_name_value, source_index, normalized_path, result), "info");
+}
+
 function object_key_count(value) {
     return type(value) == "object" ? length(keys(value)) : 0;
 }
@@ -1816,7 +1859,6 @@ function download_subscription(url, filepath, http_proxy_address, headers_filepa
 
         unlink_path(tmpfile);
         unlink_path(headers_tmpfile);
-        log_message("Attempt " + attempt + "/" + retries + " to download subscription failed", "warn");
 
         if (status == 5 || status == 6) {
             resolution_failed = true;
@@ -1890,7 +1932,7 @@ function get_subscription_download_proxy_address(section_name_value, settings, h
     return address;
 }
 
-function download_subscription_into_cache(section_name_value, subscription_url, subscription_json_path, subscription_url_cache_path, service_proxy_address_value, subscription_user_agent, cache_section, metadata_output_path, sections) {
+function download_subscription_into_cache(section_name_value, subscription_url, subscription_json_path, subscription_url_cache_path, service_proxy_address_value, subscription_user_agent, source_index, cache_section, metadata_output_path, sections) {
     ensure_dir(TMP_SUBSCRIPTION_FOLDER);
     let subscription_user_agent_cache_path = source_user_agent_path(TMP_SUBSCRIPTION_FOLDER, cache_section);
     let raw_tmpfile = temp_path(TMP_SUBSCRIPTION_FOLDER, cache_section, "download");
@@ -1901,31 +1943,26 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
     let default_user_agent = get_subscription_user_agent("");
     let parser = subscription_parser();
 
+    let attempt_index = 0;
     for (let effective_user_agent in user_agent_candidates(subscription_user_agent, cached_user_agent, default_user_agent)) {
+        attempt_index++;
         unlink_path(raw_tmpfile);
         unlink_path(headers_tmpfile);
         unlink_path(normalized_tmpfile);
         unlink_path(metadata_tmpfile);
-
-        if (subscription_user_agent != "")
-            log_message("Trying configured subscription User-Agent for rule '" + section_name_value + "': " + effective_user_agent, "info");
-        else if (effective_user_agent == cached_user_agent)
-            log_message("Trying cached subscription User-Agent for rule '" + section_name_value + "': " + effective_user_agent, "info");
-        else
-            log_message("Trying subscription User-Agent for rule '" + section_name_value + "': " + effective_user_agent, "info");
 
         let download_status = download_subscription(subscription_url, raw_tmpfile, service_proxy_address_value, headers_tmpfile, effective_user_agent);
         if (download_status != 0) {
             if (metadata_output_path != "")
                 unlink_path(metadata_output_path);
             if (download_status == 6) {
-                log_message("Subscription download failed for rule '" + section_name_value + "' because the subscription host could not be resolved; skipping User-Agent fallbacks", "warn");
+                log_message("Subscription download failed for rule '" + section_name_value + "' because the subscription host could not be resolved; compatibility retries skipped", "warn");
                 break;
             }
             else if (subscription_user_agent != "")
-                log_message("Subscription download failed with configured User-Agent for rule '" + section_name_value + "'", "warn");
+                log_message("Subscription download failed for rule '" + section_name_value + "' with the configured request profile", "warn");
             else
-                log_message("Subscription download failed with User-Agent '" + effective_user_agent + "' for rule '" + section_name_value + "'; trying next fallback candidate", "warn");
+                log_message("Subscription download attempt " + attempt_index + " failed for rule '" + section_name_value + "'; trying another compatibility profile", "warn");
             continue;
         }
 
@@ -1939,9 +1976,9 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
             if (metadata_output_path != "")
                 unlink_path(metadata_output_path);
             if (subscription_user_agent != "")
-                log_message("Downloaded subscription for rule '" + section_name_value + "' is invalid with configured User-Agent", "error");
+                log_message("Downloaded subscription for rule '" + section_name_value + "' is invalid with the configured request profile", "error");
             else
-                log_message("Downloaded subscription for rule '" + section_name_value + "' is invalid with User-Agent '" + effective_user_agent + "'; trying next fallback candidate", "warn");
+                log_message("Downloaded subscription for rule '" + section_name_value + "' is invalid; trying another compatibility profile", "warn");
             continue;
         }
 
@@ -1956,11 +1993,6 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
             return 4;
         }
 
-        if (subscription_user_agent != "")
-            log_message("Configured subscription User-Agent for rule '" + section_name_value + "' produced valid outbounds", "info");
-        else
-            log_message("Selected subscription User-Agent for rule '" + section_name_value + "': " + effective_user_agent, "info");
-
         if (files_equal(normalized_tmpfile, subscription_json_path)) {
             write_text(subscription_url_cache_path, subscription_url);
             write_text(subscription_user_agent_cache_path, effective_user_agent);
@@ -1972,7 +2004,7 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
             unlink_path(headers_tmpfile);
             unlink_path(normalized_tmpfile);
             unlink_path(metadata_tmpfile);
-            log_message("Subscription for rule '" + section_name_value + "' is unchanged", "info");
+            log_subscription_source_summary(section_name_value, source_index, subscription_json_path, "unchanged");
             return 2;
         }
 
@@ -1995,7 +2027,7 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
             unlink_path(raw_tmpfile);
             unlink_path(headers_tmpfile);
             unlink_path(metadata_tmpfile);
-            log_message("Subscription runtime outbounds for rule '" + section_name_value + "' are unchanged", "info");
+            log_subscription_source_summary(section_name_value, source_index, subscription_json_path, "runtime-unchanged");
             return 2;
         }
 
@@ -2017,6 +2049,7 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
         unlink_path(raw_tmpfile);
         unlink_path(headers_tmpfile);
         unlink_path(metadata_tmpfile);
+        log_subscription_source_summary(section_name_value, source_index, subscription_json_path, "imported");
         return 0;
     }
 
@@ -2027,9 +2060,9 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
     unlink_path(normalized_tmpfile);
     unlink_path(metadata_tmpfile);
     if (subscription_user_agent != "")
-        log_message("Configured subscription User-Agent for rule '" + section_name_value + "' did not produce valid outbounds", "error");
+        log_message("Configured subscription request profile for rule '" + section_name_value + "' did not produce valid proxy entries", "error");
     else
-        log_message("No subscription User-Agent candidate produced valid outbounds for rule '" + section_name_value + "'", "error");
+        log_message("No compatible subscription request profile produced valid proxy entries for rule '" + section_name_value + "'", "error");
     return 1;
 }
 
@@ -2097,6 +2130,7 @@ function update_subscription_source(section_name_value, index_value, entry, phas
         source_url_path(TMP_SUBSCRIPTION_FOLDER, source_section),
         proxy,
         parsed.user_agent,
+        index,
         source_section,
         as_string(metadata_output_path),
         sections
@@ -2150,6 +2184,17 @@ function finalize_subscription_section_metadata(section_name_value, metadata_tmp
     unlink_path(metadata_tmpfile);
 }
 
+function update_count_summary(updated, unchanged, failed) {
+    let parts = [];
+    if (updated > 0)
+        push(parts, count_label(updated, "source updated", "sources updated"));
+    if (unchanged > 0)
+        push(parts, count_label(unchanged, "source unchanged", "sources unchanged"));
+    if (failed > 0)
+        push(parts, count_label(failed, "source failed", "sources failed"));
+    return length(parts) > 0 ? join(", ", parts) : "no subscription sources checked";
+}
+
 function subscription_update_section(section, force) {
     section = object_or_empty(section);
     if (!section_is_subscription_proxy(section))
@@ -2165,7 +2210,7 @@ function subscription_update_section(section, force) {
     }
 
     ensure_runtime_dirs();
-    log_message("Updating subscriptions for rule '" + section_name_value + "'...", "info");
+    log_message("Updating subscriptions for rule '" + section_name_value + "'", "info");
 
     let metadata_tmpfile = temp_path(TMP_SUBSCRIPTION_FOLDER, section_name_value, "metadata-section");
     write_json(metadata_tmpfile, []);
@@ -2219,17 +2264,17 @@ function subscription_update_section(section, force) {
 
     if (update_result == 0) {
         write_subscription_update_timestamp(section_name_value);
-        log_message("Subscriptions updated for rule '" + section_name_value + "'", "info");
+        log_message("Subscription update for rule '" + section_name_value + "' completed: " + update_count_summary(changed, unchanged, failed), "info");
     }
     else if (update_result == 2) {
         write_subscription_update_timestamp(section_name_value);
-        log_message("Subscriptions for rule '" + section_name_value + "' are unchanged", "info");
+        log_message("Subscription update for rule '" + section_name_value + "' completed: no changes (" + count_label(unchanged, "source checked", "sources checked") + ")", "info");
     }
     else if (update_result == 4) {
         log_message("Subscription update for rule '" + section_name_value + "' was superseded by newer URLs", "info");
     }
     else {
-        log_message("Failed to download subscriptions for rule '" + section_name_value + "'", "info");
+        log_message("Subscription update for rule '" + section_name_value + "' failed: " + update_count_summary(changed, unchanged, failed), "warn");
     }
 
     return update_result;
@@ -2271,7 +2316,7 @@ function subscription_update_selected_source(sections, section_name_value, sourc
     }
 
     ensure_runtime_dirs();
-    log_message("Updating subscription source '" + source_index + "' for rule '" + section_name_value + "'...", "info");
+    log_message("Updating subscription source " + source_index + " for rule '" + section_name_value + "'", "info");
 
     let current_index = 0;
     let selected_entry = null;
@@ -2307,11 +2352,9 @@ function subscription_update_selected_source(sections, section_name_value, sourc
 
     if (update_result == 0) {
         write_subscription_update_timestamp(section_name_value);
-        log_message("Subscription source '" + source_index + "' updated for rule '" + section_name_value + "'", "info");
     }
     else if (update_result == 2) {
         write_subscription_update_timestamp(section_name_value);
-        log_message("Subscription source '" + source_index + "' for rule '" + section_name_value + "' is unchanged", "info");
     }
     else if (update_result == 4) {
         log_message("Subscription source '" + source_index + "' update for rule '" + section_name_value + "' was superseded by newer URLs", "info");
@@ -2400,6 +2443,7 @@ function ensure_subscription_source_for_prepare(state, section, source_index, en
         source_url_path(TMP_SUBSCRIPTION_FOLDER, source_section),
         proxy,
         parsed.user_agent,
+        source_index,
         source_section,
         metadata_output_path,
         state.sections
@@ -2833,6 +2877,12 @@ else if (mode == "deferred-bootstrap-worker") {
 }
 else if (mode == "json-length") {
     json_length(ARGV[1]);
+}
+else if (mode == "subscription-import-stats") {
+    print(subscription_import_stats_text(ARGV[1]), "\n");
+}
+else if (mode == "subscription-source-summary") {
+    print(subscription_source_summary(ARGV[1], ARGV[2], ARGV[3], ARGV[4]), "\n");
 }
 else if (mode == "object-has-extra-keys") {
     exit(object_has_extra_keys(ARGV[1]) ? 0 : 1);

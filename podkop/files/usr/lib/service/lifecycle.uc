@@ -537,7 +537,6 @@ function start_impl() {
             return status;
     }
     else if (dnsmasq_has_podkop_managed_state()) {
-        log_message("dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes", "info");
         status = dnsmasq_restore(true);
         if (status != 0)
             return status;
@@ -576,23 +575,19 @@ function stop_main() {
     module_success(ZAPRET2_UC, [ "stop-runtime" ]);
     module_success(BYEDPI_UC, [ "stop-runtime" ]);
 
-    log_message("Flush nft", "info");
     if (command_success_from_args([ "nft", "list", "table", "inet", NFT_TABLE_NAME ]))
         command_success_from_args([ "nft", "delete", "table", "inet", NFT_TABLE_NAME ]);
 
-    log_message("Flush ip rule", "info");
     if (module_success(NFT_UC, [ "tproxy-marking-rule4-present", RT_TABLE_NAME, NFT_FAKEIP_MARK ]))
         command_success_from_args([ "ip", "-4", "rule", "del", "fwmark", NFT_FAKEIP_MARK + "/" + NFT_FAKEIP_MARK, "table", RT_TABLE_NAME, "priority", "105" ]);
     if (module_success(NFT_UC, [ "tproxy-marking-rule6-present", RT_TABLE_NAME, NFT_FAKEIP_MARK ]))
         command_success_from_args([ "ip", "-6", "rule", "del", "fwmark", NFT_FAKEIP_MARK + "/" + NFT_FAKEIP_MARK, "table", RT_TABLE_NAME, "priority", "105" ]);
 
-    log_message("Flush ip route", "info");
     if (module_success(NFT_UC, [ "tproxy-route4-present", RT_TABLE_NAME ]))
         command_success_from_args([ "ip", "route", "flush", "table", RT_TABLE_NAME ]);
     if (module_success(NFT_UC, [ "tproxy-route6-present", RT_TABLE_NAME ]))
         command_success_from_args([ "ip", "-6", "route", "flush", "table", RT_TABLE_NAME ]);
 
-    log_message("Stop sing-box", "info");
     let sing_box_status = command_status_from_args([ "/etc/init.d/sing-box", "stop" ]);
     if (sing_box_status != 0)
         status = sing_box_status;
@@ -618,7 +613,7 @@ function start() {
         "8"
     ]);
     if (status != 0) {
-        log_message("Podkop Plus did not reach a stable running state after start. Restoring dnsmasq.", "fatal");
+        log_message("Startup verification failed after Podkop Plus was started; rolling back DNS changes", "warn");
         stop_main();
         dnsmasq_restore_fail_safe();
         return status;
@@ -636,7 +631,6 @@ function stop_impl() {
             status = dns_status;
     }
     else if (dnsmasq_has_podkop_managed_state()) {
-        log_message("dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes", "info");
         let dns_status = dnsmasq_restore(true);
         if (dns_status != 0)
             status = dns_status;
@@ -669,7 +663,7 @@ function stop() {
 function restart_runtime_for_reload() {
     let status;
 
-    log_message("Reload fallback: restart Podkop Plus runtime in-process", "info");
+    log_message("Reload requires a full Podkop Plus runtime restart", "info");
 
     status = stop_main();
     if (status != 0)
@@ -682,7 +676,6 @@ function restart_runtime_for_reload() {
     if (!setting_bool("dont_touch_dhcp", false))
         dnsmasq_configure(true);
     else if (dnsmasq_has_podkop_managed_state()) {
-        log_message("dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes", "info");
         dnsmasq_restore(true);
     }
 
@@ -743,12 +736,31 @@ function parse_reload_plan(output) {
     return result;
 }
 
+function append_reload_action(actions, enabled, label) {
+    if (!(enabled === true || int(enabled || 0) == 1))
+        return actions;
+    return actions + (actions != "" ? ", " : "") + label;
+}
+
+function reload_actions_summary(plan) {
+    let actions = "";
+    actions = append_reload_action(actions, plan.needs_sing_box_reload, "sing-box");
+    actions = append_reload_action(actions, plan.needs_nft_rebuild, "nftables");
+    actions = append_reload_action(actions, plan.needs_zapret_restart, "Zapret");
+    actions = append_reload_action(actions, plan.needs_zapret2_restart, "Zapret2");
+    actions = append_reload_action(actions, plan.needs_byedpi_restart, "ByeDPI");
+    actions = append_reload_action(actions, plan.needs_dnsmasq_configure || plan.needs_dnsmasq_restore, "dnsmasq");
+    actions = append_reload_action(actions, plan.needs_cron_refresh, "scheduled jobs");
+    actions = append_reload_action(actions, plan.needs_list_update, "remote lists");
+    return actions;
+}
+
 function reload(reason) {
     let status;
     let force_runtime_reload = as_string(reason || "") == "on_config_change" ? 0 : 1;
     rule_condition_cache_enabled = force_runtime_reload;
 
-    log_message("Podkop Plus reload", "info");
+    log_message("Reloading Podkop Plus", "info");
 
     status = validate_start_config();
     if (status != 0)
@@ -759,7 +771,7 @@ function reload(reason) {
         return status;
 
     if (!module_success(STATE_UC, [ "podkop-running", RT_TABLE_NAME, NFT_TABLE_NAME, NFT_FAKEIP_MARK ])) {
-        log_message("Podkop Plus runtime is incomplete, falling back to in-process restart", "info");
+        log_message("Runtime state is incomplete; restarting Podkop Plus runtime", "info");
         return restart_runtime_for_reload();
     }
 
@@ -812,7 +824,7 @@ function reload(reason) {
 
     if (plan_result.status != 0) {
         if (plan_result.status == 2) {
-            log_message("Reload state is missing or incompatible, falling back to in-process restart", "info");
+            log_message("Reload state is unavailable; restarting Podkop Plus runtime", "info");
             return restart_runtime_for_reload();
         }
         return plan_result.status;
@@ -820,28 +832,6 @@ function reload(reason) {
 
     let plan = parse_reload_plan(plan_result.output);
     write_service_trigger_sync_state(plan.changed_service_triggers);
-
-    log_message("Reload signature changes: service_triggers=" + plan.changed_service_triggers +
-        " sing-box=" + plan.changed_sing_box +
-        " nft=" + plan.changed_nft +
-        " zapret_queue=" + plan.changed_zapret_queue +
-        " zapret_runtime=" + plan.changed_zapret_runtime +
-        " zapret2_queue=" + plan.changed_zapret2_queue +
-        " zapret2_runtime=" + plan.changed_zapret2_runtime +
-        " byedpi_runtime=" + plan.changed_byedpi_runtime +
-        " dnsmasq=" + plan.changed_dnsmasq +
-        " cron=" + plan.changed_cron +
-        " list=" + plan.changed_list +
-        " forced=" + force_runtime_reload, "debug");
-    log_message("Reload plan: sing-box=" + plan.needs_sing_box_reload +
-        " nft=" + plan.needs_nft_rebuild +
-        " zapret=" + plan.needs_zapret_restart +
-        " zapret2=" + plan.needs_zapret2_restart +
-        " byedpi=" + plan.needs_byedpi_restart +
-        " dnsmasq_configure=" + plan.needs_dnsmasq_configure +
-        " dnsmasq_restore=" + plan.needs_dnsmasq_restore +
-        " cron=" + plan.needs_cron_refresh +
-        " list_update=" + plan.needs_list_update, "debug");
 
     if (plan.has_work == 0) {
         status = module_status(STATE_UC, [
@@ -858,6 +848,10 @@ function reload(reason) {
         return status;
     }
 
+    let actions = reload_actions_summary(plan);
+    if (actions != "")
+        log_message("Applying reload changes: " + actions, "info");
+
     if (plan.needs_zapret_restart == 1)
         module_success(ZAPRET_UC, [ "stop-runtime" ]);
     if (plan.needs_zapret2_restart == 1)
@@ -866,7 +860,7 @@ function reload(reason) {
         module_success(BYEDPI_UC, [ "stop-runtime" ]);
 
     if (plan.needs_nft_rebuild == 1) {
-        log_message("Rebuilding nft runtime", "info");
+        log_message("Rebuilding nftables rules", "info");
         status = nft_rebuild_runtime();
         if (status != 0)
             return status;
@@ -905,7 +899,6 @@ function reload(reason) {
         module_success(STATE_UC, [ "capture-reload-state", RELOAD_STATE_SNAPSHOT_FILE, as_string(RELOAD_STATE_FORMAT) ]);
     }
     else if (plan.needs_dnsmasq_restore == 1) {
-        log_message("dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes", "info");
         status = dnsmasq_restore(true);
         if (status != 0)
             return status;
@@ -948,7 +941,7 @@ function reload_tracked(reason) {
 }
 
 function restart() {
-    log_message("Podkop Plus restart", "info");
+    log_message("Restarting Podkop Plus", "info");
 
     let status = stop_impl();
     if (status != 0)

@@ -23,7 +23,6 @@ config settings 'settings'
         option log_level 'warn'
         option exclude_ntp '0'
         option shutdown_correctly '0'
-        #list routing_excluded_ips '192.168.1.3'
 
 #config section 'subscription_example'
 #        option label 'Subscription'

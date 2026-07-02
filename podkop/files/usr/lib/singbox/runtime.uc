@@ -486,20 +486,18 @@ function configure_service() {
 
     let config_path = option(settings, "config_path", "");
     let conffile = uci_get_option("sing-box", "main", "conffile");
-    log_message("sing-box config path: " + config_path, "debug");
-    log_message("sing-box service conffile: " + conffile, "debug");
     if (conffile != config_path) {
         if (!uci_set_option("sing-box", "main", "conffile", config_path))
             exit(1);
         changed = true;
-        log_message("Configuration file path has been set to " + config_path, "info");
+        log_message("sing-box service config path set to " + config_path, "info");
     }
 
     if (changed && !uci_commit("sing-box"))
         exit(1);
 
     if (file_exists("/etc/rc.d/S99sing-box")) {
-        log_message("Disable sing-box", "info");
+        log_message("Disabling standalone sing-box autostart", "info");
         command_success_from_args([ "/etc/init.d/sing-box", "disable" ]);
     }
 }
@@ -550,7 +548,7 @@ function device_ipv4_address_value(device) {
 function service_listen_address_value(settings) {
     let configured = option(settings, "service_listen_address", "");
     if (configured != "") {
-        log_message("Attention! The service_listen_address option is being used, overriding the automatic detection of the listening IP address!", "warn");
+        log_message("service_listen_address is set manually; automatic listen-address detection is skipped", "warn");
         return configured;
     }
 
@@ -621,8 +619,8 @@ function log_file_lines(path, level, prefix) {
 function prepare_subscription_caches(prepared, no_refresh) {
     let result = subscription_cache_capture([ "prepare-caches", "runtime", prepared ? "1" : "0", no_refresh ? "1" : "0" ]);
     if (result.status != 0) {
-        log_message("subscription caches are not ready for ucode sing-box runtime generation. Aborted.", "fatal");
-        log_lines(result.output, "debug", "subscription/cache.uc: ");
+        log_message("Subscription caches are not ready for sing-box config generation. Aborted.", "fatal");
+        log_lines(result.output, "debug", "subscription cache: ");
         return null;
     }
     return trim(result.output);
@@ -631,11 +629,9 @@ function prepare_subscription_caches(prepared, no_refresh) {
 function save_config_file(temp_file_path, config_path) {
     let current_hash = md5_file(config_path);
     let temp_hash = md5_file(temp_file_path);
-    log_message("Current sing-box config hash: " + current_hash, "debug");
-    log_message("Temporary sing-box config hash: " + temp_hash, "debug");
 
     if (current_hash != temp_hash) {
-        log_message("sing-box configuration has changed and will be updated", "info");
+        log_message("sing-box configuration changed; updating " + config_path, "info");
         if (!ensure_parent_dir(config_path))
             return false;
         return command_success_from_args([ "mv", "-f", temp_file_path, config_path ]);
@@ -685,15 +681,15 @@ function init_config(populate_nft, caches_prepared, no_refresh) {
         let reason = first_nonblank_line(runtime_log);
         if (reason == "")
             reason = "exit status " + generate_status;
-        log_message("ucode sing-box runtime generator rejected this configuration: " + reason, "fatal");
-        log_file_lines(runtime_log, "debug", "ucode sing-box runtime generator: ");
+        log_message("Failed to generate sing-box configuration: " + reason, "fatal");
+        log_file_lines(runtime_log, "debug", "sing-box config generator: ");
         remove_files([ temp_config, runtime_log ]);
         exit(1);
     }
-    log_file_lines(runtime_log, "warn", "ucode sing-box runtime generator: ");
+    log_file_lines(runtime_log, "warn", "sing-box config generator: ");
 
     if (!command_success_from_args([ "sing-box", "-c", temp_config, "check" ])) {
-        log_message("Sing-box configuration " + temp_config + " is invalid. Aborted.", "fatal");
+        log_message("Generated sing-box configuration is invalid. Aborted.", "fatal");
         remove_files([ temp_config, runtime_log ]);
         exit(1);
     }
@@ -714,7 +710,7 @@ function init_config(populate_nft, caches_prepared, no_refresh) {
         NFT_IP_PORT6_SET_NAME,
         NFT_LOCALV6_SET_NAME
     ])) {
-        log_message("ucode sing-box runtime generator failed to populate nft runtime sets. Aborted.", "fatal");
+        log_message("Failed to update nftables runtime sets from the generated sing-box configuration. Aborted.", "fatal");
         remove_files([ temp_config, runtime_log ]);
         exit(1);
     }
@@ -723,7 +719,6 @@ function init_config(populate_nft, caches_prepared, no_refresh) {
         remove_file(runtime_log);
         exit(1);
     }
-    log_message("ucode sing-box runtime generator applied", "debug");
     remove_file(runtime_log);
     print(deferred_sections, "\n");
 }

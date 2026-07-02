@@ -754,8 +754,8 @@ function getActionOptionLabel(action) {
   switch (`${action}`) {
     case "block":
       return "Block";
-    case "direct":
-      return "Direct";
+    case "bypass":
+      return "Bypass";
     case "vpn":
       return "VPN";
     case "zapret":
@@ -800,7 +800,7 @@ function populateActionOptionValues(option) {
 
   option.value("proxy", "Proxy");
   option.value("vpn", "VPN");
-  option.value("direct", "Direct");
+  option.value("bypass", "Bypass");
   option.value("block", "Block");
   if (isZapretInstalledForUi()) {
     option.value("zapret", getActionOptionLabel("zapret"));

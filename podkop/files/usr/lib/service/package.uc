@@ -160,7 +160,7 @@ function luci_postinst() {
     if (!PACKAGE_TEST_MODE) {
         if (path_exists("/etc/init.d/rpcd"))
             command_success_from_args([ "/etc/init.d/rpcd", "reload" ]);
-        command_success_from_args([ "logger", "-t", "podkop-plus", "uci-defaults script executed" ]);
+        command_success_from_args([ "logger", "-t", "podkop-plus", "[info] Package defaults applied" ]);
     }
     return true;
 }

@@ -44,6 +44,21 @@ assert_eq() {
   [ "$actual" = "$expected" ] || fail "$label: expected '$expected', got '$actual'"
 }
 
+assert_line_before() {
+  local file="$1"
+  local first="$2"
+  local second="$3"
+  local label="$4"
+  local first_line
+  local second_line
+
+  first_line="$(grep -Fn "$first" "$file" | head -n 1 | cut -d: -f1 || true)"
+  second_line="$(grep -Fn "$second" "$file" | head -n 1 | cut -d: -f1 || true)"
+  [ -n "$first_line" ] || fail "$label: missing first line '$first'"
+  [ -n "$second_line" ] || fail "$label: missing second line '$second'"
+  [ "$first_line" -lt "$second_line" ] || fail "$label: expected first line before second"
+}
+
 if grep -n 'require("uci").cursor' "$NFT_RUNTIME" >/dev/null 2>&1 ||
   grep -n 'uci -q' "$NFT_RUNTIME" >/dev/null 2>&1 ||
   grep -n '"uci", "-q"' "$NFT_RUNTIME" >/dev/null 2>&1 ||
@@ -189,11 +204,15 @@ assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tPodkopPlusTable\tpodkop_plus_i
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_interfaces\t{ br-lan }' "runtime br-lan interface"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_interfaces\t{ tun0 }' "runtime tun0 interface"
 assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tPodkopPlusTable\tmangle\t{ type filter hook prerouting priority -150; policy accept; }' "runtime mangle chain"
+assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tPodkopPlusTable\tpriority_rules\t{ }' "runtime priority chain"
+assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tPodkopPlusTable\tpriority_output_rules\t{ }' "runtime priority output chain"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tmangle\tjump\tpriority_rules' "runtime priority jump"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tmangle\tiifname\t@podkop_plus_interfaces\tip\tdaddr\t@podkop_plus_subnets\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "runtime common tcp rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tmangle\tiifname\t@podkop_plus_interfaces\tip6\tdaddr\t@podkop_plus_subnets6\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "runtime common6 tcp rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tproxy\tmeta\tmark\t&\t0x00100000\t==\t0x00100000\tmeta\tl4proto\ttcp\ttproxy\tip\tto\t:1602\tcounter' "runtime proxy tcp rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tproxy\tmeta\tmark\t&\t0x00100000\t==\t0x00100000\tmeta\tl4proto\ttcp\ttproxy\tip6\tto\t[::1]:1602\tcounter' "runtime proxy6 tcp rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tmangle_output\tmeta\tmark\t0x00200000\tcounter\treturn' "runtime outbound return"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tmangle_output\tjump\tpriority_output_rules' "runtime priority output jump"
 assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tPodkopPlusTable\tmangle\tudp\tdport\t123\treturn' "runtime ntp exclusion"
 
 cat >"$WORK_DIR/runtime-base-uci.state" <<'EOF_UCI'
@@ -228,7 +247,7 @@ assert_contains "$NFT_LOG" $'nft\tlist\ttable\tinet\tPodkopPlusTable' "nft table
 cat >"$WORK_DIR/provider-rules.json" <<'JSON'
 {
   "section": [
-    { ".name": "direct", "enabled": "1", "action": "direct" },
+    { ".name": "direct", "enabled": "1", "action": "bypass" },
     { ".name": "zapret_one", "enabled": "1", "action": "zapret" },
     { ".name": "zapret_disabled", "enabled": "0", "action": "zapret" },
     { ".name": "zapret_two", "enabled": "1", "action": "zapret" },
@@ -255,6 +274,46 @@ if [ -s "$NFT_LOG" ]; then
   fail "missing provider binary should skip provider nft output rules"
 fi
 
+cat >"$WORK_DIR/priority-rules.json" <<'JSON'
+{
+  "section": [
+    {
+      ".name": "bypass_first",
+      ".type": "section",
+      "enabled": "1",
+      "action": "bypass",
+      "ip_cidr": [ "198.51.100.0/24" ]
+    },
+    {
+      ".name": "wide_proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "ip_cidr": [ "0.0.0.0/0" ]
+    },
+    {
+      ".name": "port_bypass",
+      ".type": "section",
+      "enabled": "1",
+      "action": "bypass",
+      "ports": [ "8443" ]
+    }
+  ]
+}
+JSON
+
+: > "$NFT_LOG"
+nft_ucode nft-add-section-priority-rules-fixture "$WORK_DIR/priority-rules.json" PodkopPlusTable podkop_plus_interfaces localv4 localv6 0x00100000
+assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tPodkopPlusTable\tpodkop_plus_rule_bypass_first_subnets\t{ type ipv4_addr; flags interval; auto-merge; }' "bypass priority subnet set"
+assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tPodkopPlusTable\tpodkop_plus_rule_wide_proxy_subnets\t{ type ipv4_addr; flags interval; auto-merge; }' "proxy priority subnet set"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tpriority_rules\tiifname\t@podkop_plus_interfaces\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t@podkop_plus_rule_bypass_first_subnets\tcounter\taccept' "bypass priority accept rule"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tpriority_rules\tiifname\t@podkop_plus_interfaces\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t@podkop_plus_rule_wide_proxy_subnets\tmeta\tmark\tset\t0x00100000\tcounter\taccept' "proxy priority capture rule"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tpriority_rules\tiifname\t@podkop_plus_interfaces\tip\tdaddr\t!=\t@localv4\ttcp\tdport\t@podkop_plus_rule_port_bypass_ports\tcounter\taccept' "port-only bypass priority rule"
+assert_line_before "$NFT_LOG" \
+  $'nft\tadd\trule\tinet\tPodkopPlusTable\tpriority_rules\tiifname\t@podkop_plus_interfaces\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t@podkop_plus_rule_bypass_first_subnets\tcounter\taccept' \
+  $'nft\tadd\trule\tinet\tPodkopPlusTable\tpriority_rules\tiifname\t@podkop_plus_interfaces\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t@podkop_plus_rule_wide_proxy_subnets\tmeta\tmark\tset\t0x00100000\tcounter\taccept' \
+  "bypass priority order"
+
 : > "$IP_LOG"
 : > "$LOGGER_LOG"
 rt_tables="$WORK_DIR/rt_tables"
@@ -264,10 +323,10 @@ assert_contains "$IP_LOG" $'ip\troute\tadd\tlocal\t0.0.0.0/0\tdev\tlo\ttable\tpo
 assert_contains "$IP_LOG" $'ip\t-6\troute\tadd\tlocal\t::/0\tdev\tlo\ttable\tpodkop' "tproxy route6 add"
 assert_contains "$IP_LOG" $'ip\t-4\trule\tadd\tfwmark\t0x00100000/0x00100000\ttable\tpodkop\tpriority\t105' "tproxy marking rule add"
 assert_contains "$IP_LOG" $'ip\t-6\trule\tadd\tfwmark\t0x00100000/0x00100000\ttable\tpodkop\tpriority\t105' "tproxy marking rule6 add"
-assert_contains "$LOGGER_LOG" "[debug] Added IPv4 route for tproxy" "tproxy route creation log"
-assert_contains "$LOGGER_LOG" "[debug] Added IPv6 route for tproxy" "tproxy route6 creation log"
-assert_contains "$LOGGER_LOG" "[debug] Create IPv4 marking rule" "tproxy marking rule creation log"
-assert_contains "$LOGGER_LOG" "[debug] Create IPv6 marking rule" "tproxy marking rule6 creation log"
+assert_contains "$LOGGER_LOG" "[debug] Added IPv4 TPROXY route" "tproxy route creation log"
+assert_contains "$LOGGER_LOG" "[debug] Added IPv6 TPROXY route" "tproxy route6 creation log"
+assert_contains "$LOGGER_LOG" "[debug] Creating IPv4 TPROXY marking rule" "tproxy marking rule creation log"
+assert_contains "$LOGGER_LOG" "[debug] Creating IPv6 TPROXY marking rule" "tproxy marking rule6 creation log"
 
 : > "$IP_LOG"
 : > "$LOGGER_LOG"
@@ -280,10 +339,10 @@ IP_ROUTE_OUTPUT='local default dev lo scope host' \
 if grep -Fq $'\tadd\t' "$IP_LOG"; then
   fail "existing tproxy route/rule should not be added again"
 fi
-assert_contains "$LOGGER_LOG" "[debug] IPv4 route for tproxy exists" "existing tproxy route log"
-assert_contains "$LOGGER_LOG" "[debug] IPv6 route for tproxy exists" "existing tproxy route6 log"
-assert_contains "$LOGGER_LOG" "[debug] IPv4 marking rule exist" "existing tproxy marking rule log"
-assert_contains "$LOGGER_LOG" "[debug] IPv6 marking rule exist" "existing tproxy marking rule6 log"
+assert_contains "$LOGGER_LOG" "[debug] IPv4 TPROXY route already exists" "existing tproxy route log"
+assert_contains "$LOGGER_LOG" "[debug] IPv6 TPROXY route already exists" "existing tproxy route6 log"
+assert_contains "$LOGGER_LOG" "[debug] IPv4 TPROXY marking rule already exists" "existing tproxy marking rule log"
+assert_contains "$LOGGER_LOG" "[debug] IPv6 TPROXY marking rule already exists" "existing tproxy marking rule6 log"
 IP_ROUTE_OUTPUT='local default dev lo scope host' \
   IP_ROUTE6_OUTPUT='local default dev lo metric 1024 pref medium' \
   IP_RULE_OUTPUT='105: from all fwmark 0x100000/0x100000 lookup podkop' \
@@ -303,7 +362,7 @@ LSMOD_OUTPUT='br_netfilter 32768 0' SYSCTL_BRIDGE_NF_CALL_IPTABLES=1 nft_ucode e
 assert_contains "$SYSCTL_LOG" $'sysctl\t-n\tnet.bridge.bridge-nf-call-iptables' "bridge netfilter sysctl check"
 assert_contains "$SYSCTL_LOG" $'sysctl\t-w\tnet.bridge.bridge-nf-call-iptables=0' "bridge netfilter ipv4 disable"
 assert_contains "$SYSCTL_LOG" $'sysctl\t-w\tnet.bridge.bridge-nf-call-ip6tables=0' "bridge netfilter ipv6 disable"
-assert_contains "$LOGGER_LOG" "[debug] br_netfilter enabled detected. Disabling" "bridge netfilter disable log"
+assert_contains "$LOGGER_LOG" "[debug] br_netfilter is enabled; disabling it for transparent proxy routing" "bridge netfilter disable log"
 
 : > "$SYSCTL_LOG"
 LSMOD_OUTPUT='' SYSCTL_BRIDGE_NF_CALL_IPTABLES=1 nft_ucode ensure-bridge-netfilter-disabled
@@ -341,6 +400,7 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       ".name": "disabled",
       ".type": "section",
       "enabled": "0",
+      "action": "proxy",
       "ip_cidr": [ "192.0.2.1" ],
       "ports": [ "53" ],
       "fully_routed_ips": [ "192.168.1.50/32" ]
@@ -349,6 +409,7 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       ".name": "deferred",
       ".type": "section",
       "enabled": "1",
+      "action": "proxy",
       "ip_cidr": [ "192.0.2.2" ],
       "ports": [ "54" ],
       "fully_routed_ips": [ "192.168.1.51/32" ]
@@ -357,6 +418,7 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       ".name": "inline",
       ".type": "section",
       "enabled": "1",
+      "action": "proxy",
       "ip_cidr": [ "198.51.100.1", "203.0.113.0/24", "2001:db8::1" ],
       "ports": [ "80", "443-444" ],
       "fully_routed_ips": [ "192.168.1.20/32", "192.168.1.20/32", "2001:db8::20/128" ]
@@ -365,12 +427,14 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       ".name": "inline_no_ports",
       ".type": "section",
       "enabled": "1",
+      "action": "bypass",
       "ip_cidr": [ "198.51.100.200", "2001:db8::200" ]
     },
     {
       ".name": "ports_only",
       ".type": "section",
       "enabled": "1",
+      "action": "proxy",
       "ports": [ "53", "853" ],
       "ports_text": "5353, 853"
     },
@@ -378,6 +442,7 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       ".name": "ports_with_domain",
       ".type": "section",
       "enabled": "1",
+      "action": "proxy",
       "domain_suffix": [ "example.org" ],
       "ports": [ "8443" ]
     }
@@ -394,8 +459,8 @@ EOF_INPUT
 
 : > "$NFT_LOG"
 nft_ucode nft-add-subnet-file-for-section-fixture "$WORK_DIR/populate-fixture.json" inline_no_ports "$plain_subnets" PodkopPlusTable podkop_plus_subnets podkop_plus_ip_ports 5000
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_subnets\t{ 198.51.100.210,203.0.113.0/24 }' "plain subnet import without ports"
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_subnets6\t{ 2001:db8::210 }' "plain subnet6 import without ports"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_no_ports_subnets\t{ 198.51.100.210,203.0.113.0/24 }' "plain subnet import without ports"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_no_ports_subnets6\t{ 2001:db8::210 }' "plain subnet6 import without ports"
 
 : > "$NFT_LOG"
 nft_ucode nft-add-subnet-file-for-section-fixture "$WORK_DIR/populate-fixture.json" ports_only "$plain_subnets" PodkopPlusTable podkop_plus_subnets podkop_plus_ip_ports 3
@@ -426,9 +491,9 @@ JSON
 unscoped_json="$WORK_DIR/unscoped-json.txt"
 scoped_json="$WORK_DIR/scoped-json.txt"
 nft_ucode nft-add-json-ruleset-subnets-for-section-fixture "$WORK_DIR/populate-fixture.json" inline_no_ports "$json_ruleset" "fixture json" PodkopPlusTable podkop_plus_subnets podkop_plus_ip_ports "$unscoped_json" "$scoped_json" 5000
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_subnets\t{ 198.51.100.220 }' "json ruleset unscoped import"
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_subnets6\t{ 2001:db8::220 }' "json ruleset unscoped6 import"
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_ip_ports\t{ 198.51.100.221 . 443,198.51.100.222 . 1000-1002 }' "json ruleset own port filters"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_no_ports_subnets\t{ 198.51.100.220 }' "json ruleset unscoped import"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_no_ports_subnets6\t{ 2001:db8::220 }' "json ruleset unscoped6 import"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_no_ports_ip_ports\t{ 198.51.100.221 . 443,198.51.100.222 . 1000-1002 }' "json ruleset own port filters"
 
 : > "$NFT_LOG"
 unscoped_json="$WORK_DIR/unscoped-json-ports.txt"
@@ -441,16 +506,11 @@ fi
 
 : > "$NFT_LOG"
 nft_ucode nft-add-community-subnet-file-for-section-fixture "$WORK_DIR/populate-fixture.json" inline_no_ports discord "$plain_subnets" PodkopPlusTable podkop_plus_subnets podkop_plus_ip_ports podkop_plus_interfaces podkop_plus_discord_subnets 0x00100000 5000
-assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tPodkopPlusTable\tpodkop_plus_discord_subnets\t{ type ipv4_addr; flags interval; auto-merge; }' "discord community set"
-assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tPodkopPlusTable\tpodkop_plus_discord_subnets6\t{ type ipv6_addr; flags interval; auto-merge; }' "discord community6 set"
-assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tmangle\tiifname\t@podkop_plus_interfaces\tip\tdaddr\t@podkop_plus_discord_subnets\tudp\tdport\t{ 19000-20000, 50000-65535 }\tmeta\tmark\tset\t0x00100000\tcounter' "discord community udp rule"
-assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tPodkopPlusTable\tmangle\tiifname\t@podkop_plus_interfaces\tip6\tdaddr\t@podkop_plus_discord_subnets6\tudp\tdport\t{ 19000-20000, 50000-65535 }\tmeta\tmark\tset\t0x00100000\tcounter' "discord community udp6 rule"
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_discord_subnets\t{ 198.51.100.210,203.0.113.0/24 }' "discord community subnet import"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_no_ports_subnets\t{ 198.51.100.210,203.0.113.0/24 }' "discord community subnet import"
 
 : > "$NFT_LOG"
 NFT_MANGLE_CHAIN_OUTPUT=$'iifname @podkop_plus_interfaces ip daddr @podkop_plus_discord_subnets udp dport { 19000-20000, 50000-65535 } meta mark set 0x00100000 counter\niifname @podkop_plus_interfaces ip6 daddr @podkop_plus_discord_subnets6 udp dport { 19000-20000, 50000-65535 } meta mark set 0x00100000 counter' \
   nft_ucode nft-add-community-subnet-file-for-section-fixture "$WORK_DIR/populate-fixture.json" inline_no_ports discord "$plain_subnets" PodkopPlusTable podkop_plus_subnets podkop_plus_ip_ports podkop_plus_interfaces podkop_plus_discord_subnets 0x00100000 5000
-assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tPodkopPlusTable\tpodkop_plus_discord_subnets\t{ type ipv4_addr; flags interval; auto-merge; }' "discord community existing set"
 if grep -Fq $'nft\tadd\trule' "$NFT_LOG"; then
   fail "discord community existing rule should not insert"
 fi
@@ -466,9 +526,11 @@ assert_contains "$NFT_LOG" $'198.51.100.210 . 53,198.51.100.210 . 853,198.51.100
 nft_ucode nft-populate-runtime-sets-fixture "$WORK_DIR/populate-fixture.json" 1 "deferred" PodkopPlusTable podkop_plus_subnets podkop_plus_ports podkop_plus_ip_ports podkop_plus_interfaces localv4 0x00100000
 assert_contains "$NFT_LOG" $'198.51.100.1 . 80,198.51.100.1 . 443-444,203.0.113.0/24 . 80' "populate inline ip-port first chunk"
 assert_contains "$NFT_LOG" $'203.0.113.0/24 . 443-444' "populate inline ip-port second chunk"
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_subnets\t{ 198.51.100.200 }' "populate inline ip without ports"
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_subnets6\t{ 2001:db8::200 }' "populate inline ip6 without ports"
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_ports\t{ 53,853,5353 }' "populate ports-only set"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_ip_ports\t{ 198.51.100.1 . 80,198.51.100.1 . 443-444,203.0.113.0/24 . 80,203.0.113.0/24 . 443-444 }' "populate inline priority ip-port set"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_ip6_ports\t{ 2001:db8::1 . 80,2001:db8::1 . 443-444 }' "populate inline priority ip6-port set"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_no_ports_subnets\t{ 198.51.100.200 }' "populate inline ip without ports"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_inline_no_ports_subnets6\t{ 2001:db8::200 }' "populate inline ip6 without ports"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_ports_only_ports\t{ 53,853,5353 }' "populate ports-only set"
 assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tPodkopPlusTable\tmangle\tiifname\t@podkop_plus_interfaces\tip\tsaddr\t192.168.1.20/32\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "populate fully routed tcp"
 assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tPodkopPlusTable\tmangle\tiifname\t@podkop_plus_interfaces\tip6\tsaddr\t2001:db8::20/128\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "populate fully routed6 tcp"
 if grep -Fq '192.0.2.1' "$NFT_LOG"; then
@@ -477,7 +539,7 @@ fi
 if grep -Fq '192.0.2.2' "$NFT_LOG"; then
   fail "deferred section should not populate nft"
 fi
-if grep -Fq $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_ports\t{ 8443 }' "$NFT_LOG"; then
+if grep -Fq $'nft\tadd\telement\tinet\tPodkopPlusTable\tpodkop_plus_rule_ports_with_domain_ports\t{ 8443 }' "$NFT_LOG"; then
   fail "ports with destination matchers should not populate global port set"
 fi
 if [ "$(grep -F $'ip\tsaddr\t192.168.1.20/32' "$NFT_LOG" | wc -l | tr -d ' ')" != "3" ]; then
@@ -495,6 +557,7 @@ cat >"$WORK_DIR/signature-fixture.json" <<'JSON'
       ".name": "disabled",
       ".type": "section",
       "enabled": "0",
+      "action": "proxy",
       "ip_cidr": [ "192.0.2.10" ],
       "ports": [ "1234" ],
       "community_lists": [ "discord" ]
@@ -503,6 +566,7 @@ cat >"$WORK_DIR/signature-fixture.json" <<'JSON'
       ".name": "text_rule",
       ".type": "section",
       "enabled": "1",
+      "action": "bypass",
       "ip_cidr_text_mode": "1",
       "ip_cidr_text": "198.51.100.1\nbad-value\n203.0.113.0/24",
       "ip_cidr": [ "10.0.0.0/8" ],
@@ -517,6 +581,7 @@ cat >"$WORK_DIR/signature-fixture.json" <<'JSON'
     {
       ".name": "default_enabled",
       ".type": "section",
+      "action": "proxy",
       "ip_cidr": [ "10.0.0.0/8", "192.0.2.1" ],
       "ports_text": "53 853",
       "community_lists": [ "youtube", "cloudflare", "roblox" ]
@@ -530,8 +595,12 @@ cat >"$WORK_DIR/signature-expected.txt" <<'EOF_EXPECTED'
 br-lan tun0
 [settings.exclude_ntp]
 1
+[rule.text_rule.action]
+bypass
 [rule.text_rule.ip_cidr]
 198.51.100.1,203.0.113.0/24
+[rule.text_rule.source_ip_cidr]
+
 [rule.text_rule.ports]
 443,80,443-444
 [rule.text_rule.fully_routed_ips]
@@ -544,8 +613,12 @@ https://example.com/subnets.lst
 /tmp/local.json
 [rule.text_rule.domain_ip_lists]
 https://example.com/mixed.lst
+[rule.default_enabled.action]
+proxy
 [rule.default_enabled.ip_cidr]
 10.0.0.0/8,192.0.2.1
+[rule.default_enabled.source_ip_cidr]
+
 [rule.default_enabled.ports]
 53,853
 [rule.default_enabled.fully_routed_ips]
@@ -573,6 +646,7 @@ podkop-plus.disabled.enabled=0
 podkop-plus.disabled.ip_cidr=192.0.2.10
 podkop-plus.enabled=section
 podkop-plus.enabled.enabled=1
+podkop-plus.enabled.action=bypass
 podkop-plus.enabled.ip_cidr=10.0.0.0/8 192.0.2.1
 podkop-plus.enabled.ports=443 bad-value
 podkop-plus.enabled.ports_text=80 443-444 65536
@@ -587,8 +661,12 @@ cat >"$WORK_DIR/signature-uci-expected.txt" <<'EOF_EXPECTED'
 br-lan tun0
 [settings.exclude_ntp]
 1
+[rule.enabled.action]
+bypass
 [rule.enabled.ip_cidr]
 10.0.0.0/8,192.0.2.1
+[rule.enabled.source_ip_cidr]
+
 [rule.enabled.ports]
 443,80,443-444
 [rule.enabled.fully_routed_ips]

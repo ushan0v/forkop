@@ -38,7 +38,7 @@ fi
 assert_eq "2" "$(rows | rules_ucode count zapret)" "enabled zapret count"
 assert_eq "1" "$(rows | rules_ucode count byedpi)" "enabled byedpi count"
 assert_eq "1" "$(rows | rules_ucode count zapret2)" "enabled zapret2 count"
-assert_eq "0" "$(rows | rules_ucode count direct)" "missing action count"
+assert_eq "0" "$(rows | rules_ucode count bypass)" "non-provider action count"
 
 assert_eq "1" "$(rows | rules_ucode index zapret alpha)" "first zapret index"
 assert_eq "2" "$(rows | rules_ucode index zapret delta)" "second zapret index skips disabled rows"

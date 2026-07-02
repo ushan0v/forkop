@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-01 01:51+0300\n"
-"PO-Revision-Date: 2026-07-01 01:51+0300\n"
+"POT-Creation-Date: 2026-07-02 04:38+0300\n"
+"PO-Revision-Date: 2026-07-02 04:38+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -1199,9 +1199,6 @@ msgstr "Продолжить обновление"
 msgid "Route"
 msgstr "Маршрут"
 
-msgid "Routing Excluded IPs"
-msgstr "Исключённые из маршрутизации IP-адреса"
-
 msgid "Routing mode"
 msgstr "Режим маршрутизации"
 
@@ -1285,9 +1282,6 @@ msgstr "Выберите промежуточную секцию"
 
 msgid "Select DNS protocol to use"
 msgstr "Выберите протокол DNS"
-
-msgid "Select local devices or enter IP addresses/subnets to be excluded from routing"
-msgstr "Выберите локальные устройства или введите IP-адреса/подсети для исключения из маршрутизации"
 
 msgid "Select network interface for VPN connection"
 msgstr "Выберите сетевой интерфейс для VPN-подключения"

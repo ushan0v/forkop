@@ -158,7 +158,7 @@ export namespace Podkop {
     | 'proxy'
     | 'outbound'
     | 'vpn'
-    | 'direct'
+    | 'bypass'
     | 'block'
     | 'zapret'
     | 'zapret2'

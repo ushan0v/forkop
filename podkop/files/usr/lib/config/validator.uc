@@ -877,6 +877,10 @@ function rule_action(section) {
     return option(section, "action", "");
 }
 
+function rule_action_supported(action) {
+    return contains([ "proxy", "outbound", "vpn", "bypass", "block", "zapret", "zapret2", "byedpi" ], as_string(action));
+}
+
 function duration_to_seconds_value(value) {
     let rest = as_string(value);
     if (rest == "")
@@ -1117,6 +1121,8 @@ function validate_rule(section, context) {
     let action = rule_action(section);
     if (action == "")
         fail_validation("Enabled rule '" + name + "' has no action. Aborted.");
+    if (!rule_action_supported(action))
+        fail_validation("Enabled rule '" + name + "' uses unsupported action '" + action + "'. Aborted.");
 
     for (let value in list_option(section, "ports"))
         validate_port_condition_value(value, name);
@@ -1578,7 +1584,7 @@ function check_provider_requirements(ctx) {
 }
 
 function check_runtime_requirements() {
-    log_message("Check Requirements", "info");
+    log_message("Checking required packages and runtime settings", "info");
 
     let ctx = context_from_runtime();
     let sing_box_version_output = command_exists("sing-box") ? command_output_from_args([ "sing-box", "version" ]) : "";
@@ -1607,10 +1613,10 @@ function check_runtime_requirements() {
         log_message("Package 'coreutils-base64' version (" + coreutils_base64_version + ") is lower than the required minimum (" + ctx.coreutils_base64_required_version + "). This may cause issues when decoding base64 streams with missing padding, as automatic padding support is not available in older versions.", "warn");
 
     if (dhcp_has_https_dns_proxy_options("/etc/config/dhcp") === true)
-        log_message("Detected https-dns-proxy in DHCP config. Edit /etc/config/dhcp", "error");
+        log_message("https-dns-proxy is enabled in DHCP config. Disable it or edit /etc/config/dhcp before starting Podkop Plus.", "error");
 
     if (has_outbound_section(ctx))
-        log_message("Outbound proxy section found", "debug");
+        log_message("Proxy outbound configuration found", "debug");
     else
         log_message("No proxy outbound sections found. Podkop Plus will use direct and/or provider-only routing.", "warn");
 

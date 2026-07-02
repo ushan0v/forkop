@@ -233,7 +233,7 @@ function ensure_custom_ruleset(config, reference) {
     let extension = runtime_rulesets.file_extension(reference);
     if (substr(reference, 0, 1) == "/") {
         if (extension != "srs" && extension != "json")
-            runtime_generate_unsupported("local rule_set extension is not supported by runtime generator");
+            runtime_generate_unsupported("local rule_set extension is not supported by sing-box config generation");
         push(config.route.rule_set, {
             type: "local",
             tag: tag_name,
@@ -255,7 +255,7 @@ function ensure_custom_ruleset(config, reference) {
         push(config.route.rule_set, rule_set);
     }
     else {
-        runtime_generate_unsupported("rule_set reference is not supported by runtime generator");
+        runtime_generate_unsupported("rule_set reference is not supported by sing-box config generation");
     }
 
     return { tag: tag_name, kind };
@@ -337,7 +337,8 @@ function base_config(settings, service_address, runtime_context) {
             { type: "direct", tag: runtime_constants.DNS_INBOUND_TAG, listen: runtime_constants.DNS_INBOUND_ADDRESS, listen_port: runtime_constants.DNS_INBOUND_PORT }
         ],
         outbounds: [
-            { type: "direct", tag: runtime_constants.DIRECT_OUTBOUND_TAG }
+            { type: "direct", tag: runtime_constants.DIRECT_OUTBOUND_TAG },
+            { type: "direct", tag: runtime_constants.BYPASS_OUTBOUND_TAG }
         ],
         route: runtime_route.config(settings, runtime_context),
         services: [],
@@ -408,7 +409,7 @@ function add_subscription_source_with_state(config, section_name, source_index, 
     for (let i = 0; i < length(outbounds); i++) {
         let outbound = outbounds[i];
         if (!supported_subscription_outbound(outbound))
-            runtime_generate_unsupported("subscription outbound type is not supported by runtime generator");
+            runtime_generate_unsupported("subscription outbound type is not supported by sing-box config generation");
         let display_name = as_string(outbound.remark || outbound.tag || ("server-" + (i + 1)));
         let base = as_string(outbound.tag || outbound.remark || ("server-" + (i + 1)));
         let new_tag = unique_tag(base, taken);
@@ -558,7 +559,7 @@ function apply_detour_to_outbounds(config, tag_names, detour_tag) {
 }
 
 function mixed_proxy_enabled_action(action) {
-    return action == "proxy" || action == "outbound" || action == "vpn" || action == "direct" ||
+    return action == "proxy" || action == "outbound" || action == "vpn" ||
         action == "byedpi" || action == "zapret" || action == "zapret2";
 }
 
@@ -1082,7 +1083,7 @@ function manual_link_outbound(link, tag_name, udp_over_tcp) {
         return manual_trojan_outbound(link, tag_name);
     if (scheme == "hysteria2" || scheme == "hy2")
         return manual_hysteria2_outbound(link, tag_name);
-    runtime_generate_unsupported("manual proxy link scheme is not supported by runtime generator yet");
+    runtime_generate_unsupported("manual proxy link scheme is not supported by sing-box config generation yet");
 }
 
 function add_manual_proxy_link(config, state, section_name, manual_index, link, udp_over_tcp, taken, selector_tags) {
@@ -1402,49 +1403,14 @@ function add_domain_array(rule, key, values) {
         rule[key] = values;
 }
 
-function merge_unique_array(current, additions) {
-    let result = [];
-    let seen = {};
-    let current_values = current == null ? [] : (type(current) == "array" ? current : [ current ]);
-    let addition_values = additions == null ? [] : (type(additions) == "array" ? additions : [ additions ]);
-    for (let value in current_values) {
-        let key = as_string(value);
-        if (seen[key])
-            continue;
-        seen[key] = true;
-        push(result, value);
-    }
-    for (let value in addition_values) {
-        let key = as_string(value);
-        if (seen[key])
-            continue;
-        seen[key] = true;
-        push(result, value);
-    }
-    return result;
+function push_dns_matcher_rule(config, rule) {
+    push(config.dns.rules, rule);
 }
 
-function find_tagged_dns_rule(config, tag_name) {
-    for (let rule in array_or_empty(config.dns.rules)) {
-        if (type(rule) == "object" && rule.__service_tag == tag_name)
-            return rule;
-    }
-    return null;
-}
-
-function merge_dns_matcher_rule(config, tag_name, rule, matcher_keys) {
-    let existing = find_tagged_dns_rule(config, tag_name);
-    if (existing == null) {
-        rule.__service_tag = tag_name;
-        push(config.dns.rules, rule);
-        return;
-    }
-
-    for (let key in matcher_keys) {
-        if (rule[key] == null)
-            continue;
-        existing[key] = merge_unique_array(existing[key], rule[key]);
-    }
+function section_dns_server(section) {
+    return option(section, "action", "") == "bypass"
+        ? runtime_constants.DNS_SERVER_TAG
+        : runtime_constants.FAKEIP_DNS_SERVER_TAG;
 }
 
 function single_or_array(values) {
@@ -1586,23 +1552,22 @@ function add_combined_route_for_section(config, section) {
     if (length(domain) > 0 || length(domain_suffix) > 0 || length(domain_keyword) > 0 || length(domain_regex) > 0) {
         let dns_rule = {
             action: "route",
-            server: runtime_constants.FAKEIP_DNS_SERVER_TAG,
+            server: section_dns_server(section),
             rewrite_ttl
         };
         add_domain_array(dns_rule, "domain", domain);
         add_domain_array(dns_rule, "domain_suffix", domain_suffix);
         add_domain_array(dns_rule, "domain_keyword", domain_keyword);
         add_domain_array(dns_rule, "domain_regex", domain_regex);
-        merge_dns_matcher_rule(config, runtime_constants.FAKEIP_DNS_RULE_TAG, dns_rule,
-            [ "domain", "domain_suffix", "domain_keyword", "domain_regex" ]);
+        push_dns_matcher_rule(config, dns_rule);
     }
     if (length(dns_rule_set_tags) > 0) {
-        merge_dns_matcher_rule(config, runtime_constants.FAKEIP_RULESET_DNS_RULE_TAG, {
+        push_dns_matcher_rule(config, {
             action: "route",
-            server: runtime_constants.FAKEIP_DNS_SERVER_TAG,
+            server: section_dns_server(section),
             rewrite_ttl,
             rule_set: single_or_array(dns_rule_set_tags)
-        }, [ "rule_set" ]);
+        });
     }
 }
 
@@ -1619,24 +1584,11 @@ function unsupported_matcher_key(section) {
     return "";
 }
 
-function add_routing_excluded_ips(config, settings) {
-    let source_ip_cidr = list_option(settings, "routing_excluded_ips");
-    if (length(source_ip_cidr) == 0)
-        return;
-
-    push(config.route.rules, {
-        action: "route",
-        inbound: tproxy_inbound_matcher(),
-        outbound: runtime_constants.DIRECT_OUTBOUND_TAG,
-        source_ip_cidr: single_or_array(source_ip_cidr)
-    });
-}
-
 function add_outbound_for_section(config, section, taken, sections) {
     let action = option(section, "action", "");
     let section_name = section[".name"];
     if (!valid_section_name(section_name))
-        runtime_generate_unsupported("section name is not safe for runtime generator");
+        runtime_generate_unsupported("section name is not safe for sing-box config generation");
     let unsupported_matcher = unsupported_matcher_key(section);
     if (unsupported_matcher != "")
         runtime_generate_unsupported("section has unsupported matcher " + unsupported_matcher);
@@ -1653,8 +1605,9 @@ function add_outbound_for_section(config, section, taken, sections) {
         add_zapret2_outbound(config, section, sections);
     else if (action == "byedpi")
         add_byedpi_outbound(config, section, sections);
-    else if (action == "direct")
-        push(config.outbounds, { type: "direct", tag: outbound_tag(section_name) });
+    else if (action == "bypass") {
+        /* route-only action */
+    }
     else if (action == "block") {
         /* route-only action */
     }
@@ -1666,7 +1619,7 @@ function add_outbound_for_section(config, section, taken, sections) {
 function reserve_section_outbound_tags(sections, taken) {
     for (let section in sections) {
         let action = option(section, "action", "");
-        if (action == "proxy" || action == "direct" || action == "outbound" || action == "vpn" ||
+        if (action == "proxy" || action == "outbound" || action == "vpn" ||
             action == "byedpi" || action == "zapret" || action == "zapret2")
             taken[outbound_tag(section[".name"])] = true;
     }
@@ -1680,7 +1633,7 @@ function add_service_route_rules(config, sections) {
     let first = null;
     for (let section in sections) {
         let action = option(section, "action", "");
-        if (action == "proxy" || action == "direct" || action == "outbound" || action == "vpn" ||
+        if (action == "proxy" || action == "outbound" || action == "vpn" ||
             action == "byedpi" || action == "zapret" || action == "zapret2") {
             first = section;
             break;
@@ -1790,7 +1743,6 @@ function generate_config(output_path, service_address, mwan3_active) {
     for (let section in sections)
         add_outbound_for_section(config, section, taken, sections);
     add_service_route_rules(config, sections);
-    add_routing_excluded_ips(config, settings);
     for (let section in sections)
         add_route_for_section(config, section);
     add_server_routes(config, servers, sections);
