@@ -19,3 +19,4 @@ export * from './renderBookOpenTextIcon24';
 export * from './renderCopyIcon24';
 export * from './renderLinkIcon24';
 export * from './renderDownloadIcon24';
+export * from './renderInfoIcon24';

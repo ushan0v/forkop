@@ -29,9 +29,20 @@ type DashboardSectionCache = {
   links?: Record<string, string>;
   linkRefs?: Record<string, unknown>;
   outboundMetadata?: Podkop.GetOutboundMetadata;
+  urltestGroups?: Record<string, UrlTestCacheGroup>;
   subscriptionMetadata?:
     | Podkop.SubscriptionMetadata
     | Podkop.SubscriptionMetadata[];
+};
+
+type UrlTestCacheGroup = {
+  displayName?: string;
+  outbounds?: string[];
+  url?: string;
+  interval?: string;
+  tolerance?: string | number;
+  idle_timeout?: string;
+  interrupt_exist_connections?: boolean;
 };
 
 const DASHBOARD_SECTION_CACHE_DIR = '/var/run/podkop-plus/section-cache';
@@ -188,8 +199,8 @@ function uniqueCodes(codes: string[]) {
   return Array.from(new Set(codes.filter(Boolean)));
 }
 
-function isGroupOutbound(outbound: Podkop.Outbound) {
-  return ['selector', 'urltest'].includes(outbound.type?.toLowerCase() || '');
+function isSelectorOutbound(outbound: Podkop.Outbound) {
+  return outbound.type?.toLowerCase() === 'selector';
 }
 
 function isUrlTestProxyEntry(entry?: ClashProxyEntry) {
@@ -276,10 +287,106 @@ async function readDashboardSectionCache(
   }
 }
 
+function getUrlTestGroups(dashboardCache?: DashboardSectionCache) {
+  const groups = dashboardCache?.urltestGroups;
+
+  if (!groups || typeof groups !== 'object' || Array.isArray(groups)) {
+    return {};
+  }
+
+  return groups;
+}
+
+function getOutboundDisplayName(
+  code: string,
+  entry: ClashProxyEntry | undefined,
+  link: string,
+  outboundMetadata?: Podkop.GetOutboundMetadata,
+) {
+  return (
+    getProxyUrlName(link) ||
+    outboundMetadata?.names?.[code] ||
+    entry?.value?.name ||
+    code
+  );
+}
+
+function buildUrlTestInfo({
+  code,
+  displayName,
+  entry,
+  groupCache,
+  proxyByCode,
+  manualLinkByCode,
+  outboundMetadata,
+  subscriptionCopyableCodes,
+  showDetectedCountries,
+}: {
+  code: string;
+  displayName: string;
+  entry: ClashProxyEntry;
+  groupCache?: UrlTestCacheGroup;
+  proxyByCode: Map<string, ClashProxyEntry>;
+  manualLinkByCode: Map<string, string>;
+  outboundMetadata?: Podkop.GetOutboundMetadata;
+  subscriptionCopyableCodes: Set<string>;
+  showDetectedCountries: boolean;
+}): Podkop.UrlTestInfo {
+  const childCodes = uniqueCodes(
+    groupCache?.outbounds?.length
+      ? groupCache.outbounds
+      : entry.value.all || [],
+  );
+  const selectedCode = entry.value.now || '';
+  const outbounds = childCodes.flatMap((childCode) => {
+    const childEntry = proxyByCode.get(childCode);
+    const link = manualLinkByCode.get(childCode) || '';
+    const canCopyLink =
+      isCopyableProxyLink(link) || subscriptionCopyableCodes.has(childCode);
+
+    return [
+      {
+        code: childCode,
+        displayName: getOutboundDisplayName(
+          childCode,
+          childEntry,
+          link,
+          outboundMetadata,
+        ),
+        latency: childEntry?.value?.history?.[0]?.delay || 0,
+        type: childEntry?.value?.type || '',
+        selected: selectedCode === childCode,
+        link,
+        canCopyLink,
+        country: showDetectedCountries
+          ? outboundMetadata?.countries?.[childCode]
+          : undefined,
+      },
+    ];
+  });
+  const selectedName =
+    outbounds.find((outbound) => outbound.code === selectedCode)?.displayName ||
+    selectedCode;
+
+  return {
+    code,
+    displayName: groupCache?.displayName || displayName,
+    selectedCode: selectedCode || undefined,
+    selectedName: selectedName || undefined,
+    url: groupCache?.url,
+    interval: groupCache?.interval,
+    tolerance: groupCache?.tolerance,
+    idleTimeout: groupCache?.idle_timeout,
+    interruptExistConnections: groupCache?.interrupt_exist_connections,
+    outbounds,
+  };
+}
+
 function buildProxyGroupOutbounds(
   section: Podkop.ConfigSection,
   proxies: ClashProxyEntry[],
   outboundMetadata?: Podkop.GetOutboundMetadata,
+  urltestGroups: Record<string, UrlTestCacheGroup> = {},
   subscriptionCopyableCodes: Set<string> = new Set(),
 ) {
   const sectionName = section['.name'];
@@ -321,16 +428,14 @@ function buildProxyGroupOutbounds(
     const link = manualLinkByCode.get(item.code) || '';
     const canCopyLink =
       isCopyableProxyLink(link) || subscriptionCopyableCodes.has(item.code);
+    const displayName = isFastest
+      ? _('Fastest')
+      : getOutboundDisplayName(item.code, item, link, outboundMetadata);
 
     return [
       {
         code: item.code,
-        displayName: isFastest
-          ? _('Fastest')
-          : getProxyUrlName(link) ||
-            outboundMetadata?.names?.[item.code] ||
-            item.value.name ||
-            item.code,
+        displayName,
         latency: item.value.history?.[0]?.delay || 0,
         type: item.value.type || '',
         selected: selector?.value?.now === item.code,
@@ -338,6 +443,19 @@ function buildProxyGroupOutbounds(
         canCopyLink,
         country: showDetectedCountries
           ? outboundMetadata?.countries?.[item.code]
+          : undefined,
+        urlTestInfo: isUrlTestProxyEntry(item)
+          ? buildUrlTestInfo({
+              code: item.code,
+              displayName,
+              entry: item,
+              groupCache: urltestGroups[item.code],
+              proxyByCode,
+              manualLinkByCode,
+              outboundMetadata,
+              subscriptionCopyableCodes,
+              showDetectedCountries,
+            })
           : undefined,
       },
     ];
@@ -348,7 +466,7 @@ function buildProxyGroupOutbounds(
     sortByLatency: shouldSortByLatency(section),
   });
   const latencyTestCodes = sortedOutbounds
-    .filter((outbound) => !isGroupOutbound(outbound))
+    .filter((outbound) => !isSelectorOutbound(outbound))
     .map((outbound) => outbound.code);
 
   return {
@@ -571,11 +689,13 @@ export async function getDashboardSections(
           const subscriptionCopyableCodes = includeSubscriptionCopyState
             ? getSubscriptionCopyableCodes(dashboardCache)
             : new Set<string>();
+          const urltestGroups = getUrlTestGroups(dashboardCache);
           const { selector, latencyTestCode, latencyTestCodes, outbounds } =
             buildProxyGroupOutbounds(
               section,
               proxies,
               outboundMetadata,
+              urltestGroups,
               subscriptionCopyableCodes,
             );
 

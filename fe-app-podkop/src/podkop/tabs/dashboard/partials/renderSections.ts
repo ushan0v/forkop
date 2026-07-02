@@ -2,6 +2,7 @@ import {
   renderLoaderCircleIcon24,
   renderCopyIcon24,
   renderLinkIcon24,
+  renderInfoIcon24,
 } from '../../../../icons';
 import { isCopyableProxyLink, svgEl } from '../../../../helpers';
 import { prettyBytes } from '../../../../helpers/prettyBytes';
@@ -18,6 +19,10 @@ interface IRenderSectionsProps {
     tag: string,
   ) => void;
   onCopyOutbound: (
+    section: Podkop.OutboundGroup,
+    outbound: Podkop.Outbound,
+  ) => void;
+  onShowUrlTestInfo: (
     section: Podkop.OutboundGroup,
     outbound: Podkop.Outbound,
   ) => void;
@@ -324,6 +329,7 @@ function renderDefaultState({
   section,
   onChooseOutbound,
   onCopyOutbound,
+  onShowUrlTestInfo,
   onTestLatency,
   onUpdateSubscription,
   latencyFetching,
@@ -440,6 +446,25 @@ function renderDefaultState({
                     },
                   },
                   renderCopyIcon24(),
+                ),
+              ]
+            : []),
+          ...(outbound.urlTestInfo
+            ? [
+                E(
+                  'button',
+                  {
+                    type: 'button',
+                    class:
+                      'btn pdk_dashboard-page__outbound-grid__item__copy-button',
+                    title: _('URLTest details'),
+                    'aria-label': _('URLTest details'),
+                    click: (event: MouseEvent) => {
+                      event.stopPropagation();
+                      onShowUrlTestInfo(section, outbound);
+                    },
+                  },
+                  renderInfoIcon24(),
                 ),
               ]
             : []),

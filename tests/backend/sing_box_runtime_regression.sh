@@ -864,8 +864,11 @@ let grouped_selector = outbound(subscription_group, "grouped-out");
 assert(grouped_selector && length(grouped_selector.outbounds) == 1 && grouped_selector.outbounds[0] == "Provider Group", "selector exposes provider group only");
 let grouped_state = cfg("subscription-group.json.section-cache/grouped");
 assert(grouped_state.outboundMetadata.names["Provider Group"] == "Provider Group", "provider group metadata visible");
-assert(grouped_state.outboundMetadata.names["grouped-out-1"] == null, "hidden leaf metadata not visible");
+assert(grouped_state.outboundMetadata.names["grouped-out-1"] == "grouped-out", "hidden leaf metadata visible");
+assert(length(grouped_state.urltestGroups["Provider Group"].outbounds) == 2, "provider group membership cached");
+assert(grouped_state.urltestGroups["Provider Group"].outbounds[0] == "grouped-out-1", "provider group membership retagged");
 assert(grouped_state.linkRefs["Provider Group"] == null, "provider group has no source link ref");
+assert(grouped_state.linkRefs["grouped-out-1"].sourceIndex == 2, "hidden leaf keeps source link ref");
 
 let proxy_cache = json(fs.readfile(dir + "/subscription-metadata.json.section-cache/proxy.json"));
 let test_cache = json(fs.readfile(dir + "/subscription-metadata.json.section-cache/test.json"));

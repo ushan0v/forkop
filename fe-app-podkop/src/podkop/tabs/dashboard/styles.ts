@@ -391,4 +391,93 @@ export const styles = `
     color: var(--error-color-medium, red);
 }
 
+.pdk_dashboard-page__urltest-details {
+    min-width: min(720px, 86vw);
+}
+
+.pdk_dashboard-page__urltest-details__params {
+    display: grid;
+    grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+    gap: 8px 16px;
+    margin: 0 0 16px;
+}
+
+.pdk_dashboard-page__urltest-details__param {
+    display: contents;
+}
+
+.pdk_dashboard-page__urltest-details__param dt {
+    color: var(--text-color-medium, #666);
+}
+
+.pdk_dashboard-page__urltest-details__param dd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+}
+
+.pdk_dashboard-page__urltest-details__param dd span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.pdk_dashboard-page__urltest-details__outbounds-title {
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.pdk_dashboard-page__urltest-details__table {
+    display: grid;
+    gap: 6px;
+    max-height: min(46vh, 460px);
+    overflow: auto;
+}
+
+.pdk_dashboard-page__urltest-details__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color-low, #eee);
+}
+
+.pdk_dashboard-page__urltest-details__row--active {
+    font-weight: 600;
+}
+
+.pdk_dashboard-page__urltest-details__row-name,
+.pdk_dashboard-page__urltest-details__row-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.pdk_dashboard-page__urltest-details__row-name b {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.pdk_dashboard-page__urltest-details__row-name span,
+.pdk_dashboard-page__urltest-details__row-meta {
+    color: var(--text-color-medium, #666);
+}
+
+@media (max-width: 480px) {
+    .pdk_dashboard-page__urltest-details__params {
+        grid-template-columns: 1fr;
+    }
+
+    .pdk_dashboard-page__urltest-details__row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .pdk_dashboard-page__urltest-details__row-meta {
+        grid-column: 1 / -1;
+    }
+}
+
 `;

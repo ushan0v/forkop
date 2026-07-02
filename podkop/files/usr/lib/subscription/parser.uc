@@ -2406,25 +2406,87 @@ function xray_balancer_selector_matches(selector, tag) {
     return tag == selector || starts_with(tag, selector + "-") || starts_with(tag, selector);
 }
 
-function xray_balancer_source_tags(config, source_outbounds) {
+function xray_urltest_option_string(value) {
+    value = as_string(value);
+    return value != "" ? value : "";
+}
+
+function xray_config_urltest_options(config) {
+    let observatory = object_or_empty(config.observatory);
+    let burst_observatory = object_or_empty(config.burstObservatory || config.burst_observatory);
+    let ping_config = object_or_empty(burst_observatory.pingConfig || burst_observatory.ping_config);
+    let result = {};
+
+    let url = xray_first_string([
+        ping_config.destination,
+        ping_config.url,
+        observatory.probeURL,
+        observatory.probeUrl,
+        observatory.probe_url
+    ]);
+    if (url != "")
+        result.url = url;
+
+    let interval = xray_first_string([
+        ping_config.interval,
+        observatory.probeInterval,
+        observatory.probe_interval
+    ]);
+    if (interval != "")
+        result.interval = interval;
+
+    return result;
+}
+
+function xray_apply_urltest_options(group, options) {
+    options = object_or_empty(options);
+    for (let key in [ "url", "interval" ]) {
+        let value = xray_urltest_option_string(options[key]);
+        if (value != "")
+            group[key] = value;
+    }
+}
+
+function xray_balancer_plans(config, source_outbounds) {
     let supported_tags = xray_supported_source_tags(source_outbounds);
-    let selected = {};
     let result = [];
+    let urltest_options = xray_config_urltest_options(config);
 
     for (let balancer in array_or_empty(object_or_empty(config.routing).balancers)) {
         let selectors = array_or_empty(object_or_empty(balancer).selector);
+        let selected = {};
+        let tags = [];
         for (let tag in keys(supported_tags)) {
             for (let selector in selectors) {
                 if (xray_balancer_selector_matches(selector, tag) && !selected[tag]) {
                     selected[tag] = true;
-                    push(result, tag);
+                    push(tags, tag);
                     break;
                 }
             }
         }
+        if (length(tags) > 0) {
+            push(result, {
+                tag: as_string(object_or_empty(balancer).tag || ""),
+                source_tags: tags,
+                urltest_options
+            });
+        }
     }
 
     return result;
+}
+
+function xray_balancer_group_base(plan, display_name, config_index, config_count, plan_index, plan_count) {
+    let balancer_tag = as_string(object_or_empty(plan).tag || "");
+    display_name = as_string(display_name);
+    if (plan_count == 1 && display_name != "")
+        return display_name;
+    if (balancer_tag != "")
+        return balancer_tag;
+    if (display_name != "")
+        return display_name + "-" + (plan_index + 1);
+    return xray_tag_base("urltest", config_index, config_count);
 }
 
 function xray_tag_counts(configs) {
@@ -2508,37 +2570,36 @@ function xray_config_outbounds(config, config_index, config_count, tag_counts, t
     let planned = array_or_empty(plan.planned);
     let tag_map = object_or_empty(plan.tag_map);
     let display_name = xray_config_display_name(config, "");
-    let balancer_tags = xray_balancer_source_tags(config, source_outbounds);
+    let balancer_plans = xray_balancer_plans(config, source_outbounds);
     let visible_source_tags = {};
     let dependency_tags = {};
     let result = [];
 
-    if (length(balancer_tags) > 0) {
-        let urltest_outbounds = [];
-        for (let source_tag in balancer_tags) {
-            if (tag_map[source_tag]) {
-                visible_source_tags[source_tag] = false;
-                push(urltest_outbounds, tag_map[source_tag]);
+    if (length(balancer_plans) > 0) {
+        for (let plan_index = 0; plan_index < length(balancer_plans); plan_index++) {
+            let plan = balancer_plans[plan_index];
+            let urltest_outbounds = [];
+            for (let source_tag in array_or_empty(plan.source_tags)) {
+                if (tag_map[source_tag]) {
+                    visible_source_tags[source_tag] = false;
+                    push(urltest_outbounds, tag_map[source_tag]);
+                }
             }
-        }
 
-        if (length(urltest_outbounds) > 0) {
-            let group_tag = xray_unique_tag(
-                display_name != "" ? display_name : xray_tag_base("urltest", config_index, config_count),
-                taken
-            );
-            taken[group_tag] = true;
-            let group = {
-                type: "urltest",
-                tag: group_tag,
-                outbounds: urltest_outbounds,
-                url: "https://www.gstatic.com/generate_204",
-                interval: "10m",
-                tolerance: 50,
-                remark: display_name != "" ? display_name : group_tag,
-                __podkop_allow_group: true
-            };
-            push(result, group);
+            if (length(urltest_outbounds) > 0) {
+                let group_base = xray_balancer_group_base(plan, display_name, config_index, config_count, plan_index, length(balancer_plans));
+                let group_tag = xray_unique_tag(group_base, taken);
+                taken[group_tag] = true;
+                let group = {
+                    type: "urltest",
+                    tag: group_tag,
+                    outbounds: urltest_outbounds,
+                    remark: group_base != "" ? group_base : group_tag,
+                    __podkop_allow_group: true
+                };
+                xray_apply_urltest_options(group, plan.urltest_options);
+                push(result, group);
+            }
         }
     } else {
         let primary_tag = xray_primary_source_tag(config, source_outbounds);
@@ -2557,8 +2618,12 @@ function xray_config_outbounds(config, config_index, config_count, tag_counts, t
     for (let item in planned) {
         let visible = visible_source_tags[item.original_tag] === true;
         let hidden = !visible;
-        if (visible || dependency_tags[item.original_tag] || visible_source_tags[item.original_tag] === false)
-            xray_add_converted_outbound(result, item, tag_map, !hidden, display_name != "" ? display_name : xray_display_name(item.original_tag, tag_counts, config_index));
+        if (visible || dependency_tags[item.original_tag] || visible_source_tags[item.original_tag] === false) {
+            let item_display_name = visible && display_name != ""
+                ? display_name
+                : xray_display_name(item.original_tag, tag_counts, config_index);
+            xray_add_converted_outbound(result, item, tag_map, !hidden, item_display_name);
+        }
     }
 
     return result;
@@ -2607,6 +2672,52 @@ function normalize_sing_box_xhttp_transport(outbound) {
     return outbound;
 }
 
+function sing_box_urltest_group(outbound) {
+    return type(outbound) == "object" && lc(as_string(outbound.type || "")) == "urltest";
+}
+
+function sing_box_outbound_tag(outbound) {
+    return type(outbound) == "object" ? as_string(outbound.tag || "") : "";
+}
+
+function normalize_sing_box_json_outbounds(candidates) {
+    let outbounds = [];
+    let urltest_refs = {};
+    let detour_refs = {};
+
+    for (let outbound in candidates) {
+        if (type(outbound) != "object")
+            continue;
+        push(outbounds, normalize_sing_box_xhttp_transport(outbound));
+    }
+
+    for (let outbound in outbounds) {
+        if (sing_box_urltest_group(outbound)) {
+            for (let tag_name in array_or_empty(outbound.outbounds)) {
+                tag_name = as_string(tag_name);
+                if (tag_name != "")
+                    urltest_refs[tag_name] = true;
+            }
+        }
+
+        let detour = as_string(outbound.detour || "");
+        if (detour != "")
+            detour_refs[detour] = true;
+    }
+
+    for (let outbound in outbounds) {
+        let tag_name = sing_box_outbound_tag(outbound);
+        if (sing_box_urltest_group(outbound)) {
+            outbound.__podkop_allow_group = true;
+            continue;
+        }
+        if (tag_name != "" && (urltest_refs[tag_name] || detour_refs[tag_name]))
+            outbound.__podkop_hidden = true;
+    }
+
+    return outbounds;
+}
+
 function normalize_sing_box_json_value(value, output_file) {
     let candidates = [];
     let outbounds = [];
@@ -2631,10 +2742,7 @@ function normalize_sing_box_json_value(value, output_file) {
     else if (type(value) == "object" && type(value.type) == "string")
         candidates = [value];
 
-    for (let outbound in candidates) {
-        if (type(outbound) == "object")
-            push(outbounds, normalize_sing_box_xhttp_transport(outbound));
-    }
+    outbounds = normalize_sing_box_json_outbounds(candidates);
 
     if (length(outbounds) == 0) {
         fs.unlink(output_file);

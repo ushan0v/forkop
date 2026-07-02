@@ -113,6 +113,31 @@ export namespace Podkop {
     canCopyLink?: boolean;
     country?: string;
     runtimeAvailable?: boolean;
+    urlTestInfo?: UrlTestInfo;
+  }
+
+  export interface UrlTestMember {
+    code: string;
+    displayName: string;
+    latency: number;
+    type: string;
+    selected: boolean;
+    link?: string;
+    canCopyLink?: boolean;
+    country?: string;
+  }
+
+  export interface UrlTestInfo {
+    code: string;
+    displayName: string;
+    selectedCode?: string;
+    selectedName?: string;
+    url?: string;
+    interval?: string;
+    tolerance?: string | number;
+    idleTimeout?: string;
+    interruptExistConnections?: boolean;
+    outbounds: UrlTestMember[];
   }
 
   export interface OutboundGroup {

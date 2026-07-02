@@ -1776,6 +1776,38 @@ function renderDownloadIcon24() {
   );
 }
 
+// src/icons/renderInfoIcon24.ts
+function renderInfoIcon24() {
+  return svgEl(
+    "svg",
+    {
+      xmlns: "http://www.w3.org/2000/svg",
+      width: "24",
+      height: "24",
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": "2",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      class: "lucide lucide-info-icon lucide-info"
+    },
+    [
+      svgEl("circle", {
+        cx: "12",
+        cy: "12",
+        r: "10"
+      }),
+      svgEl("path", {
+        d: "M12 16v-4"
+      }),
+      svgEl("path", {
+        d: "M12 8h.01"
+      })
+    ]
+  );
+}
+
 // src/helpers/prettyBytes.ts
 function prettyBytes(n) {
   const UNITS = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
@@ -2015,6 +2047,7 @@ function renderDefaultState({
   section,
   onChooseOutbound,
   onCopyOutbound,
+  onShowUrlTestInfo,
   onTestLatency,
   onUpdateSubscription,
   latencyFetching,
@@ -2098,6 +2131,22 @@ function renderDefaultState({
                 }
               },
               renderCopyIcon24()
+            )
+          ] : [],
+          ...outbound.urlTestInfo ? [
+            E(
+              "button",
+              {
+                type: "button",
+                class: "btn pdk_dashboard-page__outbound-grid__item__copy-button",
+                title: _("URLTest details"),
+                "aria-label": _("URLTest details"),
+                click: (event) => {
+                  event.stopPropagation();
+                  onShowUrlTestInfo(section, outbound);
+                }
+              },
+              renderInfoIcon24()
             )
           ] : []
         ]),
@@ -2288,6 +2337,8 @@ function render() {
           onChooseOutbound: () => {
           },
           onCopyOutbound: () => {
+          },
+          onShowUrlTestInfo: () => {
           },
           onUpdateSubscription: () => {
           },
@@ -3160,8 +3211,8 @@ function getProxyEntryByCode(proxies) {
 function uniqueCodes(codes) {
   return Array.from(new Set(codes.filter(Boolean)));
 }
-function isGroupOutbound(outbound) {
-  return ["selector", "urltest"].includes(outbound.type?.toLowerCase() || "");
+function isSelectorOutbound(outbound) {
+  return outbound.type?.toLowerCase() === "selector";
 }
 function isUrlTestProxyEntry(entry) {
   return entry?.value?.type?.toLowerCase() === "urltest";
@@ -3216,7 +3267,68 @@ async function readDashboardSectionCache(sectionName) {
     return void 0;
   }
 }
-function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscriptionCopyableCodes = /* @__PURE__ */ new Set()) {
+function getUrlTestGroups(dashboardCache) {
+  const groups = dashboardCache?.urltestGroups;
+  if (!groups || typeof groups !== "object" || Array.isArray(groups)) {
+    return {};
+  }
+  return groups;
+}
+function getOutboundDisplayName(code, entry, link, outboundMetadata) {
+  return getProxyUrlName(link) || outboundMetadata?.names?.[code] || entry?.value?.name || code;
+}
+function buildUrlTestInfo({
+  code,
+  displayName,
+  entry,
+  groupCache,
+  proxyByCode,
+  manualLinkByCode,
+  outboundMetadata,
+  subscriptionCopyableCodes,
+  showDetectedCountries
+}) {
+  const childCodes = uniqueCodes(
+    groupCache?.outbounds?.length ? groupCache.outbounds : entry.value.all || []
+  );
+  const selectedCode = entry.value.now || "";
+  const outbounds = childCodes.flatMap((childCode) => {
+    const childEntry = proxyByCode.get(childCode);
+    const link = manualLinkByCode.get(childCode) || "";
+    const canCopyLink = isCopyableProxyLink(link) || subscriptionCopyableCodes.has(childCode);
+    return [
+      {
+        code: childCode,
+        displayName: getOutboundDisplayName(
+          childCode,
+          childEntry,
+          link,
+          outboundMetadata
+        ),
+        latency: childEntry?.value?.history?.[0]?.delay || 0,
+        type: childEntry?.value?.type || "",
+        selected: selectedCode === childCode,
+        link,
+        canCopyLink,
+        country: showDetectedCountries ? outboundMetadata?.countries?.[childCode] : void 0
+      }
+    ];
+  });
+  const selectedName = outbounds.find((outbound) => outbound.code === selectedCode)?.displayName || selectedCode;
+  return {
+    code,
+    displayName: groupCache?.displayName || displayName,
+    selectedCode: selectedCode || void 0,
+    selectedName: selectedName || void 0,
+    url: groupCache?.url,
+    interval: groupCache?.interval,
+    tolerance: groupCache?.tolerance,
+    idleTimeout: groupCache?.idle_timeout,
+    interruptExistConnections: groupCache?.interrupt_exist_connections,
+    outbounds
+  };
+}
+function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGroups = {}, subscriptionCopyableCodes = /* @__PURE__ */ new Set()) {
   const sectionName = section[".name"];
   const proxyByCode = getProxyEntryByCode(proxies);
   const selectorTag = getOutboundTagBySection(sectionName);
@@ -3245,16 +3357,28 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
     const isFastest = item.code === urltestTag;
     const link = manualLinkByCode.get(item.code) || "";
     const canCopyLink = isCopyableProxyLink(link) || subscriptionCopyableCodes.has(item.code);
+    const displayName = isFastest ? _("Fastest") : getOutboundDisplayName(item.code, item, link, outboundMetadata);
     return [
       {
         code: item.code,
-        displayName: isFastest ? _("Fastest") : getProxyUrlName(link) || outboundMetadata?.names?.[item.code] || item.value.name || item.code,
+        displayName,
         latency: item.value.history?.[0]?.delay || 0,
         type: item.value.type || "",
         selected: selector?.value?.now === item.code,
         link,
         canCopyLink,
-        country: showDetectedCountries ? outboundMetadata?.countries?.[item.code] : void 0
+        country: showDetectedCountries ? outboundMetadata?.countries?.[item.code] : void 0,
+        urlTestInfo: isUrlTestProxyEntry(item) ? buildUrlTestInfo({
+          code: item.code,
+          displayName,
+          entry: item,
+          groupCache: urltestGroups[item.code],
+          proxyByCode,
+          manualLinkByCode,
+          outboundMetadata,
+          subscriptionCopyableCodes,
+          showDetectedCountries
+        }) : void 0
       }
     ];
   });
@@ -3262,7 +3386,7 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
     pinnedCode: isUrlTestEnabled(section) ? builtInUrltestCode : "",
     sortByLatency: shouldSortByLatency(section)
   });
-  const latencyTestCodes = sortedOutbounds.filter((outbound) => !isGroupOutbound(outbound)).map((outbound) => outbound.code);
+  const latencyTestCodes = sortedOutbounds.filter((outbound) => !isSelectorOutbound(outbound)).map((outbound) => outbound.code);
   return {
     selector,
     latencyTestCode: hideFilteredUrlTestOutbounds ? fallbackUrltest?.code : selector?.code,
@@ -3415,10 +3539,12 @@ async function getDashboardSections(options = {}) {
           dashboardCache
         ) : void 0;
         const subscriptionCopyableCodes = includeSubscriptionCopyState ? getSubscriptionCopyableCodes(dashboardCache) : /* @__PURE__ */ new Set();
+        const urltestGroups = getUrlTestGroups(dashboardCache);
         const { selector, latencyTestCode, latencyTestCodes, outbounds } = buildProxyGroupOutbounds(
           section,
           proxies,
           outboundMetadata,
+          urltestGroups,
           subscriptionCopyableCodes
         );
         return {
@@ -5227,6 +5353,123 @@ async function handleCopyOutbound(section, outbound) {
   }
   showToast(_("Proxy link is unavailable"), "error");
 }
+function formatUrlTestModalValue(value) {
+  if (typeof value === "boolean") {
+    return value ? _("Yes") : _("No");
+  }
+  const text = `${value ?? ""}`.trim();
+  return text || _("N/A");
+}
+function renderUrlTestCopyButton(title, onClick) {
+  return E(
+    "button",
+    {
+      type: "button",
+      class: "btn pdk_dashboard-page__outbound-grid__item__copy-button",
+      title,
+      "aria-label": title,
+      click: onClick
+    },
+    renderCopyIcon24()
+  );
+}
+function renderUrlTestInfoModal(section, outbound) {
+  const info = outbound.urlTestInfo;
+  if (!info) {
+    return E("div", {}, _("URLTest details are unavailable"));
+  }
+  const fields = [
+    [_("Selected"), info.selectedName || info.selectedCode],
+    [_("Testing URL"), info.url, info.url],
+    [_("Interval"), info.interval],
+    [_("Tolerance"), info.tolerance],
+    [_("Idle timeout"), info.idleTimeout],
+    [_("Interrupt existing connections"), info.interruptExistConnections]
+  ];
+  return E("div", { class: "pdk_dashboard-page__urltest-details" }, [
+    E(
+      "dl",
+      { class: "pdk_dashboard-page__urltest-details__params" },
+      fields.map(
+        ([label, value, copyValue]) => E("div", { class: "pdk_dashboard-page__urltest-details__param" }, [
+          E("dt", {}, label),
+          E("dd", {}, [
+            E("span", {}, formatUrlTestModalValue(value)),
+            ...copyValue ? [
+              renderUrlTestCopyButton(_("Copy URL"), (event) => {
+                event.preventDefault();
+                copyToClipboard(copyValue);
+              })
+            ] : []
+          ])
+        ])
+      )
+    ),
+    E("div", { class: "pdk_dashboard-page__urltest-details__outbounds" }, [
+      E(
+        "div",
+        { class: "pdk_dashboard-page__urltest-details__outbounds-title" },
+        _("Outbounds")
+      ),
+      E(
+        "div",
+        { class: "pdk_dashboard-page__urltest-details__table" },
+        info.outbounds.length ? info.outbounds.map(
+          (member) => E(
+            "div",
+            {
+              class: [
+                "pdk_dashboard-page__urltest-details__row",
+                member.selected ? "pdk_dashboard-page__urltest-details__row--active" : ""
+              ].filter(Boolean).join(" ")
+            },
+            [
+              E(
+                "div",
+                {
+                  class: "pdk_dashboard-page__urltest-details__row-name"
+                },
+                [
+                  E("b", {}, member.displayName),
+                  member.selected ? E("span", {}, _("Selected")) : ""
+                ]
+              ),
+              E(
+                "div",
+                {
+                  class: "pdk_dashboard-page__urltest-details__row-meta"
+                },
+                [
+                  E("span", {}, member.type || _("N/A")),
+                  E(
+                    "span",
+                    {},
+                    member.latency ? `${member.latency}ms` : "N/A"
+                  )
+                ]
+              ),
+              ...member.canCopyLink ? [
+                renderUrlTestCopyButton(
+                  _("Copy proxy link"),
+                  (event) => {
+                    event.preventDefault();
+                    void handleCopyOutbound(section, member);
+                  }
+                )
+              ] : []
+            ]
+          )
+        ) : [E("div", {}, _("No outbounds"))]
+      )
+    ])
+  ]);
+}
+function handleShowUrlTestInfo(section, outbound) {
+  if (!outbound.urlTestInfo) {
+    return;
+  }
+  ui.showModal(_("URLTest details"), renderUrlTestInfoModal(section, outbound));
+}
 async function handleUpdateSubscription(section) {
   if (store.get().sectionsWidget.subscriptionUpdatingSections[section.sectionName]) {
     return;
@@ -5289,6 +5532,8 @@ async function renderSectionsWidget() {
       },
       onCopyOutbound: () => {
       },
+      onShowUrlTestInfo: () => {
+      },
       onUpdateSubscription: () => {
       },
       latencyFetching: false,
@@ -5334,6 +5579,9 @@ async function renderSectionsWidget() {
       },
       onCopyOutbound: (section2, outbound) => {
         void handleCopyOutbound(section2, outbound);
+      },
+      onShowUrlTestInfo: (section2, outbound) => {
+        handleShowUrlTestInfo(section2, outbound);
       },
       onUpdateSubscription: (section2) => {
         void handleUpdateSubscription(section2);
@@ -5975,6 +6223,95 @@ var styles = `
 
 .pdk_dashboard-page__outbound-grid__item__latency--red {
     color: var(--error-color-medium, red);
+}
+
+.pdk_dashboard-page__urltest-details {
+    min-width: min(720px, 86vw);
+}
+
+.pdk_dashboard-page__urltest-details__params {
+    display: grid;
+    grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+    gap: 8px 16px;
+    margin: 0 0 16px;
+}
+
+.pdk_dashboard-page__urltest-details__param {
+    display: contents;
+}
+
+.pdk_dashboard-page__urltest-details__param dt {
+    color: var(--text-color-medium, #666);
+}
+
+.pdk_dashboard-page__urltest-details__param dd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+}
+
+.pdk_dashboard-page__urltest-details__param dd span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.pdk_dashboard-page__urltest-details__outbounds-title {
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.pdk_dashboard-page__urltest-details__table {
+    display: grid;
+    gap: 6px;
+    max-height: min(46vh, 460px);
+    overflow: auto;
+}
+
+.pdk_dashboard-page__urltest-details__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color-low, #eee);
+}
+
+.pdk_dashboard-page__urltest-details__row--active {
+    font-weight: 600;
+}
+
+.pdk_dashboard-page__urltest-details__row-name,
+.pdk_dashboard-page__urltest-details__row-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.pdk_dashboard-page__urltest-details__row-name b {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.pdk_dashboard-page__urltest-details__row-name span,
+.pdk_dashboard-page__urltest-details__row-meta {
+    color: var(--text-color-medium, #666);
+}
+
+@media (max-width: 480px) {
+    .pdk_dashboard-page__urltest-details__params {
+        grid-template-columns: 1fr;
+    }
+
+    .pdk_dashboard-page__urltest-details__row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .pdk_dashboard-page__urltest-details__row-meta {
+        grid-column: 1 / -1;
+    }
 }
 
 `;

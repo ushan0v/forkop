@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-02 14:31+0300\n"
-"PO-Revision-Date: 2026-07-02 14:31+0300\n"
+"POT-Creation-Date: 2026-07-02 17:43+0300\n"
+"PO-Revision-Date: 2026-07-02 17:43+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -280,6 +280,9 @@ msgstr "Копировать"
 
 msgid "Copy proxy link"
 msgstr "Скопировать ссылку прокси"
+
+msgid "Copy URL"
+msgstr "Скопировать URL"
 
 msgid "Could not compare FakeIP and control public IPs"
 msgstr "Не удалось сравнить публичные IP FakeIP и контрольной проверки"
@@ -620,6 +623,12 @@ msgstr "Задержка при мониторинге интерфейсов"
 msgid "Interface monitoring for Bad WAN"
 msgstr "Мониторинг интерфейса для Bad WAN"
 
+msgid "Interrupt existing connections"
+msgstr "Прерывать существующие соединения"
+
+msgid "Interval"
+msgstr "Интервал"
+
 msgid "Invalid ByeDPI strategy"
 msgstr "Некорректная стратегия ByeDPI"
 
@@ -902,6 +911,9 @@ msgstr "Мониторинг"
 msgid "Must be a number in the range of 50 - 1000"
 msgstr "Должно быть числом от 50 до 1000"
 
+msgid "N/A"
+msgstr "Н/Д"
+
 msgid "Network Interface"
 msgstr "Сетевой интерфейс"
 
@@ -923,6 +935,9 @@ msgstr "Стратегия NFQWS2"
 msgid "NFQWS2 strategy cannot be empty"
 msgstr "Стратегия NFQWS2 не может быть пустой"
 
+msgid "No"
+msgstr "Нет"
+
 msgid "No active connections"
 msgstr "Нет активных подключений"
 
@@ -937,6 +952,9 @@ msgstr "Включённые серверные inbounds не настроены
 
 msgid "No other marking rules found"
 msgstr "Другие правила маркировки не найдены"
+
+msgid "No outbounds"
+msgstr "Нет узлов"
 
 msgid "No public firewall port required"
 msgstr "Публичный порт в firewall не требуется"
@@ -1015,6 +1033,9 @@ msgstr "JSON outbound"
 
 msgid "Outbound JSON cannot be empty"
 msgstr "JSON outbound не может быть пустым"
+
+msgid "Outbounds"
+msgstr "Узлы"
 
 msgid "Outdated"
 msgstr "Устаревшая"
@@ -1313,6 +1334,9 @@ msgstr "Выберите сетевой интерфейс, на который 
 msgid "Select the WAN interfaces to be monitored"
 msgstr "Выберите WAN интерфейсы для мониторинга"
 
+msgid "Selected"
+msgstr "Выбран"
+
 msgid "Selected section"
 msgstr "Выбранная секция"
 
@@ -1493,6 +1517,9 @@ msgstr "Hostname Tailscale"
 msgid "Test latency"
 msgstr "Тестирование задержки"
 
+msgid "Testing URL"
+msgstr "URL проверки"
+
 msgid "The desync fwmark is managed by Podkop Plus for loop prevention and must not be overridden here."
 msgstr "Desync fwmark управляется Podkop Plus для защиты от циклов и не должен переопределяться здесь."
 
@@ -1546,6 +1573,9 @@ msgstr "Допуск расхождения времени"
 
 msgid "tiny"
 msgstr ""
+
+msgid "Tolerance"
+msgstr "Допуск"
 
 msgid "Traffic"
 msgstr "Трафик"
@@ -1657,6 +1687,12 @@ msgstr "URL должен начинаться с vless://, vmess://, ss://, troj
 
 msgid "URL must use one of the following protocols:"
 msgstr "URL должен использовать один из следующих протоколов:"
+
+msgid "URLTest details"
+msgstr "Детали URLTest"
+
+msgid "URLTest details are unavailable"
+msgstr "Детали URLTest недоступны"
 
 msgid "URLTest interval"
 msgstr "Интервал URLTest"
@@ -1771,6 +1807,9 @@ msgstr "Режим XHTTP"
 
 msgid "YACD Secret Key"
 msgstr "Секретный ключ YACD"
+
+msgid "Yes"
+msgstr "Да"
 
 msgid "You can select Output Network Interface, by default autodetect"
 msgstr "Вы можете выбрать выходной сетевой интерфейс, по умолчанию он определяется автоматически."

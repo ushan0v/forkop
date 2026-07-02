@@ -1635,6 +1635,32 @@ function clash_json_error(message) {
     return 1;
 }
 
+function clash_proxy_type_map(base_url, auth) {
+    let args = [ "curl", "-s" ];
+    for (let item in auth) push(args, item);
+    push(args, base_url + "/proxies");
+
+    let value = {};
+    try {
+        value = json(command_output(command_from_args(args)));
+    }
+    catch (e) {
+        return {};
+    }
+
+    let result = {};
+    for (let tag, proxy in object_or_empty(value.proxies))
+        result[tag] = as_string(object_or_empty(proxy).type || "");
+    return result;
+}
+
+function clash_latency_endpoint(base_url, proxy_tag, proxy_type) {
+    proxy_type = as_string(proxy_type);
+    if (proxy_type == "URLTest" || proxy_type == "urltest")
+        return base_url + "/group/" + clash_urlencode(proxy_tag) + "/delay";
+    return base_url + "/proxies/" + clash_urlencode(proxy_tag) + "/delay";
+}
+
 function clash_api(action, arg1, arg2) {
     let base_url = clash_api_url();
     let test_url = "https://www.gstatic.com/generate_204";
@@ -1674,11 +1700,12 @@ function clash_api(action, arg1, arg2) {
             return clash_json_error("proxy_tags_json must be a JSON array of non-empty strings");
         let count = 0;
         let failed = 0;
+        let proxy_types = clash_proxy_type_map(base_url, auth);
         for (let proxy_tag in split(tags.output, "\n")) {
             proxy_tag = as_string(proxy_tag);
             if (proxy_tag == "")
                 continue;
-            let args = [ "curl", "-G", "-s", base_url + "/proxies/" + clash_urlencode(proxy_tag) + "/delay" ];
+            let args = [ "curl", "-G", "-s", clash_latency_endpoint(base_url, proxy_tag, proxy_types[proxy_tag]) ];
             for (let item in auth) push(args, item);
             push(args, "--data-urlencode");
             push(args, "url=" + test_url);

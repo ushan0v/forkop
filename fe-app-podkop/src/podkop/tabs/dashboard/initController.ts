@@ -7,6 +7,7 @@ import {
 import { copyToClipboard } from '../../../helpers/copyToClipboard';
 import { showToast } from '../../../helpers/showToast';
 import { prettyBytes } from '../../../helpers/prettyBytes';
+import { renderCopyIcon24 } from '../../../icons';
 import { CustomPodkopMethods, PodkopShellMethods } from '../../methods';
 import {
   logger,
@@ -606,6 +607,151 @@ async function handleCopyOutbound(
   showToast(_('Proxy link is unavailable'), 'error');
 }
 
+function formatUrlTestModalValue(value: unknown) {
+  if (typeof value === 'boolean') {
+    return value ? _('Yes') : _('No');
+  }
+
+  const text = `${value ?? ''}`.trim();
+  return text || _('N/A');
+}
+
+function renderUrlTestCopyButton(
+  title: string,
+  onClick: (event: MouseEvent) => void,
+) {
+  return E(
+    'button',
+    {
+      type: 'button',
+      class: 'btn pdk_dashboard-page__outbound-grid__item__copy-button',
+      title,
+      'aria-label': title,
+      click: onClick,
+    },
+    renderCopyIcon24(),
+  );
+}
+
+function renderUrlTestInfoModal(
+  section: Podkop.OutboundGroup,
+  outbound: Podkop.Outbound,
+) {
+  const info = outbound.urlTestInfo;
+
+  if (!info) {
+    return E('div', {}, _('URLTest details are unavailable'));
+  }
+
+  const fields: Array<[string, unknown, string?]> = [
+    [_('Selected'), info.selectedName || info.selectedCode],
+    [_('Testing URL'), info.url, info.url],
+    [_('Interval'), info.interval],
+    [_('Tolerance'), info.tolerance],
+    [_('Idle timeout'), info.idleTimeout],
+    [_('Interrupt existing connections'), info.interruptExistConnections],
+  ];
+
+  return E('div', { class: 'pdk_dashboard-page__urltest-details' }, [
+    E(
+      'dl',
+      { class: 'pdk_dashboard-page__urltest-details__params' },
+      fields.map(([label, value, copyValue]) =>
+        E('div', { class: 'pdk_dashboard-page__urltest-details__param' }, [
+          E('dt', {}, label),
+          E('dd', {}, [
+            E('span', {}, formatUrlTestModalValue(value)),
+            ...(copyValue
+              ? [
+                  renderUrlTestCopyButton(_('Copy URL'), (event) => {
+                    event.preventDefault();
+                    copyToClipboard(copyValue);
+                  }),
+                ]
+              : []),
+          ]),
+        ]),
+      ),
+    ),
+    E('div', { class: 'pdk_dashboard-page__urltest-details__outbounds' }, [
+      E(
+        'div',
+        { class: 'pdk_dashboard-page__urltest-details__outbounds-title' },
+        _('Outbounds'),
+      ),
+      E(
+        'div',
+        { class: 'pdk_dashboard-page__urltest-details__table' },
+        info.outbounds.length
+          ? info.outbounds.map((member) =>
+              E(
+                'div',
+                {
+                  class: [
+                    'pdk_dashboard-page__urltest-details__row',
+                    member.selected
+                      ? 'pdk_dashboard-page__urltest-details__row--active'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' '),
+                },
+                [
+                  E(
+                    'div',
+                    {
+                      class: 'pdk_dashboard-page__urltest-details__row-name',
+                    },
+                    [
+                      E('b', {}, member.displayName),
+                      member.selected ? E('span', {}, _('Selected')) : '',
+                    ],
+                  ),
+                  E(
+                    'div',
+                    {
+                      class: 'pdk_dashboard-page__urltest-details__row-meta',
+                    },
+                    [
+                      E('span', {}, member.type || _('N/A')),
+                      E(
+                        'span',
+                        {},
+                        member.latency ? `${member.latency}ms` : 'N/A',
+                      ),
+                    ],
+                  ),
+                  ...(member.canCopyLink
+                    ? [
+                        renderUrlTestCopyButton(
+                          _('Copy proxy link'),
+                          (event) => {
+                            event.preventDefault();
+                            void handleCopyOutbound(section, member);
+                          },
+                        ),
+                      ]
+                    : []),
+                ],
+              ),
+            )
+          : [E('div', {}, _('No outbounds'))],
+      ),
+    ]),
+  ]);
+}
+
+function handleShowUrlTestInfo(
+  section: Podkop.OutboundGroup,
+  outbound: Podkop.Outbound,
+) {
+  if (!outbound.urlTestInfo) {
+    return;
+  }
+
+  ui.showModal(_('URLTest details'), renderUrlTestInfoModal(section, outbound));
+}
+
 async function handleUpdateSubscription(section: Podkop.OutboundGroup) {
   if (
     store.get().sectionsWidget.subscriptionUpdatingSections[section.sectionName]
@@ -681,6 +827,7 @@ async function renderSectionsWidget() {
       onTestLatency: () => {},
       onChooseOutbound: () => {},
       onCopyOutbound: () => {},
+      onShowUrlTestInfo: () => {},
       onUpdateSubscription: () => {},
       latencyFetching: false,
       subscriptionUpdating: false,
@@ -730,6 +877,9 @@ async function renderSectionsWidget() {
       },
       onCopyOutbound: (section, outbound) => {
         void handleCopyOutbound(section, outbound);
+      },
+      onShowUrlTestInfo: (section, outbound) => {
+        handleShowUrlTestInfo(section, outbound);
       },
       onUpdateSubscription: (section) => {
         void handleUpdateSubscription(section);

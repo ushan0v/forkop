@@ -1047,6 +1047,7 @@ function normalize_cache(cache, section, format_version) {
     cache.outboundMetadata.names = object_or_empty(cache.outboundMetadata.names);
     cache.outboundMetadata.countries = object_or_empty(cache.outboundMetadata.countries);
     cache.servers = object_or_empty(cache.servers);
+    cache.urltestGroups = object_or_empty(cache.urltestGroups);
     cache.subscriptionMetadata = array_or_empty(cache.subscriptionMetadata);
     return cache;
 }

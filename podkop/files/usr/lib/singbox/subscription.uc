@@ -195,19 +195,47 @@ function merge_source_metadata(state, section_name, source_section, source_index
         push(state.subscriptionMetadata, item);
 }
 
-function remember_visible_outbound(state, tag_name, source_section, source_index, source_outbound_index, display_name, outbound) {
+function remember_outbound_metadata(state, tag_name, display_name, outbound) {
     if (type(state) != "object")
         return;
+    state.outboundMetadata.names[tag_name] = display_name;
+    let server = as_string(outbound.server || "");
+    if (server != "")
+        state.servers[tag_name] = server;
+}
+
+function remember_source_outbound(state, tag_name, source_section, source_index, source_outbound_index, display_name, outbound) {
+    if (type(state) != "object")
+        return;
+    remember_outbound_metadata(state, tag_name, display_name, outbound);
     let outbound_type = as_string(outbound.type || "");
     if (outbound_type != "selector" && outbound_type != "urltest")
         state.linkRefs[tag_name] = {
             sourceSection: source_section,
             sourceIndex: source_outbound_index
         };
-    state.outboundMetadata.names[tag_name] = display_name;
-    let server = as_string(outbound.server || "");
-    if (server != "")
-        state.servers[tag_name] = server;
+}
+
+function remember_urltest_group(state, tag_name, display_name, outbound) {
+    if (type(state) != "object" || as_string(outbound.type || "") != "urltest")
+        return;
+
+    let group = {
+        displayName: as_string(display_name) != "" ? as_string(display_name) : tag_name,
+        outbounds: array_or_empty(outbound.outbounds)
+    };
+
+    for (let key in [ "url", "interval", "tolerance", "idle_timeout", "interrupt_exist_connections" ]) {
+        if (outbound[key] != null)
+            group[key] = outbound[key];
+    }
+
+    state.urltestGroups[tag_name] = group;
+}
+
+function remember_visible_outbound(state, tag_name, source_section, source_index, source_outbound_index, display_name, outbound) {
+    remember_source_outbound(state, tag_name, source_section, source_index, source_outbound_index, display_name, outbound);
+    remember_urltest_group(state, tag_name, display_name, outbound);
 }
 
 function source_cache_is_current(source_section, source_entry) {
@@ -244,6 +272,7 @@ function new_section_state(section_name) {
             countries: {}
         },
         servers: {},
+        urltestGroups: {},
         subscriptionMetadata: []
     };
 }
@@ -253,6 +282,9 @@ return {
     source_id,
     section_cache_path,
     merge_source_metadata,
+    remember_outbound_metadata,
+    remember_source_outbound,
+    remember_urltest_group,
     remember_visible_outbound,
     source_cache_is_current,
     read_source_outbounds,

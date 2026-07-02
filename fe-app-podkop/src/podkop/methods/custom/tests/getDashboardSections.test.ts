@@ -110,6 +110,7 @@ describe('getDashboardSections', () => {
     expect(result.success).toBe(true);
     expect(section.latencyTestCode).toBe('main-out');
     expect(section.latencyTestCodes).toEqual([
+      'main-urltest-out',
       'main-1-out',
       'main-2-out',
       'main-3-out',
@@ -122,6 +123,56 @@ describe('getDashboardSections', () => {
     ]);
   });
 
+  it('hydrates URLTest details from the section cache and Clash API', async () => {
+    mocks.getConfigSections.mockResolvedValue([proxySection()]);
+    mocks.fsRead.mockResolvedValue(
+      JSON.stringify({
+        outboundMetadata: {
+          names: {
+            'main-1-out': 'First cached',
+            'main-3-out': 'Third cached',
+          },
+          countries: {},
+        },
+        urltestGroups: {
+          'main-urltest-out': {
+            displayName: 'Fastest',
+            outbounds: ['main-1-out', 'main-3-out'],
+            url: 'https://probe.example/204',
+            interval: '3m',
+            tolerance: 50,
+            interrupt_exist_connections: true,
+          },
+        },
+      }),
+    );
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+    const urltest = section.outbounds.find(
+      (item) => item.code === 'main-urltest-out',
+    );
+
+    expect(result.success).toBe(true);
+    expect(urltest?.urlTestInfo).toMatchObject({
+      code: 'main-urltest-out',
+      displayName: 'Fastest',
+      url: 'https://probe.example/204',
+      interval: '3m',
+      tolerance: 50,
+      interruptExistConnections: true,
+    });
+    expect(urltest?.urlTestInfo?.outbounds.map((item) => item.code)).toEqual([
+      'main-1-out',
+      'main-3-out',
+    ]);
+    expect(urltest?.urlTestInfo?.outbounds[0]).toMatchObject({
+      displayName: 'one',
+      latency: 100,
+      type: 'VLESS',
+    });
+  });
+
   it('shows only the URLTest group and tests the URLTest group when filtered servers are hidden', async () => {
     mocks.getConfigSections.mockResolvedValue([
       proxySection({ urltest_hide_filtered_outbounds: '1' }),
@@ -132,7 +183,11 @@ describe('getDashboardSections', () => {
 
     expect(result.success).toBe(true);
     expect(section.latencyTestCode).toBe('main-urltest-out');
-    expect(section.latencyTestCodes).toEqual(['main-1-out', 'main-3-out']);
+    expect(section.latencyTestCodes).toEqual([
+      'main-urltest-out',
+      'main-1-out',
+      'main-3-out',
+    ]);
     expect(section.outbounds.map((item) => item.code)).toEqual([
       'main-urltest-out',
       'main-1-out',
@@ -155,7 +210,11 @@ describe('getDashboardSections', () => {
 
       expect(result.success).toBe(true);
       expect(section.latencyTestCode).toBe('main-urltest-out');
-      expect(section.latencyTestCodes).toEqual(['main-1-out', 'main-3-out']);
+      expect(section.latencyTestCodes).toEqual([
+        'main-urltest-out',
+        'main-1-out',
+        'main-3-out',
+      ]);
     },
   );
 
@@ -201,7 +260,12 @@ describe('getDashboardSections', () => {
     const [section] = result.data;
 
     expect(result.success).toBe(true);
-    expect(section.latencyTestCodes).toEqual(['main-2-out', 'main-1-out']);
+    expect(section.latencyTestCodes).toEqual([
+      'main-urltest-out',
+      'main-2-out',
+      'main-provider-urltest-out',
+      'main-1-out',
+    ]);
     expect(section.outbounds.map((item) => item.code)).toEqual([
       'main-urltest-out',
       'main-2-out',
@@ -254,7 +318,12 @@ describe('getDashboardSections', () => {
     const [section] = result.data;
 
     expect(result.success).toBe(true);
-    expect(section.latencyTestCodes).toEqual(['main-1-out', 'main-2-out']);
+    expect(section.latencyTestCodes).toEqual([
+      'main-urltest-out',
+      'main-1-out',
+      'main-provider-urltest-out',
+      'main-2-out',
+    ]);
     expect(section.outbounds.map((item) => item.code)).toEqual([
       'main-urltest-out',
       'main-1-out',
@@ -312,7 +381,12 @@ describe('getDashboardSections', () => {
     const [section] = result.data;
 
     expect(result.success).toBe(true);
-    expect(section.latencyTestCodes).toEqual(['main-1-out', 'main-3-out']);
+    expect(section.latencyTestCodes).toEqual([
+      'main-urltest-out',
+      'main-1-out',
+      'main-provider-urltest-out',
+      'main-3-out',
+    ]);
     expect(section.outbounds.map((item) => item.code)).toEqual([
       'main-urltest-out',
       'main-1-out',
@@ -417,6 +491,7 @@ describe('getDashboardSections', () => {
     expect(result.success).toBe(true);
     expect(section.latencyTestCode).toBe('main-out');
     expect(section.latencyTestCodes).toEqual([
+      'main-urltest-out',
       'main-1-out',
       'main-2-out',
       'main-3-out',
