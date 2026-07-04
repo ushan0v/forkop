@@ -153,6 +153,14 @@ function subscription_dashboard_metadata_enabled(section, value) {
     return item_bool(section, "subscription_url_settings", value, "show_dashboard_metadata", true);
 }
 
+function subscription_hide_urltest_group_outbounds(section, value) {
+    return item_bool(section, "subscription_url_settings", value, "hide_urltest_group_outbounds", true);
+}
+
+function subscription_hide_detour_outbounds(section, value) {
+    return item_bool(section, "subscription_url_settings", value, "hide_detour_outbounds", true);
+}
+
 function subscription_user_agent(section, value) {
     return item_option(section, "subscription_url_settings", value, "user_agent", "");
 }
@@ -259,6 +267,8 @@ return {
     subscription_update_enabled,
     subscription_update_interval,
     subscription_dashboard_metadata_enabled,
+    subscription_hide_urltest_group_outbounds,
+    subscription_hide_detour_outbounds,
     subscription_user_agent,
     subscription_hwid,
     subscription_download_section,

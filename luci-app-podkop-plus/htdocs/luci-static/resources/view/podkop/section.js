@@ -1495,6 +1495,8 @@ function showSubscriptionUrlSettingsModal(
       user_agent: "",
       hwid: "",
       show_dashboard_metadata: "1",
+      hide_urltest_group_outbounds: "1",
+      hide_detour_outbounds: "1",
     },
   );
   const autoUpdate = createFlagInput(
@@ -1518,6 +1520,12 @@ function showSubscriptionUrlSettingsModal(
   const hwid = createTextInput(itemSettingsValue(settings, "hwid", ""), "");
   const showDashboardMetadata = createFlagInput(
     itemSettingsFlag(settings, "show_dashboard_metadata", true),
+  );
+  const hideUrltestGroupOutbounds = createFlagInput(
+    itemSettingsFlag(settings, "hide_urltest_group_outbounds", true),
+  );
+  const hideDetourOutbounds = createFlagInput(
+    itemSettingsFlag(settings, "hide_detour_outbounds", true),
   );
   const updateIntervalRow = createModalFieldRow(
     _("Subscription update interval"),
@@ -1567,6 +1575,16 @@ function showSubscriptionUrlSettingsModal(
         showDashboardMetadata,
         _("Show subscription metadata for this source on the dashboard"),
       ),
+      createModalFieldRow(
+        _("Hide URLTest group nodes"),
+        hideUrltestGroupOutbounds,
+        _("Hide individual nodes that are already included in subscription URLTest groups"),
+      ),
+      createModalFieldRow(
+        _("Hide cascade connection nodes"),
+        hideDetourOutbounds,
+        _("Hide intermediate nodes used as detours by other subscription nodes"),
+      ),
     ],
     () => {
       const listValidation = validateDynamicListWidgetValues(
@@ -1607,6 +1625,10 @@ function showSubscriptionUrlSettingsModal(
         user_agent: `${userAgent.value || ""}`.trim(),
         hwid: `${hwid.value || ""}`.trim(),
         show_dashboard_metadata: showDashboardMetadata.checked ? "1" : "0",
+        hide_urltest_group_outbounds: hideUrltestGroupOutbounds.checked
+          ? "1"
+          : "0",
+        hide_detour_outbounds: hideDetourOutbounds.checked ? "1" : "0",
       });
 
       return saveItemSettingsChanges(option, section_id, widget);

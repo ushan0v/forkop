@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-04 19:29+0300\n"
-"PO-Revision-Date: 2026-07-04 19:29+0300\n"
+"POT-Creation-Date: 2026-07-04 22:42+0300\n"
+"PO-Revision-Date: 2026-07-04 22:42+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -575,8 +575,20 @@ msgstr "gRPC-сервис"
 msgid "Handshake timeout"
 msgstr "Таймаут рукопожатия"
 
+msgid "Hide cascade connection nodes"
+msgstr "Скрывать узлы каскадных подключений"
+
 msgid "Hide filtered servers"
 msgstr "Скрывать отфильтрованные серверы"
+
+msgid "Hide individual nodes that are already included in subscription URLTest groups"
+msgstr "Скрывать отдельные узлы, которые уже входят в URLTest-группы подписки"
+
+msgid "Hide intermediate nodes used as detours by other subscription nodes"
+msgstr "Скрывать промежуточные узлы, которые используются как detour для других узлов подписки"
+
+msgid "Hide URLTest group nodes"
+msgstr "Скрывать узлы URLTest групп"
 
 msgid "Hide values"
 msgstr "Скрывать значения"

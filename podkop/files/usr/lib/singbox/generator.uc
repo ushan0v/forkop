@@ -198,8 +198,57 @@ function subscription_group_outbound(outbound) {
     return (t == "selector" || t == "urltest") && internal_flag(outbound.__podkop_allow_group);
 }
 
-function subscription_hidden_outbound(outbound) {
-    return type(outbound) == "object" && internal_flag(outbound.__podkop_hidden);
+function subscription_urltest_group_outbound(outbound) {
+    if (type(outbound) != "object")
+        return false;
+    return as_string(outbound.type || "") == "urltest" && internal_flag(outbound.__podkop_allow_group);
+}
+
+function subscription_outbound_tag(outbound) {
+    return type(outbound) == "object" ? as_string(outbound.tag || "") : "";
+}
+
+function subscription_visibility_refs(outbounds) {
+    let refs = {
+        urltest: {},
+        detour: {}
+    };
+
+    for (let outbound in array_or_empty(outbounds)) {
+        if (type(outbound) != "object")
+            continue;
+
+        if (subscription_urltest_group_outbound(outbound)) {
+            for (let tag_name in array_or_empty(outbound.outbounds)) {
+                tag_name = as_string(tag_name);
+                if (tag_name != "")
+                    refs.urltest[tag_name] = true;
+            }
+        }
+
+        let detour = as_string(outbound.detour || "");
+        if (detour != "")
+            refs.detour[detour] = true;
+    }
+
+    return refs;
+}
+
+function subscription_hidden_outbound(outbound, refs, hide_urltest_group_outbounds, hide_detour_outbounds) {
+    if (type(outbound) != "object")
+        return false;
+
+    let tag_name = subscription_outbound_tag(outbound);
+    let urltest_refs = object_or_empty(object_or_empty(refs).urltest);
+    let detour_refs = object_or_empty(object_or_empty(refs).detour);
+    let hidden_by_urltest = tag_name != "" && urltest_refs[tag_name];
+    let hidden_by_detour = tag_name != "" && detour_refs[tag_name];
+
+    if (hidden_by_urltest && hide_urltest_group_outbounds !== false)
+        return true;
+    if (hidden_by_detour && hide_detour_outbounds !== false)
+        return true;
+    return internal_flag(outbound.__podkop_hidden) && !hidden_by_urltest && !hidden_by_detour;
 }
 
 function tag(base, postfix) {
@@ -511,7 +560,7 @@ function unique_tag(base, taken) {
     return base + "-overflow";
 }
 
-function add_subscription_source_with_state(config, section, source_index, source_entry, taken, selector_tags, detour_tags, state, show_metadata) {
+function add_subscription_source_with_state(config, section, source_index, source_entry, taken, selector_tags, detour_tags, state, show_metadata, hide_urltest_group_outbounds, hide_detour_outbounds) {
     let section_name = section[".name"];
     let source_section = runtime_subscription.source_id(section_name, source_index);
     if (!runtime_subscription.source_cache_is_current(
@@ -528,6 +577,7 @@ function add_subscription_source_with_state(config, section, source_index, sourc
 
     if (show_metadata !== false)
         runtime_subscription.merge_source_metadata(state, section_name, source_section, source_index, source_entry);
+    let visibility_refs = subscription_visibility_refs(outbounds);
     let prepared = [];
     let source_indices = [];
     let display_names = [];
@@ -556,7 +606,7 @@ function add_subscription_source_with_state(config, section, source_index, sourc
         push(source_indices, i + 1);
         push(display_names, display_name);
         push(group_flags, subscription_group_outbound(outbound));
-        push(hidden_flags, subscription_hidden_outbound(outbound));
+        push(hidden_flags, subscription_hidden_outbound(outbound, visibility_refs, hide_urltest_group_outbounds, hide_detour_outbounds));
     }
 
     if (length(keys(skipped)) > 0)
@@ -1482,7 +1532,9 @@ function add_connection_subscriptions(config, state, section, taken, selector_ta
             selector_tags,
             detour_tags,
             state,
-            connections.subscription_dashboard_metadata_enabled(section, subscription_urls[i])
+            connections.subscription_dashboard_metadata_enabled(section, subscription_urls[i]),
+            connections.subscription_hide_urltest_group_outbounds(section, subscription_urls[i]),
+            connections.subscription_hide_detour_outbounds(section, subscription_urls[i])
         );
 }
 

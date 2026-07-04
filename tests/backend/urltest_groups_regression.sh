@@ -169,19 +169,53 @@ JSON
 xray_config="$WORK_DIR/xray-config.json"
 generate_config "$WORK_DIR/xray-fixture.json" "$xray_config"
 
+cat >"$WORK_DIR/xray-reveal-urltest-fixture.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "log_level": "warn"
+  },
+  "section": [
+    {
+      ".name": "proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "urltest_enabled": "1",
+      "urltest_check_interval": "3m",
+      "urltest_tolerance": "50",
+      "urltest_filter_mode": "include",
+      "urltest_include_outbounds": [ "Latvia group" ],
+      "detect_server_country": "flag_emoji",
+      "subscription_urls": [ "https://xray.example/sub" ],
+      "subscription_url_settings": "{\"https://xray.example/sub\":{\"hide_urltest_group_outbounds\":\"0\"}}"
+    }
+  ]
+}
+JSON
+
+xray_reveal_urltest_config="$WORK_DIR/xray-reveal-urltest-config.json"
+generate_config "$WORK_DIR/xray-reveal-urltest-fixture.json" "$xray_reveal_urltest_config"
+
 ucode -e '
 let fs = require("fs");
 function object_or_empty(value) { return type(value) == "object" ? value : {}; }
 let config = json(fs.readfile(ARGV[0]));
 let cache = json(fs.readfile(ARGV[1]));
+let reveal_config = json(fs.readfile(ARGV[2]));
 let imported = null;
 let builtin = null;
+let reveal_selector = null;
 for (let outbound in config.outbounds || []) {
     if (outbound.type == "urltest" && outbound.tag == "Latvia group")
         imported = outbound;
     if (outbound.type == "urltest" && outbound.tag == "proxy-urltest-out")
         builtin = outbound;
 }
+for (let outbound in reveal_config.outbounds || [])
+    if (outbound.type == "selector" && outbound.tag == "proxy-out")
+        reveal_selector = outbound;
 if (!imported || imported.url != "https://probe.example/204" || imported.interval != "45s")
     die("generated xray imported URLTest did not preserve subscription params\n");
 if (!builtin || length(builtin.outbounds || []) != 2)
@@ -196,7 +230,9 @@ if (object_or_empty(cache.urltestGroups)["Latvia group"].url != "https://probe.e
     die("section cache is missing imported xray URLTest params\n");
 if (length(object_or_empty(cache.urltestGroups)["proxy-urltest-out"].outbounds || []) != 2)
     die("section cache is missing built-in URLTest membership\n");
-' "$xray_config" "$xray_config.section-cache/proxy.json" || fail "xray generated URLTest behavior"
+if (!reveal_selector || length(reveal_selector.outbounds || []) != 4)
+    die("xray URLTest children should become visible when subscription hiding is disabled\n");
+' "$xray_config" "$xray_config.section-cache/proxy.json" "$xray_reveal_urltest_config" || fail "xray generated URLTest behavior"
 
 cat >"$WORK_DIR/singbox.json" <<'JSON'
 {
@@ -299,14 +335,75 @@ JSON
 singbox_config="$WORK_DIR/singbox-config.json"
 generate_config "$WORK_DIR/singbox-fixture.json" "$singbox_config"
 
+cat >"$WORK_DIR/singbox-reveal-urltest-fixture.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "log_level": "warn"
+  },
+  "section": [
+    {
+      ".name": "proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "urltest_enabled": "1",
+      "urltest_check_interval": "3m",
+      "urltest_tolerance": "50",
+      "urltest_filter_mode": "include",
+      "urltest_include_regex": [ "^Native" ],
+      "detect_server_country": "country_is",
+      "subscription_urls": [ "https://singbox.example/sub" ],
+      "subscription_url_settings": "{\"https://singbox.example/sub\":{\"hide_urltest_group_outbounds\":\"0\"}}"
+    }
+  ]
+}
+JSON
+
+cat >"$WORK_DIR/singbox-reveal-detour-fixture.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "log_level": "warn"
+  },
+  "section": [
+    {
+      ".name": "proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "urltest_enabled": "1",
+      "urltest_check_interval": "3m",
+      "urltest_tolerance": "50",
+      "urltest_filter_mode": "include",
+      "urltest_include_regex": [ "^Native" ],
+      "detect_server_country": "country_is",
+      "subscription_urls": [ "https://singbox.example/sub" ],
+      "subscription_url_settings": "{\"https://singbox.example/sub\":{\"hide_detour_outbounds\":\"0\"}}"
+    }
+  ]
+}
+JSON
+
+singbox_reveal_urltest_config="$WORK_DIR/singbox-reveal-urltest-config.json"
+singbox_reveal_detour_config="$WORK_DIR/singbox-reveal-detour-config.json"
+generate_config "$WORK_DIR/singbox-reveal-urltest-fixture.json" "$singbox_reveal_urltest_config"
+generate_config "$WORK_DIR/singbox-reveal-detour-fixture.json" "$singbox_reveal_detour_config"
+
 ucode -e '
 let fs = require("fs");
 function object_or_empty(value) { return type(value) == "object" ? value : {}; }
 let config = json(fs.readfile(ARGV[0]));
 let cache = json(fs.readfile(ARGV[1]));
+let reveal_urltest_config = json(fs.readfile(ARGV[2]));
+let reveal_detour_config = json(fs.readfile(ARGV[3]));
 let imported = null;
 let builtin = null;
 let selector = null;
+let reveal_urltest_selector = null;
+let reveal_detour_selector = null;
 for (let outbound in config.outbounds || []) {
     if (outbound.type == "urltest" && outbound.tag == "Native Group")
         imported = outbound;
@@ -315,15 +412,38 @@ for (let outbound in config.outbounds || []) {
     if (outbound.type == "selector" && outbound.tag == "proxy-out")
         selector = outbound;
 }
+for (let outbound in reveal_urltest_config.outbounds || [])
+    if (outbound.type == "selector" && outbound.tag == "proxy-out")
+        reveal_urltest_selector = outbound;
+for (let outbound in reveal_detour_config.outbounds || [])
+    if (outbound.type == "selector" && outbound.tag == "proxy-out")
+        reveal_detour_selector = outbound;
+function contains(values, needle) {
+    for (let value in values || [])
+        if (value == needle)
+            return true;
+    return false;
+}
 if (!imported || imported.url != "https://native.example/ping" || imported.interval != "1m" || imported.tolerance != 80)
     die("generated native URLTest did not preserve subscription params\n");
 if (!builtin || length(builtin.outbounds || []) != 1 || builtin.outbounds[0] != "Native A")
     die("built-in URLTest regex filter should expand Native Group to Native A only\n");
 for (let tag in selector.outbounds || [])
+    if (tag == "Native A")
+        die("native URLTest child must not be visible in selector by default\n");
+for (let tag in selector.outbounds || [])
     if (tag == "Detour Only")
         die("detour-only outbound must not be visible in selector\n");
+if (!reveal_urltest_selector || !contains(reveal_urltest_selector.outbounds, "Native A"))
+    die("native URLTest child should be visible when URLTest hiding is disabled\n");
+if (contains(reveal_urltest_selector ? reveal_urltest_selector.outbounds : [], "Detour Only"))
+    die("detour outbound should stay hidden when only URLTest hiding is disabled\n");
+if (contains(reveal_detour_selector ? reveal_detour_selector.outbounds : [], "Native A"))
+    die("native URLTest child should stay hidden when only detour hiding is disabled\n");
+if (!reveal_detour_selector || !contains(reveal_detour_selector.outbounds, "Detour Only"))
+    die("detour outbound should be visible when detour hiding is disabled\n");
 if (length(object_or_empty(cache.urltestGroups)["Native Group"].outbounds || []) != 1)
     die("section cache is missing native URLTest membership\n");
-' "$singbox_config" "$singbox_config.section-cache/proxy.json" || fail "native sing-box generated URLTest behavior"
+' "$singbox_config" "$singbox_config.section-cache/proxy.json" "$singbox_reveal_urltest_config" "$singbox_reveal_detour_config" || fail "native sing-box generated URLTest behavior"
 
 printf 'URLTest group regression checks passed\n'
