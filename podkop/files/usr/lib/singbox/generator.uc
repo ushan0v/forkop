@@ -451,6 +451,16 @@ function copy_subscription_outbound(outbound, new_tag) {
             key != "__podkop_hidden" && key != "__podkop_allow_group")
             copy[key] = value;
     }
+    if (as_string(copy.type || "") == "hysteria2" &&
+        type(copy.tls) == "object" &&
+        copy.tls.utls != null) {
+        let tls = {};
+        for (let key, value in copy.tls) {
+            if (key != "utls")
+                tls[key] = value;
+        }
+        copy.tls = tls;
+    }
     copy.tag = new_tag;
     return copy;
 }

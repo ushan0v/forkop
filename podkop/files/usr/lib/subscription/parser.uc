@@ -935,7 +935,7 @@ function process_hysteria2(raw, url) {
     let tls = { enabled: true };
     if ((url.query.sni || "") != "")
         tls.server_name = url.query.sni;
-    if (is_true(url.query.insecure))
+    if (is_true(url.query.allowInsecure || url.query.insecure))
         tls.insecure = true;
     if ((url.query.alpn || "") != "")
         tls.alpn = split_csv(url.query.alpn);
@@ -2318,7 +2318,6 @@ function convert_xray_hysteria2(outbound, tag) {
     let alpn = xray_alpn(tls_settings.alpn);
     if (length(alpn) > 0)
         result.tls.alpn = alpn;
-    xray_add_utls(result.tls, tls_settings.fingerprint || tls_settings.fp || "");
 
     return result;
 }
@@ -2672,6 +2671,16 @@ function normalize_sing_box_xhttp_transport(outbound) {
     return outbound;
 }
 
+function normalize_sing_box_hysteria2_outbound(outbound) {
+    if (type(outbound) == "object" &&
+        lc(as_string(outbound.type || "")) == "hysteria2" &&
+        type(outbound.tls) == "object" &&
+        outbound.tls.utls != null) {
+        delete outbound.tls.utls;
+    }
+    return outbound;
+}
+
 function sing_box_urltest_group(outbound) {
     return type(outbound) == "object" && lc(as_string(outbound.type || "")) == "urltest";
 }
@@ -2688,6 +2697,7 @@ function normalize_sing_box_json_outbounds(candidates) {
     for (let outbound in candidates) {
         if (type(outbound) != "object")
             continue;
+        outbound = normalize_sing_box_hysteria2_outbound(outbound);
         push(outbounds, normalize_sing_box_xhttp_transport(outbound));
     }
 
