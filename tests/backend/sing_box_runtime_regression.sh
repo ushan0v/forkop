@@ -386,7 +386,8 @@ cat >"$WORK_DIR/download-via-proxy-fixture.json" <<'JSON'
     "download_lists_via_proxy": "1",
     "download_subscriptions_via_proxy": "1",
     "download_components_via_proxy": "1",
-    "download_lists_via_proxy_section": "proxy"
+    "download_lists_via_proxy_section": "proxy",
+    "download_components_via_proxy_section": "components_proxy"
   },
   "section": [
     {
@@ -397,6 +398,14 @@ cat >"$WORK_DIR/download-via-proxy-fixture.json" <<'JSON'
       "outbound_json": "{\"type\":\"socks\",\"server\":\"127.0.0.1\",\"server_port\":1080}",
       "domain_suffix": [ "example.org" ],
       "rule_set": [ "https://example.com/rules.srs" ]
+    },
+    {
+      ".name": "components_proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "outbound",
+      "outbound_json": "{\"type\":\"socks\",\"server\":\"127.0.0.2\",\"server_port\":1080}",
+      "domain_suffix": [ "components.example" ]
     }
   ]
 }
@@ -817,6 +826,8 @@ assert(dns_rule(vpn, r => contains(r.domain_suffix, "vpn.example")) != null, "re
 let download = cfg("download");
 assert(inbound(download, "service-mixed-in") != null, "service mixed inbound");
 assert(route_rule(download, r => r.inbound == "service-mixed-in" && r.outbound == "proxy-out") != null, "service mixed route");
+assert(inbound(download, "service-components-in") != null, "components service mixed inbound");
+assert(route_rule(download, r => r.inbound == "service-components-in" && r.outbound == "components_proxy-out") != null, "components service mixed route");
 assert(first_remote_ruleset(download).download_detour == "proxy-out", "download_detour on remote ruleset");
 
 let fully = cfg("fully-routed");

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-04 11:01+0300\n"
-"PO-Revision-Date: 2026-07-04 11:01+0300\n"
+"POT-Creation-Date: 2026-07-04 16:29+0300\n"
+"PO-Revision-Date: 2026-07-04 16:29+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -16,8 +16,8 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4894
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4978
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4996
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5080
 msgid "-- Select --"
 msgstr ""
 
@@ -35,12 +35,12 @@ msgstr ""
 msgid "Accept external proxy connections and route them with sing-box."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3107
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3106
 msgid "Accept routes"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4445
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4474
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4547
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4576
 msgid "Action"
 msgstr ""
 
@@ -61,31 +61,27 @@ msgstr ""
 msgid "Add a server inbound"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5363
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5442
 msgid "Add URLs or local paths to .lst lists"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5329
-msgid "Add URLs or local paths to .srs / .json lists. Subnet rules are ignored"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5346
-msgid "Add URLs or local paths to .srs / .json lists. Subnets from the list will be extracted and added to nftables"
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5417
+msgid "Add URLs or local paths to .srs / .json lists"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runNftCheck.ts:106
 msgid "Additional marking rules found"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1643
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1642
 msgid "Address"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3090
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3089
 msgid "Advertise exit node"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3100
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3099
 msgid "Advertise routes"
 msgstr ""
 
@@ -94,43 +90,51 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4787
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4889
 msgid "All except selected"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4786
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4888
 msgid "All servers"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2631
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5463
+msgid "All traffic from these IP addresses will be routed through the section unconditionally, ignoring all other conditions."
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2700
 msgid "Allowed domain prefixes are full:, keyword:, and regex:"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:270
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:320
 msgid "Allows access to YACD from the WAN. Make sure to open the appropriate port in your firewall."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4784
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4886
 msgid "Allows limiting the list of servers for URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2629
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2628
 msgid "ALPN"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2853
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2852
 msgid "Alter ID"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1435
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1449
 msgid "Applicable only for SOCKS and Shadowsocks links"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2662
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5455
+msgid "Apply section rules only to the specified local IP addresses"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2731
 msgid "At least one valid domain must be specified."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2721
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2790
 msgid "At least one valid IP or subnet must be specified."
 msgstr ""
 
@@ -138,11 +142,11 @@ msgstr ""
 msgid "Auto refresh"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4694
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4796
 msgid "Auto select by URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3010
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3009
 msgid "Auto update"
 msgstr ""
 
@@ -150,9 +154,9 @@ msgstr ""
 msgid "Available actions"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2854
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3299
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3711
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2923
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3368
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3780
 msgid "Backend validation failed: %s"
 msgstr ""
 
@@ -160,7 +164,7 @@ msgstr ""
 msgid "Bootsrap DNS"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:70
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:120
 msgid "Bootstrap DNS server"
 msgstr ""
 
@@ -177,30 +181,30 @@ msgstr ""
 msgid "Browser is using FakeIP correctly"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5234
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5322
 msgid "Built-in rule sets"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4827
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4929
 msgid "By flag emoji from name"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3780
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3849
 msgid "ByeDPI listen address and port are assigned by Podkop Plus and must not be set in the strategy."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3957
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4026
 msgid "ByeDPI option does not accept a compact value: %s"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3886
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3955
 msgid "ByeDPI option does not accept a value: %s"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3878
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3904
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3938
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3947
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3973
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4007
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4016
 msgid "ByeDPI option requires a value: %s"
 msgstr ""
 
@@ -228,19 +232,19 @@ msgstr ""
 msgid "ByeDPI sing-box outbound is not configured"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4584
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4686
 msgid "ByeDPI Strategy"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3983
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4052
 msgid "ByeDPI strategy cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:424
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:446
 msgid "Cache File Path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:438
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:460
 msgid "Cache file path cannot be empty"
 msgstr ""
 
@@ -255,19 +259,19 @@ msgstr ""
 msgid "Cannot receive checks result"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2224
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2223
 msgid "Cannot save server"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1420
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1432
 msgid "Cascade connection"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2639
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2638
 msgid "Certificate path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1588
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1587
 msgid "Certificate pin is unavailable. Apply or restart the server to generate the default certificate, then open this dialog again."
 msgstr ""
 
@@ -307,7 +311,7 @@ msgstr ""
 msgid "Checks passed with manual DHCP"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4585
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4687
 msgid "ciadpi command options. Podkop Plus manages the listen address and port."
 msgstr ""
 
@@ -315,24 +319,24 @@ msgstr ""
 msgid "CIDR must be between 0 and 32 for IPv4 or 0 and 128 for IPv6"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2737
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2736
 msgid "Client fingerprint"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1660
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1659
 msgid "Client link"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1568
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1567
 msgid "Client link is not available yet"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1601
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1600
 msgid "Client link QR code"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1185
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1708
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1200
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1707
 #: src/partials/modal/renderModal.ts:263
 #: src/podkop/tabs/dashboard/initController.ts:830
 #: src/podkop/tabs/monitoring/initController.ts:743
@@ -363,15 +367,15 @@ msgstr ""
 msgid "compressed"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2962
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2961
 msgid "Concurrency"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4433
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4535
 msgid "Conditions"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:411
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:433
 msgid "Config File Path"
 msgstr ""
 
@@ -379,19 +383,19 @@ msgstr ""
 msgid "Configuration for Podkop Plus service"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1973
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2042
 msgid "Configure User-Agent in the item settings"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1411
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1423
 msgid "Connect through"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4625
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4727
 msgid "Connection URL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1440
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1454
 msgid "Connection URL settings"
 msgstr ""
 
@@ -403,14 +407,14 @@ msgstr ""
 msgid "Connectivity probe failed"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1684
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1683
 #: src/partials/modal/renderModal.ts:258
 msgid "Copy"
 msgstr ""
 
 #: src/podkop/tabs/dashboard/initController.ts:800
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:440
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:441
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:442
 msgid "Copy proxy link"
 msgstr ""
 
@@ -418,7 +422,7 @@ msgstr ""
 msgid "Could not compare FakeIP and control public IPs"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1580
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1595
 msgid "Current section cannot download its own subscription"
 msgstr ""
 
@@ -434,19 +438,19 @@ msgstr ""
 msgid "Dashboard currently unavailable"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:245
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:295
 msgid "Delay in milliseconds before reloading Podkop Plus after interface UP"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:252
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:302
 msgid "Delay value cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1735
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1734
 msgid "Delete"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4825
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4927
 msgid "Detect server country"
 msgstr ""
 
@@ -454,8 +458,12 @@ msgstr ""
 msgid "Dev"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4244
-msgid "Device, IP, or subnet"
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5454
+msgid "Device filter"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4313
+msgid "Device or IP"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:37
@@ -470,7 +478,7 @@ msgstr ""
 msgid "Diagnostics"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2547
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2546
 msgid "Direct"
 msgstr ""
 
@@ -478,15 +486,15 @@ msgstr ""
 msgid "Disable autostart"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:292
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:342
 msgid "Disable QUIC"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:293
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:343
 msgid "Disable the QUIC protocol to improve compatibility or fix issues with video streaming"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3381
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3450
 msgid "Disabling interception is incompatible with action=zapret2 because Podkop Plus sends matched traffic through NFQUEUE."
 msgstr ""
 
@@ -494,37 +502,37 @@ msgstr ""
 msgid "DNS on router"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1266
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:40
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1281
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:90
 msgid "DNS over HTTPS (DoH)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1267
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:41
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1282
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:91
 msgid "DNS over TLS (DoT)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1623
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1643
 msgid "DNS protocol"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:37
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:87
 msgid "DNS Protocol Type"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1625
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1645
 msgid "DNS protocol used by the resolver"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:93
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:143
 msgid "DNS Rewrite TTL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1628
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1648
 msgid "DNS server"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:49
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:99
 msgid "DNS Server"
 msgstr ""
 
@@ -532,7 +540,7 @@ msgstr ""
 msgid "DNS server address cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1630
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1650
 msgid "DNS server used by the resolver"
 msgstr ""
 
@@ -544,19 +552,19 @@ msgstr ""
 msgid "Does not resolve"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5362
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5441
 msgid "Domain and IP Lists"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1645
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1665
 msgid "Domain Resolver"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5186
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5288
 msgid "Domains"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:402
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:424
 msgid "Dont Touch My DHCP!"
 msgstr ""
 
@@ -569,31 +577,31 @@ msgstr ""
 msgid "Download"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:358
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:412
 msgid "Download component packages via the selected section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:357
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:411
 msgid "Download components through a section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:348
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:398
 msgid "Download lists through a section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:349
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:399
 msgid "Download remote lists and rule sets via the selected section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1535
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1550
 msgid "Download subscription through a section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1537
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1552
 msgid "Download subscriptions via the selected section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1510
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1528
 msgid "Download through"
 msgstr ""
 
@@ -606,23 +614,23 @@ msgstr ""
 msgid "Drag rows to change priority. The rule at the top is checked first."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2068
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2083
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2103
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2137
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2152
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2172
 msgid "Duplicate value"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:68
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1728
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1727
 msgid "Edit rule action"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4435
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2464
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4537
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2463
 msgid "Enable"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:304
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:354
 msgid "Enable automatic updates for remote lists and rule sets"
 msgstr ""
 
@@ -630,63 +638,63 @@ msgstr ""
 msgid "Enable autostart"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1647
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1667
 msgid "Enable built-in DNS resolver for domains handled by this section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:303
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:353
 msgid "Enable list updates"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5034
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5136
 msgid "Enable Mixed Proxy"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5075
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5177
 msgid "Enable Mixed Proxy Authentication"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:151
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:201
 msgid "Enable Output Network Interface"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:260
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:310
 msgid "Enable YACD"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:269
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:319
 msgid "Enable YACD WAN Access"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2570
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2569
 msgid "Enter a complete sing-box inbound object"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4676
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4778
 msgid "Enter a complete sing-box outbound object"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4648
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4750
 msgid "Enter the subscription URL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4938
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5040
 msgid "Exclude country from URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:476
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:498
 msgid "Exclude NTP"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:477
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:499
 msgid "Exclude NTP protocol traffic from the tunnel to prevent it from being routed through the proxy or VPN"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4999
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5101
 msgid "Exclude server by regular expression from URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4975
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5077
 msgid "Exclude server from URLTest"
 msgstr ""
 
@@ -698,15 +706,15 @@ msgstr ""
 msgid "Expires"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5035
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5137
 msgid "Expose this section as a local HTTP+SOCKS proxy"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2915
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2984
 msgid "External nfqws config files bypass Podkop Plus queue management and explicit validation."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3360
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3429
 msgid "External nfqws2 config files bypass Podkop Plus queue management and explicit validation."
 msgstr ""
 
@@ -720,7 +728,7 @@ msgstr ""
 msgid "Failed to close connections"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1557
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1556
 #: src/helpers/copyToClipboard.ts:12
 msgid "Failed to copy!"
 msgstr ""
@@ -756,15 +764,15 @@ msgstr ""
 msgid "FakeIP works; public IP comparison is inconclusive"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2937
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2936
 msgid "FakeTLS host"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3019
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3018
 msgid "Fallback on unknown DC"
 msgstr ""
 
-#: src/podkop/methods/custom/getDashboardSections.ts:504
+#: src/podkop/methods/custom/getDashboardSections.ts:502
 msgid "Fastest"
 msgstr ""
 
@@ -772,27 +780,27 @@ msgstr ""
 msgid "Firewall WAN port"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2225
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2224
 msgid "Fix the highlighted fields and save again."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2982
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5462
+msgid "Forced device routing"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2981
 msgid "Fronting IP"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2971
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2970
 msgid "Fronting port"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2992
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2991
 msgid "Fronting proxy protocol"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5224
-msgid "Fully Routed IPs"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3378
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3447
 msgid "Fuzzing is not supported here because Podkop Plus needs deterministic runtime validation."
 msgstr ""
 
@@ -808,15 +816,15 @@ msgstr ""
 msgid "Global check"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2804
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2803
 msgid "gRPC service"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3047
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3046
 msgid "Handshake timeout"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4799
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4901
 msgid "Hide filtered servers"
 msgstr ""
 
@@ -833,44 +841,48 @@ msgstr ""
 msgid "HTTP error"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2797
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2796
 msgid "HTTP hosts"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1546
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1561
 msgid "HWID"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3037
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3036
 #: src/podkop/tabs/dashboard/initController.ts:719
 msgid "Idle timeout"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2569
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2568
 msgid "Inbound JSON"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1958
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1957
 msgid "Inbound JSON cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1969
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1968
 msgid "Inbound JSON must be an object with a type field"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4852
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4954
 msgid "Include country in URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4915
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1728
+msgid "Include IP addresses and subnets"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5017
 msgid "Include server by regular expression in URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4889
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4991
 msgid "Include server in URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1736
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1735
 msgid "Information"
 msgstr ""
 
@@ -901,15 +913,15 @@ msgstr ""
 msgid "Installed version is newer than release"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:212
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:262
 msgid "Interface Monitoring"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:244
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:294
 msgid "Interface Monitoring Delay"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:213
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:263
 msgid "Interface monitoring for Bad WAN"
 msgstr ""
 
@@ -921,7 +933,7 @@ msgstr ""
 msgid "Interval"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4608
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4710
 msgid "Invalid ByeDPI strategy"
 msgstr ""
 
@@ -933,7 +945,7 @@ msgstr ""
 msgid "Invalid DNS server format. Examples: 8.8.8.8 or dns.example.com or dns.example.com/nicedns for DoH"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2611
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2680
 #: src/validators/validateDomain.ts:71
 #: src/validators/validateDomain.ts:77
 msgid "Invalid domain address"
@@ -1050,12 +1062,12 @@ msgstr ""
 msgid "Invalid IP address"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1971
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1970
 #: src/validators/validateOutboundJson.ts:9
 msgid "Invalid JSON format"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4562
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4664
 msgid "Invalid NFQWS2 strategy"
 msgstr ""
 
@@ -1063,16 +1075,16 @@ msgstr ""
 msgid "Invalid path format. Path must start with \"/\" and contain valid characters"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5068
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5170
 #: src/validators/validateShadowsocksUrl.ts:93
 msgid "Invalid port number. Must be between 1 and 65535"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2737
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2806
 msgid "Invalid port or range. Use 80 or 1000-2000"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1884
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1953
 msgid "Invalid regular expression"
 msgstr ""
 
@@ -1182,7 +1194,7 @@ msgstr ""
 msgid "Invalid VMess URL: parsing failed"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5211
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5313
 msgid "IPs"
 msgstr ""
 
@@ -1191,16 +1203,16 @@ msgstr ""
 msgid "Issues detected"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1800
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4675
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1869
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4777
 msgid "JSON outbound"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2654
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2653
 msgid "Key path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1894
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1963
 msgid "Keyword must not contain spaces or commas"
 msgstr ""
 
@@ -1225,27 +1237,27 @@ msgstr ""
 msgid "Latest: %s"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1548
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1563
 msgid "Leave empty to generate HWID automatically"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1543
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1558
 msgid "Leave empty to use automatic User-Agent selection"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4397
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4466
 msgid "List must be an HTTP(S) URL or a local .lst path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:312
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:362
 msgid "List Update Frequency"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2519
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2518
 msgid "Listen address"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2526
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2525
 msgid "Listen port"
 msgstr ""
 
@@ -1253,7 +1265,7 @@ msgstr ""
 msgid "Listening port"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1693
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1692
 msgid "Loading client link..."
 msgstr ""
 
@@ -1262,7 +1274,7 @@ msgstr ""
 msgid "Loading connections"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:460
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:482
 msgid "Log Level"
 msgstr ""
 
@@ -1270,19 +1282,15 @@ msgstr ""
 msgid "Main DNS"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5212
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5314
 msgid "Match destination IPs or subnets"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5376
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5471
 msgid "Match destination ports. Use a single port or a range"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5219
-msgid "Match source IPs or subnets"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4722
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4824
 msgid "Maximum response time delta in milliseconds"
 msgstr ""
 
@@ -1290,23 +1298,23 @@ msgstr ""
 msgid "Memory Usage"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2811
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2810
 msgid "Method"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5126
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5228
 msgid "Mixed Proxy Password"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5049
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5151
 msgid "Mixed Proxy Port"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5090
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5192
 msgid "Mixed Proxy Username"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:221
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:271
 msgid "Monitored Interfaces"
 msgstr ""
 
@@ -1314,16 +1322,16 @@ msgstr ""
 msgid "Monitoring"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4744
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4846
 msgid "Must be a number in the range of 50 - 1000"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1321
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4661
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1336
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4763
 msgid "Network Interface"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1642
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1662
 msgid "Network interface settings"
 msgstr ""
 
@@ -1337,19 +1345,19 @@ msgstr ""
 msgid "NFQUEUE range overlaps with another rule"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4494
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4596
 msgid "NFQWS Strategy"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3045
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3114
 msgid "NFQWS strategy cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4541
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4643
 msgid "NFQWS2 Strategy"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3519
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3588
 msgid "NFQWS2 strategy cannot be empty"
 msgstr ""
 
@@ -1399,10 +1407,10 @@ msgstr ""
 msgid "No rules use Zapret2"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:447
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2584
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2866
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2875
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:446
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2583
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2865
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2874
 msgid "None"
 msgstr ""
 
@@ -1450,27 +1458,31 @@ msgstr ""
 msgid "Not running"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2874
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:37
+msgid "Not selected"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2873
 msgid "Obfuscation"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2897
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2896
 msgid "Obfuscation password"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4788
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4890
 msgid "Only selected"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4789
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4891
 msgid "Only selected except exclusions"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4853
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4955
 msgid "Only servers from selected countries will be tested by URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4916
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5018
 msgid "Only servers whose names match these regular expressions will be checked through URLTest"
 msgstr ""
 
@@ -1484,16 +1496,16 @@ msgstr ""
 msgid "Operation timed out"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2002
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4121
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2071
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4190
 msgid "Option \"%s\" contains an invalid input value."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3123
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3192
 msgid "Optional values must be attached with '=' here; a separate token would be ignored by nfqws."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3597
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3666
 msgid "Optional values must be attached with '=' here; a separate token would be ignored by nfqws2."
 msgstr ""
 
@@ -1505,19 +1517,19 @@ msgstr ""
 msgid "Outdated"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:160
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:210
 msgid "Output Network Interface"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2956
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2955
 msgid "Padding"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2837
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2836
 msgid "Password"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5152
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5254
 msgid "Password cannot be empty"
 msgstr ""
 
@@ -1525,15 +1537,15 @@ msgstr ""
 msgid "Path cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:442
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:464
 msgid "Path must be absolute (start with /)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:451
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:473
 msgid "Path must contain at least one directory (like /tmp/cache.db)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:446
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:468
 msgid "Path must end with cache.db"
 msgstr ""
 
@@ -1547,27 +1559,23 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5187
-msgid "Plain values match domain suffixes. Use full:, keyword:, or regex: for exact domains, keywords, and regular expressions."
-msgstr ""
-
 #: src/podkop/services/core.service.ts:22
 msgid "Podkop Plus Error"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3789
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3858
 msgid "Podkop Plus manages ciadpi pid files itself, so pidfile options are not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3786
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3855
 msgid "Podkop Plus manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2933
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3002
 msgid "Podkop Plus manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3384
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3453
 msgid "Podkop Plus manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
 msgstr ""
 
@@ -1575,7 +1583,7 @@ msgstr ""
 msgid "Podkop Plus Settings"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:403
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:425
 msgid "Podkop Plus will not modify your DHCP configuration"
 msgstr ""
 
@@ -1619,7 +1627,7 @@ msgstr ""
 msgid "Podkop Plus-managed nfqws2 runtime is ready"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5060
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5162
 msgid "Port cannot be empty"
 msgstr ""
 
@@ -1627,29 +1635,29 @@ msgstr ""
 msgid "Port conflict"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5050
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5152
 msgid "Port for the local mixed proxy of this section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2744
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1804
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2813
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1803
 msgid "Port must be between 1 and 65535"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2748
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2817
 msgid "Port range start must be less than or equal to end"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5375
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5470
 msgid "Ports"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2999
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2998
 msgid "Preferred IP"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2470
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2504
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2469
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2503
 msgid "Protocol"
 msgstr ""
 
@@ -1657,40 +1665,40 @@ msgstr ""
 msgid "Proxy link is unavailable"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2533
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2532
 #: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:40
 msgid "Public host"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1603
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1602
 msgid "QR code is too large"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2672
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2671
 msgid "Reality fake site"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2683
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2682
 msgid "Reality fake site port"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2726
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2725
 msgid "Reality max time difference"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2694
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2693
 msgid "Reality private key"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2701
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2700
 msgid "Reality public key"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2707
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2706
 msgid "Reality short ID"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2078
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2077
 msgid "Reality short ID must contain 1-8 hex digits"
 msgstr ""
 
@@ -1698,11 +1706,11 @@ msgstr ""
 msgid "Refill"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5273
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5361
 msgid "Regional options cannot be used together"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2653
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2722
 msgid "Regular expression must not contain spaces or commas"
 msgstr ""
 
@@ -1712,31 +1720,31 @@ msgstr ""
 msgid "Remove"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5076
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5178
 msgid "Require a username and password for the local mixed proxy"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5163
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5265
 msgid "Resolve domain names before routing so sing-box can use real destination IPs."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5162
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5264
 msgid "Resolve real IP for routing"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2918
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2987
 msgid "Resource selection by hostname inside nfqws is not supported here; sing-box selects resources before NFQUEUE."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3363
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3432
 msgid "Resource selection by hostname inside nfqws2 is not supported here; sing-box selects resources before NFQUEUE."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2921
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2990
 msgid "Resource selection by IP or CIDR inside nfqws is not supported here; sing-box selects resources before NFQUEUE."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3366
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3435
 msgid "Resource selection by IP or CIDR inside nfqws2 is not supported here; sing-box selects resources before NFQUEUE."
 msgstr ""
 
@@ -1753,7 +1761,7 @@ msgstr ""
 msgid "Route"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2545
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2544
 msgid "Routing mode"
 msgstr ""
 
@@ -1763,23 +1771,23 @@ msgstr ""
 msgid "Routing rules"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2554
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2553
 msgid "Routing section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4388
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4457
 msgid "Rule set must be an HTTP(S) URL or a local .srs / .json path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5345
-msgid "Rule sets (domains and subnets)"
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1725
+msgid "Rule set settings"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5328
-msgid "Rule sets (domains)"
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5416
+msgid "Rule sets"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2546
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2545
 msgid "Rules"
 msgstr ""
 
@@ -1811,11 +1819,11 @@ msgstr ""
 msgid "Run Diagnostic"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5292
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5380
 msgid "Russia inside restrictions"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1195
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1210
 msgid "Save"
 msgstr ""
 
@@ -1823,11 +1831,11 @@ msgstr ""
 msgid "Search"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2913
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2912
 msgid "Secret"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:282
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:332
 msgid "Secret key for authenticating remote access to YACD when WAN access is enabled."
 msgstr ""
 
@@ -1835,7 +1843,7 @@ msgstr ""
 msgid "Section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4461
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4563
 msgid "Section name"
 msgstr ""
 
@@ -1843,79 +1851,75 @@ msgstr ""
 msgid "Sections"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2581
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2580
 msgid "Security"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4976
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5078
 msgid "Select a loaded server or enter an exact server name"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4667
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4769
 msgid "Select a network interface"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5235
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5323
 msgid "Select a predefined list for routing"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:366
-msgid "Select a section for downloading external resources"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1576
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1591
 msgid "Select a section for downloading this subscription"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1413
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1425
 msgid "Select a transit section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1370
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1385
 msgid "Select an existing network interface"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1451
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1465
 msgid "Select an intermediate section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:38
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:88
 msgid "Select DNS protocol to use"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4662
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4764
 msgid "Select network interface for VPN connection"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:50
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:100
 msgid "Select or enter DNS server address"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:425
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:447
 msgid "Select or enter path for sing-box cache file. Change this ONLY if you know what you are doing"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:412
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:434
 msgid "Select path for sing-box config file. Change this ONLY if you know what you are doing"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4890
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4992
 msgid "Select servers that will participate in URLTest checks. Other servers will be ignored."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:461
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:483
 msgid "Select the log level for sing-box"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:115
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:165
 msgid "Select the network interface from which the traffic will originate"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:161
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:211
 msgid "Select the network interface to which the traffic will originate"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:222
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:272
 msgid "Select the WAN interfaces to be monitored"
 msgstr ""
 
@@ -1923,7 +1927,7 @@ msgstr ""
 msgid "Selected"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2548
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2547
 msgid "Selected section"
 msgstr ""
 
@@ -1931,20 +1935,20 @@ msgstr ""
 msgid "Server"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4783
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4885
 msgid "Server filtering for URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1697
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1696
 msgid "Server information"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1613
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2481
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1612
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2480
 msgid "Server name"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2610
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2609
 msgid "Server name / SNI"
 msgstr ""
 
@@ -1952,11 +1956,11 @@ msgstr ""
 msgid "Servers"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4939
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5041
 msgid "Servers from selected countries will not be tested by URLTest"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5000
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5102
 msgid "Servers with names matching these regular expressions will not be tested by URLTest"
 msgstr ""
 
@@ -1966,7 +1970,7 @@ msgstr ""
 msgid "Service action failed"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5238
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5326
 msgid "Service list"
 msgstr ""
 
@@ -1975,16 +1979,16 @@ msgid "Services info"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:449
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:919
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4432
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:926
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4534
 msgid "Settings"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1551
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1566
 msgid "Show metadata on dashboard"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4800
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4902
 msgid "Show only servers participating in URLTest on the dashboard."
 msgstr ""
 
@@ -1993,7 +1997,7 @@ msgstr ""
 msgid "Show sing-box config"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1553
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1568
 msgid "Show subscription metadata for this source on the dashboard"
 msgstr ""
 
@@ -2029,11 +2033,11 @@ msgstr ""
 msgid "Sing-box version is compatible (newer than 1.12.4)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5022
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5124
 msgid "Sort by latency"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5023
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5125
 msgid "Sorts servers in this section by lowest latency in the dashboard."
 msgstr ""
 
@@ -2042,25 +2046,17 @@ msgstr ""
 msgid "Source"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5218
-msgid "Source IPs"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:114
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:164
 msgid "Source Network Interface"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1917
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1916
 msgid "Specify a file path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1928
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1940
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1927
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1939
 msgid "Specify different files"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5225
-msgid "Specify local IP addresses or subnets whose traffic will always be routed through the configured route"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:124
@@ -2115,7 +2111,11 @@ msgstr ""
 msgid "Stop Podkop Plus"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1529
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1730
+msgid "Subnets from the list will be extracted and added to nftables"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1544
 msgid "Subscription auto updates"
 msgstr ""
 
@@ -2132,23 +2132,23 @@ msgstr ""
 msgid "Subscription update failed"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1505
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1523
 msgid "Subscription update interval"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4647
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4749
 msgid "Subscription URL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2013
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2082
 msgid "Subscription URL cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1526
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1541
 msgid "Subscription URL settings"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1555
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1554
 #: src/helpers/copyToClipboard.ts:10
 msgid "Successfully copied!"
 msgstr ""
@@ -2165,11 +2165,11 @@ msgstr ""
 msgid "Table exist"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3055
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3054
 msgid "Tailscale auth key"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3064
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3063
 msgid "Tailscale control URL"
 msgstr ""
 
@@ -2177,12 +2177,12 @@ msgstr ""
 msgid "Tailscale endpoint"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3072
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3071
 msgid "Tailscale hostname"
 msgstr ""
 
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:530
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:531
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:532
 msgid "Test latency"
 msgstr ""
 
@@ -2190,18 +2190,22 @@ msgstr ""
 msgid "Testing URL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2930
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3375
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2999
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3444
 msgid "The desync fwmark is managed by Podkop Plus for loop prevention and must not be overridden here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:71
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:121
 msgid "The DNS server used to look up the IP address of an upstream DNS server"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2927
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3372
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2996
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3441
 msgid "The NFQUEUE number is assigned by Podkop Plus for each rule and must not be overridden here."
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5289
+msgid "The rule applies to the domain and all its subdomains. Use full:, keyword:, or regex: prefixes for exact match, keyword match, or regular expression."
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:78
@@ -2216,41 +2220,41 @@ msgstr ""
 msgid "There are rules using Zapret2"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1819
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1824
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1911
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2069
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2860
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1818
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1823
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1910
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2068
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2859
 msgid "This field is required"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3792
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3861
 msgid "This field must start a working ciadpi strategy; help/version options exit immediately and are not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2936
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3005
 msgid "This field must start a working nfqws strategy; --dry-run exits immediately and is not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2939
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3008
 msgid "This field must start a working nfqws strategy; --version exits immediately and is not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3387
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3456
 msgid "This field must start a working nfqws2 strategy; --dry-run exits immediately and is not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3390
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3459
 msgid "This field must start a working nfqws2 strategy; --version exits immediately and is not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3108
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3582
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3177
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3651
 msgid "This flag does not accept a value."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3139
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3613
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3208
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3682
 msgid "This option requires a value."
 msgstr ""
 
@@ -2259,11 +2263,11 @@ msgstr ""
 msgid "Time"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:94
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:144
 msgid "Time in seconds for DNS record caching (default: 60)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3029
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3028
 msgid "Time skew tolerance"
 msgstr ""
 
@@ -2284,23 +2288,23 @@ msgstr ""
 msgid "Traffic Total"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3783
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3852
 msgid "Transparent proxy mode is incompatible with action=byedpi because Podkop Plus connects to ciadpi through SOCKS."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2748
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2747
 msgid "Transport"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2772
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2771
 msgid "Transport host"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2756
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2755
 msgid "Transport path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1994
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1993
 msgid "Transport path must start with /"
 msgstr ""
 
@@ -2308,45 +2312,45 @@ msgstr ""
 msgid "Troubleshooting"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:105
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:155
 msgid "TTL must be a positive number"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:100
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:150
 msgid "TTL value cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1628
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1627
 #: src/podkop/tabs/monitoring/initController.ts:727
 #: src/podkop/tabs/monitoring/initController.ts:787
 msgid "Type"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:42
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:92
 msgid "UDP (Unprotected DNS)"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1433
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1447
 msgid "UDP over TCP"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3707
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3776
 msgid "Unable to validate the ByeDPI strategy through the backend parser."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2850
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4185
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4521
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2919
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4254
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4623
 msgid "Unable to validate the NFQWS strategy through the backend parser."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3295
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4194
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3364
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4263
 msgid "Unable to validate the NFQWS2 strategy through the backend parser."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3924
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3973
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3993
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4042
 msgid "Unexpected ByeDPI strategy argument: %s"
 msgstr ""
 
@@ -2362,8 +2366,8 @@ msgstr ""
 msgid "Unexpected Podkop Plus-managed nfqws2 runtime is running"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3088
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3562
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3157
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3631
 msgid "Unexpected standalone token. Use explicit flags such as --name or --name=value."
 msgstr ""
 
@@ -2386,13 +2390,13 @@ msgstr ""
 msgid "unknown"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3893
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3915
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3966
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3962
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3984
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4035
 msgid "Unknown ByeDPI option: %s"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:536
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:537
 msgid "Unknown country"
 msgstr ""
 
@@ -2400,11 +2404,11 @@ msgstr ""
 msgid "Unknown error"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3099
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3168
 msgid "Unknown NFQWS flag."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3573
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3642
 msgid "Unknown NFQWS2 flag."
 msgstr ""
 
@@ -2412,7 +2416,7 @@ msgstr ""
 msgid "Unspecified IP address is not allowed"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2103
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2102
 msgid "Unsupported security mode for this protocol"
 msgstr ""
 
@@ -2425,13 +2429,12 @@ msgid "Update is available"
 msgstr ""
 
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:309
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:310
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:322
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:323
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:324
 msgid "Update subscriptions"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1531
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1546
 msgid "Update this subscription automatically"
 msgstr ""
 
@@ -2454,8 +2457,8 @@ msgid "URL must use one of the following protocols:"
 msgstr ""
 
 #: src/podkop/tabs/dashboard/initController.ts:845
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:459
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:460
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:461
 msgid "URLTest details"
 msgstr ""
 
@@ -2463,86 +2466,78 @@ msgstr ""
 msgid "URLTest details are unavailable"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4705
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4807
 msgid "URLTest interval"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4721
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4823
 msgid "URLTest tolerance"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4751
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4853
 msgid "URLTest URL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2087
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2086
 msgid "Use 32 hex characters"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1884
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1890
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2003
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1883
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1889
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2002
 msgid "Use a domain name or IP address"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1982
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1981
 msgid "Use a duration like 30s, 5m, or 1h30m"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1988
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2862
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1987
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2861
 msgid "Use a non-negative integer"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2090
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2089
 msgid "Use a non-zero secret"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1950
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1952
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1949
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1951
 msgid "Use an HTTP or HTTPS URL"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1904
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1903
 msgid "Use an IP address"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1897
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1896
 msgid "Use an IP listen address"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1422
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1434
 msgid "Use another section as an intermediate hop for connecting to this one"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2050
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2049
 msgid "Use CIDR prefixes like 192.168.1.0/24 or 2001:db8::/32"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2063
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2062
 msgid "Use CIDR prefixes or IP addresses like 192.168.1.0/24, 192.168.1.10, or 2001:db8::1"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2009
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2008
 msgid "Use letters, digits, dots, underscores, or hyphens"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:367
-msgid "Use one enabled Connection or provider section for the selected download types"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1512
-msgid "Use one enabled proxy, JSON outbound, or VPN section for the selected download types"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1507
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1946
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1953
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1960
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4706
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:313
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:335
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:342
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1525
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2015
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2022
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2029
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4808
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:363
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:385
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:392
 msgid "Use sing-box duration format like 1d, 12h or 30m"
 msgstr ""
 
@@ -2550,20 +2545,20 @@ msgstr ""
 msgid "Used by"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1541
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1556
 msgid "User-Agent"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2821
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2820
 msgid "Username"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5116
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5218
 msgid "Username cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2646
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2659
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2715
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2728
 #: src/validators/validateDns.ts:21
 #: src/validators/validateDns.ts:25
 #: src/validators/validateDomain.ts:61
@@ -2585,17 +2580,17 @@ msgstr ""
 msgid "Valid"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2075
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2095
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2099
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2144
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2164
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2168
 msgid "Validation errors:"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2636
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2705
 msgid "Value cannot be empty"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1828
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1827
 msgid "Value must not contain control characters"
 msgstr ""
 
@@ -2603,7 +2598,7 @@ msgstr ""
 msgid "Version"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4828
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4930
 msgid "Via country.is"
 msgstr ""
 
@@ -2612,15 +2607,15 @@ msgstr ""
 msgid "View logs"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4462
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4564
 msgid "Visible name of this section"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2865
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2864
 msgid "VLESS flow"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4626
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4728
 msgid "vless://, vmess://, ss://, trojan://, socks4/5://, http(s)://, hy2/hysteria2:// links"
 msgstr ""
 
@@ -2632,23 +2627,23 @@ msgstr ""
 msgid "WAN public IP"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5275
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5363
 msgid "Warning: %s cannot be used together with %s. Previous selections have been removed."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5294
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5382
 msgid "Warning: Russia inside can only be used with %s. %s already in Russia inside and have been removed from selection."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4475
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:4577
 msgid "What Podkop Plus should do when this section matches"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2785
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2784
 msgid "XHTTP mode"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:281
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:331
 msgid "YACD Secret Key"
 msgstr ""
 
@@ -2656,11 +2651,11 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:152
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:202
 msgid "You can select Output Network Interface, by default autodetect"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2924
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2993
 msgid "Zapret hostlist templates are not supported here because Podkop Plus does not expand them for per-rule NFQWS strategies."
 msgstr ""
 
@@ -2688,7 +2683,7 @@ msgstr ""
 msgid "Zapret sing-box outbound is not configured"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3369
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3438
 msgid "Zapret2 hostlist templates are not supported here because Podkop Plus does not expand them for per-rule NFQWS2 strategies."
 msgstr ""
 

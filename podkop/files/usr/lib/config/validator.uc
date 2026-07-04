@@ -1191,9 +1191,45 @@ function validate_rule(section, context) {
     validate_common_rule_references(section, context);
 }
 
+function download_via_proxy_option_for_purpose(purpose) {
+    purpose = as_string(purpose || "lists");
+    if (purpose == "lists")
+        return "download_lists_via_proxy";
+    if (purpose == "components")
+        return "download_components_via_proxy";
+    return "";
+}
+
+function download_via_proxy_section_option_for_purpose(purpose) {
+    purpose = as_string(purpose || "lists");
+    if (purpose == "lists")
+        return "download_lists_via_proxy_section";
+    if (purpose == "components")
+        return "download_components_via_proxy_section";
+    return "";
+}
+
+function download_via_proxy_section(settings, purpose) {
+    let enabled_option = download_via_proxy_option_for_purpose(purpose);
+    if (enabled_option == "" || !bool_option(settings, enabled_option, false))
+        return "";
+
+    let section_option = download_via_proxy_section_option_for_purpose(purpose);
+    let configured = section_option != "" ? option(settings, section_option, "") : "";
+    if (configured != "")
+        return configured;
+
+    return option(settings, "download_lists_via_proxy_section", "");
+}
+
+function download_via_proxy_enabled(settings, purpose) {
+    let enabled_option = download_via_proxy_option_for_purpose(purpose);
+    return enabled_option != "" && bool_option(settings, enabled_option, false);
+}
+
 function download_via_proxy_any_enabled(settings) {
-    return bool_option(settings, "download_lists_via_proxy", false) ||
-        bool_option(settings, "download_components_via_proxy", false);
+    return download_via_proxy_enabled(settings, "lists") ||
+        download_via_proxy_enabled(settings, "components");
 }
 
 function basic_rows_from_sections(sections) {
@@ -1364,9 +1400,18 @@ function validate_runtime_config(context) {
     validate_runtime_mark_ranges_context(context);
     validate_list_update_settings(settings);
 
-    if (download_via_proxy_any_enabled(settings)) {
+    if (download_via_proxy_enabled(settings, "lists")) {
         validate_download_section_rows(
-            option(settings, "download_lists_via_proxy_section", ""),
+            download_via_proxy_section(settings, "lists"),
+            context.byedpi_installed,
+            context.zapret_installed,
+            context.zapret2_installed,
+            basic_rows_from_sections(sections)
+        );
+    }
+    if (download_via_proxy_enabled(settings, "components")) {
+        validate_download_section_rows(
+            download_via_proxy_section(settings, "components"),
             context.byedpi_installed,
             context.zapret_installed,
             context.zapret2_installed,

@@ -29,6 +29,57 @@ function isDownloadSectionAction(action, capabilities) {
   }
 }
 
+function refreshDownloadSectionChoices(option, capabilities) {
+  const sections = option.map?.data?.state?.values?.[UCI_PACKAGE] ?? {};
+
+  option.keylist = [];
+  option.vallist = [];
+  option.value("", _("Not selected"));
+
+  for (const secName in sections) {
+    const sec = sections[secName];
+    if (
+      sec[".type"] === "section" &&
+      sec.enabled !== "0" &&
+      isDownloadSectionAction(sec.action, capabilities)
+    ) {
+      option.value(secName, sec.label || secName);
+    }
+  }
+}
+
+function configureDownloadSectionOption(
+  option,
+  flagOption,
+  sectionOption,
+  capabilities,
+) {
+  option.default = "";
+  option.rmempty = true;
+  option.cfgvalue = function (section_id) {
+    return uci.get(UCI_PACKAGE, section_id, sectionOption) || "";
+  };
+  option.load = function () {
+    refreshDownloadSectionChoices(this, capabilities);
+    return Promise.resolve();
+  };
+  option.write = function (section_id, value) {
+    const normalized = value ? `${value}`.trim() : "";
+
+    if (normalized) {
+      uci.set(UCI_PACKAGE, section_id, sectionOption, normalized);
+      uci.set(UCI_PACKAGE, section_id, flagOption, "1");
+    } else {
+      uci.unset(UCI_PACKAGE, section_id, sectionOption);
+      uci.set(UCI_PACKAGE, section_id, flagOption, "0");
+    }
+  };
+  option.remove = function (section_id) {
+    uci.unset(UCI_PACKAGE, section_id, sectionOption);
+    uci.set(UCI_PACKAGE, section_id, flagOption, "0");
+  };
+}
+
 function createSettingsContent(section, capabilities) {
   let o = section.option(
     form.ListValue,
@@ -342,58 +393,30 @@ function createSettingsContent(section, capabilities) {
   };
 
   o = section.option(
-    form.Flag,
-    "download_lists_via_proxy",
+    form.ListValue,
+    "download_lists_via_proxy_section",
     _("Download lists through a section"),
     _("Download remote lists and rule sets via the selected section"),
   );
-  o.default = "0";
-  o.rmempty = false;
-
-  o = section.option(
-    form.Flag,
-    "download_components_via_proxy",
-    _("Download components through a section"),
-    _("Download component packages via the selected section"),
+  configureDownloadSectionOption(
+    o,
+    "download_lists_via_proxy",
+    "download_lists_via_proxy_section",
+    capabilities,
   );
-  o.default = "0";
-  o.rmempty = false;
 
   o = section.option(
     form.ListValue,
-    "download_lists_via_proxy_section",
-    _("Select a section for downloading external resources"),
-    _(
-      "Use one enabled Connection or provider section for the selected download types",
-    ),
+    "download_components_via_proxy_section",
+    _("Download components through a section"),
+    _("Download component packages via the selected section"),
   );
-
-  o.rmempty = false;
-  o.depends("download_lists_via_proxy", "1");
-  o.depends("download_components_via_proxy", "1");
-  o.cfgvalue = function (section_id) {
-    return uci.get(UCI_PACKAGE, section_id, "download_lists_via_proxy_section");
-  };
-  o.load = function () {
-    const sections = this.map?.data?.state?.values?.[UCI_PACKAGE] ?? {};
-
-    this.keylist = [];
-    this.vallist = [];
-
-    for (const secName in sections) {
-      const sec = sections[secName];
-      if (
-        sec[".type"] === "section" &&
-        sec.enabled !== "0" &&
-        isDownloadSectionAction(sec.action, capabilities)
-      ) {
-        this.keylist.push(secName);
-        this.vallist.push(sec.label || secName);
-      }
-    }
-
-    return Promise.resolve();
-  };
+  configureDownloadSectionOption(
+    o,
+    "download_components_via_proxy",
+    "download_components_via_proxy_section",
+    capabilities,
+  );
 
   o = section.option(
     form.Flag,
@@ -479,7 +502,6 @@ function createSettingsContent(section, capabilities) {
   );
   o.default = "0";
   o.rmempty = false;
-
 }
 
 const EntryPoint = {

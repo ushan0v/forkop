@@ -306,7 +306,6 @@ function renderSubscriptionUpdateAction(
     {
       type: 'button',
       class: 'btn pdk_dashboard-page__outbound-section__subscription-update',
-      title: _('Update subscriptions'),
       'aria-label': _('Update subscriptions'),
       disabled: subscriptionUpdating ? true : undefined,
       click: (event: MouseEvent) => {

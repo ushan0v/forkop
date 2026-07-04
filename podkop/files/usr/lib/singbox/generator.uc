@@ -210,18 +210,50 @@ function outbound_tag(section_name) {
     return runtime_constants.outbound_tag(section_name);
 }
 
+function download_via_proxy_section_option_for_purpose(purpose) {
+    purpose = as_string(purpose || "lists");
+    if (purpose == "lists")
+        return "download_lists_via_proxy_section";
+    if (purpose == "components")
+        return "download_components_via_proxy_section";
+    return "";
+}
+
+function download_via_proxy_option_for_purpose(purpose) {
+    purpose = as_string(purpose || "lists");
+    if (purpose == "lists")
+        return "download_lists_via_proxy";
+    if (purpose == "components")
+        return "download_components_via_proxy";
+    return "";
+}
+
+function download_via_proxy_section(settings, purpose) {
+    let enabled_option = download_via_proxy_option_for_purpose(purpose);
+    if (enabled_option == "" || !bool_option(settings, enabled_option, false))
+        return "";
+
+    let section_option = download_via_proxy_section_option_for_purpose(purpose);
+    let configured = section_option != "" ? option(settings, section_option, "") : "";
+    if (configured != "")
+        return configured;
+
+    return option(settings, "download_lists_via_proxy_section", "");
+}
+
+function download_via_proxy_enabled(settings, purpose) {
+    let enabled_option = download_via_proxy_option_for_purpose(purpose);
+    return enabled_option != "" && bool_option(settings, enabled_option, false);
+}
+
 function download_via_proxy_any_enabled(settings, sections) {
-    return bool_option(settings, "download_lists_via_proxy", false) ||
-        bool_option(settings, "download_components_via_proxy", false) ||
+    return download_via_proxy_enabled(settings, "lists") ||
+        download_via_proxy_enabled(settings, "components") ||
         length(connections.subscription_download_targets(sections || [])) > 0;
 }
 
-function download_detour_tag(settings) {
-    if (!bool_option(settings, "download_lists_via_proxy", false) &&
-        !bool_option(settings, "download_components_via_proxy", false))
-        return "";
-
-    let section_name = option(settings, "download_lists_via_proxy_section", "");
+function download_detour_tag(settings, purpose) {
+    let section_name = download_via_proxy_section(settings, purpose);
     return section_name == "" ? "" : outbound_tag(section_name);
 }
 
@@ -857,15 +889,26 @@ function add_service_mixed_proxy_inbound(config, tag_name, listen_port, outbound
     });
 }
 
-function add_global_download_service_mixed_proxy(config, settings) {
-    let outbound = download_detour_tag(settings);
+function service_mixed_proxy_inbound_tag_for_purpose(purpose) {
+    return as_string(purpose || "lists") == "components"
+        ? runtime_constants.inbound_tag("service-components")
+        : runtime_constants.SERVICE_MIXED_INBOUND_TAG;
+}
+
+function service_mixed_proxy_port_for_purpose(purpose) {
+    return runtime_constants.SERVICE_MIXED_INBOUND_PORT +
+        (as_string(purpose || "lists") == "components" ? 1 : 0);
+}
+
+function add_global_download_service_mixed_proxy(config, settings, purpose) {
+    let outbound = download_detour_tag(settings, purpose);
     if (outbound == "")
         return;
 
     add_service_mixed_proxy_inbound(
         config,
-        runtime_constants.SERVICE_MIXED_INBOUND_TAG,
-        runtime_constants.SERVICE_MIXED_INBOUND_PORT,
+        service_mixed_proxy_inbound_tag_for_purpose(purpose),
+        service_mixed_proxy_port_for_purpose(purpose),
         outbound
     );
 }
@@ -889,13 +932,14 @@ function add_service_mixed_proxy(config, settings, sections) {
     if (!download_via_proxy_any_enabled(settings, sections))
         return;
 
-    add_global_download_service_mixed_proxy(config, settings);
+    add_global_download_service_mixed_proxy(config, settings, "lists");
+    add_global_download_service_mixed_proxy(config, settings, "components");
     add_subscription_download_service_mixed_proxies(config, sections);
 
-    let outbound = download_detour_tag(settings);
-    if ((bool_option(settings, "download_lists_via_proxy", false) ||
-        bool_option(settings, "download_components_via_proxy", false)) && outbound == "")
-        runtime_generate_unsupported("download via proxy section is not set");
+    if (download_via_proxy_enabled(settings, "lists") && download_detour_tag(settings, "lists") == "")
+        runtime_generate_unsupported("download lists via proxy section is not set");
+    if (download_via_proxy_enabled(settings, "components") && download_detour_tag(settings, "components") == "")
+        runtime_generate_unsupported("download components via proxy section is not set");
 }
 
 function parse_port(value) {

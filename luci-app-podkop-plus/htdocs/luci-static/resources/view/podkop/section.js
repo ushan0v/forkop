@@ -13,6 +13,7 @@ const ACTION_PROVIDERS_AVAILABILITY_EVENT =
   main.PODKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT ||
   "podkop:action-providers-availability";
 const CONNECTIONS_ITEM_SETTINGS_OVERLAY_ID = "pdk_item_settings_overlay";
+const RULE_SET_ITEM_SETTINGS_KEY = "rule_set_settings";
 const CONNECTIONS_BLOCKED_INTERFACES = [
   "br-lan",
   "eth0",
@@ -774,7 +775,9 @@ function itemSettingsFlag(settings, key, defaultValue) {
 
 function itemSettingsValue(settings, key, defaultValue) {
   const value = settings ? settings[key] : null;
-  return value === undefined || value === null ? defaultValue || "" : `${value}`;
+  return value === undefined || value === null
+    ? defaultValue || ""
+    : `${value}`;
 }
 
 function ensureConnectionsDynamicListStyles() {
@@ -879,7 +882,11 @@ function findDynamicListItemByValue(dl, value) {
 
   for (let i = 0; i < items.length; i += 1) {
     const hidden = items[i].querySelector('input[type="hidden"]');
-    if (hidden && hidden.parentNode === items[i] && hidden.value === stringValue) {
+    if (
+      hidden &&
+      hidden.parentNode === items[i] &&
+      hidden.value === stringValue
+    ) {
       return items[i];
     }
   }
@@ -938,7 +945,10 @@ const SettingsUIDynamicList = ui.DynamicList.extend({
             event.preventDefault();
             event.stopPropagation();
 
-            if (!this.options.disabled && typeof this.options.settingsHandler === "function") {
+            if (
+              !this.options.disabled &&
+              typeof this.options.settingsHandler === "function"
+            ) {
               this.options.settingsHandler(value, item, this);
             }
           },
@@ -971,7 +981,12 @@ const SettingsDynamicList = form.DynamicList.extend({
       disabled: this.readonly != null ? this.readonly : this.map.readonly,
       settingsHandler: (itemValue, _item, widget) => {
         if (typeof this.renderItemSettingsModal === "function") {
-          this.renderItemSettingsModal(section_id, `${itemValue}`, this, widget);
+          this.renderItemSettingsModal(
+            section_id,
+            `${itemValue}`,
+            this,
+            widget,
+          );
         }
       },
       itemLabel: (itemValue, text) => {
@@ -1399,10 +1414,7 @@ function showConnectionUrlSettingsModal(section_id, itemValue, option, widget) {
   const cascadeEnabled = createFlagInput(
     itemSettingsFlag(settings, "outbound_detour_enabled", false),
   );
-  const cascadeSection = createSelectInput(
-    choices,
-    cascadeSectionValue,
-  );
+  const cascadeSection = createSelectInput(choices, cascadeSectionValue);
   const udpOverTcp = createFlagInput(
     itemSettingsFlag(settings, "enable_udp_over_tcp", false),
   );
@@ -1419,7 +1431,9 @@ function showConnectionUrlSettingsModal(section_id, itemValue, option, widget) {
     createModalFieldRow(
       _("Cascade connection"),
       cascadeEnabled,
-      _("Use another section as an intermediate hop for connecting to this one"),
+      _(
+        "Use another section as an intermediate hop for connecting to this one",
+      ),
     ),
     cascadeSectionRow,
   ];
@@ -1456,15 +1470,19 @@ function showConnectionUrlSettingsModal(section_id, itemValue, option, widget) {
       outbound_detour_section: cascadeEnabled.checked
         ? cascadeSection.value
         : "",
-      enable_udp_over_tcp:
-        supportsUdpOverTcp && udpOverTcp.checked ? "1" : "0",
+      enable_udp_over_tcp: supportsUdpOverTcp && udpOverTcp.checked ? "1" : "0",
     });
 
     return saveItemSettingsChanges(option, section_id, widget);
   });
 }
 
-function showSubscriptionUrlSettingsModal(section_id, itemValue, option, widget) {
+function showSubscriptionUrlSettingsModal(
+  section_id,
+  itemValue,
+  option,
+  widget,
+) {
   const settings = getItemSettings(
     section_id,
     "subscription_url_settings",
@@ -1509,9 +1527,6 @@ function showSubscriptionUrlSettingsModal(section_id, itemValue, option, widget)
   const downloadSectionRow = createModalFieldRow(
     _("Download through"),
     downloadSection,
-    _(
-      "Use one enabled proxy, JSON outbound, or VPN section for the selected download types",
-    ),
   );
   const updateState = () => {
     setRowVisible(updateIntervalRow, autoUpdate.checked);
@@ -1600,11 +1615,16 @@ function showSubscriptionUrlSettingsModal(section_id, itemValue, option, widget)
 }
 
 function showInterfaceSettingsModal(section_id, itemValue, option, widget) {
-  const settings = getItemSettings(section_id, "interface_settings", itemValue, {
-    domain_resolver_enabled: "0",
-    domain_resolver_dns_type: "udp",
-    domain_resolver_dns_server: "8.8.8.8",
-  });
+  const settings = getItemSettings(
+    section_id,
+    "interface_settings",
+    itemValue,
+    {
+      domain_resolver_enabled: "0",
+      domain_resolver_dns_type: "udp",
+      domain_resolver_dns_server: "8.8.8.8",
+    },
+  );
   const resolverEnabled = createFlagInput(
     itemSettingsFlag(settings, "domain_resolver_enabled", false),
   );
@@ -1672,6 +1692,56 @@ function showInterfaceSettingsModal(section_id, itemValue, option, widget) {
         domain_resolver_dns_server: resolverEnabled.checked
           ? `${dnsServer.value || ""}`.trim()
           : "",
+      });
+
+      return saveItemSettingsChanges(option, section_id, widget);
+    },
+  );
+}
+
+function ruleSetIncludesSubnets(section_id, value) {
+  const settings = readItemSettingsMap(section_id, RULE_SET_ITEM_SETTINGS_KEY);
+  const itemSettings = settings && settings[value];
+
+  if (
+    itemSettings &&
+    typeof itemSettings === "object" &&
+    itemSettings.include_subnets != null
+  ) {
+    return itemSettingsFlag(itemSettings, "include_subnets", false);
+  }
+
+  return getConfigListValues(section_id, "rule_set_with_subnets").includes(
+    value,
+  );
+}
+
+function showRuleSetSettingsModal(section_id, itemValue, option, widget) {
+  const includeSubnets = createFlagInput(
+    ruleSetIncludesSubnets(section_id, itemValue),
+  );
+
+  showItemSettingsModal(
+    _("Rule set settings"),
+    [
+      createModalFieldRow(
+        _("Include IP addresses and subnets"),
+        includeSubnets,
+        _("Subnets from the list will be extracted and added to nftables"),
+      ),
+    ],
+    () => {
+      const listValidation = validateDynamicListWidgetValues(
+        option,
+        section_id,
+        widget,
+      );
+      if (listValidation !== true) {
+        return listValidation;
+      }
+
+      writeItemSettings(section_id, RULE_SET_ITEM_SETTINGS_KEY, itemValue, {
+        include_subnets: includeSubnets.checked ? "1" : "0",
       });
 
       return saveItemSettingsChanges(option, section_id, widget);
@@ -2677,9 +2747,9 @@ function domainTextValuesWithPrefix(section_id, key, prefix) {
     return [];
   }
 
-  return main.parseValueList(legacyText).map((value) =>
-    prefix ? `${prefix}:${value}` : value,
-  );
+  return main
+    .parseValueList(legacyText)
+    .map((value) => (prefix ? `${prefix}:${value}` : value));
 }
 
 function uniqueDomainTextValues(values) {
@@ -4240,7 +4310,7 @@ function addLocalDeviceSubnetDynamicField(section, config) {
   );
 
   o.modalonly = true;
-  o.placeholder = _("Device, IP, or subnet");
+  o.placeholder = _("Device or IP");
   o.validate = function (_section_id, value) {
     if (!value || value.length === 0) {
       return true;
@@ -4420,9 +4490,42 @@ function getBuiltInRulesetReferences(section_id) {
 }
 
 function getCustomRulesetReferences(section_id) {
-  return getRulesetReferences(section_id).filter(
-    (value) => !isBuiltinRulesetValue(value),
-  );
+  const values = [
+    ...getRulesetReferences(section_id).filter(
+      (value) => !isBuiltinRulesetValue(value),
+    ),
+    ...getConfigListValues(section_id, "rule_set_with_subnets"),
+  ];
+  const seen = new Set();
+
+  return values.filter((value) => {
+    if (!value || seen.has(value)) {
+      return false;
+    }
+
+    seen.add(value);
+    return true;
+  });
+}
+
+function writeCustomRulesetReferences(section_id, values) {
+  const domainRulesets = [];
+  const subnetRulesets = [];
+
+  normalizeDynamicListItems(values).forEach((value) => {
+    if (ruleSetIncludesSubnets(section_id, value)) {
+      subnetRulesets.push(value);
+    } else {
+      domainRulesets.push(value);
+    }
+  });
+
+  writeListOption(section_id, "rule_set", domainRulesets);
+  writeListOption(section_id, "rule_set_with_subnets", subnetRulesets);
+  cleanupListItemSettings(section_id, RULE_SET_ITEM_SETTINGS_KEY, [
+    ...domainRulesets,
+    ...subnetRulesets,
+  ]);
 }
 
 function createSectionContent(section) {
@@ -5184,7 +5287,7 @@ function createSectionContent(section) {
     key: "domain_suffix",
     label: _("Domains"),
     description: _(
-      "Plain values match domain suffixes. Use full:, keyword:, or regex: for exact domains, keywords, and regular expressions.",
+      "The rule applies to the domain and all its subdomains. Use full:, keyword:, or regex: prefixes for exact match, keyword match, or regular expression.",
     ),
     textAnalyze: analyzeDomainSuffixText,
     loadText: loadCombinedDomainText,
@@ -5210,20 +5313,6 @@ function createSectionContent(section) {
     label: _("IPs"),
     description: _("Match destination IPs or subnets"),
     textAnalyze: analyzeIpCidrText,
-  });
-
-  addLocalDeviceSubnetDynamicField(section, {
-    key: "source_ip_cidr",
-    label: _("Source IPs"),
-    description: _("Match source IPs or subnets"),
-  });
-
-  o = addLocalDeviceSubnetDynamicField(section, {
-    key: "fully_routed_ips",
-    label: _("Fully Routed IPs"),
-    description: _(
-      "Specify local IP addresses or subnets whose traffic will always be routed through the configured route",
-    ),
   });
 
   const builtInRulesetOption = section.taboption(
@@ -5322,35 +5411,26 @@ function createSectionContent(section) {
 
   const ruleSetOption = section.taboption(
     "conditions",
-    form.DynamicList,
+    SettingsDynamicList,
     "rule_set",
-    _("Rule sets (domains)"),
-    _(
-      "Add URLs or local paths to .srs / .json lists. Subnet rules are ignored",
-    ),
+    _("Rule sets"),
+    _("Add URLs or local paths to .srs / .json lists"),
   );
   ruleSetOption.modalonly = true;
+  ruleSetOption.settingsKey = RULE_SET_ITEM_SETTINGS_KEY;
+  ruleSetOption.renderItemSettingsModal = showRuleSetSettingsModal;
   ruleSetOption.load = function (section_id) {
     return getCustomRulesetReferences(section_id);
   };
+  ruleSetOption.write = function (section_id, value) {
+    writeCustomRulesetReferences(section_id, value);
+  };
+  ruleSetOption.remove = function (section_id) {
+    uci.unset(UCI_PACKAGE, section_id, "rule_set");
+    uci.unset(UCI_PACKAGE, section_id, "rule_set_with_subnets");
+    uci.unset(UCI_PACKAGE, section_id, RULE_SET_ITEM_SETTINGS_KEY);
+  };
   ruleSetOption.validate = function (_section_id, value) {
-    return validateCustomRulesetReference(value);
-  };
-
-  const ruleSetWithSubnetsOption = section.taboption(
-    "conditions",
-    form.DynamicList,
-    "rule_set_with_subnets",
-    _("Rule sets (domains and subnets)"),
-    _(
-      "Add URLs or local paths to .srs / .json lists. Subnets from the list will be extracted and added to nftables",
-    ),
-  );
-  ruleSetWithSubnetsOption.modalonly = true;
-  ruleSetWithSubnetsOption.load = function (section_id) {
-    return getConfigListValues(section_id, "rule_set_with_subnets");
-  };
-  ruleSetWithSubnetsOption.validate = function (_section_id, value) {
     return validateCustomRulesetReference(value);
   };
 
@@ -5368,6 +5448,22 @@ function createSectionContent(section) {
   domainIpListsOption.validate = function (_section_id, value) {
     return validatePlainListReference(value);
   };
+
+  addLocalDeviceSubnetDynamicField(section, {
+    key: "source_ip_cidr",
+    label: _("Device filter"),
+    description: _(
+      "Apply section rules only to the specified local IP addresses",
+    ),
+  });
+
+  addLocalDeviceSubnetDynamicField(section, {
+    key: "fully_routed_ips",
+    label: _("Forced device routing"),
+    description: _(
+      "All traffic from these IP addresses will be routed through the section unconditionally, ignoring all other conditions.",
+    ),
+  });
 
   addDynamicConditionField(section, {
     key: "ports",

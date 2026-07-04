@@ -231,7 +231,7 @@ function subscription_download_target_port(sections, target, base_port) {
     let targets = subscription_download_targets(sections);
     for (let i = 0; i < length(targets); i++)
         if (targets[i] == target)
-            return base_port + 1 + i;
+            return base_port + 2 + i;
 
     return 0;
 }

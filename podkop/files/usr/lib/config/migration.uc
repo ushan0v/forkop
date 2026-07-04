@@ -874,9 +874,24 @@ function migrate_list_update_enabled(ctx) {
 
 function migrate_download_via_proxy_flags(ctx) {
     let settings = ctx.model.settings;
-    let enabled = bool_option(settings, "download_lists_via_proxy", false) ? "1" : "0";
-    set_option_if_missing(ctx, settings, "download_lists_via_proxy", enabled);
-    set_option_if_missing(ctx, settings, "download_components_via_proxy", enabled);
+    let legacy_section = option(settings, "download_lists_via_proxy_section", "");
+    let lists_enabled = bool_option(settings, "download_lists_via_proxy", false);
+    let components_enabled = option_exists(settings, "download_components_via_proxy")
+        ? bool_option(settings, "download_components_via_proxy", false)
+        : lists_enabled;
+
+    set_option(ctx, settings, "download_lists_via_proxy", lists_enabled ? "1" : "0");
+    if (!lists_enabled)
+        delete_option(ctx, settings, "download_lists_via_proxy_section");
+
+    set_option(ctx, settings, "download_components_via_proxy", components_enabled ? "1" : "0");
+    if (components_enabled) {
+        if (option(settings, "download_components_via_proxy_section", "") == "" && legacy_section != "")
+            set_option(ctx, settings, "download_components_via_proxy_section", legacy_section);
+    }
+    else {
+        delete_option(ctx, settings, "download_components_via_proxy_section");
+    }
 }
 
 function migrate_subscription_download_via_proxy_settings(ctx) {
@@ -910,13 +925,23 @@ function migrate_subscription_download_via_proxy_settings(ctx) {
     delete_option(ctx, settings_section, "download_subscriptions_via_proxy");
 }
 
+function migrate_rule_set_settings(ctx, section) {
+    let references = option_list_values(section, "rule_set_with_subnets");
+    if (length(references) == 0)
+        return;
+
+    let settings = parse_json_object(option(section, "rule_set_settings", ""));
+    for (let reference in references)
+        settings_entry_set_bool_if_missing(settings, reference, "include_subnets", true);
+    set_option_json(ctx, section, "rule_set_settings", settings);
+}
+
 function migrate_model(model, constants) {
     let ctx = migration_context(model);
     constants = object_or_empty(constants);
 
     delete_option(ctx, model.settings, "routing_excluded_ips");
     migrate_list_update_enabled(ctx);
-    migrate_download_via_proxy_flags(ctx);
 
     for (let section in model.rules)
         migrate_rule_section(ctx, section, constants);
@@ -925,8 +950,10 @@ function migrate_model(model, constants) {
     for (let section in model.sections) {
         migrate_rule(ctx, section, false, constants);
         migrate_combined_domain_conditions(ctx, section);
+        migrate_rule_set_settings(ctx, section);
     }
     migrate_subscription_download_via_proxy_settings(ctx);
+    migrate_download_via_proxy_flags(ctx);
 
     return ctx;
 }

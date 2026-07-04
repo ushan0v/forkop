@@ -2028,7 +2028,6 @@ function renderSubscriptionUpdateAction(section, subscriptionUpdating, onUpdateS
     {
       type: "button",
       class: "btn pdk_dashboard-page__outbound-section__subscription-update",
-      title: _("Update subscriptions"),
       "aria-label": _("Update subscriptions"),
       disabled: subscriptionUpdating ? true : void 0,
       click: (event) => {

@@ -3071,7 +3071,7 @@ function createServerContent(section, options = {}) {
   o = section.option(form.Value, "tailscale_hostname", _("Tailscale hostname"));
   o.modalonly = true;
   o.rmempty = false;
-  o.validate = validateHost;
+  o.validate = validateRequiredText;
   o.load = function (sectionId) {
     const current = uci.get(UCI_PACKAGE, sectionId, "tailscale_hostname");
     if (current) {

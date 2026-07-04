@@ -648,9 +648,32 @@ function duration_to_seconds_value(value) {
     return total <= 0 ? null : int(total + 0.5);
 }
 
+function download_via_proxy_option_for_purpose(purpose) {
+    purpose = as_string(purpose || "lists");
+    if (purpose == "lists")
+        return "download_lists_via_proxy";
+    if (purpose == "components")
+        return "download_components_via_proxy";
+    return "";
+}
+
+function download_via_proxy_section_option_for_purpose(purpose) {
+    purpose = as_string(purpose || "lists");
+    if (purpose == "lists")
+        return "download_lists_via_proxy_section";
+    if (purpose == "components")
+        return "download_components_via_proxy_section";
+    return "";
+}
+
+function download_via_proxy_enabled(settings, purpose) {
+    let enabled_option = download_via_proxy_option_for_purpose(purpose);
+    return enabled_option != "" && bool_option(settings, enabled_option, false);
+}
+
 function download_via_proxy_any_enabled(settings) {
-    return bool_option(settings, "download_lists_via_proxy", false) ||
-        bool_option(settings, "download_components_via_proxy", false);
+    return download_via_proxy_enabled(settings, "lists") ||
+        download_via_proxy_enabled(settings, "components");
 }
 
 function signature_add_value(body, key, value) {
@@ -1101,8 +1124,10 @@ function sing_box_signature_body(settings, sections, servers, mwan3_active) {
 
     body = signature_add_value(body, "settings.download_lists_via_proxy", bool_option_value(settings, "download_lists_via_proxy", false));
     body = signature_add_value(body, "settings.download_components_via_proxy", bool_option_value(settings, "download_components_via_proxy", false));
-    if (download_via_proxy_any_enabled(settings))
+    if (download_via_proxy_enabled(settings, "lists"))
         body = signature_add_value(body, "settings.download_lists_via_proxy_section", option(settings, "download_lists_via_proxy_section", ""));
+    if (download_via_proxy_enabled(settings, "components"))
+        body = signature_add_value(body, "settings.download_components_via_proxy_section", option(settings, "download_components_via_proxy_section", ""));
 
     for (let section in sections)
         body = append_sing_box_rule_signature_body(body, object_or_empty(section), sections);

@@ -47,7 +47,9 @@ const fixture = {
       domain: [ 'Example.COM' ],
       domain_keyword_text_mode: '1',
       domain_keyword_text: 'Video, Stream # comment',
-      domain_regex_text: '^api[.]example$, ^cdn[.]example$'
+      domain_regex_text: '^api[.]example$, ^cdn[.]example$',
+      rule_set: [ 'https://example.com/domains.srs' ],
+      rule_set_with_subnets: [ 'https://example.com/mixed.srs' ]
     }
   ],
   section: [
@@ -143,6 +145,7 @@ assert(config.settings.update_interval === '1d', 'missing update_interval should
 assert(config.settings.download_lists_via_proxy === '1', 'download_lists_via_proxy should be preserved');
 assert(config.settings.download_components_via_proxy === '1', 'download_components_via_proxy should be copied');
 assert(config.settings.download_lists_via_proxy_section === 'legacy-urltest', 'download section should be preserved for lists/components');
+assert(config.settings.download_components_via_proxy_section === 'legacy-urltest', 'component download section should be migrated from the legacy common selector');
 absent(config.settings, 'download_subscriptions_via_proxy', 'settings');
 absent(config.settings, 'routing_excluded_ips', 'settings');
 
@@ -156,6 +159,8 @@ assert(legacyUrl.domain_suffix.includes('keyword:Video'), 'keyword migrated');
 assert(legacyUrl.domain_suffix.includes('keyword:Stream'), 'keyword comment stripped');
 assert(legacyUrl.domain_suffix.includes('regex:^api[.]example$'), 'regex migrated');
 assert(legacyUrl.domain_suffix.includes('regex:^cdn[.]example$'), 'second regex migrated');
+const legacyUrlRuleSetSettings = JSON.parse(legacyUrl.rule_set_settings);
+assert(legacyUrlRuleSetSettings['https://example.com/mixed.srs'].include_subnets === '1', 'rule set subnet setting migrated');
 absent(legacyUrl, 'proxy_string', 'legacy-url');
 absent(legacyUrl, 'proxy_config_type', 'legacy-url');
 absent(legacyUrl, 'connection_type', 'legacy-url');
