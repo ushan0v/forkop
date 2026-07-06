@@ -55,6 +55,15 @@ function read_json_file(path) {
     }
 }
 
+function parse_json_or_null(value) {
+    try {
+        return json(as_string(value));
+    }
+    catch (e) {
+        return null;
+    }
+}
+
 function write_json(value) {
     print(sprintf("%J", value), "\n");
 }
@@ -182,6 +191,11 @@ function arg_number(value) {
     if (value == "" || match(value, /[^0-9-]/))
         return 0;
     return int(value);
+}
+
+function non_negative_number(value) {
+    let number = arg_number(value);
+    return number < 0 ? 0 : number;
 }
 
 function unsigned_number(value) {
@@ -532,8 +546,42 @@ function running_service_action_value(action, source, started_at) {
     };
 }
 
-function running_latency_action_value(latency_type, section, tag, started_at) {
+function latency_progress_value(completed, total, failed) {
+    let progress_total = non_negative_number(total);
+    let progress_completed = non_negative_number(completed);
+    if (progress_total > 0 && progress_completed > progress_total)
+        progress_completed = progress_total;
+
     return {
+        completed: progress_completed,
+        total: progress_total,
+        failed: non_negative_number(failed)
+    };
+}
+
+function proxy_list_total(tag) {
+    let value = parse_json_or_null(tag);
+    if (type(value) != "array")
+        return 0;
+
+    let total = 0;
+    for (let proxy_tag in value) {
+        if (type(proxy_tag) == "string" && proxy_tag != "")
+            total++;
+    }
+
+    return total;
+}
+
+function initial_latency_progress(latency_type, tag) {
+    if (as_string(latency_type) != "proxy_list")
+        return null;
+
+    return latency_progress_value(0, proxy_list_total(tag), 0);
+}
+
+function running_latency_action_value(latency_type, section, tag, started_at) {
+    let value = {
         success: true,
         running: true,
         kind: "latency",
@@ -546,6 +594,39 @@ function running_latency_action_value(latency_type, section, tag, started_at) {
         updated_at: null,
         exit_code: null
     };
+
+    let progress = initial_latency_progress(latency_type, tag);
+    if (type(progress) == "object")
+        value.progress = progress;
+
+    return value;
+}
+
+function latency_action_path_allowed(path) {
+    path = as_string(path);
+    let prefix = LATENCY_ACTION_DIR + "/";
+    let suffix = ".json";
+    return path != "" &&
+        substr(path, 0, length(prefix)) == prefix &&
+        length(path) > length(prefix) + length(suffix) &&
+        substr(path, length(path) - length(suffix)) == suffix;
+}
+
+function update_latency_progress_state(path, completed, total, failed) {
+    if (!latency_action_path_allowed(path))
+        return false;
+
+    let value = read_json_file(path);
+    if (type(value) != "object" || value.kind != "latency" || value.running !== true)
+        return false;
+
+    value.progress = latency_progress_value(completed, total, failed);
+    value.updated_at = now_seconds();
+    return write_state_file(path, value);
+}
+
+function update_latency_progress_state_mode(path, completed, total, failed) {
+    exit(update_latency_progress_state(path, completed, total, failed) ? 0 : 1);
 }
 
 function finished_action_state_value(path, success, message, exit_code, updated_at) {
@@ -1170,7 +1251,7 @@ function latency_clash_method(latency_type) {
 
 function latency_worker(path, latency_type, tag, timeout) {
     let method = latency_clash_method(latency_type).method;
-    let status = command_status(command_from_args([ BIN_PATH, "clash_api", method, tag, timeout ]) + " >/dev/null 2>&1");
+    let status = command_status(command_from_args([ BIN_PATH, "clash_api", method, tag, timeout, path ]) + " >/dev/null 2>&1");
     if (status == 0)
         write_finished_action_state(path, true, "Latency test completed", status);
     else
@@ -1318,6 +1399,8 @@ else if (mode == "service-action-update-pid")
     update_service_action_pid_mode(ARGV[1], ARGV[2]);
 else if (mode == "service-action-finish")
     finish_service_action_mode(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
+else if (mode == "latency-progress-state")
+    update_latency_progress_state_mode(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "service-action-finish-after-command")
     finish_service_action_after_command_mode(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "service-action-wait-worker")

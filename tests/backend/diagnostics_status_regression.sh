@@ -102,6 +102,26 @@ PATH="$fake_bin:$PATH" \
 grep -Fq "url=https://latency.example/generate_204" "$WORK_DIR/fake-curl.log" ||
   fail "clash-api latency check must use settings.latency_test_url"
 
+latency_action_dir="$WORK_DIR/ui-state/latency-actions"
+mkdir -p "$latency_action_dir"
+latency_state="$latency_action_dir/latency-1.json"
+printf '%s\n' '{"success":true,"running":true,"kind":"latency","latency_type":"proxy_list","section":"main","tag":"[]","started_at":100}' >"$latency_state"
+FAKE_CURL_LOG="$WORK_DIR/fake-curl-latencies.log" \
+PODKOP_UCI_STATE_FILE="$uci_state" \
+PODKOP_LIB="$PODKOP_LIB" \
+PODKOP_UI_LATENCY_ACTION_DIR="$latency_action_dir" \
+PATH="$fake_bin:$PATH" \
+  ucode -L "$PODKOP_LIB" "$DIAGNOSTICS_RUNTIME" clash-api get_proxy_latencies '["proxy-a","proxy-b"]' 5000 "$latency_state" >/dev/null ||
+  fail "clash-api get_proxy_latencies should update latency progress"
+JOB_STATE="$latency_state" node - <<'NODE'
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.env.JOB_STATE, "utf8"));
+if (!value.progress || value.progress.completed !== 2 || value.progress.total !== 2 || value.progress.failed !== 0) {
+  console.error("latency progress after proxy list mismatch");
+  process.exit(1);
+}
+NODE
+
 firewall_rules="$(cat <<'EOF'
 firewall.@rule[0]=rule
 firewall.@rule[0].enabled='1'

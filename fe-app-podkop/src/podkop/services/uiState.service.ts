@@ -42,6 +42,29 @@ function getEmptyDiagnosticsActions(): StoreType['diagnosticsActions'] {
   };
 }
 
+function normalizeLatencyProgress(
+  progress?: Podkop.LatencyActionProgress,
+): Podkop.LatencyActionProgress | undefined {
+  const total = Math.trunc(Number(progress?.total ?? 0));
+
+  if (!Number.isFinite(total) || total <= 0) {
+    return undefined;
+  }
+
+  const completedValue = Number(progress?.completed ?? 0);
+  const failedValue = Number(progress?.failed ?? 0);
+  const completed = Number.isFinite(completedValue)
+    ? Math.trunc(completedValue)
+    : 0;
+  const failed = Number.isFinite(failedValue) ? Math.trunc(failedValue) : 0;
+
+  return {
+    completed: Math.min(Math.max(0, completed), total),
+    total,
+    failed: Math.max(0, failed),
+  };
+}
+
 function applyServiceState(uiState: Podkop.UiState) {
   const currentSystemInfo = store.get().diagnosticsSystemInfo;
   const nextSystemInfo = {
@@ -56,8 +79,7 @@ function applyServiceState(uiState: Podkop.UiState) {
 
   nextSystemInfo.sing_box_extended = uiState.capabilities.sing_box_extended;
   nextSystemInfo.sing_box_tiny = uiState.capabilities.sing_box_tiny;
-  nextSystemInfo.sing_box_compressed =
-    uiState.capabilities.sing_box_compressed;
+  nextSystemInfo.sing_box_compressed = uiState.capabilities.sing_box_compressed;
   nextSystemInfo.sing_box_tailscale = uiState.capabilities.sing_box_tailscale;
 
   store.set({
@@ -78,8 +100,12 @@ function applyServiceState(uiState: Podkop.UiState) {
 function applyActionState(actions: UiActionMap = {}) {
   const current = store.get();
   const localOverlay = getLocalActionOverlay();
+  const currentLatencyProgressSections =
+    current.sectionsWidget.latencyProgressSections;
   const subscriptionUpdatingSections: Record<string, boolean> = {};
   const latencyFetchingSections: Record<string, boolean> = {};
+  const latencyProgressSections: Record<string, Podkop.LatencyActionProgress> =
+    {};
   const updatesActions = getEmptyUpdatesActions();
   const diagnosticsActions = getEmptyDiagnosticsActions();
 
@@ -92,6 +118,13 @@ function applyActionState(actions: UiActionMap = {}) {
   for (const state of actions.latency || []) {
     if (isRunningAction(state) && state.section) {
       latencyFetchingSections[state.section] = true;
+      const progress = normalizeLatencyProgress(state.progress);
+      if (progress) {
+        latencyProgressSections[state.section] = progress;
+      } else if (currentLatencyProgressSections[state.section]) {
+        latencyProgressSections[state.section] =
+          currentLatencyProgressSections[state.section];
+      }
     }
   }
 
@@ -126,6 +159,13 @@ function applyActionState(actions: UiActionMap = {}) {
 
   for (const section of localOverlay.latencySections) {
     latencyFetchingSections[section] = true;
+    if (
+      !latencyProgressSections[section] &&
+      currentLatencyProgressSections[section]
+    ) {
+      latencyProgressSections[section] =
+        currentLatencyProgressSections[section];
+    }
   }
 
   for (const key of localOverlay.componentActions) {
@@ -141,6 +181,7 @@ function applyActionState(actions: UiActionMap = {}) {
       ...current.sectionsWidget,
       subscriptionUpdatingSections,
       latencyFetchingSections,
+      latencyProgressSections,
     },
     updatesActions,
     diagnosticsActions,

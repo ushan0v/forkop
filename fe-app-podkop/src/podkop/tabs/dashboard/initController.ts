@@ -19,7 +19,7 @@ import {
   store,
   StoreType,
 } from '../../services';
-import { renderSections, renderWidget } from './partials';
+import { getLatencyTestLabel, renderSections, renderWidget } from './partials';
 import { fetchServicesInfo } from '../../fetchers/fetchServicesInfo';
 import { getClashApiSecret } from '../../methods/custom/getClashApiSecret';
 import { Podkop } from '../../types';
@@ -33,6 +33,9 @@ import { isTransientRpcError } from '../../helpers/isTransientRpcError';
 import { shouldShowLoadingForRestoredAction } from '../../helpers/restoredActionLoading';
 
 const SECTIONS_REFRESH_INTERVAL_MS = 10000;
+const LATENCY_TEST_BUTTON_CLASS = 'dashboard-sections-grid-item-test-latency';
+const LATENCY_TEST_BUTTON_LABEL_CLASS =
+  'dashboard-sections-grid-item-test-latency__label';
 let sectionsRefreshTimer: ReturnType<typeof setInterval> | null = null;
 let sectionsRefreshPromise: Promise<boolean> | null = null;
 let sectionsRefreshQueued = false;
@@ -201,6 +204,7 @@ function setLatencyFetching(
   sectionName: string,
   fetching: boolean,
   local = false,
+  progress?: Podkop.LatencyActionProgress,
 ) {
   if (local || !fetching) {
     setLocalLatencyAction(sectionName, fetching && local);
@@ -210,17 +214,25 @@ function setLatencyFetching(
   const latencyFetchingSections = {
     ...sectionsWidget.latencyFetchingSections,
   };
+  const latencyProgressSections = {
+    ...sectionsWidget.latencyProgressSections,
+  };
 
   if (fetching) {
     latencyFetchingSections[sectionName] = true;
+    if (progress) {
+      latencyProgressSections[sectionName] = progress;
+    }
   } else {
     delete latencyFetchingSections[sectionName];
+    delete latencyProgressSections[sectionName];
   }
 
   store.set({
     sectionsWidget: {
       ...sectionsWidget,
       latencyFetchingSections,
+      latencyProgressSections,
     },
   });
 }
@@ -532,6 +544,30 @@ async function handleChooseOutbound(
   }
 }
 
+function getInitialLatencyProgress(
+  latencyType: Podkop.LatencyActionState['latency_type'],
+  tag: string,
+): Podkop.LatencyActionProgress | undefined {
+  if (latencyType !== 'proxy_list') {
+    return undefined;
+  }
+
+  try {
+    const tags = JSON.parse(tag);
+    if (!Array.isArray(tags)) {
+      return undefined;
+    }
+
+    const total = tags.filter(
+      (item) => typeof item === 'string' && item.length > 0,
+    ).length;
+
+    return total > 0 ? { completed: 0, total, failed: 0 } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function handleTestLatency(
   latencyType: Podkop.LatencyActionState['latency_type'],
   sectionName: string,
@@ -542,7 +578,12 @@ async function handleTestLatency(
     return;
   }
 
-  setLatencyFetching(sectionName, true, true);
+  setLatencyFetching(
+    sectionName,
+    true,
+    true,
+    getInitialLatencyProgress(latencyType, tag),
+  );
   let jobId = '';
   let ownsJobFollow = false;
   let completed = false;
@@ -899,6 +940,86 @@ async function handleUpdateSubscription(section: Podkop.OutboundGroup) {
   }
 }
 
+function shallowRecordEqual<T>(
+  left: Record<string, T>,
+  right: Record<string, T>,
+) {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return leftKeys.every((key) => left[key] === right[key]);
+}
+
+function canUpdateLatencyProgressInline(
+  prev: StoreType['sectionsWidget'],
+  next: StoreType['sectionsWidget'],
+) {
+  return (
+    prev.loading === next.loading &&
+    prev.failed === next.failed &&
+    prev.data === next.data &&
+    shallowRecordEqual(
+      prev.latencyFetchingSections,
+      next.latencyFetchingSections,
+    ) &&
+    shallowRecordEqual(
+      prev.subscriptionUpdatingSections,
+      next.subscriptionUpdatingSections,
+    ) &&
+    shallowRecordEqual(
+      prev.selectorSwitchingSections,
+      next.selectorSwitchingSections,
+    )
+  );
+}
+
+function findLatencyTestButton(container: HTMLElement, sectionName: string) {
+  return Array.from(
+    container.querySelectorAll<HTMLButtonElement>(
+      `.${LATENCY_TEST_BUTTON_CLASS}`,
+    ),
+  ).find((button) => button.dataset.latencySection === sectionName);
+}
+
+function updateLatencyProgressInline(
+  sectionsWidget: StoreType['sectionsWidget'],
+) {
+  const container = document.getElementById('dashboard-sections-grid');
+
+  if (!container) {
+    return false;
+  }
+
+  for (const section of sectionsWidget.data) {
+    if (!sectionsWidget.latencyFetchingSections[section.sectionName]) {
+      continue;
+    }
+
+    const button = findLatencyTestButton(container, section.sectionName);
+    const label = button?.querySelector<HTMLElement>(
+      `.${LATENCY_TEST_BUTTON_LABEL_CLASS}`,
+    );
+
+    if (!label) {
+      return false;
+    }
+
+    const text = getLatencyTestLabel(
+      sectionsWidget.latencyProgressSections[section.sectionName],
+    );
+
+    if (label.textContent !== text) {
+      label.textContent = text;
+    }
+  }
+
+  return true;
+}
+
 // Renderer
 
 async function renderSectionsWidget() {
@@ -927,6 +1048,7 @@ async function renderSectionsWidget() {
       onShowUrlTestInfo: () => {},
       onUpdateSubscription: () => {},
       latencyFetching: false,
+      latencyProgress: undefined,
       subscriptionUpdating: false,
       selectorSwitchingTag: undefined,
     });
@@ -944,6 +1066,8 @@ async function renderSectionsWidget() {
       latencyFetching: Boolean(
         sectionsWidget.latencyFetchingSections[section.sectionName],
       ),
+      latencyProgress:
+        sectionsWidget.latencyProgressSections[section.sectionName],
       subscriptionUpdating: Boolean(
         sectionsWidget.subscriptionUpdatingSections[section.sectionName],
       ),
@@ -1158,12 +1282,20 @@ async function renderServicesInfoWidget() {
 }
 
 async function onStoreUpdate(
-  _next: StoreType,
-  _prev: StoreType,
+  next: StoreType,
+  prev: StoreType,
   diff: Partial<StoreType>,
 ) {
   if (diff.sectionsWidget) {
-    renderSectionsWidget();
+    const inlineUpdated =
+      canUpdateLatencyProgressInline(
+        prev.sectionsWidget,
+        next.sectionsWidget,
+      ) && updateLatencyProgressInline(next.sectionsWidget);
+
+    if (!inlineUpdated) {
+      renderSectionsWidget();
+    }
   }
 
   if (diff.bandwidthWidget) {

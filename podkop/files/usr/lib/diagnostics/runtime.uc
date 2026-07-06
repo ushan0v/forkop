@@ -1667,7 +1667,7 @@ function latency_test_url() {
     return value == "" ? DEFAULT_LATENCY_TEST_URL : value;
 }
 
-function clash_api(action, arg1, arg2) {
+function clash_api(action, arg1, arg2, arg3) {
     let base_url = clash_api_url();
     let test_url = latency_test_url();
     let auth = clash_auth_args();
@@ -1704,13 +1704,22 @@ function clash_api(action, arg1, arg2) {
         let tags = status_capture([ "clash-proxy-tags-lines", arg1 ], null);
         if (tags.status != 0)
             return clash_json_error("proxy_tags_json must be a JSON array of non-empty strings");
-        let count = 0;
-        let failed = 0;
-        let proxy_types = clash_proxy_type_map(base_url, auth);
+        let proxy_tags = [];
         for (let proxy_tag in split(tags.output, "\n")) {
             proxy_tag = as_string(proxy_tag);
-            if (proxy_tag == "")
-                continue;
+            if (proxy_tag != "")
+                push(proxy_tags, proxy_tag);
+        }
+
+        let count = 0;
+        let failed = 0;
+        let progress_path = as_string(arg3);
+        let total = length(proxy_tags);
+        if (progress_path != "")
+            module_success(SERVICE_UI_UC, [ "latency-progress-state", progress_path, count, total, failed ]);
+
+        let proxy_types = clash_proxy_type_map(base_url, auth);
+        for (let proxy_tag in proxy_tags) {
             let args = [ "curl", "-G", "-s", clash_latency_endpoint(base_url, proxy_tag, proxy_types[proxy_tag]) ];
             for (let item in auth) push(args, item);
             push(args, "--data-urlencode");
@@ -1718,8 +1727,10 @@ function clash_api(action, arg1, arg2) {
             push(args, "--data-urlencode");
             push(args, "timeout=" + as_string(arg2 || "5000"));
             if (status_capture([ "stdin-json" ], command_output(command_from_args(args))).status != 0)
-                failed = 1;
+                failed++;
             count++;
+            if (progress_path != "")
+                module_success(SERVICE_UI_UC, [ "latency-progress-state", progress_path, count, total, failed ]);
         }
         let result = status_capture([ "clash-proxy-latencies-result", count, failed ], null);
         if (result.output != "")
@@ -1953,7 +1964,7 @@ else if (mode == "check-byedpi-runtime")
 else if (mode == "neutralize-zapret-defaults")
     exit(neutralize_zapret_defaults());
 else if (mode == "clash-api")
-    exit(clash_api(ARGV[1], ARGV[2], ARGV[3]));
+    exit(clash_api(ARGV[1], ARGV[2], ARGV[3], ARGV[4]));
 else if (mode == "show-config")
     exit(show_config(ARGV[1] || "masked"));
 else if (mode == "show-version")

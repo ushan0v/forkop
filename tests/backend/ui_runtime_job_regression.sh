@@ -67,6 +67,7 @@ for mode in \
   service-action-begin-if-idle \
   service-action-update-pid \
   service-action-finish-after-command \
+  latency-progress-state \
   service-action-async \
   service-action-status \
   latency-test-async \
@@ -106,6 +107,22 @@ ui_ucode latency-type-valid proxy_list >/dev/null ||
 if ui_ucode latency-type-valid invalid >/dev/null 2>&1; then
   fail "invalid latency type should be rejected"
 fi
+
+latency_action_dir="$WORK_DIR/latency-actions"
+mkdir -p "$latency_action_dir"
+latency_state="$latency_action_dir/latency-1.json"
+printf '%s\n' '{"success":true,"running":true,"kind":"latency","latency_type":"proxy_list","section":"main","tag":"[]","started_at":100}' >"$latency_state"
+PODKOP_UI_LATENCY_ACTION_DIR="$latency_action_dir" \
+  ui_ucode latency-progress-state "$latency_state" 2 5 1 >/dev/null ||
+  fail "latency-progress-state should update running latency jobs"
+JOB_STATE="$latency_state" node - <<'NODE'
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.env.JOB_STATE, "utf8"));
+if (!value.progress || value.progress.completed !== 2 || value.progress.total !== 5 || value.progress.failed !== 1) {
+  console.error("latency progress state mismatch");
+  process.exit(1);
+}
+NODE
 
 assert_eq "running & enabled" \
   "$(ui_ucode service-status-text 1 1)" \
@@ -181,6 +198,24 @@ export PODKOP_UI_SERVICE_ACTION_LOCK_DIR="$PODKOP_UI_STATE_DIR/service-actions.l
 export PODKOP_UI_LATENCY_ACTION_DIR="$PODKOP_UI_STATE_DIR/latency-actions"
 export PODKOP_UI_COMPONENT_ACTION_DIR="$PODKOP_UI_STATE_DIR/component-actions"
 export PODKOP_UI_SUBSCRIPTION_ACTION_DIR="$PODKOP_UI_STATE_DIR/subscription-actions"
+
+latency_start="$(
+  PODKOP_BIN=/bin/true \
+  PODKOP_LIB="$PODKOP_FILES/usr/lib" \
+    ui_ucode latency-test-async proxy_list main '["proxy-a","proxy-b"]' 5000
+)"
+latency_job_id="$(printf '%s' "$latency_start" | sed -n 's/.*"job_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+[ -n "$latency_job_id" ] || fail "latency-test-async should return a job id"
+latency_async_state="$PODKOP_UI_LATENCY_ACTION_DIR/$latency_job_id.json"
+[ -f "$latency_async_state" ] || fail "latency-test-async should create a state file"
+JOB_STATE="$latency_async_state" node - <<'NODE'
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.env.JOB_STATE, "utf8"));
+if (!value.progress || value.progress.completed !== 0 || value.progress.total !== 2 || value.progress.failed !== 0) {
+  console.error("initial latency progress state mismatch");
+  process.exit(1);
+}
+NODE
 
 job_id="$(ui_ucode service-action-begin-if-idle reload test)"
 [ -n "$job_id" ] || fail "service-action-begin-if-idle should create a job"

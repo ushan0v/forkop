@@ -28,6 +28,7 @@ interface IRenderSectionsProps {
   ) => void;
   onUpdateSubscription: (section: Podkop.OutboundGroup) => void;
   latencyFetching: boolean;
+  latencyProgress?: Podkop.LatencyActionProgress;
   subscriptionUpdating: boolean;
   selectorSwitchingTag?: string;
 }
@@ -324,6 +325,25 @@ function renderSubscriptionUpdateAction(
   );
 }
 
+export function getLatencyTestLabel(
+  latencyProgress?: Podkop.LatencyActionProgress,
+) {
+  const total = Math.trunc(Number(latencyProgress?.total ?? 0));
+  if (!Number.isFinite(total) || total <= 0) {
+    return _('Test latency');
+  }
+
+  const completedValue = Number(latencyProgress?.completed ?? 0);
+  const completed = Number.isFinite(completedValue)
+    ? Math.trunc(completedValue)
+    : 0;
+
+  return `${_('Test latency')}: ${Math.min(
+    Math.max(0, completed),
+    total,
+  )}/${total}`;
+}
+
 function renderDefaultState({
   section,
   onChooseOutbound,
@@ -332,6 +352,7 @@ function renderDefaultState({
   onTestLatency,
   onUpdateSubscription,
   latencyFetching,
+  latencyProgress,
   subscriptionUpdating,
   selectorSwitchingTag,
 }: IRenderSectionsProps) {
@@ -515,6 +536,7 @@ function renderDefaultState({
             {
               type: 'button',
               class: 'btn dashboard-sections-grid-item-test-latency',
+              'data-latency-section': section.sectionName,
               disabled: latencyFetching ? true : undefined,
               click: (event: MouseEvent) => {
                 event.preventDefault();
@@ -527,8 +549,23 @@ function renderDefaultState({
               },
             },
             latencyFetching
-              ? [renderLoaderCircleIcon24(), _('Test latency')]
-              : _('Test latency'),
+              ? [
+                  renderLoaderCircleIcon24(),
+                  E(
+                    'span',
+                    {
+                      class: 'dashboard-sections-grid-item-test-latency__label',
+                    },
+                    getLatencyTestLabel(latencyProgress),
+                  ),
+                ]
+              : E(
+                  'span',
+                  {
+                    class: 'dashboard-sections-grid-item-test-latency__label',
+                  },
+                  _('Test latency'),
+                ),
           ),
         ],
       ),

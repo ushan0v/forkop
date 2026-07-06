@@ -85,6 +85,11 @@ describe('applyUiStateToStore', () => {
             section: 'main',
             tag: 'AUTO',
             job_id: 'latency-1',
+            progress: {
+              completed: 2,
+              total: 5,
+              failed: 1,
+            },
           },
         ],
         component: [
@@ -129,6 +134,13 @@ describe('applyUiStateToStore', () => {
     expect(state.sectionsWidget.latencyFetchingSections).toEqual({
       main: true,
     });
+    expect(state.sectionsWidget.latencyProgressSections).toEqual({
+      main: {
+        completed: 2,
+        total: 5,
+        failed: 1,
+      },
+    });
     expect(state.updatesActions.zapretInstall.loading).toBe(true);
   });
 
@@ -143,6 +155,13 @@ describe('applyUiStateToStore', () => {
         ...store.get().sectionsWidget,
         subscriptionUpdatingSections: { main: true },
         latencyFetchingSections: { main: true },
+        latencyProgressSections: {
+          main: {
+            completed: 1,
+            total: 2,
+            failed: 0,
+          },
+        },
       },
       updatesActions: {
         ...store.get().updatesActions,
@@ -158,6 +177,7 @@ describe('applyUiStateToStore', () => {
     expect(state.diagnosticsActions.enable.loading).toBe(true);
     expect(state.sectionsWidget.subscriptionUpdatingSections).toEqual({});
     expect(state.sectionsWidget.latencyFetchingSections).toEqual({});
+    expect(state.sectionsWidget.latencyProgressSections).toEqual({});
     expect(state.updatesActions.zapretInstall.loading).toBe(false);
   });
 
@@ -185,6 +205,79 @@ describe('applyUiStateToStore', () => {
     expect(store.get().sectionsWidget.subscriptionUpdatingSections).toEqual({});
     expect(store.get().sectionsWidget.latencyFetchingSections).toEqual({});
     expect(store.get().diagnosticsActions.restart.loading).toBe(false);
+  });
+
+  it('preserves local latency progress while waiting for runtime progress', () => {
+    setLocalLatencyAction('gemini', true);
+    store.set({
+      sectionsWidget: {
+        ...store.get().sectionsWidget,
+        latencyFetchingSections: { gemini: true },
+        latencyProgressSections: {
+          gemini: {
+            completed: 0,
+            total: 3,
+            failed: 0,
+          },
+        },
+      },
+    });
+
+    applyUiStateToStore(createUiState());
+
+    expect(store.get().sectionsWidget.latencyFetchingSections).toEqual({
+      gemini: true,
+    });
+    expect(store.get().sectionsWidget.latencyProgressSections).toEqual({
+      gemini: {
+        completed: 0,
+        total: 3,
+        failed: 0,
+      },
+    });
+  });
+
+  it('preserves latency progress for running runtime actions without progress', () => {
+    store.set({
+      sectionsWidget: {
+        ...store.get().sectionsWidget,
+        latencyFetchingSections: { main: true },
+        latencyProgressSections: {
+          main: {
+            completed: 2,
+            total: 5,
+            failed: 0,
+          },
+        },
+      },
+    });
+
+    applyUiStateToStore(
+      createUiState({
+        latency: [
+          {
+            success: true,
+            running: true,
+            kind: 'latency',
+            latency_type: 'proxy_list',
+            section: 'main',
+            tag: '["one","two"]',
+            job_id: 'latency-1',
+          },
+        ],
+      }),
+    );
+
+    expect(store.get().sectionsWidget.latencyFetchingSections).toEqual({
+      main: true,
+    });
+    expect(store.get().sectionsWidget.latencyProgressSections).toEqual({
+      main: {
+        completed: 2,
+        total: 5,
+        failed: 0,
+      },
+    });
   });
 
   it('maps a running reload action to the restart control', () => {

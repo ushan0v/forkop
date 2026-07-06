@@ -156,7 +156,7 @@ function command_spec(command) {
         check_zapret2_runtime: [ "diagnostics/runtime.uc", "check-zapret2-runtime", 0 ],
         check_byedpi_runtime: [ "diagnostics/runtime.uc", "check-byedpi-runtime", 0 ],
         neutralize_zapret_defaults: [ "diagnostics/runtime.uc", "neutralize-zapret-defaults", 0 ],
-        clash_api: [ "diagnostics/runtime.uc", "clash-api", 3 ],
+        clash_api: [ "diagnostics/runtime.uc", "clash-api", 4 ],
         show_config: [ "diagnostics/runtime.uc", "show-config", 1 ],
         show_version: [ "diagnostics/runtime.uc", "show-version", 0 ],
         show_sing_box_config: [ "diagnostics/runtime.uc", "show-sing-box-config", 1 ],

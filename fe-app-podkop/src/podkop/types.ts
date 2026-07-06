@@ -155,6 +155,12 @@ export namespace Podkop {
     outbounds: Outbound[];
   }
 
+  export interface LatencyActionProgress {
+    completed: number;
+    total: number;
+    failed?: number;
+  }
+
   interface SubscriptionTraffic {
     upload?: number;
     download?: number;
@@ -473,6 +479,7 @@ export namespace Podkop {
     latency_type: 'group' | 'proxy' | 'proxy_list';
     section: string;
     tag: string;
+    progress?: LatencyActionProgress;
   }
 
   export interface UiState {

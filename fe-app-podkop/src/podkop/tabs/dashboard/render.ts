@@ -51,6 +51,7 @@ export function render() {
           onShowUrlTestInfo: () => {},
           onUpdateSubscription: () => {},
           latencyFetching: false,
+          latencyProgress: undefined,
           subscriptionUpdating: false,
           selectorSwitchingTag: undefined,
         }),

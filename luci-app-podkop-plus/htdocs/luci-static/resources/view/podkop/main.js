@@ -2049,6 +2049,18 @@ function renderSubscriptionUpdateAction(section, subscriptionUpdating, onUpdateS
     subscriptionUpdating ? [renderLoaderCircleIcon24(), _("Update subscriptions")] : _("Update subscriptions")
   );
 }
+function getLatencyTestLabel(latencyProgress) {
+  const total = Math.trunc(Number(latencyProgress?.total ?? 0));
+  if (!Number.isFinite(total) || total <= 0) {
+    return _("Test latency");
+  }
+  const completedValue = Number(latencyProgress?.completed ?? 0);
+  const completed = Number.isFinite(completedValue) ? Math.trunc(completedValue) : 0;
+  return `${_("Test latency")}: ${Math.min(
+    Math.max(0, completed),
+    total
+  )}/${total}`;
+}
 function renderDefaultState({
   section,
   onChooseOutbound,
@@ -2057,6 +2069,7 @@ function renderDefaultState({
   onTestLatency,
   onUpdateSubscription,
   latencyFetching,
+  latencyProgress,
   subscriptionUpdating,
   selectorSwitchingTag
 }) {
@@ -2199,6 +2212,7 @@ function renderDefaultState({
             {
               type: "button",
               class: "btn dashboard-sections-grid-item-test-latency",
+              "data-latency-section": section.sectionName,
               disabled: latencyFetching ? true : void 0,
               click: (event) => {
                 event.preventDefault();
@@ -2209,7 +2223,22 @@ function renderDefaultState({
                 testLatency();
               }
             },
-            latencyFetching ? [renderLoaderCircleIcon24(), _("Test latency")] : _("Test latency")
+            latencyFetching ? [
+              renderLoaderCircleIcon24(),
+              E(
+                "span",
+                {
+                  class: "dashboard-sections-grid-item-test-latency__label"
+                },
+                getLatencyTestLabel(latencyProgress)
+              )
+            ] : E(
+              "span",
+              {
+                class: "dashboard-sections-grid-item-test-latency__label"
+              },
+              _("Test latency")
+            )
           )
         ]
       )
@@ -2349,6 +2378,7 @@ function render() {
           onUpdateSubscription: () => {
           },
           latencyFetching: false,
+          latencyProgress: void 0,
           subscriptionUpdating: false,
           selectorSwitchingTag: void 0
         })
@@ -4278,6 +4308,7 @@ var initialStore = {
     loading: true,
     failed: false,
     latencyFetchingSections: {},
+    latencyProgressSections: {},
     selectorSwitchingSections: {},
     subscriptionUpdatingSections: {},
     data: []
@@ -4598,6 +4629,21 @@ function getEmptyDiagnosticsActions() {
     stop: { loading: false }
   };
 }
+function normalizeLatencyProgress(progress) {
+  const total = Math.trunc(Number(progress?.total ?? 0));
+  if (!Number.isFinite(total) || total <= 0) {
+    return void 0;
+  }
+  const completedValue = Number(progress?.completed ?? 0);
+  const failedValue = Number(progress?.failed ?? 0);
+  const completed = Number.isFinite(completedValue) ? Math.trunc(completedValue) : 0;
+  const failed2 = Number.isFinite(failedValue) ? Math.trunc(failedValue) : 0;
+  return {
+    completed: Math.min(Math.max(0, completed), total),
+    total,
+    failed: Math.max(0, failed2)
+  };
+}
 function applyServiceState(uiState) {
   const currentSystemInfo = store.get().diagnosticsSystemInfo;
   const nextSystemInfo = {
@@ -4629,8 +4675,10 @@ function applyServiceState(uiState) {
 function applyActionState(actions = {}) {
   const current = store.get();
   const localOverlay = getLocalActionOverlay();
+  const currentLatencyProgressSections = current.sectionsWidget.latencyProgressSections;
   const subscriptionUpdatingSections = {};
   const latencyFetchingSections = {};
+  const latencyProgressSections = {};
   const updatesActions = getEmptyUpdatesActions();
   const diagnosticsActions = getEmptyDiagnosticsActions();
   for (const state of actions.subscription || []) {
@@ -4641,6 +4689,12 @@ function applyActionState(actions = {}) {
   for (const state of actions.latency || []) {
     if (isRunningAction(state) && state.section) {
       latencyFetchingSections[state.section] = true;
+      const progress = normalizeLatencyProgress(state.progress);
+      if (progress) {
+        latencyProgressSections[state.section] = progress;
+      } else if (currentLatencyProgressSections[state.section]) {
+        latencyProgressSections[state.section] = currentLatencyProgressSections[state.section];
+      }
     }
   }
   for (const state of actions.component || []) {
@@ -4669,6 +4723,9 @@ function applyActionState(actions = {}) {
   }
   for (const section of localOverlay.latencySections) {
     latencyFetchingSections[section] = true;
+    if (!latencyProgressSections[section] && currentLatencyProgressSections[section]) {
+      latencyProgressSections[section] = currentLatencyProgressSections[section];
+    }
   }
   for (const key of localOverlay.componentActions) {
     updatesActions[key] = { loading: true };
@@ -4680,7 +4737,8 @@ function applyActionState(actions = {}) {
     sectionsWidget: {
       ...current.sectionsWidget,
       subscriptionUpdatingSections,
-      latencyFetchingSections
+      latencyFetchingSections,
+      latencyProgressSections
     },
     updatesActions,
     diagnosticsActions
@@ -5178,6 +5236,8 @@ function shouldShowLoadingForRestoredAction(state) {
 
 // src/podkop/tabs/dashboard/initController.ts
 var SECTIONS_REFRESH_INTERVAL_MS = 1e4;
+var LATENCY_TEST_BUTTON_CLASS = "dashboard-sections-grid-item-test-latency";
+var LATENCY_TEST_BUTTON_LABEL_CLASS = "dashboard-sections-grid-item-test-latency__label";
 var sectionsRefreshTimer = null;
 var sectionsRefreshPromise = null;
 var sectionsRefreshQueued = false;
@@ -5304,7 +5364,7 @@ function setSelectorSwitching(sectionName, tag) {
     }
   });
 }
-function setLatencyFetching(sectionName, fetching, local = false) {
+function setLatencyFetching(sectionName, fetching, local = false, progress) {
   if (local || !fetching) {
     setLocalLatencyAction(sectionName, fetching && local);
   }
@@ -5312,15 +5372,23 @@ function setLatencyFetching(sectionName, fetching, local = false) {
   const latencyFetchingSections = {
     ...sectionsWidget.latencyFetchingSections
   };
+  const latencyProgressSections = {
+    ...sectionsWidget.latencyProgressSections
+  };
   if (fetching) {
     latencyFetchingSections[sectionName] = true;
+    if (progress) {
+      latencyProgressSections[sectionName] = progress;
+    }
   } else {
     delete latencyFetchingSections[sectionName];
+    delete latencyProgressSections[sectionName];
   }
   store.set({
     sectionsWidget: {
       ...sectionsWidget,
-      latencyFetchingSections
+      latencyFetchingSections,
+      latencyProgressSections
     }
   });
 }
@@ -5563,11 +5631,33 @@ async function handleChooseOutbound(sectionName, selector, tag) {
     setSelectorSwitching(sectionName);
   }
 }
+function getInitialLatencyProgress(latencyType, tag) {
+  if (latencyType !== "proxy_list") {
+    return void 0;
+  }
+  try {
+    const tags = JSON.parse(tag);
+    if (!Array.isArray(tags)) {
+      return void 0;
+    }
+    const total = tags.filter(
+      (item) => typeof item === "string" && item.length > 0
+    ).length;
+    return total > 0 ? { completed: 0, total, failed: 0 } : void 0;
+  } catch {
+    return void 0;
+  }
+}
 async function handleTestLatency(latencyType, sectionName, tag, timeout) {
   if (store.get().sectionsWidget.latencyFetchingSections[sectionName]) {
     return;
   }
-  setLatencyFetching(sectionName, true, true);
+  setLatencyFetching(
+    sectionName,
+    true,
+    true,
+    getInitialLatencyProgress(latencyType, tag)
+  );
   let jobId = "";
   let ownsJobFollow = false;
   let completed = false;
@@ -5849,6 +5939,58 @@ async function handleUpdateSubscription(section) {
     }
   }
 }
+function shallowRecordEqual(left, right) {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+  return leftKeys.every((key) => left[key] === right[key]);
+}
+function canUpdateLatencyProgressInline(prev, next) {
+  return prev.loading === next.loading && prev.failed === next.failed && prev.data === next.data && shallowRecordEqual(
+    prev.latencyFetchingSections,
+    next.latencyFetchingSections
+  ) && shallowRecordEqual(
+    prev.subscriptionUpdatingSections,
+    next.subscriptionUpdatingSections
+  ) && shallowRecordEqual(
+    prev.selectorSwitchingSections,
+    next.selectorSwitchingSections
+  );
+}
+function findLatencyTestButton(container, sectionName) {
+  return Array.from(
+    container.querySelectorAll(
+      `.${LATENCY_TEST_BUTTON_CLASS}`
+    )
+  ).find((button) => button.dataset.latencySection === sectionName);
+}
+function updateLatencyProgressInline(sectionsWidget) {
+  const container = document.getElementById("dashboard-sections-grid");
+  if (!container) {
+    return false;
+  }
+  for (const section of sectionsWidget.data) {
+    if (!sectionsWidget.latencyFetchingSections[section.sectionName]) {
+      continue;
+    }
+    const button = findLatencyTestButton(container, section.sectionName);
+    const label = button?.querySelector(
+      `.${LATENCY_TEST_BUTTON_LABEL_CLASS}`
+    );
+    if (!label) {
+      return false;
+    }
+    const text = getLatencyTestLabel(
+      sectionsWidget.latencyProgressSections[section.sectionName]
+    );
+    if (label.textContent !== text) {
+      label.textContent = text;
+    }
+  }
+  return true;
+}
 async function renderSectionsWidget() {
   logger.debug("[DASHBOARD]", "renderSectionsWidget");
   const sectionsWidget = store.get().sectionsWidget;
@@ -5878,6 +6020,7 @@ async function renderSectionsWidget() {
       onUpdateSubscription: () => {
       },
       latencyFetching: false,
+      latencyProgress: void 0,
       subscriptionUpdating: false,
       selectorSwitchingTag: void 0
     });
@@ -5893,6 +6036,7 @@ async function renderSectionsWidget() {
       latencyFetching: Boolean(
         sectionsWidget.latencyFetchingSections[section.sectionName]
       ),
+      latencyProgress: sectionsWidget.latencyProgressSections[section.sectionName],
       subscriptionUpdating: Boolean(
         sectionsWidget.subscriptionUpdatingSections[section.sectionName]
       ),
@@ -6065,9 +6209,15 @@ async function renderServicesInfoWidget() {
   });
   container.replaceChildren(renderedWidget);
 }
-async function onStoreUpdate(_next, _prev, diff) {
+async function onStoreUpdate(next, prev, diff) {
   if (diff.sectionsWidget) {
-    renderSectionsWidget();
+    const inlineUpdated = canUpdateLatencyProgressInline(
+      prev.sectionsWidget,
+      next.sectionsWidget
+    ) && updateLatencyProgressInline(next.sectionsWidget);
+    if (!inlineUpdated) {
+      renderSectionsWidget();
+    }
   }
   if (diff.bandwidthWidget) {
     renderBandwidthWidget();
