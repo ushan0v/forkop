@@ -765,7 +765,7 @@ function write_crontab_text(text) {
     if (tmp == "")
         return false;
 
-    if (!fs.writefile(tmp, as_string(text))) {
+    if (fs.writefile(tmp, as_string(text)) == null) {
         fs.unlink(tmp);
         return false;
     }

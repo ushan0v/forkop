@@ -152,6 +152,9 @@ assert_eq $'list\t*/30 * * * * /usr/bin/podkop list_update_if_due # list\nsubscr
   "$(updates_ucode cron-refresh-plan-fixture "$WORK_DIR/cron-plan.json" /usr/bin/podkop '# list' '# subscription')" \
   "cron refresh plan"
 
+grep -Fq 'fs.writefile(tmp, as_string(text)) == null' "$UPDATES_UC" ||
+  fail "empty crontab writes must not be treated as fs.writefile failure"
+
 cat >"$WORK_DIR/cron-plan-list-disabled.json" <<'JSON'
 {
   "settings": {

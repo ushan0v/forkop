@@ -72,6 +72,15 @@ require_file_pattern "$NFQUEUE_RUNTIME_UC" '>>" + shell_quote(logfile) + " 2>&1 
   "nfqueue provider supervisors must close inherited procd lock fd"
 require_file_pattern "$BYEDPI_RUNTIME_UC" '>>" + shell_quote(logfile) + " 2>&1 1000>&- & echo $!' \
   "byedpi supervisor must close inherited procd lock fd"
+awk '
+  /function start\(\)/ { in_start = 1 }
+  in_start && /if \(status != 0\) \{/ { in_failure = 1 }
+  in_failure && /stop_main\(\);/ { saw_stop = 1 }
+  in_failure && /dnsmasq_restore_fail_safe\(\);/ && saw_stop { ok = 1; exit }
+  in_start && /^}/ { exit }
+  END { exit ok ? 0 : 1 }
+' "$LIFECYCLE_UC" ||
+  fail "service start failure path must stop partial runtime before DNS rollback"
 require_pattern "tproxy-marking-rule4-present" \
   "service stop must use direct ucode IPv4 tproxy marking rule check"
 require_pattern "tproxy-marking-rule6-present" \

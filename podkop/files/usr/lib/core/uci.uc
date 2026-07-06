@@ -9,6 +9,7 @@ const UCI_STATE_FILE = getenv("PODKOP_UCI_STATE_FILE") || getenv("UCI_STATE") ||
 const UCI_LOG_FILE = getenv("PODKOP_UCI_LOG_FILE") || getenv("UCI_LOG") || "";
 
 let runtime_cursor = false;
+let loaded_packages = {};
 
 function words(value) {
     value = trim(as_string(value));
@@ -31,6 +32,57 @@ function path_parts(path) {
         package: package_name,
         section: substr(rest, 0, second),
         option: substr(rest, second + 1)
+    };
+}
+
+function anonymous_section_selector(section) {
+    let matched = match(as_string(section), /^@([A-Za-z0-9_-]+)\[([0-9]+)\]$/);
+    if (!matched)
+        return null;
+
+    return {
+        type: as_string(matched[1]),
+        index: int(matched[2])
+    };
+}
+
+function resolve_section_name(c, package_name, raw_section_name) {
+    raw_section_name = as_string(raw_section_name);
+
+    let selector = anonymous_section_selector(raw_section_name);
+    if (selector == null)
+        return raw_section_name;
+
+    let found = "";
+    let current = 0;
+    try {
+        c.foreach(as_string(package_name), selector.type, function(section) {
+            if (found != "")
+                return;
+            if (current == selector.index && type(section) == "object")
+                found = as_string(section[".name"] || "");
+            current++;
+        });
+    }
+    catch (e) {
+        return "";
+    }
+
+    return found;
+}
+
+function resolve_parts(c, parts) {
+    if (parts == null)
+        return null;
+
+    let section = resolve_section_name(c, parts.package, parts.section);
+    if (section == "")
+        return null;
+
+    return {
+        package: parts.package,
+        section,
+        option: parts.option
     };
 }
 
@@ -228,7 +280,10 @@ function available() {
 }
 
 function load(package_name) {
+    package_name = as_string(package_name);
     if (fixture_enabled())
+        return true;
+    if (loaded_packages[package_name])
         return true;
 
     let c = cursor();
@@ -236,7 +291,8 @@ function load(package_name) {
         return false;
 
     try {
-        c.load(as_string(package_name));
+        c.load(package_name);
+        loaded_packages[package_name] = true;
         return true;
     }
     catch (e) {
@@ -271,6 +327,9 @@ function get(path) {
         return "";
     if (!load(parts.package))
         return "";
+    parts = resolve_parts(c, parts);
+    if (parts == null)
+        return "";
 
     return value_to_string(c.get(parts.package, parts.section, parts.option));
 }
@@ -285,6 +344,9 @@ function get_all(package_name, section_name) {
 
     try {
         load(package_name);
+        section_name = resolve_section_name(c, package_name, section_name);
+        if (section_name == "")
+            return null;
         return c.get_all(as_string(package_name), as_string(section_name));
     }
     catch (e) {
@@ -303,6 +365,9 @@ function exists(path) {
         return false;
     if (!load(parts.package))
         return false;
+    parts = resolve_parts(c, parts);
+    if (parts == null)
+        return false;
 
     if (parts.option == "")
         return c.get_all(parts.package, parts.section) != null;
@@ -317,6 +382,11 @@ function delete_path(path) {
     let parts = path_parts(path);
     let c = cursor();
     if (c == null || parts == null)
+        return false;
+    if (!load(parts.package))
+        return false;
+    parts = resolve_parts(c, parts);
+    if (parts == null)
         return false;
 
     try {
@@ -339,6 +409,11 @@ function set_section(path, type_name) {
     let parts = path_parts(path);
     let c = cursor();
     if (c == null || parts == null || parts.option != "")
+        return false;
+    if (!load(parts.package))
+        return false;
+    parts = resolve_parts(c, parts);
+    if (parts == null)
         return false;
 
     try {
@@ -377,6 +452,11 @@ function set(path, value) {
     let c = cursor();
     if (c == null || parts == null || parts.option == "")
         return false;
+    if (!load(parts.package))
+        return false;
+    parts = resolve_parts(c, parts);
+    if (parts == null)
+        return false;
 
     try {
         c.set(parts.package, parts.section, parts.option, type(value) == "array" ? value : as_string(value));
@@ -395,6 +475,11 @@ function add_list(path, value) {
     let parts = path_parts(path);
     let c = cursor();
     if (c == null || parts == null || parts.option == "")
+        return false;
+    if (!load(parts.package))
+        return false;
+    parts = resolve_parts(c, parts);
+    if (parts == null)
         return false;
 
     try {
@@ -416,6 +501,11 @@ function del_list(path, value) {
     let parts = path_parts(path);
     let c = cursor();
     if (c == null || parts == null || parts.option == "")
+        return false;
+    if (!load(parts.package))
+        return false;
+    parts = resolve_parts(c, parts);
+    if (parts == null)
         return false;
 
     let values = [];

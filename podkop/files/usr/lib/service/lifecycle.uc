@@ -600,6 +600,7 @@ function start() {
     release_start_subscription_update_lock();
 
     if (status != 0) {
+        stop_main();
         dnsmasq_restore_fail_safe();
         return status;
     }
