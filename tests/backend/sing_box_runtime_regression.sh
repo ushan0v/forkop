@@ -587,6 +587,31 @@ cat >"$WORK_DIR/subscription-group-fixture.json" <<'JSON'
 }
 JSON
 
+cat >"$WORK_DIR/subscription-group-disabled-fixture.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "config_path": "/tmp/sing-box/config.json",
+    "dns_server": "1.1.1.1",
+    "service_listen_address": "127.0.0.1"
+  },
+  "section": [
+    {
+      ".name": "grouped",
+      ".type": "section",
+      "enabled": "1",
+      "action": "connection",
+      "subscription_urls": [
+        "https://example.com/group.json"
+      ],
+      "subscription_url_settings": "{\"https://example.com/group.json\":{\"user_agent\":\"Happ\",\"include_urltest_groups\":\"0\"}}",
+      "domain_suffix": [ "grouped.example" ]
+    }
+  ]
+}
+JSON
+
 mkdir -p "$WORK_DIR/subscriptions" "$WORK_DIR/persistent-subscription-cache"
 for source in proxy-subscription-1 proxy-subscription-2 test-subscription-1; do
   cat >"$WORK_DIR/subscriptions/$source.json" <<'JSON'
@@ -664,6 +689,7 @@ generate_config "$WORK_DIR/mwan3-pinned-fixture.json" "$WORK_DIR/mwan3-pinned.js
 generate_config "$WORK_DIR/domain-ip-rulesets-fixture.json" "$WORK_DIR/domain-ip-rulesets.json"
 generate_config_with_subscription_cache "$WORK_DIR/subscription-metadata-fixture.json" "$WORK_DIR/subscription-metadata.json"
 generate_config_with_subscription_cache "$WORK_DIR/subscription-group-fixture.json" "$WORK_DIR/subscription-group.json"
+generate_config_with_subscription_cache "$WORK_DIR/subscription-group-disabled-fixture.json" "$WORK_DIR/subscription-group-disabled.json"
 
 ucode -e '
 let fs = require("fs");
@@ -883,6 +909,16 @@ assert(length(grouped_state.urltestGroups["Provider Group"].outbounds) == 2, "pr
 assert(grouped_state.urltestGroups["Provider Group"].outbounds[0] == "grouped-out-1", "provider group membership retagged");
 assert(grouped_state.linkRefs["Provider Group"] == null, "provider group has no source link ref");
 assert(grouped_state.linkRefs["grouped-out-1"].sourceIndex == 2, "hidden leaf keeps source link ref");
+let subscription_group_disabled = cfg("subscription-group-disabled");
+assert(outbound(subscription_group_disabled, "Provider Group") == null, "provider URLTest group skipped when import is disabled");
+let disabled_grouped_leaf = outbound(subscription_group_disabled, "grouped-out-1");
+let disabled_second_leaf = outbound(subscription_group_disabled, "leaf");
+assert(disabled_grouped_leaf && disabled_second_leaf, "URLTest group leaf outbounds kept when import is disabled");
+let disabled_grouped_selector = outbound(subscription_group_disabled, "grouped-out");
+assert(disabled_grouped_selector && contains(disabled_grouped_selector.outbounds, "grouped-out-1") && contains(disabled_grouped_selector.outbounds, "leaf"), "selector exposes URLTest group leaves when import is disabled");
+let disabled_grouped_state = cfg("subscription-group-disabled.json.section-cache/grouped");
+assert(disabled_grouped_state.urltestGroups["Provider Group"] == null, "skipped provider group is not cached as URLTest");
+assert(disabled_grouped_state.linkRefs["grouped-out-1"].sourceIndex == 2, "visible leaf keeps source link ref when group import is disabled");
 
 let proxy_cache = json(fs.readfile(dir + "/subscription-metadata.json.section-cache/proxy.json"));
 let test_cache = json(fs.readfile(dir + "/subscription-metadata.json.section-cache/test.json"));

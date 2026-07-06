@@ -423,13 +423,17 @@ function maintenance_plan(sections, section_cache_dir) {
     print("missing\t", runtime_cache_missing(sections, section_cache_dir) ? "1" : "0", "\n");
 }
 
-let auto_user_agents = {
-    Happ: true,
-    v2rayN: true,
-    Hiddify: true,
-    "Clash.Meta": true,
-    ClashMetaForAndroid: true
-};
+let auto_user_agent_profiles = [
+    "Happ",
+    "v2rayN",
+    "v2rayNG",
+    "Mihomo",
+    "Clash.Meta"
+];
+
+let auto_user_agents = {};
+for (let profile in auto_user_agent_profiles)
+    auto_user_agents[profile] = true;
 
 function user_agent_supported(user_agent, default_user_agent) {
     user_agent = as_string(user_agent);
@@ -992,15 +996,9 @@ function write_user_agent_candidates(path, configured_user_agent, preferred_user
 
     let result = [];
     let seen = {};
-    let candidates = [
-        default_user_agent,
-        "v2rayN",
-        preferred_user_agent,
-        "Happ",
-        "Hiddify",
-        "Clash.Meta",
-        "ClashMetaForAndroid"
-    ];
+    let candidates = [ default_user_agent, preferred_user_agent ];
+    for (let profile in auto_user_agent_profiles)
+        push(candidates, profile);
 
     for (let candidate in candidates)
         append_user_agent_candidate(result, seen, candidate, default_user_agent);
@@ -1862,15 +1860,11 @@ function user_agent_candidates(configured_user_agent, preferred_user_agent, defa
 
     let result = [];
     let seen = {};
-    for (let candidate in [
-        default_user_agent,
-        "v2rayN",
-        preferred_user_agent,
-        "Happ",
-        "Hiddify",
-        "Clash.Meta",
-        "ClashMetaForAndroid"
-    ]) {
+    let candidates = [ default_user_agent, preferred_user_agent ];
+    for (let profile in auto_user_agent_profiles)
+        push(candidates, profile);
+
+    for (let candidate in candidates) {
         candidate = as_string(candidate);
         if (user_agent_supported(candidate, default_user_agent) && !seen[candidate]) {
             seen[candidate] = true;

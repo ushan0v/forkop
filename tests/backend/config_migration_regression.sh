@@ -79,8 +79,10 @@ const fixture = {
       '.name': 'legacy-list-sub',
       '.type': 'section',
       action: 'connection',
-      subscription_urls: [ 'https://example.com/list.txt | ListAgent/2.0' ],
-      subscription_url_settings: '{"https://example.com/list.txt | ListAgent/2.0":{"show_dashboard_metadata":"0"}}',
+      subscription_urls: [
+        'https://example.com/list.txt | ListAgent/2.0',
+        'https://example.com/auto.txt'
+      ],
       subscription_update_interval: '6h'
     },
     {
@@ -150,6 +152,10 @@ function childValues(parent, children, valueKey) {
   return childObjects(parent, children).map(child => child[valueKey]).filter(Boolean);
 }
 
+function childByValue(parent, children, valueKey, value) {
+  return childObjects(parent, children).find(child => child[valueKey] === value);
+}
+
 function urltestByOwner(parent) {
   return urltests.find(item => item.section === parent['.name']);
 }
@@ -197,6 +203,11 @@ assert(JSON.stringify(childValues(legacySub, subscriptionUrls, 'url')) === JSON.
 assert(legacySub.action === 'connection', 'legacy-sub action');
 const legacySubSource = childObjects(legacySub, subscriptionUrls)[0];
 assert(legacySubSource.user_agent === 'Agent/1.0', 'subscription user-agent setting');
+assert(legacySubSource.auto_user_agent === '0', 'subscription user-agent manual mode');
+assert(legacySubSource.auto_hwid === '1', 'subscription HWID auto-generation');
+assert(legacySubSource.include_urltest_groups === '1', 'subscription URLTest groups import default');
+assert(legacySubSource.hide_urltest_group_outbounds === '1', 'subscription URLTest group member hiding default');
+assert(legacySubSource.hide_detour_outbounds === '1', 'subscription detour hiding default');
 assert(legacySubSource.subscription_update_enabled === '0', 'subscription update disabled flag');
 assert(legacySubSource.download_via_proxy_enabled === '1', 'subscription download through section flag');
 assert(legacySubSource.download_via_proxy_section === 'legacy-urltest', 'subscription download target');
@@ -227,10 +238,14 @@ absent(legacySub, 'urltest_filter_mode', 'legacy-sub');
 absent(legacySub, 'detect_server_country', 'legacy-sub');
 
 const legacyListSub = sections['legacy-list-sub'];
-assert(JSON.stringify(childValues(legacyListSub, subscriptionUrls, 'url')) === JSON.stringify(['https://example.com/list.txt']), 'legacy list subscription entry normalized');
-const legacyListSubSource = childObjects(legacyListSub, subscriptionUrls)[0];
+assert(JSON.stringify(childValues(legacyListSub, subscriptionUrls, 'url')) === JSON.stringify(['https://example.com/list.txt', 'https://example.com/auto.txt']), 'legacy list subscription entries normalized');
+const legacyListSubSource = childByValue(legacyListSub, subscriptionUrls, 'url', 'https://example.com/list.txt');
+const legacyListSubAutoSource = childByValue(legacyListSub, subscriptionUrls, 'url', 'https://example.com/auto.txt');
 assert(legacyListSubSource.user_agent === 'ListAgent/2.0', 'legacy list subscription user-agent migrated');
+assert(legacyListSubSource.auto_user_agent === '0', 'legacy list subscription manual user-agent mode');
 assert(legacyListSubSource.subscription_update_interval === '6h', 'legacy list subscription interval migrated');
+assert(legacyListSubAutoSource.auto_user_agent === '1', 'legacy list subscription without User-Agent stays automatic');
+assert(!Object.prototype.hasOwnProperty.call(legacyListSubAutoSource, 'user_agent'), 'automatic legacy list subscription should not get user-agent');
 absent(legacyListSub, 'subscription_url_settings', 'legacy-list-sub');
 absent(legacyListSub, 'subscription_url_items', 'legacy-list-sub');
 

@@ -849,9 +849,12 @@ function subscription_urls_signature(section) {
             subscription_update_enabled: connections.subscription_update_enabled(section, entry) ? "1" : "0",
             subscription_update_interval: connections.subscription_update_interval(section, entry),
             download_via_proxy_section: connections.subscription_download_section(section, entry),
+            auto_user_agent: connections.subscription_auto_user_agent(section, entry) ? "1" : "0",
             user_agent: connections.subscription_user_agent(section, entry),
+            auto_hwid: connections.subscription_auto_hwid(section, entry) ? "1" : "0",
             hwid: connections.subscription_hwid(section, entry),
             show_dashboard_metadata: connections.subscription_dashboard_metadata_enabled(section, entry) ? "1" : "0",
+            include_urltest_groups: connections.subscription_include_urltest_groups(section, entry) ? "1" : "0",
             hide_urltest_group_outbounds: connections.subscription_hide_urltest_group_outbounds(section, entry) ? "1" : "0",
             hide_detour_outbounds: connections.subscription_hide_detour_outbounds(section, entry) ? "1" : "0"
         });

@@ -418,7 +418,7 @@ proxy
 [rule.proxy1.connection_urls]
 [ { "url": "vless://one", "outbound_detour_enabled": "1", "outbound_detour_section": "out1", "enable_udp_over_tcp": "1" }, { "url": "vless://two", "outbound_detour_enabled": "1", "outbound_detour_section": "out1", "enable_udp_over_tcp": "1" } ]
 [rule.proxy1.subscription_urls]
-[ { "url": "https://example.com/sub.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "user_agent": "", "hwid": "", "show_dashboard_metadata": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
+[ { "url": "https://example.com/sub.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "auto_user_agent": "1", "user_agent": "", "auto_hwid": "1", "hwid": "", "show_dashboard_metadata": "1", "include_urltest_groups": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
 [rule.proxy1.interfaces]
 [ ]
 [rule.proxy1.outbound_jsons]
@@ -1108,11 +1108,11 @@ local.lst https://example.com/mixed.lst
 [lists.urltest_custom.domain_ip_lists]
 
 [subscription.list_proxy.subscription_urls]
-[ { "url": "https://example.com/sub1.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "user_agent": "", "hwid": "", "show_dashboard_metadata": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" }, { "url": "https://example.com/sub2.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "user_agent": "", "hwid": "", "show_dashboard_metadata": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
+[ { "url": "https://example.com/sub1.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "auto_user_agent": "1", "user_agent": "", "auto_hwid": "1", "hwid": "", "show_dashboard_metadata": "1", "include_urltest_groups": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" }, { "url": "https://example.com/sub2.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "auto_user_agent": "1", "user_agent": "", "auto_hwid": "1", "hwid": "", "show_dashboard_metadata": "1", "include_urltest_groups": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
 [subscription.list_proxy.subscription_update_interval]
 1h
 [subscription.sub_paused.subscription_urls]
-[ { "url": "https://example.com/off.txt", "subscription_update_enabled": "0", "subscription_update_interval": "1h", "download_via_proxy_section": "", "user_agent": "", "hwid": "", "show_dashboard_metadata": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
+[ { "url": "https://example.com/off.txt", "subscription_update_enabled": "0", "subscription_update_interval": "1h", "download_via_proxy_section": "", "auto_user_agent": "1", "user_agent": "", "auto_hwid": "1", "hwid": "", "show_dashboard_metadata": "1", "include_urltest_groups": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
 [subscription.sub_paused.subscription_update_interval]
 
 EOF_CRON_SIG

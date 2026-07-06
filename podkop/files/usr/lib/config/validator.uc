@@ -1117,6 +1117,16 @@ function subscription_update_interval_for_source(section, entry) {
     return value != "" ? value : "1h";
 }
 
+function validate_subscription_request_profile(section, entry) {
+    if (connections.subscription_auto_hwid(section, entry))
+        return;
+
+    if (connections.subscription_hwid(section, entry) != "")
+        return;
+
+    fail_validation("Subscription source in rule '" + section_name(section) + "' has manual HWID enabled but HWID is empty. Fill HWID or enable auto-generation. Aborted.");
+}
+
 function validate_provider_strategy(kind, section, context) {
     let name = section_name(section);
 
@@ -1213,6 +1223,7 @@ function validate_rule(section, context) {
         if (rule_has_subscription_urls(section)) {
             for (let value in connections.subscription_urls(section)) {
                 validate_subscription_source_entry_value(value, name);
+                validate_subscription_request_profile(section, value);
                 let subscription_update_interval = subscription_update_interval_for_source(section, value);
                 if (subscription_update_interval != "")
                     validate_required_duration_option(subscription_update_interval, "rule." + name + ".subscription_update_interval");

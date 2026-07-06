@@ -1403,9 +1403,12 @@ function subscriptionUrlSettingsKeys() {
     "subscription_update_interval",
     "download_via_proxy_enabled",
     "download_via_proxy_section",
+    "auto_user_agent",
     "user_agent",
+    "auto_hwid",
     "hwid",
     "show_dashboard_metadata",
+    "include_urltest_groups",
     "hide_urltest_group_outbounds",
     "hide_detour_outbounds",
   ];
@@ -1417,12 +1420,35 @@ function defaultSubscriptionUrlSettings() {
     subscription_update_interval: "1h",
     download_via_proxy_enabled: "0",
     download_via_proxy_section: "",
+    auto_user_agent: "1",
     user_agent: "",
+    auto_hwid: "1",
     hwid: "",
     show_dashboard_metadata: "1",
+    include_urltest_groups: "1",
     hide_urltest_group_outbounds: "1",
     hide_detour_outbounds: "1",
   };
+}
+
+function subscriptionUserAgentChoices() {
+  return [
+    "sing-box",
+    "Happ",
+    "v2rayN",
+    "v2rayNG",
+    "v2RayTun",
+    "Incy",
+    "Hiddify",
+    "HiddifyNext",
+    "Clash",
+    "Clash.Meta",
+    "ClashMetaForAndroid",
+    "Mihomo",
+    "NekoBox",
+    "Karing",
+    "Husi",
+  ];
 }
 
 function interfaceSettingsKeys() {
@@ -1552,7 +1578,7 @@ function addSubscriptionUrlItemOptions(itemSection, options = {}) {
   let o = itemSection.option(
     form.Flag,
     "subscription_update_enabled",
-    _("Subscription auto updates"),
+    _("Subscription auto update"),
     _("Update this subscription automatically"),
   );
   o.default = "1";
@@ -1606,20 +1632,57 @@ function addSubscriptionUrlItemOptions(itemSection, options = {}) {
   };
 
   o = itemSection.option(
+    form.Flag,
+    "auto_user_agent",
+    _("Automatic User-Agent selection"),
+    _("Try compatible User-Agent profiles automatically when downloading this subscription"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+
+  o = itemSection.option(
     form.Value,
     "user_agent",
     _("User-Agent"),
-    _("Leave empty to use automatic User-Agent selection"),
+    _("Select a common client profile or enter a custom User-Agent"),
   );
-  o.rmempty = true;
+  o.depends("auto_user_agent", "0");
+  o.placeholder = _("-- Select --");
+  o.rmempty = false;
+  subscriptionUserAgentChoices().forEach((choice) => o.value(choice));
+  o.load = function (itemId) {
+    return optionMapValue(this, itemId, "user_agent") || "";
+  };
+  o.validate = function (itemId, value) {
+    if (optionMapValue(this, itemId, "auto_user_agent") !== "0") {
+      return true;
+    }
+    return `${value || ""}`.trim() ? true : _("Select or enter a User-Agent");
+  };
+
+  o = itemSection.option(
+    form.Flag,
+    "auto_hwid",
+    _("Auto-generate HWID"),
+    _("Generate HWID from router hardware information for this subscription"),
+  );
+  o.default = "1";
+  o.rmempty = false;
 
   o = itemSection.option(
     form.Value,
     "hwid",
     _("HWID"),
-    _("Leave empty to generate HWID automatically"),
+    _("Enter the HWID sent with subscription requests"),
   );
-  o.rmempty = true;
+  o.depends("auto_hwid", "0");
+  o.rmempty = false;
+  o.validate = function (itemId, value) {
+    if (optionMapValue(this, itemId, "auto_hwid") !== "0") {
+      return true;
+    }
+    return `${value || ""}`.trim() ? true : _("Enter HWID");
+  };
 
   o = itemSection.option(
     form.Flag,
@@ -1632,12 +1695,22 @@ function addSubscriptionUrlItemOptions(itemSection, options = {}) {
 
   o = itemSection.option(
     form.Flag,
+    "include_urltest_groups",
+    _("Import subscription URLTest groups"),
+    _("Import URLTest groups returned by this subscription provider"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.Flag,
     "hide_urltest_group_outbounds",
     _("Hide URLTest group nodes"),
     _(
-      "Hide individual nodes that are already included in subscription URLTest groups",
+      "Hide individual nodes that are already included in imported subscription URLTest groups",
     ),
   );
+  o.depends("include_urltest_groups", "1");
   o.default = "1";
   o.rmempty = false;
 

@@ -286,9 +286,12 @@ export namespace Podkop {
     enable_udp_over_tcp?: '0' | '1';
     download_via_proxy_enabled?: '0' | '1';
     download_via_proxy_section?: string;
+    auto_user_agent?: '0' | '1';
     user_agent?: string;
+    auto_hwid?: '0' | '1';
     hwid?: string;
     show_dashboard_metadata?: '0' | '1';
+    include_urltest_groups?: '0' | '1';
     hide_urltest_group_outbounds?: '0' | '1';
     hide_detour_outbounds?: '0' | '1';
     domain_resolver_enabled?: '0' | '1';

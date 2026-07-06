@@ -146,6 +146,25 @@ cat >"$WORK_DIR/bad-subscription.json" <<'JSON'
 JSON
 assert_rejects "bad subscription" "$WORK_DIR/bad-subscription.json" "Configure User-Agent in the subscription item settings"
 
+cat >"$WORK_DIR/bad-manual-hwid.json" <<'JSON'
+{
+  "settings": { ".name": "settings", ".type": "settings" },
+  "section": [
+    { ".name": "proxy", ".type": "section", "enabled": "1", "action": "connection" }
+  ],
+  "subscription_url": [
+    {
+      ".name": "proxy_sub_1",
+      ".type": "subscription_url",
+      "section": "proxy",
+      "url": "https://example.com/sub.txt",
+      "auto_hwid": "0"
+    }
+  ]
+}
+JSON
+assert_rejects "bad manual HWID" "$WORK_DIR/bad-manual-hwid.json" "manual HWID enabled but HWID is empty"
+
 cat >"$WORK_DIR/bad-latency-url.json" <<'JSON'
 {
   "settings": {

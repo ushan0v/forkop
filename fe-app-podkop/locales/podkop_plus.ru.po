@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-06 19:07+0300\n"
-"PO-Revision-Date: 2026-07-06 19:07+0300\n"
+"POT-Creation-Date: 2026-07-06 23:38+0300\n"
+"PO-Revision-Date: 2026-07-06 23:38+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -109,6 +109,12 @@ msgstr "Автообновление"
 
 msgid "Auto update"
 msgstr "Автообновление"
+
+msgid "Auto-generate HWID"
+msgstr "Авто-генерация HWID"
+
+msgid "Automatic User-Agent selection"
+msgstr "Авто-подбор User-Agent"
 
 msgid "Available actions"
 msgstr "Доступные действия"
@@ -500,6 +506,12 @@ msgstr "Введите полный объект outbound sing-box"
 msgid "Enter a name to create URLTest"
 msgstr "Введите название чтобы создать URLTest"
 
+msgid "Enter HWID"
+msgstr "Укажите HWID"
+
+msgid "Enter the HWID sent with subscription requests"
+msgstr "HWID, который будет отправляться при запросах подписки"
+
 msgid "Enter the subscription URL"
 msgstr "Введите URL подписки"
 
@@ -587,6 +599,9 @@ msgstr "Proxy protocol для фронтинга"
 msgid "Fuzzing is not supported here because Podkop Plus needs deterministic runtime validation."
 msgstr "Fuzzing здесь не поддерживается, потому что Podkop Plus нужна предсказуемая runtime-валидация."
 
+msgid "Generate HWID from router hardware information for this subscription"
+msgstr "Генерировать HWID из аппаратной информации роутера для этой подписки"
+
 msgid "Generated inbound"
 msgstr "Созданный inbound"
 
@@ -611,8 +626,8 @@ msgstr "Скрывать узлы каскадных подключений"
 msgid "Hide dashboard servers added to URLTest"
 msgstr "Скрывать серверы из дашборда, которые добавлены в URLTest"
 
-msgid "Hide individual nodes that are already included in subscription URLTest groups"
-msgstr "Скрывать отдельные узлы, которые уже входят в URLTest-группы подписки"
+msgid "Hide individual nodes that are already included in imported subscription URLTest groups"
+msgstr "Скрывать отдельные узлы, которые уже входят в импортированные URLTest группы подписки"
 
 msgid "Hide intermediate nodes used as detours by other subscription nodes"
 msgstr "Скрывать промежуточные узлы, которые используются как detour для других узлов подписки"
@@ -637,6 +652,12 @@ msgstr "HWID"
 
 msgid "Idle timeout"
 msgstr "Таймаут простоя"
+
+msgid "Import subscription URLTest groups"
+msgstr "Добавлять URLTest группы из подписки"
+
+msgid "Import URLTest groups returned by this subscription provider"
+msgstr "Импортировать URLTest группы, если провайдер подписки возвращает их"
 
 msgid "Inbound JSON"
 msgstr "Inbound JSON"
@@ -925,12 +946,6 @@ msgstr "Установлена последняя версия"
 
 msgid "Latest: %s"
 msgstr "Последняя: %s"
-
-msgid "Leave empty to generate HWID automatically"
-msgstr "Оставьте пустым для автоматической генерации HWID"
-
-msgid "Leave empty to use automatic User-Agent selection"
-msgstr "Оставьте пустым для автоматического выбора User-Agent"
 
 msgid "List must be an HTTP(S) URL or a local .lst path"
 msgstr "Список должен быть HTTP(S) URL или локальным путём .lst"
@@ -1361,6 +1376,9 @@ msgstr "Секции"
 msgid "Security"
 msgstr "Защита"
 
+msgid "Select a common client profile or enter a custom User-Agent"
+msgstr "Выберите распространённый профиль клиента или введите свой User-Agent"
+
 msgid "Select a network interface"
 msgstr "Выберите сетевой интерфейс"
 
@@ -1387,6 +1405,9 @@ msgstr "Выберите протокол DNS"
 
 msgid "Select network interface for VPN connection"
 msgstr "Выберите сетевой интерфейс для VPN-подключения"
+
+msgid "Select or enter a User-Agent"
+msgstr "Выберите или введите User-Agent"
 
 msgid "Select or enter DNS server address"
 msgstr "Выберите или введите адрес DNS-сервера"
@@ -1541,8 +1562,8 @@ msgstr "Остановить Podkop Plus"
 msgid "Subnets from the list will be extracted and added to nftables"
 msgstr "IP-адреса и подсети из списка будут извлечены и добавлены в nftables"
 
-msgid "Subscription auto updates"
-msgstr "Автообновление подписок"
+msgid "Subscription auto update"
+msgstr "Автообновление подписи"
 
 msgid "Subscription info:"
 msgstr "Информация о подписке:"
@@ -1687,6 +1708,9 @@ msgstr "Путь транспорта должен начинаться с /"
 
 msgid "Troubleshooting"
 msgstr "Устранение неполадок"
+
+msgid "Try compatible User-Agent profiles automatically when downloading this subscription"
+msgstr "Автоматически пробовать совместимые профили User-Agent при загрузке этой подписки"
 
 msgid "TTL must be a positive number"
 msgstr "TTL должно быть положительным числом"

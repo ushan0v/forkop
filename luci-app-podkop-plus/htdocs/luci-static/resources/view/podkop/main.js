@@ -3238,9 +3238,12 @@ function hydrateConfigSections(configSections) {
           subscription_update_interval: item.subscription_update_interval,
           download_via_proxy_enabled: item.download_via_proxy_enabled,
           download_via_proxy_section: item.download_via_proxy_section,
+          auto_user_agent: item.auto_user_agent,
           user_agent: item.user_agent,
+          auto_hwid: item.auto_hwid,
           hwid: item.hwid,
           show_dashboard_metadata: item.show_dashboard_metadata,
+          include_urltest_groups: item.include_urltest_groups,
           hide_urltest_group_outbounds: item.hide_urltest_group_outbounds,
           hide_detour_outbounds: item.hide_detour_outbounds
         };
