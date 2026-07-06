@@ -1112,6 +1112,7 @@ function normalize_cache(cache, section, format_version) {
     cache.outboundMetadata.names = object_or_empty(cache.outboundMetadata.names);
     cache.outboundMetadata.countries = object_or_empty(cache.outboundMetadata.countries);
     cache.servers = object_or_empty(cache.servers);
+    cache.urltestCandidateTags = array_or_empty(cache.urltestCandidateTags);
     cache.urltestGroups = object_or_empty(cache.urltestGroups);
     cache.subscriptionMetadata = array_or_empty(cache.subscriptionMetadata);
     return cache;
@@ -1709,11 +1710,38 @@ function get_outbound_metadata(cache_dir, section, legacy_path) {
     if (type(metadata) != "object")
         metadata = read_json(legacy_path);
     metadata = object_or_empty(metadata);
+    let names = object_or_empty(metadata.names);
+    let countries = object_or_empty(metadata.countries);
+    let candidate_tags = array_or_empty(cache.urltestCandidateTags);
+    let groups = object_or_empty(cache.urltestGroups);
+    let result = {
+        names: {},
+        countries: {}
+    };
 
-    write_stdout_json({
-        names: object_or_empty(metadata.names),
-        countries: object_or_empty(metadata.countries)
-    });
+    if (length(candidate_tags) > 0) {
+        for (let tag in candidate_tags) {
+            tag = as_string(tag);
+            if (tag == "")
+                continue;
+            if (names[tag] != null)
+                result.names[tag] = names[tag];
+            if (countries[tag] != null)
+                result.countries[tag] = countries[tag];
+        }
+    }
+    else {
+        for (let tag, name in names) {
+            if (!groups[tag])
+                result.names[tag] = name;
+        }
+        for (let tag, country in countries) {
+            if (!groups[tag])
+                result.countries[tag] = country;
+        }
+    }
+
+    write_stdout_json(result);
 }
 
 function get_subscription_metadata(cache_dir, section, legacy_path) {
@@ -2848,16 +2876,22 @@ else if (mode == "maintenance-plan") {
     maintenance_plan(uci_sections(), ARGV[1]);
 }
 else if (mode == "maintenance-plan-fixture") {
-    maintenance_plan(fixture_section_list(read_json(ARGV[1])), ARGV[2]);
+    let data = object_or_empty(read_json(ARGV[1]));
+    connections.set_item_sections_from_data(data);
+    maintenance_plan(fixture_section_list(data), ARGV[2]);
 }
 else if (mode == "runtime-cache-needs-rebuild") {
     exit(runtime_cache_missing(uci_sections(), ARGV[1]) ? 0 : 1);
 }
 else if (mode == "runtime-cache-needs-rebuild-fixture") {
-    exit(runtime_cache_missing(fixture_section_list(read_json(ARGV[1])), ARGV[2]) ? 0 : 1);
+    let data = object_or_empty(read_json(ARGV[1]));
+    connections.set_item_sections_from_data(data);
+    exit(runtime_cache_missing(fixture_section_list(data), ARGV[2]) ? 0 : 1);
 }
 else if (mode == "prepared-runtime-cache-should-skip-fixture") {
-    exit(prepared_runtime_cache_should_skip(fixture_section_list(read_json(ARGV[1])), ARGV[2], ARGV[3], ARGV[4]) ? 0 : 1);
+    let data = object_or_empty(read_json(ARGV[1]));
+    connections.set_item_sections_from_data(data);
+    exit(prepared_runtime_cache_should_skip(fixture_section_list(data), ARGV[2], ARGV[3], ARGV[4]) ? 0 : 1);
 }
 else if (mode == "ensure-runtime-dirs") {
     ensure_runtime_dirs();
@@ -2875,7 +2909,9 @@ else if (mode == "stale-cache-delete-paths") {
     stale_cache_delete_paths(uci_sections(), ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6]);
 }
 else if (mode == "stale-cache-delete-paths-fixture") {
-    stale_cache_delete_paths(fixture_section_list(read_json(ARGV[1])), ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
+    let data = object_or_empty(read_json(ARGV[1]));
+    connections.set_item_sections_from_data(data);
+    stale_cache_delete_paths(fixture_section_list(data), ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
 }
 else if (mode == "section-current-usable-cache") {
     exit(section_current_usable_cache(uci_section(ARGV[1]), ARGV[2], ARGV[3], ARGV[4]) ? 0 : 1);
@@ -2892,6 +2928,7 @@ else if (mode == "persist-source-cache") {
 }
 else if (mode == "section-current-usable-cache-fixture") {
     let data = object_or_empty(read_json(ARGV[1]));
+    connections.set_item_sections_from_data(data);
     let target = as_string(ARGV[2]);
     let selected = {};
     for (let section in fixture_section_list(data)) {

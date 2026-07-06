@@ -292,6 +292,7 @@ function new_section_state(section_name) {
             countries: {}
         },
         servers: {},
+        urltestCandidateTags: [],
         urltestGroups: {},
         subscriptionMetadata: []
     };

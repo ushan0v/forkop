@@ -415,24 +415,20 @@ secret
 0
 [rule.proxy1.action]
 proxy
-[rule.proxy1.selector_proxy_links]
-vless://one vless://two
+[rule.proxy1.connection_urls]
+[ { "url": "vless://one", "outbound_detour_enabled": "1", "outbound_detour_section": "out1", "enable_udp_over_tcp": "1" }, { "url": "vless://two", "outbound_detour_enabled": "1", "outbound_detour_section": "out1", "enable_udp_over_tcp": "1" } ]
 [rule.proxy1.subscription_urls]
-https://example.com/sub.txt
+[ { "url": "https://example.com/sub.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "user_agent": "", "hwid": "", "show_dashboard_metadata": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
 [rule.proxy1.interfaces]
-
+[ ]
 [rule.proxy1.outbound_jsons]
 
 [rule.proxy1.legacy_interface]
 
 [rule.proxy1.legacy_outbound_json]
 
-[rule.proxy1.connection_url_settings]
-
-[rule.proxy1.subscription_url_settings]
-
-[rule.proxy1.interface_settings]
-
+[rule.proxy1.urltests]
+[ { "id": "urltest", "display_name": "Fastest", "check_interval": "3m", "tolerance": "75", "testing_url": "https://www.gstatic.com/generate_204", "idle_timeout": "", "interrupt_exist_connections": "1", "pin_dashboard": "1", "hide_added_outbounds": "0", "filter_mode": "exclude", "detect_server_country": "1", "include_countries": [ ], "include_outbounds": [ "node-a" ], "include_regex": [ ], "exclude_countries": [ "RU" ], "exclude_outbounds": [ ], "exclude_regex": [ ] } ]
 [rule.proxy1.urltest_enabled]
 1
 [rule.proxy1.detect_server_country]
@@ -480,7 +476,7 @@ ads
 [rule.proxy1.domain_regex]
 ^foo
 [rule.proxy1.ip_cidr]
-203.0.113.1,bad
+203.0.113.1
 [rule.proxy1.source_ip_cidr]
 198.51.100.0/24
 [rule.proxy1.ports]
@@ -497,24 +493,20 @@ local.srs
 local.lst
 [rule.out1.action]
 outbound
-[rule.out1.selector_proxy_links]
-
+[rule.out1.connection_urls]
+[ ]
 [rule.out1.subscription_urls]
-
+[ ]
 [rule.out1.interfaces]
-
+[ ]
 [rule.out1.outbound_jsons]
 
 [rule.out1.legacy_interface]
 
 [rule.out1.legacy_outbound_json]
 {"type":"direct"}
-[rule.out1.connection_url_settings]
-
-[rule.out1.subscription_url_settings]
-
-[rule.out1.interface_settings]
-
+[rule.out1.urltests]
+[ ]
 [rule.out1.urltest_enabled]
 0
 [rule.out1.detect_server_country]
@@ -603,24 +595,20 @@ byedpi
 
 [rule.vpn1.action]
 vpn
-[rule.vpn1.selector_proxy_links]
-
+[rule.vpn1.connection_urls]
+[ ]
 [rule.vpn1.subscription_urls]
-
+[ ]
 [rule.vpn1.interfaces]
-
+[ { "name": "wg0", "domain_resolver_enabled": "1", "domain_resolver_dns_type": "udp", "domain_resolver_dns_server": "8.8.8.8" } ]
 [rule.vpn1.outbound_jsons]
 
 [rule.vpn1.legacy_interface]
 wg0
 [rule.vpn1.legacy_outbound_json]
 
-[rule.vpn1.connection_url_settings]
-
-[rule.vpn1.subscription_url_settings]
-
-[rule.vpn1.interface_settings]
-
+[rule.vpn1.urltests]
+[ ]
 [rule.vpn1.urltest_enabled]
 0
 [rule.vpn1.detect_server_country]
@@ -1120,15 +1108,11 @@ local.lst https://example.com/mixed.lst
 [lists.urltest_custom.domain_ip_lists]
 
 [subscription.list_proxy.subscription_urls]
-https://example.com/sub1.txt https://example.com/sub2.txt
-[subscription.list_proxy.subscription_url_settings]
-
+[ { "url": "https://example.com/sub1.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "user_agent": "", "hwid": "", "show_dashboard_metadata": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" }, { "url": "https://example.com/sub2.txt", "subscription_update_enabled": "1", "subscription_update_interval": "1h", "download_via_proxy_section": "", "user_agent": "", "hwid": "", "show_dashboard_metadata": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
 [subscription.list_proxy.subscription_update_interval]
 1h
 [subscription.sub_paused.subscription_urls]
-https://example.com/off.txt
-[subscription.sub_paused.subscription_url_settings]
-
+[ { "url": "https://example.com/off.txt", "subscription_update_enabled": "0", "subscription_update_interval": "1h", "download_via_proxy_section": "", "user_agent": "", "hwid": "", "show_dashboard_metadata": "1", "hide_urltest_group_outbounds": "1", "hide_detour_outbounds": "1" } ]
 [subscription.sub_paused.subscription_update_interval]
 
 EOF_CRON_SIG

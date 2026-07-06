@@ -120,6 +120,11 @@ function extractFunctionSecondStringArgs(data, functionName, callName) {
   return [...body.matchAll(pattern)].map((match) => match[1]);
 }
 
+function extractFunctionObjectValues(data, functionName) {
+  const body = extractBraceBody(data, `function ${functionName}`);
+  return [...body.matchAll(/\bvalue:\s*["']([^"']*)["']/g)].map((match) => match[1]);
+}
+
 function enrichUiValues(fileData, option, block, values) {
   if (option === "action" && block.includes("populateActionOptionValues(")) {
     for (const value of extractFunctionFirstStringArgs(fileData, "populateActionOptionValues", "option.value"))
@@ -174,6 +179,20 @@ function extractUi(repo, fields) {
           type,
           default: defaults[0] || "",
           values: values.sort(),
+        }),
+      );
+    }
+
+    const urltestFilterModeValues = extractFunctionObjectValues(data, "urlTestFilterModeChoices");
+    if (urltestFilterModeValues.length) {
+      const field = ensure(fields, "urltest_filter_mode");
+      addUnique(
+        field.ui,
+        JSON.stringify({
+          file: rel(repo, file),
+          type: "custom URLTest settings",
+          default: "disabled",
+          values: urltestFilterModeValues.sort(),
         }),
       );
     }

@@ -102,7 +102,7 @@ function fixture_get_section(section_name) {
     if (section_name == "settings" && type(fixture.settings) == "object")
         return fixture.settings;
 
-    for (let type_name in [ "settings", "server", "section" ]) {
+    for (let type_name in [ "settings", "server", "section", "connection_url", "subscription_url", "section_interface", "urltest" ]) {
         for (let section in fixture_section_list(type_name)) {
             if (as_string(section[".name"]) == section_name)
                 return section;
@@ -114,6 +114,7 @@ function fixture_get_section(section_name) {
 
 function fixture_cursor(path) {
     fixture_uci_data = object_or_empty(read_json_file(path));
+    connections.set_item_sections_from_data(fixture_uci_data);
     return {
         load: function(_config_name) {
             return true;
@@ -546,6 +547,14 @@ function reportable_skipped_subscription_type(t) {
     return t != "direct" && t != "selector" && t != "urltest" && t != "dns" && t != "block";
 }
 
+function urltest_leaf_candidate_outbound(outbound) {
+    if (type(outbound) != "object")
+        return false;
+
+    let t = lc(as_string(outbound.type || ""));
+    return t != "selector" && t != "urltest" && t != "dns" && t != "block";
+}
+
 function unique_tag(base, taken) {
     base = as_string(base);
     if (base == "")
@@ -560,7 +569,7 @@ function unique_tag(base, taken) {
     return base + "-overflow";
 }
 
-function add_subscription_source_with_state(config, section, source_index, source_entry, taken, selector_tags, detour_tags, state, show_metadata, hide_urltest_group_outbounds, hide_detour_outbounds) {
+function add_subscription_source_with_state(config, section, source_index, source_entry, taken, selector_tags, urltest_candidate_tags, state, show_metadata, hide_urltest_group_outbounds, hide_detour_outbounds) {
     let section_name = section[".name"];
     let source_section = runtime_subscription.source_id(section_name, source_index);
     if (!runtime_subscription.source_cache_is_current(
@@ -625,7 +634,7 @@ function add_subscription_source_with_state(config, section, source_index, sourc
         push(config.outbounds, outbound);
         added++;
         if (!is_group)
-            push(detour_tags, outbound.tag);
+            push(urltest_candidate_tags, outbound.tag);
         runtime_subscription.remember_source_outbound(state, outbound.tag, source_section, source_index, source_indices[i], display_names[i], outbound);
         if (hidden_flags[i] !== true) {
             push(selector_tags, outbound.tag);
@@ -660,25 +669,37 @@ function duration_to_seconds(value) {
     return multiplier == null ? null : int(number, 10) * multiplier;
 }
 
-function urltest_check_interval(section) {
-    let interval = option(section, "urltest_check_interval", "");
+function urltest_check_interval(section, urltest_id) {
+    let interval = connections.urltest_check_interval(section, urltest_id);
     return interval != "" ? interval : "3m";
 }
 
-function urltest_idle_timeout(section) {
-    let interval = urltest_check_interval(section);
+function legacy_urltest_idle_timeout(section, urltest_id) {
+    if (urltest_id != "urltest")
+        return "";
+
+    let settings = connections.urltest_settings(section, urltest_id);
+    if (type(settings) == "object" && as_string(settings[".type"] || "") == "urltest")
+        return "";
+
+    let interval = urltest_check_interval(section, urltest_id);
     let interval_seconds = duration_to_seconds(interval);
     let default_idle_seconds = duration_to_seconds(runtime_constants.URLTEST_DEFAULT_IDLE_TIMEOUT);
     return interval_seconds != null && interval_seconds > default_idle_seconds ? interval : "";
+}
+
+function urltest_idle_timeout(section, urltest_id) {
+    let configured = connections.urltest_idle_timeout(section, urltest_id);
+    return configured != "" ? configured : legacy_urltest_idle_timeout(section, urltest_id);
 }
 
 function supported_urltest_filter_mode(mode) {
     return mode == "include" || mode == "exclude" || mode == "mixed";
 }
 
-function urltest_country_metadata(section, state) {
+function urltest_country_metadata(section, urltest_id, state) {
     let metadata = object_or_empty(object_or_empty(state.outboundMetadata).countries);
-    let detect_method = option(section, "detect_server_country", "flag_emoji");
+    let detect_method = connections.urltest_detect_server_country(section, urltest_id);
     if (detect_method == "flag_emoji")
         return runtime_urltest.countries_from_flag_names(object_or_empty(object_or_empty(state.outboundMetadata).names));
     return metadata;
@@ -717,19 +738,13 @@ function tag_display_name(tag, names) {
     return name != "" ? name : tag;
 }
 
-function urltest_group_children(state, tag) {
-    let group = object_or_empty(object_or_empty(state.urltestGroups)[tag]);
-    let outbounds = array_or_empty(group.outbounds);
-    return length(outbounds) > 0 ? outbounds : [ tag ];
-}
-
 function regex_match_set(tags, names, regexes) {
     return object_keys_set(runtime_urltest.regex_matching_tag_array(tags, names, regexes));
 }
 
 function tag_name_filter_matches(tag, names, name_filter, regex_set) {
     let name = tag_display_name(tag, names);
-    return array_contains(name_filter, name) || array_contains(name_filter, tag) || regex_set[tag];
+    return array_contains(name_filter, name) || regex_set[tag];
 }
 
 function tag_country_filter_matches(tag, countries, country_filter) {
@@ -737,35 +752,22 @@ function tag_country_filter_matches(tag, countries, country_filter) {
     return country != "" && array_contains(country_filter, country);
 }
 
-function urltest_all_candidate_outbounds(selector_tags, state) {
-    let result = [];
-    for (let tag in array_or_empty(selector_tags)) {
-        for (let child in urltest_group_children(state, tag))
-            push(result, child);
-    }
-    return unique_string_array(result);
+function urltest_all_candidate_outbounds(urltest_candidate_tags) {
+    return unique_string_array(urltest_candidate_tags);
 }
 
-function urltest_matching_candidate_outbounds(selector_tags, state, names, countries, name_filter, regexes, country_filter) {
+function urltest_matching_candidate_outbounds(urltest_candidate_tags, names, countries, name_filter, regexes, country_filter) {
     names = object_or_empty(names);
     countries = object_or_empty(countries);
     country_filter = runtime_urltest.normalized_country_list(country_filter);
 
-    let regex_set = regex_match_set(selector_tags, names, regexes);
+    let regex_set = regex_match_set(urltest_candidate_tags, names, regexes);
     let result = [];
 
-    for (let tag in array_or_empty(selector_tags)) {
-        let children = urltest_group_children(state, tag);
-        if (tag_name_filter_matches(tag, names, name_filter, regex_set)) {
-            for (let child in children)
-                push(result, child);
-            continue;
-        }
-
-        for (let child in children) {
-            if (tag_country_filter_matches(child, countries, country_filter))
-                push(result, child);
-        }
+    for (let tag in array_or_empty(urltest_candidate_tags)) {
+        if (tag_name_filter_matches(tag, names, name_filter, regex_set) ||
+            tag_country_filter_matches(tag, countries, country_filter))
+            push(result, tag);
     }
 
     return unique_string_array(result);
@@ -781,33 +783,31 @@ function urltest_exclude_outbounds(all_outbounds, excluded_outbounds) {
     return result;
 }
 
-function urltest_filtered_outbounds(section, selector_tags, state) {
-    let filter_mode = option(section, "urltest_filter_mode", "disabled");
-    let all_outbounds = urltest_all_candidate_outbounds(selector_tags, state);
+function urltest_filtered_outbounds(section, urltest_id, urltest_candidate_tags, state) {
+    let filter_mode = connections.urltest_filter_mode(section, urltest_id);
+    let all_outbounds = urltest_all_candidate_outbounds(urltest_candidate_tags);
     if (filter_mode == "" || filter_mode == "disabled")
         return all_outbounds;
     if (!supported_urltest_filter_mode(filter_mode))
         return all_outbounds;
 
     let names = object_or_empty(object_or_empty(state.outboundMetadata).names);
-    let countries = urltest_country_metadata(section, state);
+    let countries = urltest_country_metadata(section, urltest_id, state);
     let include_outbounds = urltest_matching_candidate_outbounds(
-        selector_tags,
-        state,
+        urltest_candidate_tags,
         names,
         countries,
-        list_option(section, "urltest_include_outbounds"),
-        list_option(section, "urltest_include_regex"),
-        list_option(section, "urltest_include_countries")
+        connections.urltest_include_outbounds(section, urltest_id),
+        connections.urltest_include_regex(section, urltest_id),
+        connections.urltest_include_countries(section, urltest_id)
     );
     let exclude_outbounds = urltest_matching_candidate_outbounds(
-        selector_tags,
-        state,
+        urltest_candidate_tags,
         names,
         countries,
-        list_option(section, "urltest_exclude_outbounds"),
-        list_option(section, "urltest_exclude_regex"),
-        list_option(section, "urltest_exclude_countries")
+        connections.urltest_exclude_outbounds(section, urltest_id),
+        connections.urltest_exclude_regex(section, urltest_id),
+        connections.urltest_exclude_countries(section, urltest_id)
     );
 
     if (filter_mode == "include")
@@ -819,41 +819,77 @@ function urltest_filtered_outbounds(section, selector_tags, state) {
     return all_outbounds;
 }
 
-function add_proxy_selector(config, section, selector_tags, state) {
+function urltest_outbound_tag(section_name, urltest_id) {
+    urltest_id = as_string(urltest_id);
+    return urltest_id == "urltest"
+        ? outbound_tag(section_name + "-urltest")
+        : outbound_tag(section_name + "-urltest-" + urltest_id);
+}
+
+function add_urltest_outbound(config, section, urltest_id, urltest_candidate_tags, state) {
+    let section_name = section[".name"];
+    let urltest_outbounds = urltest_filtered_outbounds(section, urltest_id, urltest_candidate_tags, state);
+
+    if (length(urltest_outbounds) == 0)
+        return {
+            tag: "",
+            outbounds: []
+        };
+
+    let urltest_tag = urltest_outbound_tag(section_name, urltest_id);
+    let urltest_outbound = {
+        type: "urltest",
+        tag: urltest_tag,
+        outbounds: urltest_outbounds,
+        url: connections.urltest_testing_url(section, urltest_id),
+        interval: urltest_check_interval(section, urltest_id),
+        tolerance: int(connections.urltest_tolerance(section, urltest_id), 10),
+        interrupt_exist_connections: connections.urltest_interrupt_exist_connections(section, urltest_id)
+    };
+    let idle_timeout = urltest_idle_timeout(section, urltest_id);
+    if (idle_timeout != "")
+        urltest_outbound.idle_timeout = idle_timeout;
+
+    push(config.outbounds, urltest_outbound);
+    let display_name = connections.urltest_display_name(section, urltest_id);
+    runtime_subscription.remember_outbound_metadata(state, urltest_tag, display_name, urltest_outbound);
+    runtime_subscription.remember_urltest_group(state, urltest_tag, display_name, urltest_outbound);
+    return {
+        tag: urltest_tag,
+        outbounds: urltest_outbounds
+    };
+}
+
+function add_proxy_selector(config, section, selector_tags, urltest_candidate_tags, state) {
     let section_name = section[".name"];
     let selector_tag = outbound_tag(section_name);
     let selector_outbounds = selector_tags;
     let selector_default = selector_tags[0];
+    let urltest_tags = [];
+    let hidden_selector_tags = {};
 
-    if (bool_option(section, "urltest_enabled", false)) {
-        let urltest_outbounds = urltest_filtered_outbounds(section, selector_tags, state);
+    for (let urltest_id in connections.urltests(section)) {
+        let urltest = add_urltest_outbound(config, section, urltest_id, urltest_candidate_tags, state);
+        if (urltest.tag == "")
+            continue;
 
-        if (length(urltest_outbounds) > 0) {
-            let urltest_tag = outbound_tag(section_name + "-urltest");
-            let urltest_outbound = {
-                type: "urltest",
-                tag: urltest_tag,
-                outbounds: urltest_outbounds,
-                url: option(section, "urltest_testing_url", "https://www.gstatic.com/generate_204"),
-                interval: urltest_check_interval(section),
-                tolerance: int_option(section, "urltest_tolerance", "50"),
-                interrupt_exist_connections: true
-            };
-            push(config.outbounds, urltest_outbound);
-            let idle_timeout = urltest_idle_timeout(section);
-            if (idle_timeout != "") {
-                config.outbounds[length(config.outbounds) - 1].idle_timeout = idle_timeout;
-                urltest_outbound.idle_timeout = idle_timeout;
-            }
-            runtime_subscription.remember_outbound_metadata(state, urltest_tag, "Fastest", urltest_outbound);
-            runtime_subscription.remember_urltest_group(state, urltest_tag, "Fastest", urltest_outbound);
+        push(urltest_tags, urltest.tag);
 
-            selector_outbounds = [];
-            for (let tag in selector_tags)
-                push(selector_outbounds, tag);
-            push(selector_outbounds, urltest_tag);
-            selector_default = urltest_tag;
+        if (connections.urltest_hide_added_outbounds(section, urltest_id)) {
+            for (let tag in array_or_empty(urltest.outbounds))
+                hidden_selector_tags[tag] = true;
         }
+    }
+
+    if (length(urltest_tags) > 0) {
+        selector_outbounds = [];
+        for (let tag in selector_tags) {
+            if (!hidden_selector_tags[tag])
+                push(selector_outbounds, tag);
+        }
+        for (let tag in urltest_tags)
+            push(selector_outbounds, tag);
+        selector_default = urltest_tags[0];
     }
 
     push(config.outbounds, {
@@ -1466,7 +1502,7 @@ function manual_link_outbound(link, tag_name, udp_over_tcp) {
     runtime_generate_unsupported("manual proxy link scheme is not supported by sing-box config generation yet");
 }
 
-function add_manual_proxy_link(config, state, section_name, manual_index, link, udp_over_tcp, taken, selector_tags) {
+function add_manual_proxy_link(config, state, section_name, manual_index, link, udp_over_tcp, taken, selector_tags, urltest_candidate_tags) {
     let tag_name = outbound_tag(section_name + "-" + manual_index);
     if (taken[tag_name])
         tag_name = unique_tag(tag_name, taken);
@@ -1475,6 +1511,7 @@ function add_manual_proxy_link(config, state, section_name, manual_index, link, 
     let outbound = manual_link_outbound(link, tag_name, udp_over_tcp);
     push(config.outbounds, outbound);
     push(selector_tags, tag_name);
+    push(urltest_candidate_tags, tag_name);
 
     let display_name = url_fragment(link);
     if (display_name == "")
@@ -1498,7 +1535,7 @@ function connection_detour_tag(section, link) {
     return detour_section == "" ? "" : outbound_tag(detour_section);
 }
 
-function add_connection_manual_links(config, state, section, taken, selector_tags) {
+function add_connection_manual_links(config, state, section, taken, selector_tags, urltest_candidate_tags) {
     let section_name = section[".name"];
     let manual_links = connections.connection_urls(section);
     for (let i = 0; i < length(manual_links); i++) {
@@ -1511,16 +1548,15 @@ function add_connection_manual_links(config, state, section, taken, selector_tag
             link,
             connections.connection_udp_over_tcp(section, link),
             taken,
-            selector_tags
+            selector_tags,
+            urltest_candidate_tags
         );
         apply_detour_to_outbound(config, tag_name, connection_detour_tag(section, link));
     }
 }
 
-function add_connection_subscriptions(config, state, section, taken, selector_tags) {
-    let section_name = section[".name"];
+function add_connection_subscriptions(config, state, section, taken, selector_tags, urltest_candidate_tags) {
     let subscription_urls = connections.subscription_urls(section);
-    let detour_tags = [];
 
     for (let i = 0; i < length(subscription_urls); i++)
         add_subscription_source_with_state(
@@ -1530,7 +1566,7 @@ function add_connection_subscriptions(config, state, section, taken, selector_ta
             subscription_urls[i],
             taken,
             selector_tags,
-            detour_tags,
+            urltest_candidate_tags,
             state,
             connections.subscription_dashboard_metadata_enabled(section, subscription_urls[i]),
             connections.subscription_hide_urltest_group_outbounds(section, subscription_urls[i]),
@@ -1538,7 +1574,7 @@ function add_connection_subscriptions(config, state, section, taken, selector_ta
         );
 }
 
-function add_interface_connection_outbound(config, state, section, interface_index, interface_name, taken, selector_tags) {
+function add_interface_connection_outbound(config, state, section, interface_index, interface_name, taken, selector_tags, urltest_candidate_tags) {
     let section_name = section[".name"];
     let tag_name = connection_item_tag(section_name, "interface", interface_index);
     if (taken[tag_name])
@@ -1571,13 +1607,14 @@ function add_interface_connection_outbound(config, state, section, interface_ind
 
     push(config.outbounds, outbound);
     push(selector_tags, tag_name);
+    push(urltest_candidate_tags, tag_name);
     runtime_subscription.remember_outbound_metadata(state, tag_name, interface_name, outbound);
 }
 
-function add_connection_interfaces(config, state, section, taken, selector_tags) {
+function add_connection_interfaces(config, state, section, taken, selector_tags, urltest_candidate_tags) {
     let items = connections.interfaces(section);
     for (let i = 0; i < length(items); i++)
-        add_interface_connection_outbound(config, state, section, i + 1, items[i], taken, selector_tags);
+        add_interface_connection_outbound(config, state, section, i + 1, items[i], taken, selector_tags, urltest_candidate_tags);
 }
 
 function parse_outbound_json(value) {
@@ -1591,7 +1628,7 @@ function parse_outbound_json(value) {
     return type(value) == "object" ? value : null;
 }
 
-function add_json_connection_outbound(config, state, section, json_index, outbound_json, taken, selector_tags) {
+function add_json_connection_outbound(config, state, section, json_index, outbound_json, taken, selector_tags, urltest_candidate_tags) {
     let outbound = parse_outbound_json(outbound_json);
     if (outbound == null)
         runtime_generate_unsupported("JSON outbound is invalid");
@@ -1605,30 +1642,34 @@ function add_json_connection_outbound(config, state, section, json_index, outbou
     outbound.tag = tag_name;
     push(config.outbounds, outbound);
     push(selector_tags, tag_name);
+    if (urltest_leaf_candidate_outbound(outbound))
+        push(urltest_candidate_tags, tag_name);
     runtime_subscription.remember_outbound_metadata(state, tag_name, display_name, outbound);
     runtime_subscription.remember_urltest_group(state, tag_name, display_name, outbound);
 }
 
-function add_connection_json_outbounds(config, state, section, taken, selector_tags) {
+function add_connection_json_outbounds(config, state, section, taken, selector_tags, urltest_candidate_tags) {
     let items = connections.outbound_jsons(section);
     for (let i = 0; i < length(items); i++)
-        add_json_connection_outbound(config, state, section, i + 1, items[i], taken, selector_tags);
+        add_json_connection_outbound(config, state, section, i + 1, items[i], taken, selector_tags, urltest_candidate_tags);
 }
 
 function add_connections_outbound(config, section, taken) {
     let section_name = section[".name"];
     let selector_tags = [];
+    let urltest_candidate_tags = [];
     let state = runtime_subscription.new_section_state(section_name);
 
-    add_connection_manual_links(config, state, section, taken, selector_tags);
-    add_connection_subscriptions(config, state, section, taken, selector_tags);
-    add_connection_interfaces(config, state, section, taken, selector_tags);
-    add_connection_json_outbounds(config, state, section, taken, selector_tags);
+    add_connection_manual_links(config, state, section, taken, selector_tags, urltest_candidate_tags);
+    add_connection_subscriptions(config, state, section, taken, selector_tags, urltest_candidate_tags);
+    add_connection_interfaces(config, state, section, taken, selector_tags, urltest_candidate_tags);
+    add_connection_json_outbounds(config, state, section, taken, selector_tags, urltest_candidate_tags);
 
     if (length(selector_tags) == 0)
         runtime_generate_unsupported("connection section has no usable outbounds");
 
-    add_proxy_selector(config, section, selector_tags, state);
+    state.urltestCandidateTags = unique_string_array(urltest_candidate_tags);
+    add_proxy_selector(config, section, selector_tags, urltest_candidate_tags, state);
     if (!atomic_write_json_file(runtime_subscription.section_cache_path(section_name), state))
         runtime_generate_unsupported("failed to write section cache for " + section_name);
 }
@@ -1842,18 +1883,31 @@ function split_condition_text(value) {
 }
 
 function legacy_condition_values(section, key) {
-    let list_values = list_option(section, key);
+    let raw_values = object_or_empty(section)[key];
+    let list_values = type(raw_values) == "array"
+        ? raw_values
+        : [];
+    let option_text_values = type(raw_values) == "array"
+        ? []
+        : split_condition_text(raw_values);
     let text_values = split_condition_text(option(section, key + "_text", ""));
 
     if (bool_option(section, key + "_text_mode", false) || bool_option(section, "conditions_text_mode", false))
         return text_values;
     if (length(list_values) > 0)
         return list_values;
+    if (length(option_text_values) > 0)
+        return option_text_values;
     return text_values;
 }
 
 function combined_domain_source_values(section) {
     let values = [];
+    if (type(object_or_empty(section)["domain"]) != "array") {
+        for (let value in split_condition_text(option(section, "domain", "")))
+            if (as_string(value) != "")
+                push(values, as_string(value));
+    }
     for (let value in split_condition_text(option(section, "domain_suffix_text", "")))
         if (as_string(value) != "")
             push(values, as_string(value));
@@ -1985,18 +2039,18 @@ function add_combined_route_for_section(config, section) {
 
     add_fully_routed_ips_rule(config, section);
 
-    for (let community in list_option(section, "community_lists")) {
+    for (let community in connections.community_lists(section)) {
         let ensured = ensure_community_ruleset(config, section_name, as_string(community));
         push(rule_set_tags, ensured.tag);
         push(dns_rule_set_tags, ensured.tag);
     }
-    for (let reference in list_option(section, "rule_set")) {
+    for (let reference in connections.rule_sets(section)) {
         let ensured = ensure_custom_ruleset(config, as_string(reference));
         push(rule_set_tags, ensured.tag);
         if (ensured.kind == "domains")
             push(dns_rule_set_tags, ensured.tag);
     }
-    for (let reference in list_option(section, "rule_set_with_subnets")) {
+    for (let reference in connections.rule_sets_with_subnets(section)) {
         let ensured = ensure_custom_ruleset(config, as_string(reference));
         push(rule_set_tags, ensured.tag);
         if (ensured.kind == "domains")

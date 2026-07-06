@@ -40,6 +40,15 @@ function whitespace_fields(value) {
     return result;
 }
 
+function strip_repeated_domain_prefix(prefix, body) {
+    let marker = prefix + ":";
+
+    while (domain_config.ascii_lower(substr(body, 0, length(marker))) == marker)
+        body = trim(substr(body, length(marker)));
+
+    return body;
+}
+
 function prefixed_domain_kind_value(value) {
     value = trim(as_string(value));
 
@@ -61,6 +70,9 @@ function prefixed_domain_kind_value(value) {
     }
 
     body = trim(body);
+    if (prefix != "")
+        body = strip_repeated_domain_prefix(prefix, body);
+
     if (body == "")
         return null;
 
@@ -146,7 +158,9 @@ function legacy_condition_csv_value(kind, text_mode, conditions_text_mode, text_
 
     list_value = as_string(list_value);
     if (list_value != "")
-        return replace(list_value, / /g, ",");
+        return kind == "subnets"
+            ? condition_text_csv_value(list_value, kind)
+            : replace(list_value, / /g, ",");
 
     text_value = as_string(text_value);
     if (text_value != "")

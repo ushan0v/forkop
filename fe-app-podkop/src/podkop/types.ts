@@ -200,7 +200,17 @@ export namespace Podkop {
 
   export interface ConfigSection {
     '.name': string;
-    '.type': 'settings' | 'rule' | 'node' | 'ruleset' | 'section' | 'server';
+    '.type':
+      | 'settings'
+      | 'rule'
+      | 'node'
+      | 'ruleset'
+      | 'section'
+      | 'server'
+      | 'connection_url'
+      | 'subscription_url'
+      | 'section_interface'
+      | 'urltest';
     label?: string;
     enabled?: string;
     action?: RuleAction;
@@ -224,6 +234,8 @@ export namespace Podkop {
     connection_url_settings?: string;
     subscription_url_settings?: string;
     interface_settings?: string;
+    urltests?: string[];
+    urltest_settings?: string;
     urltest_proxy_links?: string[];
     subscription_url?: string;
     subscription_user_agent?: string;
@@ -244,6 +256,38 @@ export namespace Podkop {
     urltest_include_regex?: string[];
     outbound_json?: string;
     interface?: string;
+    section?: string;
+    id?: string;
+    url?: string;
+    name?: string;
+    display_name?: string;
+    check_interval?: string;
+    tolerance?: string;
+    testing_url?: string;
+    idle_timeout?: string;
+    interrupt_exist_connections?: '0' | '1';
+    pin_dashboard?: '0' | '1';
+    hide_added_outbounds?: '0' | '1';
+    filter_mode?: 'disabled' | 'exclude' | 'include' | 'mixed';
+    include_countries?: string[];
+    include_outbounds?: string[];
+    include_regex?: string[];
+    exclude_countries?: string[];
+    exclude_outbounds?: string[];
+    exclude_regex?: string[];
+    outbound_detour_enabled?: '0' | '1';
+    outbound_detour_section?: string;
+    enable_udp_over_tcp?: '0' | '1';
+    download_via_proxy_enabled?: '0' | '1';
+    download_via_proxy_section?: string;
+    user_agent?: string;
+    hwid?: string;
+    show_dashboard_metadata?: '0' | '1';
+    hide_urltest_group_outbounds?: '0' | '1';
+    hide_detour_outbounds?: '0' | '1';
+    domain_resolver_enabled?: '0' | '1';
+    domain_resolver_dns_type?: string;
+    domain_resolver_dns_server?: string;
     yacd_secret_key?: string;
   }
 

@@ -8,10 +8,12 @@ let zapret_validator_module = null;
 let zapret2_validator_module = null;
 let byedpi_validator_module = null;
 let constants_module = null;
+let core_url = require("core.url");
 let rule_config = require("config.rule");
 let connections = require("config.connections");
 
 const CONFIG_NAME = getenv("PODKOP_CONFIG_NAME") || "podkop-plus";
+const DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
 
 function as_string(value) {
     return value == null ? "" : "" + value;
@@ -810,7 +812,7 @@ function fixture_get_section(section_name) {
     if (section_name == "settings" && type(fixture.settings) == "object")
         return fixture.settings;
 
-    for (let type_name in [ "settings", "server", "section" ]) {
+    for (let type_name in [ "settings", "server", "section", "connection_url", "subscription_url", "section_interface", "urltest" ]) {
         for (let section in fixture_section_list(type_name)) {
             if (as_string(section[".name"]) == section_name)
                 return section;
@@ -822,6 +824,7 @@ function fixture_get_section(section_name) {
 
 function use_fixture_cursor(path) {
     fixture_uci_data = object_or_empty(read_json_file(path));
+    connections.set_item_sections_from_data(fixture_uci_data);
 }
 
 function settings_section() {
@@ -956,6 +959,25 @@ function validate_subscription_source_entry_value(entry, section) {
     fail_validation("Invalid subscription URL in rule '" + section + "': " + parsed.error + ". Aborted.");
 }
 
+function valid_http_url(value) {
+    value = trim(as_string(value));
+    if (value == "" || match(value, /[ \t\r\n]/) != null)
+        return false;
+
+    let scheme = lc(core_url.scheme(value));
+    if (scheme != "http" && scheme != "https")
+        return false;
+
+    return core_url.host(value) != "";
+}
+
+function validate_http_url_option(value, label) {
+    if (valid_http_url(value))
+        return;
+
+    fail_validation("Invalid URL value for " + label + ": " + value + ". Use http:// or https:// URL. Aborted.");
+}
+
 function validate_country_code_value(value, section) {
     if (as_string(value) == "" || country_code_valid(value))
         return;
@@ -982,6 +1004,25 @@ function validate_urltest_regex_value(value, section) {
         return;
 
     fail_validation("Invalid URLTest regular expression '" + value + "' in rule '" + section + "'. Aborted.");
+}
+
+function validate_urltest_identifier_value(value, section) {
+    value = as_string(value);
+    if (value != "" && match(value, /^[A-Za-z0-9_]+$/) != null)
+        return;
+
+    fail_validation("Invalid URLTest identifier '" + value + "' in rule '" + section + "'. Use latin letters, digits and underscores. Aborted.");
+}
+
+function validate_urltest_tolerance_value(value, section, urltest_id) {
+    value = trim(as_string(value));
+    if (match(value, /^[0-9]+$/) != null) {
+        let parsed = int(value, 10);
+        if (parsed >= 0 && parsed <= 10000)
+            return;
+    }
+
+    fail_validation("Invalid URLTest tolerance '" + value + "' in rule '" + section + "', URLTest '" + urltest_id + "'. Use a number from 0 to 10000. Aborted.");
 }
 
 function validate_combined_domain_value(value, section) {
@@ -1020,11 +1061,11 @@ function validate_plain_domain_ip_list_reference_value(reference) {
 }
 
 function validate_common_rule_references(section, context) {
-    for (let value in list_option(section, "community_lists"))
+    for (let value in connections.community_lists(section))
         validate_service_value(value, context);
-    for (let value in list_option(section, "rule_set"))
+    for (let value in connections.rule_sets(section))
         validate_ruleset_reference_value(value, context);
-    for (let value in list_option(section, "rule_set_with_subnets"))
+    for (let value in connections.rule_sets_with_subnets(section))
         validate_ruleset_reference_value(value, context);
     for (let value in list_option(section, "domain_ip_lists"))
         validate_plain_domain_ip_list_reference_value(value);
@@ -1074,14 +1115,6 @@ function subscription_update_interval_for_source(section, entry) {
         return "";
     let value = connections.subscription_update_interval(section, entry);
     return value != "" ? value : "1h";
-}
-
-function urltest_check_interval_for_rule(section) {
-    if (!bool_option(section, "urltest_enabled", false))
-        return "";
-
-    let value = option(section, "urltest_check_interval", "");
-    return value != "" ? value : "3m";
 }
 
 function validate_provider_strategy(kind, section, context) {
@@ -1148,24 +1181,31 @@ function validate_rule(section, context) {
     }
 
     if (connections.is_connections_action(action)) {
-        if (bool_option(section, "urltest_enabled", false)) {
-            let urltest_filter_mode = option(section, "urltest_filter_mode", "disabled");
+        for (let urltest_id in connections.urltests(section)) {
+            validate_urltest_identifier_value(urltest_id, name);
+
+            let urltest_filter_mode = connections.urltest_filter_mode(section, urltest_id);
             validate_urltest_filter_mode_value(urltest_filter_mode, name);
             if (contains([ "exclude", "include", "mixed" ], urltest_filter_mode))
-                validate_detect_server_country_value(option(section, "detect_server_country", "flag_emoji"), name);
+                validate_detect_server_country_value(connections.urltest_detect_server_country(section, urltest_id), name);
 
-            validate_required_duration_option(urltest_check_interval_for_rule(section), "rule." + name + ".urltest_check_interval");
+            validate_required_duration_option(connections.urltest_check_interval(section, urltest_id), "rule." + name + ".urltest." + urltest_id + ".urltest_check_interval");
+            validate_urltest_tolerance_value(connections.urltest_tolerance(section, urltest_id), name, urltest_id);
+            validate_http_url_option(connections.urltest_testing_url(section, urltest_id), "rule." + name + ".urltest." + urltest_id + ".testing_url");
+            let idle_timeout = connections.urltest_idle_timeout(section, urltest_id);
+            if (idle_timeout != "")
+                validate_required_duration_option(idle_timeout, "rule." + name + ".urltest." + urltest_id + ".idle_timeout");
 
             if (contains([ "include", "mixed" ], urltest_filter_mode)) {
-                for (let value in list_option(section, "urltest_include_regex"))
+                for (let value in connections.urltest_include_regex(section, urltest_id))
                     validate_urltest_regex_value(value, name);
-                for (let value in list_option(section, "urltest_include_countries"))
+                for (let value in connections.urltest_include_countries(section, urltest_id))
                     validate_country_code_value(value, name);
             }
             if (contains([ "exclude", "mixed" ], urltest_filter_mode)) {
-                for (let value in list_option(section, "urltest_exclude_countries"))
+                for (let value in connections.urltest_exclude_countries(section, urltest_id))
                     validate_country_code_value(value, name);
-                for (let value in list_option(section, "urltest_exclude_regex"))
+                for (let value in connections.urltest_exclude_regex(section, urltest_id))
                     validate_urltest_regex_value(value, name);
             }
         }
@@ -1185,6 +1225,7 @@ function validate_rule(section, context) {
     if (action == "outbound")
         validate_outbound_json_rule(section);
 
+    validate_combined_domain_text_value(option(section, "domain", ""), name);
     for (let value in list_option(section, "domain_suffix"))
         validate_combined_domain_value(value, name);
     validate_combined_domain_text_value(option(section, "domain_suffix_text", ""), name);
@@ -1399,6 +1440,7 @@ function validate_runtime_config(context) {
 
     validate_runtime_mark_ranges_context(context);
     validate_list_update_settings(settings);
+    validate_http_url_option(option(settings, "latency_test_url", DEFAULT_LATENCY_TEST_URL) || DEFAULT_LATENCY_TEST_URL, "settings.latency_test_url");
 
     if (download_via_proxy_enabled(settings, "lists")) {
         validate_download_section_rows(

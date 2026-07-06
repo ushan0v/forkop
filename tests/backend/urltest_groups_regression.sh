@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PODKOP_LIB="$ROOT_DIR/podkop/files/usr/lib"
 PARSER_UC="$PODKOP_LIB/subscription/parser.uc"
 GENERATOR_UC="$PODKOP_LIB/singbox/generator.uc"
+CACHE_UC="$PODKOP_LIB/subscription/cache.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -158,7 +159,7 @@ cat >"$WORK_DIR/xray-fixture.json" <<'JSON'
       "urltest_check_interval": "3m",
       "urltest_tolerance": "50",
       "urltest_filter_mode": "include",
-      "urltest_include_outbounds": [ "Latvia group" ],
+      "urltest_include_regex": [ "Riga" ],
       "detect_server_country": "flag_emoji",
       "subscription_urls": [ "https://xray.example/sub" ]
     }
@@ -186,7 +187,7 @@ cat >"$WORK_DIR/xray-reveal-urltest-fixture.json" <<'JSON'
       "urltest_check_interval": "3m",
       "urltest_tolerance": "50",
       "urltest_filter_mode": "include",
-      "urltest_include_outbounds": [ "Latvia group" ],
+      "urltest_include_regex": [ "Riga" ],
       "detect_server_country": "flag_emoji",
       "subscription_urls": [ "https://xray.example/sub" ],
       "subscription_url_settings": "{\"https://xray.example/sub\":{\"hide_urltest_group_outbounds\":\"0\"}}"
@@ -198,15 +199,52 @@ JSON
 xray_reveal_urltest_config="$WORK_DIR/xray-reveal-urltest-config.json"
 generate_config "$WORK_DIR/xray-reveal-urltest-fixture.json" "$xray_reveal_urltest_config"
 
+cat >"$WORK_DIR/xray-group-name-filter-fixture.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "log_level": "warn"
+  },
+  "section": [
+    {
+      ".name": "proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "urltest_enabled": "1",
+      "urltest_check_interval": "3m",
+      "urltest_tolerance": "50",
+      "urltest_filter_mode": "include",
+      "urltest_include_outbounds": [ "Latvia group" ],
+      "detect_server_country": "flag_emoji",
+      "subscription_urls": [ "https://xray.example/sub" ],
+      "subscription_url_settings": "{\"https://xray.example/sub\":{\"hide_urltest_group_outbounds\":\"0\"}}"
+    }
+  ]
+}
+JSON
+
+xray_group_name_filter_config="$WORK_DIR/xray-group-name-filter-config.json"
+generate_config "$WORK_DIR/xray-group-name-filter-fixture.json" "$xray_group_name_filter_config"
+
 ucode -e '
 let fs = require("fs");
 function object_or_empty(value) { return type(value) == "object" ? value : {}; }
 let config = json(fs.readfile(ARGV[0]));
 let cache = json(fs.readfile(ARGV[1]));
 let reveal_config = json(fs.readfile(ARGV[2]));
+let group_name_filter_config = json(fs.readfile(ARGV[3]));
 let imported = null;
 let builtin = null;
 let reveal_selector = null;
+let group_name_builtin = null;
+function contains(values, needle) {
+    for (let value in values || [])
+        if (value == needle)
+            return true;
+    return false;
+}
 for (let outbound in config.outbounds || []) {
     if (outbound.type == "urltest" && outbound.tag == "Latvia group")
         imported = outbound;
@@ -216,13 +254,18 @@ for (let outbound in config.outbounds || []) {
 for (let outbound in reveal_config.outbounds || [])
     if (outbound.type == "selector" && outbound.tag == "proxy-out")
         reveal_selector = outbound;
+for (let outbound in group_name_filter_config.outbounds || [])
+    if (outbound.type == "urltest" && outbound.tag == "proxy-urltest-out")
+        group_name_builtin = outbound;
 if (!imported || imported.url != "https://probe.example/204" || imported.interval != "45s")
     die("generated xray imported URLTest did not preserve subscription params\n");
 if (!builtin || length(builtin.outbounds || []) != 2)
-    die("built-in URLTest should expand matched xray group to two child outbounds\n");
+    die("built-in URLTest should include two matched xray leaf outbounds\n");
 for (let child in builtin.outbounds || [])
     if (child == "Latvia group")
         die("built-in URLTest must not use the xray group tag as a child\n");
+if (group_name_builtin)
+    die("built-in URLTest must not match subscription URLTest group names as servers\n");
 for (let child in builtin.outbounds || [])
     if (substr(child, 0, 5) == "xray-")
         die("built-in URLTest must not use artificial xray child tag prefixes\n");
@@ -230,9 +273,30 @@ if (object_or_empty(cache.urltestGroups)["Latvia group"].url != "https://probe.e
     die("section cache is missing imported xray URLTest params\n");
 if (length(object_or_empty(cache.urltestGroups)["proxy-urltest-out"].outbounds || []) != 2)
     die("section cache is missing built-in URLTest membership\n");
+let candidates = cache.urltestCandidateTags || [];
+if (contains(candidates, "Latvia group") || contains(candidates, "proxy-urltest-out"))
+    die("section cache URLTest candidates must not include URLTest groups\n");
+if (length(candidates) != length(builtin.outbounds || []))
+    die("section cache URLTest candidates should include only xray leaf outbounds\n");
+for (let child in builtin.outbounds || [])
+    if (!contains(candidates, child))
+        die("section cache URLTest candidates are missing a matched xray leaf outbound\n");
 if (!reveal_selector || length(reveal_selector.outbounds || []) != 4)
     die("xray URLTest children should become visible when subscription hiding is disabled\n");
-' "$xray_config" "$xray_config.section-cache/proxy.json" "$xray_reveal_urltest_config" || fail "xray generated URLTest behavior"
+' "$xray_config" "$xray_config.section-cache/proxy.json" "$xray_reveal_urltest_config" "$xray_group_name_filter_config" || fail "xray generated URLTest behavior"
+
+xray_metadata="$WORK_DIR/xray-ui-outbound-metadata.json"
+ucode -L "$PODKOP_LIB" "$CACHE_UC" get-outbound-metadata "$xray_config.section-cache" proxy "$WORK_DIR/missing-outbound-metadata.json" >"$xray_metadata"
+
+ucode -e '
+let fs = require("fs");
+let metadata = json(fs.readfile(ARGV[0]));
+let names = type(metadata.names) == "object" ? metadata.names : {};
+if (names["Latvia group"] != null || names["proxy-urltest-out"] != null)
+    die("UI outbound metadata must not include URLTest group names\n");
+if (length(keys(names)) != 2)
+    die("UI outbound metadata should contain only xray leaf outbound names\n");
+' "$xray_metadata" || fail "xray UI outbound metadata filtering"
 
 cat >"$WORK_DIR/singbox.json" <<'JSON'
 {
@@ -444,6 +508,24 @@ if (!reveal_detour_selector || !contains(reveal_detour_selector.outbounds, "Deto
     die("detour outbound should be visible when detour hiding is disabled\n");
 if (length(object_or_empty(cache.urltestGroups)["Native Group"].outbounds || []) != 1)
     die("section cache is missing native URLTest membership\n");
+let candidates = cache.urltestCandidateTags || [];
+if (contains(candidates, "Native Group") || contains(candidates, "proxy-urltest-out"))
+    die("section cache native URLTest candidates must not include URLTest groups\n");
+if (!contains(candidates, "Native A") || !contains(candidates, "Detour Only"))
+    die("section cache native URLTest candidates should include all leaf outbounds, including hidden ones\n");
 ' "$singbox_config" "$singbox_config.section-cache/proxy.json" "$singbox_reveal_urltest_config" "$singbox_reveal_detour_config" || fail "native sing-box generated URLTest behavior"
+
+singbox_metadata="$WORK_DIR/singbox-ui-outbound-metadata.json"
+ucode -L "$PODKOP_LIB" "$CACHE_UC" get-outbound-metadata "$singbox_config.section-cache" proxy "$WORK_DIR/missing-outbound-metadata.json" >"$singbox_metadata"
+
+ucode -e '
+let fs = require("fs");
+let metadata = json(fs.readfile(ARGV[0]));
+let names = type(metadata.names) == "object" ? metadata.names : {};
+if (names["Native Group"] != null || names["proxy-urltest-out"] != null)
+    die("UI outbound metadata must not include native URLTest group names\n");
+if (names["Native A"] == null || names["Detour Only"] == null)
+    die("UI outbound metadata should include all native leaf outbound names\n");
+' "$singbox_metadata" || fail "native UI outbound metadata filtering"
 
 printf 'URLTest group regression checks passed\n'

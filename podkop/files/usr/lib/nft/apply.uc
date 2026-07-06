@@ -6,6 +6,7 @@ let core_ip = require("core.ip");
 let uci_core = require("core.uci");
 let rule_config = require("config.rule");
 let domain_config = require("config.domain");
+let connections = require("config.connections");
 let routing_rulesets = require("routing.rulesets");
 const CONFIG_NAME = getenv("PODKOP_CONFIG_NAME") || "podkop-plus";
 
@@ -525,6 +526,16 @@ function default_arg(value, fallback) {
     return value == "" ? fallback : value;
 }
 
+function combined_domain_condition_text(section) {
+    if (type(object_or_empty(section)["domain"]) != "array") {
+        let value = option(section, "domain", "");
+        if (value != "")
+            return value;
+    }
+
+    return option(section, "domain_suffix_text", "");
+}
+
 function section_rule_condition_csv(section, key, kind) {
     return rule_condition_csv_value(
         key,
@@ -533,7 +544,7 @@ function section_rule_condition_csv(section, key, kind) {
         option(section, "conditions_text_mode", "0"),
         option(section, key + "_text", ""),
         option(section, key, ""),
-        option(section, "domain_suffix_text", ""),
+        combined_domain_condition_text(section),
         option(section, "domain_suffix", "")
     );
 }
@@ -552,9 +563,9 @@ function section_has_destination_matchers(section) {
         section_rule_condition_csv(section, "domain_keyword", "generic") != "" ||
         section_rule_condition_csv(section, "domain_regex", "generic") != "" ||
         section_rule_condition_csv(section, "ip_cidr", "subnets") != "" ||
-        section_option_nonempty(section, "community_lists") ||
-        section_option_nonempty(section, "rule_set") ||
-        section_option_nonempty(section, "rule_set_with_subnets") ||
+        length(connections.community_lists(section)) > 0 ||
+        length(connections.rule_sets(section)) > 0 ||
+        length(connections.rule_sets_with_subnets(section)) > 0 ||
         section_option_nonempty(section, "domain_ip_lists");
 }
 
@@ -602,8 +613,8 @@ function section_has_source_ip_matchers(section) {
 }
 
 function section_has_subnet_update_sources(section) {
-    return rule_config.has_community_subnet_list(option(section, "community_lists", "")) ||
-        option(section, "rule_set_with_subnets", "") != "" ||
+    return rule_config.has_community_subnet_list(connections.community_lists_value(section)) ||
+        length(connections.rule_sets_with_subnets(section)) > 0 ||
         option(section, "domain_ip_lists", "") != "";
 }
 
@@ -622,7 +633,7 @@ function section_priority_needs_plain_ip_rules(section) {
 
 function section_priority_needs_ip_port_rules(section) {
     return section_has_nft_ip_matchers(section) &&
-        (section_rule_ports_csv(section) != "" || option(section, "rule_set_with_subnets", "") != "");
+        (section_rule_ports_csv(section) != "" || length(connections.rule_sets_with_subnets(section)) > 0);
 }
 
 function section_needs_priority_sets(section) {
@@ -1464,9 +1475,9 @@ function nft_rule_signature_body(body, section) {
     body = signature_add_value(body, "rule." + section_name + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
     body = signature_add_value(body, "rule." + section_name + ".ports", section_rule_ports_csv(section));
     body = signature_add_value(body, "rule." + section_name + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
-    body = signature_add_value(body, "rule." + section_name + ".community_subnet_lists", filter_community_subnet_lists_value(option(section, "community_lists", "")));
+    body = signature_add_value(body, "rule." + section_name + ".community_subnet_lists", filter_community_subnet_lists_value(connections.community_lists_value(section)));
     body = signature_add_value(body, "rule." + section_name + ".remote_subnet_lists", option(section, "remote_subnet_lists", ""));
-    body = signature_add_value(body, "rule." + section_name + ".rule_set_with_subnets", option(section, "rule_set_with_subnets", ""));
+    body = signature_add_value(body, "rule." + section_name + ".rule_set_with_subnets", connections.rule_sets_with_subnets_value(section));
     body = signature_add_value(body, "rule." + section_name + ".domain_ip_lists", option(section, "domain_ip_lists", ""));
 
     return body;
@@ -1568,7 +1579,9 @@ function nft_runtime_signature_from_uci() {
 }
 
 function fixture_section(path, section_name) {
-    return section_by_name(fixture_section_list(object_or_empty(common_read_json_file(path)), "section"), section_name);
+    let data = object_or_empty(common_read_json_file(path));
+    connections.set_item_sections_from_data(data);
+    return section_by_name(fixture_section_list(data, "section"), section_name);
 }
 
 function fixture_settings(data) {
@@ -1577,6 +1590,7 @@ function fixture_settings(data) {
 
 function nft_runtime_signature_from_fixture(path) {
     let data = object_or_empty(common_read_json_file(path));
+    connections.set_item_sections_from_data(data);
     return print_nft_runtime_signature_from_settings_and_sections(fixture_settings(data), fixture_section_list(data, "section"));
 }
 
@@ -1734,6 +1748,7 @@ function nft_populate_runtime_sets_from_uci(populate_enabled, deferred_section_n
 
 function nft_populate_runtime_sets_fixture(path, populate_enabled, deferred_section_names, table, common_set, port_set, ip_port_set, interface_set, localv4_set, mark, common6_set, ip_port6_set, localv6_set) {
     let data = object_or_empty(common_read_json_file(path));
+    connections.set_item_sections_from_data(data);
     return nft_populate_runtime_sets_from_sections(fixture_section_list(data, "section"), populate_enabled, deferred_section_names, table, common_set, port_set, ip_port_set, interface_set, localv4_set, mark, common6_set, ip_port6_set, localv6_set);
 }
 

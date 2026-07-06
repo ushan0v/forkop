@@ -51,11 +51,22 @@ function proxySection(
     enabled: '1',
     action: 'proxy',
     selector_proxy_links: ['vless://example#one'],
-    urltest_enabled: '1',
-    urltest_filter_mode: 'exclude',
-    urltest_hide_filtered_outbounds: '0',
+    urltests: ['urltest'],
+    urltest_settings: urlTestSettings('urltest', {
+      display_name: 'Fastest',
+      urltest_filter_mode: 'exclude',
+    }),
     ...options,
   };
+}
+
+function urlTestSettings(
+  id: string,
+  settings: Record<string, string> = {},
+): string {
+  return JSON.stringify({
+    [id]: settings,
+  });
 }
 
 const clashProxies: Record<string, ClashAPI.ProxyBase> = {
@@ -174,6 +185,7 @@ describe('getDashboardSections', () => {
       url: 'https://probe.example/204',
       interval: '3m',
       tolerance: 50,
+      idleTimeout: '30m',
       interruptExistConnections: true,
       selectedCode: 'main-3-out',
       selectedName: 'Third cached',
@@ -196,35 +208,130 @@ describe('getDashboardSections', () => {
     });
   });
 
-  it('shows only the URLTest group and tests the URLTest group when filtered servers are hidden', async () => {
+  it('hides servers already added to the URLTest group when enabled', async () => {
     mocks.getConfigSections.mockResolvedValue([
-      proxySection({ urltest_hide_filtered_outbounds: '1' }),
+      proxySection({
+        urltest_settings: urlTestSettings('urltest', {
+          display_name: 'Fastest',
+          hide_added_outbounds: '1',
+        }),
+      }),
     ]);
 
     const result = await getDashboardSections();
     const [section] = result.data;
 
     expect(result.success).toBe(true);
-    expect(section.latencyTestCode).toBe('main-urltest-out');
+    expect(section.latencyTestCode).toBe('main-out');
     expect(section.latencyTestCodes).toEqual([
       'main-urltest-out',
-      'main-1-out',
-      'main-3-out',
+      'main-2-out',
     ]);
     expect(section.outbounds.map((item) => item.code)).toEqual([
       'main-urltest-out',
-      'main-1-out',
-      'main-3-out',
+      'main-2-out',
     ]);
   });
 
-  it.each(['exclude', 'include', 'mixed'] as const)(
-    'uses the URLTest group latency target for hidden %s URLTest filters',
+  it('keeps legacy URLTest sections compatible before migration', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({
+        urltests: undefined,
+        urltest_settings: undefined,
+        urltest_enabled: '1',
+        urltest_filter_mode: 'exclude',
+      }),
+    ]);
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(section.outbounds.map((item) => item.code)).toEqual([
+      'main-urltest-out',
+      'main-1-out',
+      'main-2-out',
+      'main-3-out',
+    ]);
+    expect(section.outbounds[0].displayName).toBe('Fastest');
+  });
+
+  it('supports multiple configured URLTest groups', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({
+        urltests: undefined,
+        urltest_settings: undefined,
+      }),
+      {
+        '.name': 'cfg010001',
+        '.type': 'urltest',
+        section: 'main',
+        name: 'Fast group',
+      },
+      {
+        '.name': 'cfg010002',
+        '.type': 'urltest',
+        section: 'main',
+        name: 'Stable group',
+      },
+    ]);
+    mocks.getClashApiProxies.mockResolvedValue({
+      success: true,
+      data: {
+        proxies: {
+          ...clashProxies,
+          'main-out': proxy('Selector', {
+            name: 'main-out',
+            now: 'main-urltest-cfg010001-out',
+            all: [
+              'main-1-out',
+              'main-urltest-cfg010002-out',
+              'main-2-out',
+              'main-urltest-cfg010001-out',
+            ],
+          }),
+          'main-urltest-cfg010001-out': proxy('URLTest', {
+            name: 'main-urltest-cfg010001-out',
+            history: [{ time: '2026-05-27T00:00:00Z', delay: 10 }],
+            all: ['main-1-out'],
+          }),
+          'main-urltest-cfg010002-out': proxy('URLTest', {
+            name: 'main-urltest-cfg010002-out',
+            history: [{ time: '2026-05-27T00:00:00Z', delay: 50 }],
+            all: ['main-2-out'],
+          }),
+        },
+      },
+    });
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(section.outbounds.map((item) => item.code)).toEqual([
+      'main-urltest-cfg010001-out',
+      'main-urltest-cfg010002-out',
+      'main-1-out',
+      'main-2-out',
+    ]);
+    expect(section.outbounds.map((item) => item.displayName)).toEqual([
+      'Fast group',
+      'Stable group',
+      'one',
+      'Filtered 2',
+    ]);
+  });
+
+  it.each(['exclude', 'include', 'mixed', 'disabled'] as const)(
+    'hides added URLTest members independently from %s filter mode',
     async (urltest_filter_mode) => {
       mocks.getConfigSections.mockResolvedValue([
         proxySection({
-          urltest_filter_mode,
-          urltest_hide_filtered_outbounds: '1',
+          urltest_settings: urlTestSettings('urltest', {
+            display_name: 'Fastest',
+            urltest_filter_mode,
+            hide_added_outbounds: '1',
+          }),
         }),
       ]);
 
@@ -232,11 +339,10 @@ describe('getDashboardSections', () => {
       const [section] = result.data;
 
       expect(result.success).toBe(true);
-      expect(section.latencyTestCode).toBe('main-urltest-out');
+      expect(section.latencyTestCode).toBe('main-out');
       expect(section.latencyTestCodes).toEqual([
         'main-urltest-out',
-        'main-1-out',
-        'main-3-out',
+        'main-2-out',
       ]);
     },
   );
@@ -355,9 +461,61 @@ describe('getDashboardSections', () => {
     ]);
   });
 
-  it('keeps visible URLTest groups when filtered leaf servers are hidden', async () => {
+  it('sorts an unpinned configured URLTest group by latency', async () => {
     mocks.getConfigSections.mockResolvedValue([
-      proxySection({ urltest_hide_filtered_outbounds: '1' }),
+      proxySection({
+        sort_by_latency: '1',
+        urltest_settings: urlTestSettings('urltest', {
+          display_name: 'Fastest',
+          pin_dashboard: '0',
+        }),
+      }),
+    ]);
+    mocks.getClashApiProxies.mockResolvedValue({
+      success: true,
+      data: {
+        proxies: {
+          'main-out': proxy('Selector', {
+            name: 'main-out',
+            now: 'main-2-out',
+            all: ['main-2-out', 'main-1-out', 'main-urltest-out'],
+          }),
+          'main-urltest-out': proxy('URLTest', {
+            name: 'main-urltest-out',
+            history: [{ time: '2026-06-11T00:00:00Z', delay: 250 }],
+            all: ['main-2-out', 'main-1-out'],
+          }),
+          'main-1-out': proxy('VLESS', {
+            name: 'Fast leaf',
+            history: [{ time: '2026-06-11T00:00:00Z', delay: 100 }],
+          }),
+          'main-2-out': proxy('VLESS', {
+            name: 'Slow leaf',
+            history: [{ time: '2026-06-11T00:00:00Z', delay: 300 }],
+          }),
+        },
+      },
+    });
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(section.outbounds.map((item) => item.code)).toEqual([
+      'main-1-out',
+      'main-urltest-out',
+      'main-2-out',
+    ]);
+  });
+
+  it('keeps visible URLTest groups when added leaf servers are hidden', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({
+        urltest_settings: urlTestSettings('urltest', {
+          display_name: 'Fastest',
+          hide_added_outbounds: '1',
+        }),
+      }),
     ]);
     mocks.getClashApiProxies.mockResolvedValue({
       success: true,
@@ -406,21 +564,25 @@ describe('getDashboardSections', () => {
     expect(result.success).toBe(true);
     expect(section.latencyTestCodes).toEqual([
       'main-urltest-out',
-      'main-1-out',
       'main-provider-urltest-out',
-      'main-3-out',
+      'main-2-out',
     ]);
     expect(section.outbounds.map((item) => item.code)).toEqual([
       'main-urltest-out',
-      'main-1-out',
       'main-provider-urltest-out',
-      'main-3-out',
+      'main-2-out',
     ]);
   });
 
   it('does not expose flag-emoji detected countries on dashboard outbounds', async () => {
     mocks.getConfigSections.mockResolvedValue([
-      proxySection({ detect_server_country: 'flag_emoji' }),
+      proxySection({
+        urltest_settings: urlTestSettings('urltest', {
+          display_name: 'Fastest',
+          urltest_filter_mode: 'exclude',
+          detect_server_country: 'flag_emoji',
+        }),
+      }),
     ]);
     mocks.fsRead.mockResolvedValue(
       JSON.stringify({
@@ -442,7 +604,13 @@ describe('getDashboardSections', () => {
 
   it('exposes country.is detected countries on dashboard outbounds', async () => {
     mocks.getConfigSections.mockResolvedValue([
-      proxySection({ detect_server_country: 'country_is' }),
+      proxySection({
+        urltest_settings: urlTestSettings('urltest', {
+          display_name: 'Fastest',
+          urltest_filter_mode: 'exclude',
+          detect_server_country: 'country_is',
+        }),
+      }),
     ]);
     mocks.fsRead.mockResolvedValue(
       JSON.stringify({
@@ -491,12 +659,14 @@ describe('getDashboardSections', () => {
     expect(subscriptionOutbound?.canCopyLink).toBe(true);
   });
 
-  it('does not hide servers when URLTest filtering is set to all servers', async () => {
+  it('does not expose countries when URLTest filtering is set to all servers', async () => {
     mocks.getConfigSections.mockResolvedValue([
       proxySection({
-        detect_server_country: 'country_is',
-        urltest_filter_mode: 'disabled',
-        urltest_hide_filtered_outbounds: '1',
+        urltest_settings: urlTestSettings('urltest', {
+          display_name: 'Fastest',
+          detect_server_country: 'country_is',
+          urltest_filter_mode: 'disabled',
+        }),
       }),
     ]);
     mocks.fsRead.mockResolvedValue(
@@ -527,7 +697,12 @@ describe('getDashboardSections', () => {
 
   it('uses allocated tags for section names that collide with system tags', async () => {
     mocks.getConfigSections.mockResolvedValue([
-      proxySection({ '.name': 'direct', urltest_enabled: '0' }),
+      proxySection({
+        '.name': 'direct',
+        urltests: [],
+        urltest_settings: undefined,
+        urltest_enabled: '0',
+      }),
     ]);
     mocks.getClashApiProxies.mockResolvedValue({
       success: true,

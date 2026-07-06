@@ -47,6 +47,7 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
     ".type": "settings",
     "list_update_enabled": "1",
     "update_interval": "1d",
+    "latency_test_url": "https://latency.example/generate_204",
     "download_lists_via_proxy": "1",
     "download_lists_via_proxy_section": "proxy"
   },
@@ -72,10 +73,12 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
       "urltest_enabled": "1",
       "urltest_check_interval": "3m",
       "urltest_filter_mode": "mixed",
+      "urltest_tolerance": "10000",
+      "urltest_testing_url": "https://urltest.example/generate_204",
       "urltest_include_countries": [ "US" ],
       "urltest_exclude_regex": [ "bad.*" ],
       "detect_server_country": "flag_emoji",
-      "domain_suffix": [ "example.org", "сайт.рф", "full:exact.example", "full:пример.испытание", "keyword:video", "keyword:пример", "regex:^api[.]example$", "regex:^сайт[.]рф$" ],
+      "domain_suffix": [ "example.org", "сайт.рф", "full:exact.example", "full:full:legacy.example", "full:пример.испытание", "keyword:video", "keyword:пример", "regex:^api[.]example$", "regex:^сайт[.]рф$" ],
       "domain_suffix_text": "text.example\nmünich.example\nkeyword:stream",
       "community_lists": [ "discord" ],
       "rule_set": [ "https://example.com/rules.srs" ],
@@ -142,6 +145,35 @@ cat >"$WORK_DIR/bad-subscription.json" <<'JSON'
 }
 JSON
 assert_rejects "bad subscription" "$WORK_DIR/bad-subscription.json" "Configure User-Agent in the subscription item settings"
+
+cat >"$WORK_DIR/bad-latency-url.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "latency_test_url": "ftp://example.com/ping"
+  },
+  "section": []
+}
+JSON
+assert_rejects "bad latency URL" "$WORK_DIR/bad-latency-url.json" "settings.latency_test_url"
+
+cat >"$WORK_DIR/bad-urltest-tolerance.json" <<'JSON'
+{
+  "settings": { ".name": "settings", ".type": "settings" },
+  "section": [
+    {
+      ".name": "proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "urltest_enabled": "1",
+      "urltest_tolerance": "10001"
+    }
+  ]
+}
+JSON
+assert_rejects "bad URLTest tolerance" "$WORK_DIR/bad-urltest-tolerance.json" "Use a number from 0 to 10000"
 
 cat >"$WORK_DIR/bad-server-routing-bypass.json" <<'JSON'
 {

@@ -4,6 +4,7 @@ let fs = require("fs");
 let common = require("core.common");
 let uci_core = require("core.uci");
 let constants_module = require("core.constants");
+let singbox_constants_module = require("singbox.constants");
 let domain_config = require("config.domain");
 
 let as_string = common.as_string;
@@ -28,6 +29,12 @@ const PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD = getenv("PODKOP_INTERNAL_CONFIG_TRIG
 const PODKOP_RUNTIME_CACHE_FORMAT = getenv("PODKOP_RUNTIME_CACHE_FORMAT") || "7";
 const SERVER_COUNTRY_METHOD_FLAG_EMOJI = "flag_emoji";
 const SERVER_COUNTRY_METHOD_COUNTRY_IS = "country_is";
+const CHILD_ITEM_TYPES = [
+    "connection_url",
+    "subscription_url",
+    "section_interface",
+    "urltest"
+];
 
 function shell_quote(value) {
     return "'" + replace(as_string(value), /'/g, "'\\''") + "'";
@@ -54,7 +61,8 @@ function constants_context() {
     let constants = object_or_empty(constants_module);
     return {
         zapret_legacy_default_nfqws_opt: as_string(constants.ZAPRET_LEGACY_DEFAULT_NFQWS_OPT),
-        zapret_default_nfqws_opt: as_string(constants.ZAPRET_DEFAULT_NFQWS_OPT)
+        zapret_default_nfqws_opt: as_string(constants.ZAPRET_DEFAULT_NFQWS_OPT),
+        urltest_default_idle_timeout: as_string(object_or_empty(singbox_constants_module).URLTEST_DEFAULT_IDLE_TIMEOUT || "30m")
     };
 }
 
@@ -87,6 +95,8 @@ function model_from_fixture(path) {
         rules: [],
         sections: []
     };
+    for (let type_name in CHILD_ITEM_TYPES)
+        model[type_name] = [];
 
     if (model.settings[".name"] == null)
         model.settings[".name"] = "settings";
@@ -97,6 +107,9 @@ function model_from_fixture(path) {
         push(model.rules, clone_section(section));
     for (let section in fixture_section_list(data, "section"))
         push(model.sections, clone_section(section));
+    for (let type_name in CHILD_ITEM_TYPES)
+        for (let section in fixture_section_list(data, type_name))
+            push(model[type_name], clone_section(section));
 
     return model;
 }
@@ -107,6 +120,8 @@ function model_from_uci(cursor) {
         rules: [],
         sections: []
     };
+    for (let type_name in CHILD_ITEM_TYPES)
+        model[type_name] = [];
 
     cursor.foreach(CONFIG_NAME, "rule", function(section) {
         push(model.rules, clone_section(section));
@@ -114,6 +129,11 @@ function model_from_uci(cursor) {
     cursor.foreach(CONFIG_NAME, "section", function(section) {
         push(model.sections, clone_section(section));
     });
+    for (let type_name in CHILD_ITEM_TYPES) {
+        cursor.foreach(CONFIG_NAME, type_name, function(section) {
+            push(model[type_name], clone_section(section));
+        });
+    }
 
     return model;
 }
@@ -125,6 +145,9 @@ function export_model(model) {
     };
     if (length(model.rules) > 0)
         result.rule = model.rules;
+    for (let type_name in CHILD_ITEM_TYPES)
+        if (length(model[type_name] || []) > 0)
+            result[type_name] = model[type_name];
     return result;
 }
 
@@ -195,6 +218,11 @@ function set_list_option(ctx, section, key, values) {
     record_operation(ctx, { op: "set_list", section: section_name(section), option: key, values: normalized });
 }
 
+function set_list_option_if_not_empty(ctx, section, key, values) {
+    if (length(values || []) > 0)
+        set_list_option(ctx, section, key, values);
+}
+
 function set_option_json(ctx, section, key, value) {
     set_option(ctx, section, key, sprintf("%J", value));
 }
@@ -231,6 +259,26 @@ function add_list_unique(ctx, section, key, value) {
     section[key] = current;
     ctx.added_lists[list_key] = true;
     record_operation(ctx, { op: "add_list", section: section_name(section), option: key, values: current });
+}
+
+function create_child_section(ctx, type_name) {
+    ctx.child_index = int(ctx.child_index || 0) + 1;
+    let item_id = "__" + type_name + "_" + ctx.child_index;
+    let section = {
+        ".name": item_id,
+        ".type": type_name
+    };
+    if (ctx.model[type_name] == null)
+        ctx.model[type_name] = [];
+    push(ctx.model[type_name], section);
+    record_operation(ctx, { op: "create", section: item_id, type: type_name, anonymous: true });
+    return section;
+}
+
+function create_child_for_section(ctx, parent, type_name) {
+    let child = create_child_section(ctx, type_name);
+    set_option(ctx, child, "section", section_name(parent));
+    return child;
 }
 
 function option_list_values(section, key) {
@@ -291,8 +339,20 @@ function settings_entry_set_if_missing(map, item, key, value) {
         entry[key] = as_string(value);
 }
 
+function settings_entry_set_value_if_missing(map, item, key, value) {
+    let entry = settings_entry(map, item);
+    if (entry[key] == null)
+        entry[key] = value;
+}
+
 function settings_entry_set_bool_if_missing(map, item, key, value) {
     settings_entry_set_if_missing(map, item, key, value ? "1" : "0");
+}
+
+function settings_entry_set_list_if_not_empty(map, item, key, value) {
+    value = option_list_values({ value }, "value");
+    if (length(value) > 0)
+        settings_entry_set_value_if_missing(map, item, key, value);
 }
 
 function settings_entry_move_if_needed(map, from_item, to_item) {
@@ -362,6 +422,67 @@ function normalize_detect_server_country_method(value) {
 
 function urltest_filter_mode_filters_enabled(value) {
     return value == "exclude" || value == "include" || value == "mixed";
+}
+
+function duration_to_seconds_value(value) {
+    let rest = as_string(value);
+    if (rest == "")
+        return null;
+
+    let total = 0.0;
+    let multipliers = {
+        ns: 0.000000001,
+        us: 0.000001,
+        ms: 0.001,
+        s: 1,
+        m: 60,
+        h: 3600,
+        d: 86400
+    };
+
+    while (rest != "") {
+        let matched = match(rest, /^([0-9]+(\.[0-9]+)?)(ns|us|ms|s|m|h|d)/);
+        if (!matched)
+            return null;
+
+        let token = as_string(matched[0]);
+        let amount = matched[1] * 1;
+        let unit = matched[3];
+        total += amount * multipliers[unit];
+        rest = substr(rest, length(token));
+    }
+
+    return total <= 0 ? null : int(total + 0.5);
+}
+
+function legacy_urltest_idle_timeout(section, constants) {
+    let interval = option(section, "urltest_check_interval", "3m") || "3m";
+    let interval_seconds = duration_to_seconds_value(interval);
+    let default_idle_seconds = duration_to_seconds_value(object_or_empty(constants).urltest_default_idle_timeout || "30m");
+    return interval_seconds != null && default_idle_seconds != null && interval_seconds > default_idle_seconds
+        ? interval
+        : "";
+}
+
+const LEGACY_URLTEST_OPTIONS = [
+    "urltest_enabled",
+    "urltest_check_interval",
+    "urltest_tolerance",
+    "urltest_testing_url",
+    "urltest_filter_mode",
+    "urltest_hide_filtered_outbounds",
+    "detect_server_country",
+    "urltest_include_countries",
+    "urltest_include_outbounds",
+    "urltest_include_regex",
+    "urltest_exclude_countries",
+    "urltest_exclude_outbounds",
+    "urltest_exclude_regex"
+];
+
+function delete_legacy_urltest_options(ctx, section) {
+    for (let key in LEGACY_URLTEST_OPTIONS)
+        delete_option(ctx, section, key);
 }
 
 function migrate_urltest_filter_mode(ctx, section) {
@@ -459,13 +580,10 @@ function migrate_subscription_url(ctx, section) {
         return;
 
     let subscription_user_agent = option(section, "subscription_user_agent", "");
-    if (subscription_user_agent != "") {
-        let settings = parse_json_object(option(section, "subscription_url_settings", ""));
-        settings_entry_set_if_missing(settings, subscription_url, "user_agent", subscription_user_agent);
-        set_option_json(ctx, section, "subscription_url_settings", settings);
-    }
-
-    add_list_unique(ctx, section, "subscription_urls", subscription_url);
+    let entry = subscription_user_agent != ""
+        ? subscription_url + " | " + subscription_user_agent
+        : subscription_url;
+    add_list_unique(ctx, section, "subscription_urls", entry);
     delete_option(ctx, section, "subscription_url");
     delete_option(ctx, section, "subscription_user_agent");
     delete_subscription_cache(ctx, section_name(section));
@@ -598,106 +716,133 @@ function migrate_zapret_nfqws_default(ctx, section, constants) {
 
 function migrate_connection_url_item_settings(ctx, section) {
     let values = whitespace_list_values(section, "selector_proxy_links");
-    if (length(values) == 0)
-        return;
-
-    let settings = parse_json_object(option(section, "connection_url_settings", ""));
-    let changed = false;
     let udp_over_tcp_enabled = bool_option(section, "enable_udp_over_tcp", false);
     let detour_enabled = bool_option(section, "outbound_detour_enabled", false);
     let detour_section = option(section, "outbound_detour_section", "");
+    let index = 1;
 
     for (let value in values) {
+        value = as_string(value);
+        if (value == "")
+            continue;
+
+        let child = create_child_for_section(ctx, section, "connection_url");
+        set_option(ctx, child, "url", value);
         if (detour_enabled) {
-            settings_entry_set_bool_if_missing(settings, value, "outbound_detour_enabled", true);
+            set_option(ctx, child, "outbound_detour_enabled", "1");
             if (detour_section != "")
-                settings_entry_set_if_missing(settings, value, "outbound_detour_section", detour_section);
-            changed = true;
+                set_option(ctx, child, "outbound_detour_section", detour_section);
         }
-        if (udp_over_tcp_enabled) {
-            settings_entry_set_bool_if_missing(settings, value, "enable_udp_over_tcp", true);
-            changed = true;
-        }
+        if (udp_over_tcp_enabled)
+            set_option(ctx, child, "enable_udp_over_tcp", "1");
+        index++;
     }
 
-    if (changed || option(section, "connection_url_settings", "") != "")
-        set_option_json(ctx, section, "connection_url_settings", settings);
+    delete_option(ctx, section, "selector_proxy_links");
+    delete_option(ctx, section, "connection_url_settings");
 }
 
 function migrate_subscription_url_item_settings(ctx, section) {
     let values = whitespace_list_values(section, "subscription_urls");
-    if (length(values) == 0)
-        return;
-
-    let settings = parse_json_object(option(section, "subscription_url_settings", ""));
-    let normalized_values = [];
     let seen_values = {};
-    let changed = false;
     let update_enabled = bool_option(section, "subscription_update_enabled", true);
     let update_interval = option(section, "subscription_update_interval", "");
     if (update_interval == "")
         update_interval = "1h";
+    let index = 1;
 
     for (let value in values) {
         let profile = subscription_url_entry_profile(value);
         if (profile.value == "")
             continue;
+        if (seen_values[profile.value])
+            continue;
+        seen_values[profile.value] = true;
 
-        if (!seen_values[profile.value]) {
-            push(normalized_values, profile.value);
-            seen_values[profile.value] = true;
-        }
-
-        if (profile.changed) {
-            settings_entry_move_if_needed(settings, profile.raw, profile.value);
-            settings_entry_set_if_missing(settings, profile.value, "user_agent", profile.user_agent);
-        }
-
-        settings_entry_set_bool_if_missing(settings, profile.value, "subscription_update_enabled", update_enabled);
-        settings_entry_set_if_missing(settings, profile.value, "subscription_update_interval", update_interval);
-        changed = true;
+        let child = create_child_for_section(ctx, section, "subscription_url");
+        set_option(ctx, child, "url", profile.value);
+        set_option(ctx, child, "subscription_update_enabled", update_enabled ? "1" : "0");
+        set_option(ctx, child, "subscription_update_interval", update_enabled ? update_interval : "");
+        if (profile.user_agent != "")
+            set_option(ctx, child, "user_agent", profile.user_agent);
+        index++;
     }
 
-    if (!list_values_equal(values, normalized_values))
-        set_list_option(ctx, section, "subscription_urls", normalized_values);
+    delete_option(ctx, section, "subscription_urls");
+    delete_option(ctx, section, "subscription_url_settings");
+}
 
-    if (changed || option(section, "subscription_url_settings", "") != "")
-        set_option_json(ctx, section, "subscription_url_settings", settings);
+function migrate_urltest_item_settings(ctx, section, constants) {
+    let legacy_enabled = bool_option(section, "urltest_enabled", false);
+
+    if (legacy_enabled) {
+        let child = create_child_for_section(ctx, section, "urltest");
+        set_option(ctx, child, "name", "Fastest");
+        set_option(ctx, child, "check_interval", option(section, "urltest_check_interval", "3m") || "3m");
+        set_option(ctx, child, "tolerance", option(section, "urltest_tolerance", "50") || "50");
+        set_option(ctx, child, "testing_url", option(section, "urltest_testing_url", "https://www.gstatic.com/generate_204") || "https://www.gstatic.com/generate_204");
+        set_option(ctx, child, "filter_mode", option(section, "urltest_filter_mode", "disabled") || "disabled");
+        set_option(ctx, child, "detect_server_country", normalize_detect_server_country_method(option(section, "detect_server_country", SERVER_COUNTRY_METHOD_FLAG_EMOJI)));
+        set_option(ctx, child, "interrupt_exist_connections", "1");
+        set_option(ctx, child, "pin_dashboard", "1");
+
+        let idle_timeout = legacy_urltest_idle_timeout(section, constants);
+        if (idle_timeout != "")
+            set_option(ctx, child, "idle_timeout", idle_timeout);
+
+        set_list_option_if_not_empty(ctx, child, "include_countries", option_list_values(section, "urltest_include_countries"));
+        set_list_option_if_not_empty(ctx, child, "include_outbounds", option_list_values(section, "urltest_include_outbounds"));
+        set_list_option_if_not_empty(ctx, child, "include_regex", option_list_values(section, "urltest_include_regex"));
+        set_list_option_if_not_empty(ctx, child, "exclude_countries", option_list_values(section, "urltest_exclude_countries"));
+        set_list_option_if_not_empty(ctx, child, "exclude_outbounds", option_list_values(section, "urltest_exclude_outbounds"));
+        set_list_option_if_not_empty(ctx, child, "exclude_regex", option_list_values(section, "urltest_exclude_regex"));
+    }
+
+    delete_legacy_urltest_options(ctx, section);
+    delete_option(ctx, section, "urltest_settings");
 }
 
 function migrate_interface_item_settings(ctx, section) {
-    normalize_connections_list(ctx, section, "interface", "interfaces");
-
     let values = option_list_values(section, "interfaces");
-    if (length(values) == 0)
-        return;
+    let legacy_interface = option(section, "interface", "");
+    if (legacy_interface != "")
+        push(values, legacy_interface);
 
-    let settings = parse_json_object(option(section, "interface_settings", ""));
-    let changed = false;
+    let seen_values = {};
     let resolver_enabled = bool_option(section, "domain_resolver_enabled", false);
     let dns_type = option(section, "domain_resolver_dns_type", "");
     let dns_server = option(section, "domain_resolver_dns_server", "");
+    let index = 1;
 
     for (let value in values) {
+        value = as_string(value);
+        if (value == "" || seen_values[value])
+            continue;
+        seen_values[value] = true;
+
+        let child = create_child_for_section(ctx, section, "section_interface");
+        set_option(ctx, child, "name", value);
         if (resolver_enabled) {
-            settings_entry_set_bool_if_missing(settings, value, "domain_resolver_enabled", true);
-            settings_entry_set_if_missing(settings, value, "domain_resolver_dns_type", dns_type != "" ? dns_type : "udp");
-            settings_entry_set_if_missing(settings, value, "domain_resolver_dns_server", dns_server != "" ? dns_server : "8.8.8.8");
-            changed = true;
+            set_option(ctx, child, "domain_resolver_enabled", "1");
+            set_option(ctx, child, "domain_resolver_dns_type", dns_type != "" ? dns_type : "udp");
+            set_option(ctx, child, "domain_resolver_dns_server", dns_server != "" ? dns_server : "8.8.8.8");
         }
+        index++;
     }
 
-    if (changed || option(section, "interface_settings", "") != "")
-        set_option_json(ctx, section, "interface_settings", settings);
+    delete_option(ctx, section, "interface");
+    delete_option(ctx, section, "interfaces");
+    delete_option(ctx, section, "interface_settings");
 }
 
 function migrate_outbound_json_list(ctx, section) {
     normalize_connections_list(ctx, section, "outbound_json", "outbound_jsons");
 }
 
-function migrate_connection_section(ctx, section) {
+function migrate_connection_section(ctx, section, constants) {
     migrate_connection_url_item_settings(ctx, section);
     migrate_subscription_url_item_settings(ctx, section);
+    migrate_urltest_item_settings(ctx, section, constants);
     migrate_interface_item_settings(ctx, section);
     migrate_outbound_json_list(ctx, section);
 
@@ -770,7 +915,46 @@ function legacy_condition_values(kind, text_mode, conditions_text_mode, text_val
     return [];
 }
 
-function add_domain_values_with_prefix(ctx, section, option_name, prefix, kind) {
+function add_unique_value(result, seen, value) {
+    value = as_string(value);
+    if (value == "" || seen[value])
+        return;
+
+    seen[value] = true;
+    push(result, value);
+}
+
+function has_domain_condition_prefix(value) {
+    let colon = index(value, ":");
+    if (colon <= 0)
+        return false;
+
+    let prefix = domain_config.ascii_lower(substr(value, 0, colon));
+    return prefix == "full" || prefix == "keyword" || prefix == "regex";
+}
+
+function add_values_with_prefix(result, seen, values, prefix) {
+    for (let value in values) {
+        value = trim(as_string(value));
+        add_unique_value(result, seen, has_domain_condition_prefix(value) ? value : prefix + value);
+    }
+}
+
+function legacy_values_for_option(section, option_name, kind) {
+    return legacy_condition_values(
+        kind,
+        option(section, option_name + "_text_mode", "0"),
+        option(section, "conditions_text_mode", "0"),
+        option(section, option_name + "_text", ""),
+        section[option_name]
+    );
+}
+
+function raw_text_condition_values(section, option_name) {
+    return text_list_values(option(section, option_name, ""), "comma-space");
+}
+
+function add_domain_values_with_prefix(result, seen, section, option_name, prefix, kind) {
     let values = legacy_condition_values(
         kind,
         option(section, option_name + "_text_mode", "0"),
@@ -779,16 +963,30 @@ function add_domain_values_with_prefix(ctx, section, option_name, prefix, kind) 
         section[option_name]
     );
 
-    for (let value in values)
-        add_list_unique(ctx, section, "domain_suffix", prefix + value);
+    add_values_with_prefix(result, seen, values, prefix);
 }
 
 function migrate_combined_domain_conditions(ctx, section) {
-    add_domain_values_with_prefix(ctx, section, "domain", "full:", "domains");
-    add_domain_values_with_prefix(ctx, section, "domain_keyword", "keyword:", "generic");
-    add_domain_values_with_prefix(ctx, section, "domain_regex", "regex:", "generic");
+    let values = [];
+    let seen = {};
 
-    delete_option(ctx, section, "domain");
+    for (let value in list_option(section, "domain_suffix"))
+        add_unique_value(values, seen, value);
+    for (let value in raw_text_condition_values(section, "domain_suffix_text"))
+        add_unique_value(values, seen, value);
+
+    add_domain_values_with_prefix(values, seen, section, "domain", "full:", "domains");
+    add_domain_values_with_prefix(values, seen, section, "domain_keyword", "keyword:", "generic");
+    add_domain_values_with_prefix(values, seen, section, "domain_regex", "regex:", "generic");
+
+    if (length(values) > 0)
+        set_option(ctx, section, "domain", join("\n", values));
+    else
+        delete_option(ctx, section, "domain");
+
+    delete_option(ctx, section, "domain_suffix");
+    delete_option(ctx, section, "domain_suffix_text");
+    delete_option(ctx, section, "domain_suffix_text_mode");
     delete_option(ctx, section, "domain_keyword");
     delete_option(ctx, section, "domain_regex");
     delete_option(ctx, section, "domain_text");
@@ -797,6 +995,17 @@ function migrate_combined_domain_conditions(ctx, section) {
     delete_option(ctx, section, "domain_text_mode");
     delete_option(ctx, section, "domain_keyword_text_mode");
     delete_option(ctx, section, "domain_regex_text_mode");
+}
+
+function migrate_text_condition(ctx, section, option_name, kind) {
+    let values = legacy_values_for_option(section, option_name, kind);
+    if (length(values) > 0)
+        set_option(ctx, section, option_name, join("\n", values));
+    else if (option_exists(section, option_name) && type(section[option_name]) == "array")
+        delete_option(ctx, section, option_name);
+
+    delete_option(ctx, section, option_name + "_text");
+    delete_option(ctx, section, option_name + "_text_mode");
 }
 
 function migrate_rule(ctx, section, converted_from_rule, constants) {
@@ -827,7 +1036,7 @@ function migrate_rule(ctx, section, converted_from_rule, constants) {
             delete_option(ctx, section, "urltest_check_interval_disabled");
             delete_option(ctx, section, "subscription_update_interval_disabled");
         }
-        migrate_connection_section(ctx, section);
+        migrate_connection_section(ctx, section, constants);
         if (converted_from_rule && subscription_urls != "")
             delete_subscription_cache(ctx, section_name(section));
     }
@@ -842,6 +1051,9 @@ function migrate_rule(ctx, section, converted_from_rule, constants) {
         delete_option(ctx, section, "subscription_update_interval_disabled");
     }
 
+    if (action != "connection")
+        delete_legacy_urltest_options(ctx, section);
+
     migrate_byedpi_cmd_opts(ctx, section);
     migrate_zapret_nfqws_default(ctx, section, constants);
 }
@@ -850,7 +1062,7 @@ function migrate_rule_section(ctx, section, constants) {
     set_section_type(ctx, section, "section");
     migrate_rule(ctx, section, true, constants);
     migrate_combined_domain_conditions(ctx, section);
-    push(ctx.model.sections, section);
+    migrate_text_condition(ctx, section, "ip_cidr", "subnets");
 }
 
 function migrate_list_update_enabled(ctx) {
@@ -900,25 +1112,12 @@ function migrate_subscription_download_via_proxy_settings(ctx) {
     let target_section = option(settings_section, "download_lists_via_proxy_section", "");
 
     if (enabled && target_section != "") {
-        for (let section in ctx.model.sections) {
-            let name = section_name(section);
+        for (let child in ctx.model.subscription_url || []) {
+            let name = option(child, "section", "");
             if (name == "" || name == target_section)
                 continue;
-
-            let urls = whitespace_list_values(section, "subscription_urls");
-            if (length(urls) == 0)
-                continue;
-
-            let item_settings = parse_json_object(option(section, "subscription_url_settings", ""));
-            let changed = false;
-            for (let value in urls) {
-                settings_entry_set_bool_if_missing(item_settings, value, "download_via_proxy_enabled", true);
-                settings_entry_set_if_missing(item_settings, value, "download_via_proxy_section", target_section);
-                changed = true;
-            }
-
-            if (changed)
-                set_option_json(ctx, section, "subscription_url_settings", item_settings);
+            set_option(ctx, child, "download_via_proxy_enabled", "1");
+            set_option(ctx, child, "download_via_proxy_section", target_section);
         }
     }
 
@@ -926,14 +1125,26 @@ function migrate_subscription_download_via_proxy_settings(ctx) {
 }
 
 function migrate_rule_set_settings(ctx, section) {
-    let references = option_list_values(section, "rule_set_with_subnets");
-    if (length(references) == 0)
-        return;
+    let normalize_list = function(key) {
+        let seen = {};
+        let result = [];
+        for (let reference in option_list_values(section, key)) {
+            reference = as_string(reference);
+            if (reference == "" || seen[reference])
+                continue;
+            seen[reference] = true;
+            push(result, reference);
+        }
+        if (length(result) > 0)
+            set_list_option(ctx, section, key, result);
+        else
+            delete_option(ctx, section, key);
+    };
 
-    let settings = parse_json_object(option(section, "rule_set_settings", ""));
-    for (let reference in references)
-        settings_entry_set_bool_if_missing(settings, reference, "include_subnets", true);
-    set_option_json(ctx, section, "rule_set_settings", settings);
+    normalize_list("community_lists");
+    normalize_list("rule_set");
+    normalize_list("rule_set_with_subnets");
+    delete_option(ctx, section, "rule_set_settings");
 }
 
 function migrate_model(model, constants) {
@@ -943,14 +1154,22 @@ function migrate_model(model, constants) {
     delete_option(ctx, model.settings, "routing_excluded_ips");
     migrate_list_update_enabled(ctx);
 
-    for (let section in model.rules)
+    let converted_sections = [];
+    for (let section in model.rules) {
         migrate_rule_section(ctx, section, constants);
+        push(converted_sections, section);
+    }
     model.rules = [];
 
     for (let section in model.sections) {
         migrate_rule(ctx, section, false, constants);
         migrate_combined_domain_conditions(ctx, section);
+        migrate_text_condition(ctx, section, "ip_cidr", "subnets");
         migrate_rule_set_settings(ctx, section);
+    }
+    for (let section in converted_sections) {
+        migrate_rule_set_settings(ctx, section);
+        push(model.sections, section);
     }
     migrate_subscription_download_via_proxy_settings(ctx);
     migrate_download_via_proxy_flags(ctx);
@@ -1019,17 +1238,29 @@ function remove_cache_path(path) {
 }
 
 function apply_operations(cursor, operations) {
+    let created = {};
+    let section_ref = function(name) {
+        name = as_string(name);
+        return as_string(created[name] || name);
+    };
+
     for (let op in operations) {
-        if (op.op == "set")
-            cursor.set(CONFIG_NAME, op.section, op.option, op.value);
+        if (op.op == "create") {
+            if (op.anonymous && type(cursor.add) == "function")
+                created[as_string(op.section)] = cursor.add(CONFIG_NAME, op.type);
+            else
+                cursor.set(CONFIG_NAME, op.section, op.type);
+        }
+        else if (op.op == "set")
+            cursor.set(CONFIG_NAME, section_ref(op.section), op.option, op.value);
         else if (op.op == "delete")
-            cursor.delete(CONFIG_NAME, op.section, op.option);
+            cursor.delete(CONFIG_NAME, section_ref(op.section), op.option);
         else if (op.op == "add_list")
-            cursor.set(CONFIG_NAME, op.section, op.option, op.values);
+            cursor.set(CONFIG_NAME, section_ref(op.section), op.option, op.values);
         else if (op.op == "set_list")
-            cursor.set(CONFIG_NAME, op.section, op.option, op.values);
+            cursor.set(CONFIG_NAME, section_ref(op.section), op.option, op.values);
         else if (op.op == "set_type")
-            cursor.set(CONFIG_NAME, op.section, op.type);
+            cursor.set(CONFIG_NAME, section_ref(op.section), op.type);
     }
 }
 
@@ -1044,6 +1275,9 @@ function runtime_cursor() {
         foreach: function(package_name, type_name, callback) {
             for (let section in uci_core.section_objects(package_name, type_name))
                 callback(section);
+        },
+        add: function(package_name, type_name) {
+            return uci_core.add(package_name, type_name);
         },
         set: function(package_name, section_name, option_name, value) {
             if (value == null)

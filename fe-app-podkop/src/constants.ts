@@ -4,6 +4,14 @@ export const PODKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT =
   'podkop:action-providers-availability';
 export const FAKEIP_CHECK_DOMAIN = 'fakeip.podkop.fyi';
 export const IP_CHECK_DOMAIN = 'ip.podkop.fyi';
+export const DEFAULT_LATENCY_TEST_URL =
+  'https://www.gstatic.com/generate_204';
+export const LATENCY_TEST_URL_OPTIONS = [
+  DEFAULT_LATENCY_TEST_URL,
+  'https://cp.cloudflare.com/generate_204',
+  'https://captive.apple.com',
+  'https://connectivity-check.ubuntu.com',
+];
 
 export const REGIONAL_OPTIONS = [
   'russia_inside',

@@ -40,6 +40,7 @@ const SB_CLASH_API_CONTROLLER_PORT = getenv("SB_CLASH_API_CONTROLLER_PORT") || c
 const SB_VARIANT_STATE_FILE = getenv("SB_VARIANT_STATE_FILE") || constants.SB_VARIANT_STATE_FILE || "/etc/podkop-plus/sing-box-variant";
 const CLOUDFLARE_OCTETS = getenv("CLOUDFLARE_OCTETS") || constants.CLOUDFLARE_OCTETS || "8.47 162.159 188.114";
 const ZAPRET_LEGACY_DEFAULT_NFQWS_OPT = getenv("ZAPRET_LEGACY_DEFAULT_NFQWS_OPT") || constants.ZAPRET_LEGACY_DEFAULT_NFQWS_OPT || "";
+const DEFAULT_LATENCY_TEST_URL = getenv("DEFAULT_LATENCY_TEST_URL") || "https://www.gstatic.com/generate_204";
 
 const STATUS_UC = LIB_DIR + "/diagnostics/status.uc";
 const HELPERS_UC = LIB_DIR + "/core/helpers.uc";
@@ -1661,9 +1662,14 @@ function clash_latency_endpoint(base_url, proxy_tag, proxy_type) {
     return base_url + "/proxies/" + clash_urlencode(proxy_tag) + "/delay";
 }
 
+function latency_test_url() {
+    let value = option(settings(), "latency_test_url", DEFAULT_LATENCY_TEST_URL);
+    return value == "" ? DEFAULT_LATENCY_TEST_URL : value;
+}
+
 function clash_api(action, arg1, arg2) {
     let base_url = clash_api_url();
-    let test_url = "https://www.gstatic.com/generate_204";
+    let test_url = latency_test_url();
     let auth = clash_auth_args();
 
     if (action == "get_proxies") {

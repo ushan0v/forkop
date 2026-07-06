@@ -758,6 +758,16 @@ function section_rule_ports_csv(section) {
     return rule_config.rule_ports_csv_value(option(section, "ports", ""), option(section, "ports_text", ""));
 }
 
+function combined_domain_condition_text(section) {
+    if (type(object_or_empty(section)["domain"]) != "array") {
+        let value = option(section, "domain", "");
+        if (value != "")
+            return value;
+    }
+
+    return option(section, "domain_suffix_text", "");
+}
+
 function section_rule_condition_csv(section, key, kind) {
     return rule_config.rule_condition_csv_value(
         key,
@@ -766,7 +776,7 @@ function section_rule_condition_csv(section, key, kind) {
         option(section, "conditions_text_mode", "0"),
         option(section, key + "_text", ""),
         option(section, key, ""),
-        option(section, "domain_suffix_text", ""),
+        combined_domain_condition_text(section),
         option(section, "domain_suffix", "")
     );
 }
@@ -788,9 +798,9 @@ function nft_runtime_signature_body(settings, sections) {
         body = signature_add_value(body, "rule." + name + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
         body = signature_add_value(body, "rule." + name + ".ports", section_rule_ports_csv(section));
         body = signature_add_value(body, "rule." + name + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
-        body = signature_add_value(body, "rule." + name + ".community_subnet_lists", rule_config.filter_community_subnet_lists_value(option(section, "community_lists", "")));
+        body = signature_add_value(body, "rule." + name + ".community_subnet_lists", rule_config.filter_community_subnet_lists_value(connections.community_lists_value(section)));
         body = signature_add_value(body, "rule." + name + ".remote_subnet_lists", option(section, "remote_subnet_lists", ""));
-        body = signature_add_value(body, "rule." + name + ".rule_set_with_subnets", option(section, "rule_set_with_subnets", ""));
+        body = signature_add_value(body, "rule." + name + ".rule_set_with_subnets", connections.rule_sets_with_subnets_value(section));
         body = signature_add_value(body, "rule." + name + ".domain_ip_lists", option(section, "domain_ip_lists", ""));
     }
 
@@ -818,6 +828,76 @@ function section_subscription_update_interval(section) {
     return result;
 }
 
+function connection_urls_signature(section) {
+    let result = [];
+    for (let entry in connections.connection_urls(section)) {
+        push(result, {
+            url: entry,
+            outbound_detour_enabled: connections.connection_detour_enabled(section, entry) ? "1" : "0",
+            outbound_detour_section: connections.connection_detour_section(section, entry),
+            enable_udp_over_tcp: connections.connection_udp_over_tcp(section, entry) ? "1" : "0"
+        });
+    }
+    return sprintf("%J", result);
+}
+
+function subscription_urls_signature(section) {
+    let result = [];
+    for (let entry in connections.subscription_urls(section)) {
+        push(result, {
+            url: entry,
+            subscription_update_enabled: connections.subscription_update_enabled(section, entry) ? "1" : "0",
+            subscription_update_interval: connections.subscription_update_interval(section, entry),
+            download_via_proxy_section: connections.subscription_download_section(section, entry),
+            user_agent: connections.subscription_user_agent(section, entry),
+            hwid: connections.subscription_hwid(section, entry),
+            show_dashboard_metadata: connections.subscription_dashboard_metadata_enabled(section, entry) ? "1" : "0",
+            hide_urltest_group_outbounds: connections.subscription_hide_urltest_group_outbounds(section, entry) ? "1" : "0",
+            hide_detour_outbounds: connections.subscription_hide_detour_outbounds(section, entry) ? "1" : "0"
+        });
+    }
+    return sprintf("%J", result);
+}
+
+function interfaces_signature(section) {
+    let result = [];
+    for (let entry in connections.interfaces(section)) {
+        push(result, {
+            name: entry,
+            domain_resolver_enabled: connections.interface_domain_resolver_enabled(section, entry) ? "1" : "0",
+            domain_resolver_dns_type: connections.interface_domain_resolver_dns_type(section, entry),
+            domain_resolver_dns_server: connections.interface_domain_resolver_dns_server(section, entry)
+        });
+    }
+    return sprintf("%J", result);
+}
+
+function urltests_signature(section) {
+    let result = [];
+    for (let entry in connections.urltests(section)) {
+        push(result, {
+            id: entry,
+            display_name: connections.urltest_display_name(section, entry),
+            check_interval: connections.urltest_check_interval(section, entry),
+            tolerance: connections.urltest_tolerance(section, entry),
+            testing_url: connections.urltest_testing_url(section, entry),
+            idle_timeout: connections.urltest_idle_timeout(section, entry),
+            interrupt_exist_connections: connections.urltest_interrupt_exist_connections(section, entry) ? "1" : "0",
+            pin_dashboard: connections.urltest_pin_dashboard(section, entry) ? "1" : "0",
+            hide_added_outbounds: connections.urltest_hide_added_outbounds(section, entry) ? "1" : "0",
+            filter_mode: connections.urltest_filter_mode(section, entry),
+            detect_server_country: connections.urltest_detect_server_country(section, entry),
+            include_countries: connections.urltest_include_countries(section, entry),
+            include_outbounds: connections.urltest_include_outbounds(section, entry),
+            include_regex: connections.urltest_include_regex(section, entry),
+            exclude_countries: connections.urltest_exclude_countries(section, entry),
+            exclude_outbounds: connections.urltest_exclude_outbounds(section, entry),
+            exclude_regex: connections.urltest_exclude_regex(section, entry)
+        });
+    }
+    return sprintf("%J", result);
+}
+
 function section_is_subscription_proxy(section) {
     return bool_option(section, "enabled", true) &&
         connections.is_connections_action(option(section, "action", "")) &&
@@ -825,11 +905,24 @@ function section_is_subscription_proxy(section) {
 }
 
 function section_urltest_check_interval(section) {
-    if (!bool_option(section, "urltest_enabled", false))
+    let urltests = connections.urltests(section);
+    if (length(urltests) == 0)
         return "";
 
-    let value = option(section, "urltest_check_interval", "");
-    return value != "" ? value : "3m";
+    let result = "";
+    let result_seconds = 0;
+    for (let urltest_id in urltests) {
+        let value = connections.urltest_check_interval(section, urltest_id);
+        if (value == "")
+            value = "3m";
+        let seconds = duration_to_seconds_value(value);
+        if (result == "" || (seconds != null && (result_seconds == 0 || seconds < result_seconds))) {
+            result = value;
+            result_seconds = seconds == null ? 0 : seconds;
+        }
+    }
+
+    return result;
 }
 
 function append_list_update_signature_body(body, section) {
@@ -838,10 +931,10 @@ function append_list_update_signature_body(body, section) {
         return body;
 
     body = signature_add_value(body, "lists." + name + ".ports", section_rule_ports_csv(section));
-    body = signature_add_value(body, "lists." + name + ".community_subnet_lists", rule_config.filter_community_subnet_lists_value(option(section, "community_lists", "")));
+    body = signature_add_value(body, "lists." + name + ".community_subnet_lists", rule_config.filter_community_subnet_lists_value(connections.community_lists_value(section)));
     body = signature_add_value(body, "lists." + name + ".remote_domain_lists", option(section, "remote_domain_lists", ""));
     body = signature_add_value(body, "lists." + name + ".remote_subnet_lists", option(section, "remote_subnet_lists", ""));
-    body = signature_add_value(body, "lists." + name + ".rule_set_with_subnets", option(section, "rule_set_with_subnets", ""));
+    body = signature_add_value(body, "lists." + name + ".rule_set_with_subnets", connections.rule_sets_with_subnets_value(section));
     body = signature_add_value(body, "lists." + name + ".domain_ip_lists", option(section, "domain_ip_lists", ""));
 
     return body;
@@ -868,8 +961,7 @@ function cron_signature_body(settings, sections) {
             continue;
 
         let name = section_name(section);
-        body = signature_add_value(body, "subscription." + name + ".subscription_urls", option(section, "subscription_urls", ""));
-        body = signature_add_value(body, "subscription." + name + ".subscription_url_settings", option(section, "subscription_url_settings", ""));
+        body = signature_add_value(body, "subscription." + name + ".subscription_urls", subscription_urls_signature(section));
         body = signature_add_value(body, "subscription." + name + ".subscription_update_interval", section_subscription_update_interval(section));
     }
 
@@ -883,7 +975,7 @@ function urltest_enabled_sections_value(sections) {
         section = object_or_empty(section);
         if (bool_option(section, "enabled", true) &&
             connections.is_connections_action(option(section, "action", "")) &&
-            bool_option(section, "urltest_enabled", false))
+            length(connections.urltests(section)) > 0)
             push(result, section_name(section));
     }
 
@@ -900,9 +992,9 @@ function sing_box_signature_has_remote_ruleset_sources(sections) {
         if (!bool_option(section, "enabled", true))
             continue;
 
-        if (option(section, "community_lists", "") != "" ||
-            list_has_remote_references(option(section, "rule_set", "")) ||
-            list_has_remote_references(option(section, "rule_set_with_subnets", "")))
+        if (length(connections.community_lists(section)) > 0 ||
+            list_has_remote_references(connections.rule_sets_value(section)) ||
+            list_has_remote_references(connections.rule_sets_with_subnets_value(section)))
             return true;
     }
 
@@ -970,15 +1062,13 @@ function append_sing_box_rule_signature_body(body, section, sections) {
     body = signature_add_value(body, prefix + ".action", action);
 
     if (connections.is_connections_action(action)) {
-        body = signature_add_value(body, prefix + ".selector_proxy_links", option(section, "selector_proxy_links", ""));
-        body = signature_add_value(body, prefix + ".subscription_urls", option(section, "subscription_urls", ""));
-        body = signature_add_value(body, prefix + ".interfaces", option(section, "interfaces", ""));
+        body = signature_add_value(body, prefix + ".connection_urls", connection_urls_signature(section));
+        body = signature_add_value(body, prefix + ".subscription_urls", subscription_urls_signature(section));
+        body = signature_add_value(body, prefix + ".interfaces", interfaces_signature(section));
         body = signature_add_value(body, prefix + ".outbound_jsons", option(section, "outbound_jsons", ""));
         body = signature_add_value(body, prefix + ".legacy_interface", option(section, "interface", ""));
         body = signature_add_value(body, prefix + ".legacy_outbound_json", option(section, "outbound_json", ""));
-        body = signature_add_value(body, prefix + ".connection_url_settings", option(section, "connection_url_settings", ""));
-        body = signature_add_value(body, prefix + ".subscription_url_settings", option(section, "subscription_url_settings", ""));
-        body = signature_add_value(body, prefix + ".interface_settings", option(section, "interface_settings", ""));
+        body = signature_add_value(body, prefix + ".urltests", urltests_signature(section));
         body = signature_add_value(body, prefix + ".urltest_enabled", bool_option_value(section, "urltest_enabled", false));
         body = signature_add_value(body, prefix + ".detect_server_country", normalize_detect_server_country_method(option(section, "detect_server_country", "flag_emoji")));
         body = signature_add_value(body, prefix + ".urltest_check_interval", section_urltest_check_interval(section));
@@ -1012,9 +1102,9 @@ function append_sing_box_rule_signature_body(body, section, sections) {
     body = signature_add_value(body, prefix + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
     body = signature_add_value(body, prefix + ".ports", section_rule_ports_csv(section));
     body = signature_add_value(body, prefix + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
-    body = signature_add_value(body, prefix + ".community_lists", option(section, "community_lists", ""));
-    body = signature_add_value(body, prefix + ".rule_set", option(section, "rule_set", ""));
-    body = signature_add_value(body, prefix + ".rule_set_with_subnets", option(section, "rule_set_with_subnets", ""));
+    body = signature_add_value(body, prefix + ".community_lists", connections.community_lists_value(section));
+    body = signature_add_value(body, prefix + ".rule_set", connections.rule_sets_value(section));
+    body = signature_add_value(body, prefix + ".rule_set_with_subnets", connections.rule_sets_with_subnets_value(section));
     body = signature_add_value(body, prefix + ".domain_ip_lists", option(section, "domain_ip_lists", ""));
 
     return body;
@@ -1173,9 +1263,9 @@ function append_zapret_runtime_signature_body(body, section, signature_prefix, o
     body = signature_add_value(body, signature_prefix + "." + name + "." + opt_key, normalized_opt);
     body = signature_add_value(body, signature_prefix + "." + name + ".domain", section_rule_condition_csv(section, "domain", "domains"));
     body = signature_add_value(body, signature_prefix + "." + name + ".domain_suffix", section_rule_condition_csv(section, "domain_suffix", "domains"));
-    body = signature_add_value(body, signature_prefix + "." + name + ".community_lists", option(section, "community_lists", ""));
-    body = signature_add_value(body, signature_prefix + "." + name + ".rule_set", option(section, "rule_set", ""));
-    body = signature_add_value(body, signature_prefix + "." + name + ".rule_set_with_subnets", option(section, "rule_set_with_subnets", ""));
+    body = signature_add_value(body, signature_prefix + "." + name + ".community_lists", connections.community_lists_value(section));
+    body = signature_add_value(body, signature_prefix + "." + name + ".rule_set", connections.rule_sets_value(section));
+    body = signature_add_value(body, signature_prefix + "." + name + ".rule_set_with_subnets", connections.rule_sets_with_subnets_value(section));
     body = signature_add_value(body, signature_prefix + "." + name + ".domain_ip_lists", option(section, "domain_ip_lists", ""));
     body = signature_add_value(body, signature_prefix + "." + name + ".user_domain_list_type", user_domain_list_type);
     body = signature_add_value(body, signature_prefix + "." + name + ".local_domain_lists", option(section, "local_domain_lists", ""));
@@ -1323,9 +1413,9 @@ function has_remote_sing_box_ruleset_sources_from_sections(sections) {
         if (!bool_option(section, "enabled", true))
             continue;
 
-        if (option(section, "community_lists", "") != "" ||
-            list_has_remote_references(option(section, "rule_set", "")) ||
-            list_has_remote_references(option(section, "rule_set_with_subnets", "")))
+        if (length(connections.community_lists(section)) > 0 ||
+            list_has_remote_references(connections.rule_sets_value(section)) ||
+            list_has_remote_references(connections.rule_sets_with_subnets_value(section)))
             return true;
     }
 
@@ -1336,10 +1426,10 @@ function has_list_update_sources_from_sections(sections) {
     for (let section in sections)
         if (rule_has_list_update_source(
             bool_option(section, "enabled", true),
-            option(section, "community_lists", ""),
+            connections.community_lists_value(section),
             option(section, "remote_domain_lists", ""),
             option(section, "remote_subnet_lists", ""),
-            option(section, "rule_set_with_subnets", ""),
+            connections.rule_sets_with_subnets_value(section),
             option(section, "domain_ip_lists", "")
         ))
             return true;
@@ -1351,9 +1441,9 @@ function has_nft_list_update_sources_from_sections(sections) {
     for (let section in sections)
         if (rule_has_nft_list_update_source(
             bool_option(section, "enabled", true),
-            option(section, "community_lists", ""),
+            connections.community_lists_value(section),
             option(section, "remote_subnet_lists", ""),
-            option(section, "rule_set_with_subnets", ""),
+            connections.rule_sets_with_subnets_value(section),
             option(section, "domain_ip_lists", "")
         ))
             return true;
@@ -1372,7 +1462,9 @@ function has_subscription_update_sources_from_sections(sections) {
 }
 
 function fixture_sections(path) {
-    return fixture_section_list(object_or_empty(read_json_file(path)));
+    let data = object_or_empty(read_json_file(path));
+    connections.set_item_sections_from_data(data);
+    return fixture_section_list(data);
 }
 
 function fixture_servers(data) {
@@ -1380,7 +1472,9 @@ function fixture_servers(data) {
 }
 
 function fixture_data(path) {
-    return object_or_empty(read_json_file(path));
+    let data = object_or_empty(read_json_file(path));
+    connections.set_item_sections_from_data(data);
+    return data;
 }
 
 function fixture_settings(data) {

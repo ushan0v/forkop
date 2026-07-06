@@ -101,4 +101,161 @@ assert_contains "$output" '"url": "https://www.gstatic.com/generate_204"' "gener
 assert_contains "$output" '"interval": "3m"' "generated config"
 assert_not_contains "$output" '"idle_timeout":' "generated config"
 
+cat >"$WORK_DIR/multi-fixture.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "log_level": "warn"
+  },
+  "section": [
+    {
+      ".name": "proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "selector_proxy_links": [
+        "vless://00000000-0000-4000-8000-000000000001@example.com:443?encryption=none&security=tls&sni=example.com#first",
+        "vless://00000000-0000-4000-8000-000000000002@example.org:443?encryption=none&security=tls&sni=example.org#second"
+      ]
+    }
+  ],
+  "urltest": [
+    {
+      ".name": "cfg010001",
+      ".type": "urltest",
+      "section": "proxy",
+      "name": "Fast URLTest",
+      "check_interval": "30s",
+      "tolerance": "50",
+      "testing_url": "https://fast.example/204",
+      "idle_timeout": "45s",
+      "interrupt_exist_connections": "0"
+    },
+    {
+      ".name": "cfg010002",
+      ".type": "urltest",
+      "section": "proxy",
+      "name": "Stable URLTest",
+      "check_interval": "5m",
+      "tolerance": "120",
+      "testing_url": "https://stable.example/204",
+      "interrupt_exist_connections": "1"
+    }
+  ]
+}
+JSON
+
+multi_output="$WORK_DIR/multi-config.json"
+mkdir -p "$multi_output.section-cache"
+ucode -L "$PODKOP_LIB" "$PODKOP_LIB/singbox/generator.uc" generate-config-fixture \
+  "$WORK_DIR/multi-fixture.json" "$multi_output" "127.0.0.1"
+
+ucode -e '
+let fs = require("fs");
+let cfg = json(fs.readfile(ARGV[0]));
+let cache = json(fs.readfile(ARGV[1]));
+let fast = null;
+let stable = null;
+let selector = null;
+for (let outbound in cfg.outbounds || []) {
+    if (outbound && outbound.tag == "proxy-urltest-cfg010001-out")
+        fast = outbound;
+    if (outbound && outbound.tag == "proxy-urltest-cfg010002-out")
+        stable = outbound;
+    if (outbound && outbound.tag == "proxy-out")
+        selector = outbound;
+}
+if (!fast || !stable)
+    die("expected both configured URLTest outbounds\n");
+if (fast.url != "https://fast.example/204" || fast.interval != "30s" || fast.idle_timeout != "45s")
+    die("fast URLTest settings were not generated\n");
+if (fast.interrupt_exist_connections !== false)
+    die("fast URLTest interrupt flag should be false\n");
+if (stable.url != "https://stable.example/204" || stable.interval != "5m" || stable.tolerance != 120)
+    die("stable URLTest settings were not generated\n");
+if (stable.interrupt_exist_connections !== true)
+    die("stable URLTest interrupt flag should be true\n");
+if (!selector || selector.outbounds[length(selector.outbounds || []) - 2] != "proxy-urltest-cfg010001-out" ||
+    selector.outbounds[length(selector.outbounds || []) - 1] != "proxy-urltest-cfg010002-out")
+    die("selector should include configured URLTests in list order\n");
+if (cache.urltestGroups["proxy-urltest-cfg010001-out"].displayName != "Fast URLTest")
+    die("fast URLTest display name was not cached\n");
+if (cache.urltestGroups["proxy-urltest-cfg010002-out"].displayName != "Stable URLTest")
+    die("stable URLTest display name was not cached\n");
+' "$multi_output" "$multi_output.section-cache/proxy.json" || fail "multi URLTest settings regression"
+
+cat >"$WORK_DIR/hide-added-fixture.json" <<'JSON'
+{
+  "settings": {
+    "interface": "lan",
+    "routing_mode": "proxy",
+    "domain_resolver_enabled": "0"
+  },
+  "section": [
+    {
+      ".name": "proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "selector_proxy_links": [
+        "vless://00000000-0000-4000-8000-000000000001@example.com:443?encryption=none&security=tls&sni=example.com#first",
+        "vless://00000000-0000-4000-8000-000000000002@example.org:443?encryption=none&security=tls&sni=example.org#second"
+      ]
+    }
+  ],
+  "urltest": [
+    {
+      ".name": "cfg020001",
+      ".type": "urltest",
+      "section": "proxy",
+      "name": "Fast URLTest",
+      "check_interval": "30s",
+      "tolerance": "50",
+      "testing_url": "https://fast.example/204",
+      "filter_mode": "include",
+      "include_regex": [ "first" ],
+      "hide_added_outbounds": "1"
+    }
+  ]
+}
+JSON
+
+hide_added_output="$WORK_DIR/hide-added-config.json"
+mkdir -p "$hide_added_output.section-cache"
+ucode -L "$PODKOP_LIB" "$PODKOP_LIB/singbox/generator.uc" generate-config-fixture \
+  "$WORK_DIR/hide-added-fixture.json" "$hide_added_output" "127.0.0.1"
+
+ucode -e '
+let fs = require("fs");
+let cfg = json(fs.readfile(ARGV[0]));
+let urltest = null;
+let selector = null;
+
+function contains(values, needle) {
+    for (let value in values || [])
+        if (value == needle)
+            return true;
+    return false;
+}
+
+for (let outbound in cfg.outbounds || []) {
+    if (outbound && outbound.tag == "proxy-urltest-cfg020001-out")
+        urltest = outbound;
+    if (outbound && outbound.tag == "proxy-out")
+        selector = outbound;
+}
+
+if (!urltest || !contains(urltest.outbounds, "proxy-1-out") || contains(urltest.outbounds, "proxy-2-out"))
+    die("URLTest should contain only the filtered first outbound\n");
+if (!selector)
+    die("selector was not generated\n");
+if (contains(selector.outbounds, "proxy-1-out"))
+    die("URLTest-added outbound should be hidden from selector\n");
+if (!contains(selector.outbounds, "proxy-2-out"))
+    die("non-URLTest outbound should remain in selector\n");
+if (!contains(selector.outbounds, "proxy-urltest-cfg020001-out"))
+    die("URLTest outbound should remain in selector\n");
+' "$hide_added_output" || fail "URLTest hide added selector regression"
+
 printf 'URLTest interrupt regression checks passed\n'

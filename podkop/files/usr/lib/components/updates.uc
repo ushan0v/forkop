@@ -563,10 +563,10 @@ function rule_has_list_update_source(section) {
         rule_config = require("config.rule");
 
     return bool_option(section, "enabled", true) && (
-        rule_config.has_community_subnet_list(option(section, "community_lists", "")) ||
+        rule_config.has_community_subnet_list(connections.community_lists_value(section)) ||
         option(section, "remote_domain_lists", "") != "" ||
         option(section, "remote_subnet_lists", "") != "" ||
-        option(section, "rule_set_with_subnets", "") != "" ||
+        length(connections.rule_sets_with_subnets(section)) > 0 ||
         list_has_remote_references(option(section, "domain_ip_lists", ""))
     );
 }
@@ -1860,7 +1860,7 @@ function import_builtin_subnets_from_rule(section, settings) {
         return true;
 
     let ok = true;
-    for (let service in list_option_values(section, "community_lists")) {
+    for (let service in connections.community_lists(section)) {
         if (!singbox_rulesets_module().is_community(service))
             continue;
 
@@ -1970,7 +1970,7 @@ function import_rule_sets_with_subnets_from_rule(section, settings) {
     if (!bool_option(section, "enabled", true))
         return true;
 
-    let references = list_option_values(section, "rule_set_with_subnets");
+    let references = connections.rule_sets_with_subnets(section);
     if (length(references) == 0)
         return true;
 
@@ -2498,6 +2498,7 @@ function fixture_section_list(data, type_name) {
 
 function fixture_cron_refresh_plan(path, bin, list_marker, subscription_marker) {
     let data = object_or_empty(read_json_file(path));
+    connections.set_item_sections_from_data(data);
     cron_refresh_plan(
         object_or_empty(data.settings),
         fixture_section_list(data),
@@ -2509,6 +2510,7 @@ function fixture_cron_refresh_plan(path, bin, list_marker, subscription_marker) 
 
 function fixture_cron_refresh_apply(path, existing_crontab_path, bin, list_marker, subscription_marker) {
     let data = object_or_empty(read_json_file(path));
+    connections.set_item_sections_from_data(data);
     let result = cron_refresh_apply_result(
         object_or_empty(data.settings),
         fixture_section_list(data),
@@ -2562,11 +2564,14 @@ function uci_subscription_update_section_due_status(section_name, timestamp_path
 }
 
 function fixture_list_update_due_status(path, timestamp_path, now) {
-    list_update_due_status(object_or_empty(object_or_empty(read_json_file(path)).settings), timestamp_path, now);
+    let data = object_or_empty(read_json_file(path));
+    connections.set_item_sections_from_data(data);
+    list_update_due_status(object_or_empty(data.settings), timestamp_path, now);
 }
 
 function fixture_subscription_update_section_due_status(path, section_name_value, timestamp_path, now) {
     let data = object_or_empty(read_json_file(path));
+    connections.set_item_sections_from_data(data);
     subscription_update_section_due_status(fixture_section_by_name(data, section_name_value), timestamp_path, now);
 }
 

@@ -80,6 +80,28 @@ case "$large_logs" in
   *) fail "large logread marker missing from rendered logs" ;;
 esac
 
+fake_bin="$WORK_DIR/bin"
+mkdir -p "$fake_bin"
+cat >"$fake_bin/curl" <<'SH'
+#!/usr/bin/env sh
+printf '%s\n' "$*" >>"$FAKE_CURL_LOG"
+printf '%s\n' '{"delay":1}'
+SH
+chmod +x "$fake_bin/curl"
+uci_state="$WORK_DIR/uci-state.txt"
+cat >"$uci_state" <<'EOF'
+podkop-plus.settings=settings
+podkop-plus.settings.latency_test_url=https://latency.example/generate_204
+EOF
+FAKE_CURL_LOG="$WORK_DIR/fake-curl.log" \
+PODKOP_UCI_STATE_FILE="$uci_state" \
+PODKOP_LIB="$PODKOP_LIB" \
+PATH="$fake_bin:$PATH" \
+  ucode -L "$PODKOP_LIB" "$DIAGNOSTICS_RUNTIME" clash-api get_proxy_latency proxy-out 5000 >/dev/null ||
+  fail "clash-api get_proxy_latency should use fake curl successfully"
+grep -Fq "url=https://latency.example/generate_204" "$WORK_DIR/fake-curl.log" ||
+  fail "clash-api latency check must use settings.latency_test_url"
+
 firewall_rules="$(cat <<'EOF'
 firewall.@rule[0]=rule
 firewall.@rule[0].enabled='1'

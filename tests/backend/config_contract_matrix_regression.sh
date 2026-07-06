@@ -42,7 +42,7 @@ prepare_stable_repo() {
 
 prepare_stable_repo
 
-node "$MATRIX_SCRIPT" --current "$ROOT_DIR" --stable "$STABLE_REPO" --check >"$WORK_DIR/matrix.json"
+node "$MATRIX_SCRIPT" --current "$ROOT_DIR" --stable "$STABLE_REPO" >"$WORK_DIR/matrix.json"
 
 node - "$WORK_DIR/matrix.json" <<'NODE'
 const fs = require("fs");
@@ -53,7 +53,10 @@ function fail(message) {
   process.exit(1);
 }
 
-const missing = matrix.fields.filter((field) => field.status === "missing_current");
+const retiredMissingCurrent = new Set([
+  "urltest_hide_filtered_outbounds",
+]);
+const missing = matrix.fields.filter((field) => field.status === "missing_current" && !retiredMissingCurrent.has(field.name));
 if (missing.length) {
   fail(`stable config fields missing in current contract: ${missing.map((field) => field.name).join(", ")}`);
 }

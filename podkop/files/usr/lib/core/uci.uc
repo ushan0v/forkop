@@ -137,6 +137,22 @@ function state_commit(package_name) {
     return fs.writefile(UCI_LOG_FILE, existing + "commit " + as_string(package_name) + "\n") != null;
 }
 
+function state_add_section(package_name, type_name) {
+    package_name = as_string(package_name);
+    type_name = as_string(type_name);
+
+    let index = 1;
+    let section = "";
+    while (true) {
+        section = sprintf("cfg%06x", index);
+        if (!state_exists(package_name + "." + section))
+            break;
+        index++;
+    }
+
+    return state_set(package_name + "." + section, type_name) ? section : "";
+}
+
 function state_sections(package_name, type_name) {
     let result = [];
     let prefix = as_string(package_name) + ".";
@@ -334,6 +350,24 @@ function set_section(path, type_name) {
     }
 }
 
+function add(package_name, type_name) {
+    if (fixture_enabled())
+        return state_add_section(package_name, type_name);
+
+    let c = cursor();
+    if (c == null)
+        return "";
+
+    try {
+        load(package_name);
+        let section = c.add(as_string(package_name), as_string(type_name));
+        return as_string(section);
+    }
+    catch (e) {
+        return "";
+    }
+}
+
 function set(path, value) {
     path = as_string(path);
     if (fixture_enabled())
@@ -491,6 +525,7 @@ return {
     exists,
     delete: delete_path,
     set_section,
+    add,
     set,
     add_list,
     del_list,

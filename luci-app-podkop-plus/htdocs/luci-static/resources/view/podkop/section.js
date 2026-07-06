@@ -12,7 +12,6 @@ const UCI_PACKAGE = main.PODKOP_UCI_PACKAGE;
 const ACTION_PROVIDERS_AVAILABILITY_EVENT =
   main.PODKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT ||
   "podkop:action-providers-availability";
-const CONNECTIONS_ITEM_SETTINGS_OVERLAY_ID = "pdk_item_settings_overlay";
 const RULE_SET_ITEM_SETTINGS_KEY = "rule_set_settings";
 const CONNECTIONS_BLOCKED_INTERFACES = [
   "br-lan",
@@ -377,6 +376,7 @@ let actionProvidersAvailabilityPromise = null;
 let actionProvidersAvailabilityLoader = null;
 const outboundNameChoicesCache = new Map();
 const outboundNameChoicesInflight = new Map();
+const SECTION_CACHE_DIR = "/var/run/podkop-plus/section-cache";
 const COUNTRY_CODES =
   "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW XK".split(
     " ",
@@ -506,22 +506,6 @@ function getCountryOptionLabel(code) {
   return `${getCountryFlagEmoji(code)} ${getRegionDisplayName(code)}`;
 }
 
-function resetOptionChoices(option) {
-  delete option.keylist;
-  delete option.vallist;
-}
-
-function populateCountryOptionValues(option) {
-  resetOptionChoices(option);
-  COUNTRY_CODES.map((code) => ({
-    code,
-    label: getCountryOptionLabel(code),
-    name: getRegionDisplayName(code),
-  }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach((country) => option.value(country.code, country.label));
-}
-
 function validateCountryCode(_section_id, value) {
   const values = Array.isArray(value) ? value : [value];
   const normalizedValues = values
@@ -537,6 +521,70 @@ function validateCountryCode(_section_id, value) {
     : _("Unknown country");
 }
 
+function plainObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value
+    : {};
+}
+
+function safeCacheSectionName(section_id) {
+  return /^[A-Za-z0-9_-]+$/.test(`${section_id || ""}`);
+}
+
+function filteredOutboundMetadataFromCache(cache) {
+  const metadata = plainObject(plainObject(cache).outboundMetadata);
+  const names = plainObject(metadata.names);
+  const countries = plainObject(metadata.countries);
+  const candidateTags = Array.isArray(cache.urltestCandidateTags)
+    ? cache.urltestCandidateTags
+    : [];
+  const groups = plainObject(cache.urltestGroups);
+  const result = {
+    names: {},
+    countries: {},
+  };
+
+  if (candidateTags.length > 0) {
+    candidateTags.forEach((tag) => {
+      tag = `${tag || ""}`;
+      if (!tag) {
+        return;
+      }
+      if (names[tag] != null) {
+        result.names[tag] = names[tag];
+      }
+      if (countries[tag] != null) {
+        result.countries[tag] = countries[tag];
+      }
+    });
+    return result;
+  }
+
+  Object.entries(names).forEach(([tag, name]) => {
+    if (!groups[tag]) {
+      result.names[tag] = name;
+    }
+  });
+  Object.entries(countries).forEach(([tag, country]) => {
+    if (!groups[tag]) {
+      result.countries[tag] = country;
+    }
+  });
+
+  return result;
+}
+
+function readOutboundMetadataFromSectionCache(section_id) {
+  if (!safeCacheSectionName(section_id)) {
+    return Promise.resolve({ names: {}, countries: {} });
+  }
+
+  return fs
+    .read(`${SECTION_CACHE_DIR}/${section_id}.json`)
+    .then((raw) => filteredOutboundMetadataFromCache(JSON.parse(raw || "{}")))
+    .catch(() => ({ names: {}, countries: {} }));
+}
+
 function loadOutboundNameChoices(section_id) {
   if (outboundNameChoicesCache.has(section_id)) {
     return Promise.resolve(outboundNameChoicesCache.get(section_id));
@@ -546,12 +594,9 @@ function loadOutboundNameChoices(section_id) {
     return outboundNameChoicesInflight.get(section_id);
   }
 
-  const task = main.PodkopShellMethods.getOutboundMetadata(section_id)
-    .then((response) => {
-      const names =
-        response && response.success && response.data && response.data.names
-          ? Object.values(response.data.names)
-          : [];
+  const task = readOutboundMetadataFromSectionCache(section_id)
+    .then((metadata) => {
+      const names = Object.values(plainObject(metadata.names));
 
       const choices = names
         .filter(Boolean)
@@ -572,97 +617,6 @@ function loadOutboundNameChoices(section_id) {
   return task;
 }
 
-function renderOutboundNameDynamicListWidget(
-  option,
-  section_id,
-  cfgvalue,
-  choices,
-) {
-  const values = normalizeOptionValues(
-    cfgvalue != null ? cfgvalue : option.default,
-  );
-  const choiceMap = {};
-
-  choices.forEach((name) => {
-    choiceMap[name] = name;
-  });
-
-  values.forEach((name) => {
-    choiceMap[name] = name;
-  });
-
-  return new ui.DynamicList(values, choiceMap, {
-    id: option.cbid(section_id),
-    sort: choices,
-    optional: option.optional || option.rmempty,
-    datatype: option.datatype,
-    placeholder: option.placeholder,
-    validate: option.validate.bind(option, section_id),
-    disabled: option.readonly != null ? option.readonly : option.map.readonly,
-  }).render();
-}
-
-function replaceNode(node, replacement) {
-  if (node.parentNode) {
-    node.parentNode.replaceChild(replacement, node);
-  }
-}
-
-function createOutboundNameDynamicListWidget(option, section_id, cfgvalue) {
-  const cachedChoices = outboundNameChoicesCache.has(section_id)
-    ? outboundNameChoicesCache.get(section_id)
-    : [];
-  const node = renderOutboundNameDynamicListWidget(
-    option,
-    section_id,
-    cfgvalue,
-    cachedChoices,
-  );
-
-  node.__podkopOutboundChoicesTouched = false;
-  node.addEventListener(
-    "input",
-    () => {
-      node.__podkopOutboundChoicesTouched = true;
-    },
-    true,
-  );
-  node.addEventListener(
-    "change",
-    () => {
-      node.__podkopOutboundChoicesTouched = true;
-    },
-    true,
-  );
-  node.addEventListener(
-    "focusin",
-    () => {
-      node.__podkopOutboundChoicesTouched = true;
-    },
-    true,
-  );
-
-  if (!outboundNameChoicesCache.has(section_id)) {
-    loadOutboundNameChoices(section_id).then((choices) => {
-      if (!node.isConnected || node.__podkopOutboundChoicesTouched) {
-        return;
-      }
-
-      replaceNode(
-        node,
-        renderOutboundNameDynamicListWidget(
-          option,
-          section_id,
-          cfgvalue,
-          choices,
-        ),
-      );
-    });
-  }
-
-  return node;
-}
-
 function normalizeDynamicListItems(value) {
   if (!value) {
     return [];
@@ -676,6 +630,20 @@ function normalizeDynamicListItems(value) {
 
   const normalized = `${value}`.trim();
   return normalized.length ? [normalized] : [];
+}
+
+function uniqueDynamicListItems(value) {
+  const seen = new Set();
+  const result = [];
+
+  normalizeDynamicListItems(value).forEach((item) => {
+    if (!seen.has(item)) {
+      seen.add(item);
+      result.push(item);
+    }
+  });
+
+  return result;
 }
 
 function readItemSettingsMap(section_id, settingsKey) {
@@ -703,6 +671,17 @@ function compactItemSettings(values) {
       return;
     }
 
+    if (Array.isArray(value)) {
+      const items = value
+        .map((item) => `${item || ""}`.trim())
+        .filter((item) => item.length);
+
+      if (items.length) {
+        result[key] = items;
+      }
+      return;
+    }
+
     result[key] = `${value}`;
   });
 
@@ -724,22 +703,6 @@ function writeItemSettingsMap(section_id, settingsKey, map) {
   } else {
     uci.unset(UCI_PACKAGE, section_id, settingsKey);
   }
-}
-
-function getItemSettings(section_id, settingsKey, itemValue, defaults) {
-  const map = readItemSettingsMap(section_id, settingsKey);
-  const itemSettings =
-    itemValue && map[itemValue] && typeof map[itemValue] === "object"
-      ? map[itemValue]
-      : {};
-
-  return Object.assign({}, defaults || {}, itemSettings);
-}
-
-function writeItemSettings(section_id, settingsKey, itemValue, values) {
-  const map = readItemSettingsMap(section_id, settingsKey);
-  map[itemValue] = compactItemSettings(values);
-  writeItemSettingsMap(section_id, settingsKey, map);
 }
 
 function cleanupListItemSettings(section_id, settingsKey, values) {
@@ -771,13 +734,6 @@ function itemSettingsFlag(settings, key, defaultValue) {
   }
 
   return value === true || `${value}` === "1";
-}
-
-function itemSettingsValue(settings, key, defaultValue) {
-  const value = settings ? settings[key] : null;
-  return value === undefined || value === null
-    ? defaultValue || ""
-    : `${value}`;
 }
 
 function ensureConnectionsDynamicListStyles() {
@@ -854,21 +810,8 @@ function ensureConnectionsDynamicListStyles() {
   white-space: nowrap;
 }
 
-.pdk-item-settings-overlay {
-  background: rgba(0, 0, 0, 0.7);
-  bottom: 0;
-  left: 0;
-  opacity: 1;
-  overflow: auto;
-  position: fixed;
-  right: 0;
-  top: 0;
-  visibility: visible;
-  z-index: 10000;
-}
-
-.pdk-item-settings-overlay > .modal.cbi-modal {
-  max-width: 600px;
+body.modal-overlay-active > #modal_overlay > .modal.cbi-modal > .cbi-map.flash {
+  animation: none !important;
 }
 
 `,
@@ -894,6 +837,41 @@ function findDynamicListItemByValue(dl, value) {
   return null;
 }
 
+function dynamicListItemCurrentValue(item, fallback) {
+  const hidden = item ? item.querySelector('input[type="hidden"]') : null;
+  return hidden && hidden.parentNode === item ? hidden.value : fallback;
+}
+
+function dynamicListItemValues(dl) {
+  return Array.from(dl.querySelectorAll(".item"))
+    .map((item) => {
+      const hidden = item.querySelector('input[type="hidden"]');
+      return hidden && hidden.parentNode === item ? hidden.value : null;
+    })
+    .filter((value) => value != null);
+}
+
+function updateDynamicListItemLabel(item, label) {
+  const labelNode = item ? item.querySelector(".pdk-dynlist-label") : null;
+  if (labelNode) {
+    labelNode.textContent = `${label || ""}`;
+  }
+}
+
+function cleanFormSectionData(sectionData) {
+  const result = {};
+
+  Object.entries(sectionData || {}).forEach(([key, value]) => {
+    if (!key || key.charAt(0) === ".") {
+      return;
+    }
+
+    result[key] = Array.isArray(value) ? value.slice() : value;
+  });
+
+  return result;
+}
+
 const SettingsUIDynamicList = ui.DynamicList.extend({
   render() {
     ensureConnectionsDynamicListStyles();
@@ -904,6 +882,15 @@ const SettingsUIDynamicList = ui.DynamicList.extend({
   },
 
   addItem(dl, value, text, flash) {
+    if (
+      flash &&
+      typeof this.options.hasEquivalentValue === "function" &&
+      this.options.hasEquivalentValue(value, dl)
+    ) {
+      this.dispatchCbiDynlistChange(dl, value);
+      return;
+    }
+
     const itemText =
       typeof this.options.itemLabel === "function"
         ? this.options.itemLabel(value, text)
@@ -912,7 +899,12 @@ const SettingsUIDynamicList = ui.DynamicList.extend({
     ui.DynamicList.prototype.addItem.call(this, dl, value, itemText, flash);
 
     const item = findDynamicListItemByValue(dl, value);
-    if (!item || item.querySelector(".pdk-dynlist-settings")) {
+    const hasSettings =
+      typeof this.options.hasSettings === "function"
+        ? this.options.hasSettings(value)
+        : true;
+
+    if (!item || item.querySelector(".pdk-dynlist-settings") || !hasSettings) {
       return;
     }
 
@@ -934,7 +926,11 @@ const SettingsUIDynamicList = ui.DynamicList.extend({
             }
 
             if (typeof this.options.settingsHandler === "function") {
-              this.options.settingsHandler(value, item, this);
+              this.options.settingsHandler(
+                dynamicListItemCurrentValue(item, value),
+                item,
+                this,
+              );
             }
           },
           keydown: (event) => {
@@ -949,13 +945,32 @@ const SettingsUIDynamicList = ui.DynamicList.extend({
               !this.options.disabled &&
               typeof this.options.settingsHandler === "function"
             ) {
-              this.options.settingsHandler(value, item, this);
+              this.options.settingsHandler(
+                dynamicListItemCurrentValue(item, value),
+                item,
+                this,
+              );
             }
           },
         },
         "\u2699",
       ),
     );
+
+    if (
+      flash &&
+      this.options.openSettingsOnAdd &&
+      !this.options.disabled &&
+      typeof this.options.settingsHandler === "function"
+    ) {
+      window.setTimeout(() => {
+        this.options.settingsHandler(
+          dynamicListItemCurrentValue(item, value),
+          item,
+          this,
+        );
+      }, 0);
+    }
   },
   handleClick(event) {
     if (event.target.closest(".pdk-dynlist-settings")) {
@@ -967,6 +982,14 @@ const SettingsUIDynamicList = ui.DynamicList.extend({
 });
 
 const SettingsDynamicList = form.DynamicList.extend({
+  load(section_id) {
+    if (this.childType) {
+      return getChildItemIds(section_id, this.childType);
+    }
+
+    return form.DynamicList.prototype.load.apply(this, arguments);
+  },
+
   renderWidget(section_id, _option_index, cfgvalue) {
     const value = cfgvalue != null ? cfgvalue : this.default;
     const choices = this.transformChoices();
@@ -986,6 +1009,7 @@ const SettingsDynamicList = form.DynamicList.extend({
             `${itemValue}`,
             this,
             widget,
+            _item,
           );
         }
       },
@@ -996,18 +1020,82 @@ const SettingsDynamicList = form.DynamicList.extend({
 
         return text;
       },
+      hasSettings: (itemValue) => {
+        if (typeof this.hasItemSettings === "function") {
+          return this.hasItemSettings(section_id, `${itemValue}`);
+        }
+
+        if (this.childType) {
+          return isExistingChildItem(section_id, `${itemValue}`, this.childType);
+        }
+
+        return true;
+      },
+      hasEquivalentValue: (itemValue, dl) => {
+        const inputValueForItem = (value) => {
+          if (typeof this.inputValueForItem === "function") {
+            return `${this.inputValueForItem(section_id, `${value || ""}`) || ""}`.trim();
+          }
+
+          if (this.childType && this.childValueOption) {
+            return childItemInputValue(
+              section_id,
+              `${value || ""}`,
+              this.childType,
+              this.childValueOption,
+            );
+          }
+
+          return `${value || ""}`.trim();
+        };
+        const normalized = inputValueForItem(itemValue);
+
+        return Boolean(
+          normalized &&
+            dynamicListItemValues(dl).some(
+              (existingValue) => inputValueForItem(existingValue) === normalized,
+            ),
+        );
+      },
+      openSettingsOnAdd: this.openSettingsOnAdd === true,
     });
 
     return widget.render();
   },
 
   write(section_id, value) {
+    if (this.childType) {
+      const itemIds = materializeChildItems(section_id, {
+        typeName: this.childType,
+        valueOption: this.childValueOption,
+        defaults: this.childDefaults,
+        stagedSettings:
+          typeof this.stagedChildSettings === "function"
+            ? (itemValue, itemId, created) =>
+                this.stagedChildSettings(section_id, itemValue, itemId, created)
+            : null,
+      }, value);
+      cleanupRemovedChildItems(section_id, this.childType, itemIds);
+      uci.unset(UCI_PACKAGE, section_id, this.option);
+      cleanupListItemSettings(section_id, this.settingsKey, itemIds);
+      if (typeof this.clearStagedChildSettings === "function") {
+        this.clearStagedChildSettings(section_id);
+      }
+      return;
+    }
+
     const result = form.DynamicList.prototype.write.apply(this, arguments);
     cleanupListItemSettings(section_id, this.settingsKey, value);
     return result;
   },
 
   remove(section_id) {
+    if (this.childType) {
+      cleanupRemovedChildItems(section_id, this.childType, []);
+      uci.unset(UCI_PACKAGE, section_id, this.option);
+      return;
+    }
+
     if (this.settingsKey) {
       uci.unset(UCI_PACKAGE, section_id, this.settingsKey);
     }
@@ -1016,206 +1104,34 @@ const SettingsDynamicList = form.DynamicList.extend({
   },
 });
 
-function dynamicListWidgetValues(widget) {
-  if (!widget || typeof widget.getValue !== "function") {
-    return [];
-  }
-
-  return L.toArray(widget.getValue())
-    .map((item) => `${item || ""}`.trim())
-    .filter((item) => item.length);
+function countryChoices() {
+  return COUNTRY_CODES.map((code) => ({
+    value: code,
+    label: getCountryOptionLabel(code),
+  })).sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function validateDynamicListWidgetValues(option, section_id, widget) {
-  if (!option || typeof option.validate !== "function") {
-    return true;
+function currentOutboundNameChoices(section_id, values) {
+  if (!outboundNameChoicesCache.has(section_id)) {
+    loadOutboundNameChoices(section_id);
   }
 
-  const values = dynamicListWidgetValues(widget);
-
-  for (let i = 0; i < values.length; i += 1) {
-    const validation = option.validate(section_id, values[i]);
-    if (validation !== true) {
-      return validation;
-    }
-  }
-
-  return true;
-}
-
-function saveItemSettingsChanges(option, section_id, widget) {
-  if (option) {
-    const values = dynamicListWidgetValues(widget);
-    const validation = validateDynamicListWidgetValues(
-      option,
-      section_id,
-      widget,
-    );
-
-    if (validation !== true) {
-      return Promise.resolve(validation);
+  const seen = new Set();
+  const result = [];
+  const append = (name) => {
+    const value = `${name || ""}`.trim();
+    if (!value || seen.has(value)) {
+      return;
     }
 
-    return Promise.resolve(option.write(section_id, values))
-      .then(() => uci.save())
-      .then(() => ui.changes.init())
-      .then(() => null);
-  }
-
-  return uci
-    .save()
-    .then(() => ui.changes.init())
-    .then(() => null);
-}
-
-function createModalFieldRow(label, field, description) {
-  const children = Array.isArray(field) ? field : [field];
-
-  if (description) {
-    children.push(E("div", { class: "cbi-value-description" }, description));
-  }
-
-  return E("div", { class: "cbi-value" }, [
-    E("label", { class: "cbi-value-title" }, label),
-    E("div", { class: "cbi-value-field" }, children),
-  ]);
-}
-
-function createFlagInput(checked) {
-  return E("input", {
-    type: "checkbox",
-    checked: checked ? "checked" : null,
-  });
-}
-
-function createTextInput(value, placeholder) {
-  return E("input", {
-    type: "text",
-    class: "cbi-input-text",
-    value: value || "",
-    placeholder: placeholder || null,
-  });
-}
-
-function createSelectInput(choices, selected, placeholder) {
-  const children = [];
-
-  if (placeholder) {
-    children.push(E("option", { value: "" }, placeholder));
-  }
-
-  choices.forEach((choice) => {
-    children.push(
-      E(
-        "option",
-        {
-          value: choice.value,
-          selected: choice.value === selected ? "selected" : null,
-        },
-        choice.label,
-      ),
-    );
-  });
-
-  return E("select", { class: "cbi-input-select" }, children);
-}
-
-function setRowVisible(row, visible) {
-  if (row) {
-    row.style.display = visible ? "" : "none";
-  }
-}
-
-function closeItemSettingsModal(overlay) {
-  const node =
-    overlay || document.getElementById(CONNECTIONS_ITEM_SETTINGS_OVERLAY_ID);
-
-  if (node) {
-    node.remove();
-  }
-}
-
-function showItemSettingsModal(title, rows, onSave) {
-  closeItemSettingsModal();
-
-  const errorNode = E("div", {
-    class: "alert-message error",
-    style: "display:none",
-  });
-  let closeButton;
-  let saveButton;
-  const displayError = (error) => {
-    errorNode.textContent =
-      error && error.message ? error.message : `${error || ""}`;
-    errorNode.style.display = "";
+    seen.add(value);
+    result.push({ value, label: value });
   };
-  const handleSave = () => {
-    errorNode.style.display = "none";
-    saveButton.disabled = true;
 
-    Promise.resolve(onSave())
-      .then((error) => {
-        if (error) {
-          displayError(error);
-          return;
-        }
+  (outboundNameChoicesCache.get(section_id) || []).forEach(append);
+  normalizeDynamicListItems(values).forEach(append);
 
-        closeItemSettingsModal(overlay);
-      })
-      .catch(displayError)
-      .finally(() => {
-        saveButton.disabled = false;
-      });
-  };
-  const overlay = E(
-    "div",
-    {
-      id: CONNECTIONS_ITEM_SETTINGS_OVERLAY_ID,
-      class: "pdk-item-settings-overlay",
-      tabindex: -1,
-      keydown: (event) => {
-        if (event.key === "Escape") {
-          closeButton.click();
-        }
-      },
-    },
-    E(
-      "div",
-      {
-        class: "modal cbi-modal pdk-item-settings-modal",
-        role: "dialog",
-        "aria-modal": "true",
-      },
-      [
-        E("h4", {}, title),
-        E("div", { class: "cbi-section" }, [errorNode, ...rows]),
-        E("div", { class: "button-row" }, [
-          (closeButton = E(
-            "button",
-            {
-              type: "button",
-              class: "btn cbi-button",
-              click: () => closeItemSettingsModal(overlay),
-            },
-            _("Close"),
-          )),
-          " ",
-          (saveButton = E(
-            "button",
-            {
-              type: "button",
-              class: "btn cbi-button cbi-button-positive important",
-              click: handleSave,
-            },
-            _("Save"),
-          )),
-        ]),
-      ],
-    ),
-  );
-
-  document.body.appendChild(overlay);
-  overlay.focus();
+  return result.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function connectionUrlSupportsUdpOverTcp(value) {
@@ -1376,7 +1292,14 @@ const InterfaceSettingsDynamicList = SettingsDynamicList.extend({
     );
   },
 
-  validate(_section_id, value) {
+  validate(section_id, value) {
+    value = childItemInputValue(
+      section_id,
+      value,
+      "section_interface",
+      "name",
+    );
+
     if (!value || value.length === 0) {
       return true;
     }
@@ -1388,7 +1311,14 @@ const InterfaceSettingsDynamicList = SettingsDynamicList.extend({
     return true;
   },
 
-  renderListItemLabel(_section_id, value, text) {
+  renderListItemLabel(section_id, value, text) {
+    value = childItemInputValue(
+      section_id,
+      value,
+      "section_interface",
+      "name",
+    );
+
     return renderNetworkInterfaceListItem(
       this.interfaceDeviceMap ? this.interfaceDeviceMap[value] : null,
       value || text,
@@ -1396,327 +1326,758 @@ const InterfaceSettingsDynamicList = SettingsDynamicList.extend({
   },
 });
 
-function showConnectionUrlSettingsModal(section_id, itemValue, option, widget) {
-  const settings = getItemSettings(
-    section_id,
-    "connection_url_settings",
-    itemValue,
-    {
-      outbound_detour_enabled: "0",
-      outbound_detour_section: "",
-      enable_udp_over_tcp: "0",
-    },
-  );
-  const choices = connectionTargetChoices(section_id);
-  const cascadeSectionValue =
-    itemSettingsValue(settings, "outbound_detour_section", "") ||
-    (choices[0] ? choices[0].value : "");
-  const cascadeEnabled = createFlagInput(
-    itemSettingsFlag(settings, "outbound_detour_enabled", false),
-  );
-  const cascadeSection = createSelectInput(choices, cascadeSectionValue);
-  const udpOverTcp = createFlagInput(
-    itemSettingsFlag(settings, "enable_udp_over_tcp", false),
-  );
-  const supportsUdpOverTcp = connectionUrlSupportsUdpOverTcp(itemValue);
-  const cascadeSectionRow = createModalFieldRow(
-    _("Connect through"),
-    cascadeSection,
-    _("Select a transit section"),
-  );
-  const updateState = () => {
-    setRowVisible(cascadeSectionRow, cascadeEnabled.checked);
-  };
-  const rows = [
-    createModalFieldRow(
-      _("Cascade connection"),
-      cascadeEnabled,
-      _(
-        "Use another section as an intermediate hop for connecting to this one",
-      ),
-    ),
-    cascadeSectionRow,
+function urlTestFilterModeChoices() {
+  return [
+    { value: "disabled", label: _("All servers") },
+    { value: "exclude", label: _("All except selected") },
+    { value: "include", label: _("Only selected") },
+    { value: "mixed", label: _("Only selected except exclusions") },
   ];
+}
 
-  cascadeEnabled.addEventListener("change", updateState);
-  updateState();
+function serverCountryDetectionChoices() {
+  return [
+    { value: "flag_emoji", label: _("By flag emoji from name") },
+    { value: "country_is", label: _("Via country.is") },
+  ];
+}
 
-  if (supportsUdpOverTcp) {
-    rows.push(
-      createModalFieldRow(
-        _("UDP over TCP"),
-        udpOverTcp,
-        _("Applicable only for SOCKS and Shadowsocks links"),
-      ),
-    );
+function urlTestUrlChoices() {
+  return Array.isArray(main.LATENCY_TEST_URL_OPTIONS)
+    ? main.LATENCY_TEST_URL_OPTIONS
+    : [main.DEFAULT_LATENCY_TEST_URL || "https://www.gstatic.com/generate_204"];
+}
+
+function validateUrlTestTolerance(value) {
+  if (!value || `${value}`.length === 0) {
+    return _("Must be a number in the range of 0 - 10000");
   }
 
-  showItemSettingsModal(_("Connection URL settings"), rows, () => {
-    const listValidation = validateDynamicListWidgetValues(
-      option,
-      section_id,
-      widget,
-    );
-    if (listValidation !== true) {
-      return listValidation;
-    }
+  const normalized = `${value}`;
+  const parsed = parseFloat(normalized);
+  if (
+    /^[0-9]+$/.test(normalized) &&
+    !isNaN(parsed) &&
+    isFinite(parsed) &&
+    parsed >= 0 &&
+    parsed <= 10000
+  ) {
+    return true;
+  }
 
-    if (cascadeEnabled.checked && !cascadeSection.value) {
+  return _("Must be a number in the range of 0 - 10000");
+}
+
+function validateUrlTestUrl(value) {
+  const validation = main.validateUrl(`${value || ""}`.trim());
+  return validation.valid ? true : validation.message;
+}
+
+function optionMapValue(option, section_id, key) {
+  const value = option && option.map && option.map.data
+    ? option.map.data.get(option.map.config, section_id, key)
+    : uci.get(UCI_PACKAGE, section_id, key);
+
+  return value == null ? "" : value;
+}
+
+function connectionUrlSettingsKeys() {
+  return [
+    "outbound_detour_enabled",
+    "outbound_detour_section",
+    "enable_udp_over_tcp",
+  ];
+}
+
+function defaultConnectionUrlSettings() {
+  return {
+    outbound_detour_enabled: "0",
+    outbound_detour_section: "",
+    enable_udp_over_tcp: "0",
+  };
+}
+
+function subscriptionUrlSettingsKeys() {
+  return [
+    "subscription_update_enabled",
+    "subscription_update_interval",
+    "download_via_proxy_enabled",
+    "download_via_proxy_section",
+    "user_agent",
+    "hwid",
+    "show_dashboard_metadata",
+    "hide_urltest_group_outbounds",
+    "hide_detour_outbounds",
+  ];
+}
+
+function defaultSubscriptionUrlSettings() {
+  return {
+    subscription_update_enabled: "1",
+    subscription_update_interval: "1h",
+    download_via_proxy_enabled: "0",
+    download_via_proxy_section: "",
+    user_agent: "",
+    hwid: "",
+    show_dashboard_metadata: "1",
+    hide_urltest_group_outbounds: "1",
+    hide_detour_outbounds: "1",
+  };
+}
+
+function interfaceSettingsKeys() {
+  return [
+    "domain_resolver_enabled",
+    "domain_resolver_dns_type",
+    "domain_resolver_dns_server",
+  ];
+}
+
+function defaultInterfaceSettings() {
+  return {
+    domain_resolver_enabled: "0",
+    domain_resolver_dns_type: "udp",
+    domain_resolver_dns_server: "8.8.8.8",
+  };
+}
+
+function urlTestSettingsKeys() {
+  return [
+    "name",
+    "check_interval",
+    "tolerance",
+    "testing_url",
+    "idle_timeout",
+    "interrupt_exist_connections",
+    "pin_dashboard",
+    "hide_added_outbounds",
+    "filter_mode",
+    "detect_server_country",
+    "include_countries",
+    "include_outbounds",
+    "include_regex",
+    "exclude_countries",
+    "exclude_outbounds",
+    "exclude_regex",
+  ];
+}
+
+function defaultUrlTestSettings(name) {
+  return {
+    name,
+    check_interval: "3m",
+    tolerance: "50",
+    testing_url: "https://www.gstatic.com/generate_204",
+    idle_timeout: "30m",
+    interrupt_exist_connections: "1",
+    pin_dashboard: "1",
+    hide_added_outbounds: "0",
+    filter_mode: "disabled",
+    detect_server_country: "flag_emoji",
+  };
+}
+
+function urlTestChildDefaults() {
+  return {
+    name: (name) => name,
+    check_interval: "3m",
+    tolerance: "50",
+    testing_url: "https://www.gstatic.com/generate_204",
+    idle_timeout: "30m",
+    interrupt_exist_connections: "1",
+    pin_dashboard: "1",
+    hide_added_outbounds: "0",
+    filter_mode: "disabled",
+    detect_server_country: "flag_emoji",
+  };
+}
+
+function addConnectionUrlItemOptions(itemSection, options = {}) {
+  const parentSectionForItem =
+    typeof options.parentSectionId === "function"
+      ? options.parentSectionId
+      : parentSectionIdForItem;
+
+  let o = itemSection.option(
+    form.Flag,
+    "outbound_detour_enabled",
+    _("Cascade connection"),
+    _("Use another section as an intermediate hop for connecting to this one"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.ListValue,
+    "outbound_detour_section",
+    _("Connect through"),
+    _("Select a transit section"),
+  );
+  o.depends("outbound_detour_enabled", "1");
+  o.load = function (itemId) {
+    const sectionId = parentSectionForItem(itemId);
+    refreshOptionChoices(
+      this,
+      connectionTargetChoices(sectionId),
+    );
+    return optionMapValue(this, itemId, "outbound_detour_section") || "";
+  };
+  o.validate = function (itemId, value) {
+    const sectionId = parentSectionForItem(itemId);
+    if (optionMapValue(this, itemId, "outbound_detour_enabled") === "1" && !value) {
       return _("Select an intermediate section");
     }
+    if (value === sectionId) {
+      return _("Current section cannot be used as its own transit section");
+    }
+    return true;
+  };
 
-    writeItemSettings(section_id, "connection_url_settings", itemValue, {
-      outbound_detour_enabled: cascadeEnabled.checked ? "1" : "0",
-      outbound_detour_section: cascadeEnabled.checked
-        ? cascadeSection.value
-        : "",
-      enable_udp_over_tcp: supportsUdpOverTcp && udpOverTcp.checked ? "1" : "0",
-    });
+  o = itemSection.option(
+    form.Flag,
+    "enable_udp_over_tcp",
+    _("UDP over TCP"),
+    _("Applicable only for SOCKS and Shadowsocks links"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+}
 
-    return saveItemSettingsChanges(option, section_id, widget);
+function addSubscriptionUrlItemOptions(itemSection, options = {}) {
+  const parentSectionForItem =
+    typeof options.parentSectionId === "function"
+      ? options.parentSectionId
+      : parentSectionIdForItem;
+
+  let o = itemSection.option(
+    form.Flag,
+    "subscription_update_enabled",
+    _("Subscription auto updates"),
+    _("Update this subscription automatically"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.Value,
+    "subscription_update_interval",
+    _("Subscription update interval"),
+    _("Use sing-box duration format like 1d, 12h or 30m"),
+  );
+  o.depends("subscription_update_enabled", "1");
+  o.placeholder = "1h";
+  o.validate = function (itemId, value) {
+    return optionMapValue(this, itemId, "subscription_update_enabled") === "1"
+      ? validateRequiredSingBoxDuration(value)
+      : validateOptionalSingBoxDuration(value);
+  };
+
+  o = itemSection.option(
+    form.Flag,
+    "download_via_proxy_enabled",
+    _("Download subscription through a section"),
+    _("Download subscriptions via the selected section"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = itemSection.option(form.ListValue, "download_via_proxy_section", _("Download through"));
+  o.depends("download_via_proxy_enabled", "1");
+  o.load = function (itemId) {
+    const sectionId = parentSectionForItem(itemId);
+    refreshOptionChoices(
+      this,
+      subscriptionDownloadTargetChoices(sectionId),
+    );
+    return optionMapValue(this, itemId, "download_via_proxy_section") || "";
+  };
+  o.validate = function (itemId, value) {
+    const sectionId = parentSectionForItem(itemId);
+    if (optionMapValue(this, itemId, "download_via_proxy_enabled") !== "1") {
+      return true;
+    }
+    if (!value) {
+      return _("Select a section for downloading this subscription");
+    }
+    if (value === sectionId) {
+      return _("Current section cannot download its own subscription");
+    }
+    return true;
+  };
+
+  o = itemSection.option(
+    form.Value,
+    "user_agent",
+    _("User-Agent"),
+    _("Leave empty to use automatic User-Agent selection"),
+  );
+  o.rmempty = true;
+
+  o = itemSection.option(
+    form.Value,
+    "hwid",
+    _("HWID"),
+    _("Leave empty to generate HWID automatically"),
+  );
+  o.rmempty = true;
+
+  o = itemSection.option(
+    form.Flag,
+    "show_dashboard_metadata",
+    _("Show metadata on dashboard"),
+    _("Show subscription metadata for this source on the dashboard"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.Flag,
+    "hide_urltest_group_outbounds",
+    _("Hide URLTest group nodes"),
+    _(
+      "Hide individual nodes that are already included in subscription URLTest groups",
+    ),
+  );
+  o.default = "1";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.Flag,
+    "hide_detour_outbounds",
+    _("Hide cascade connection nodes"),
+    _("Hide intermediate nodes used as detours by other subscription nodes"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+}
+
+function addInterfaceItemOptions(itemSection) {
+  let o = itemSection.option(
+    form.Flag,
+    "domain_resolver_enabled",
+    _("Domain Resolver"),
+    _("Enable built-in DNS resolver for domains handled by this section"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.ListValue,
+    "domain_resolver_dns_type",
+    _("DNS protocol"),
+    _("DNS protocol used by the resolver"),
+  );
+  o.depends("domain_resolver_enabled", "1");
+  dnsTypeChoices().forEach((choice) => o.value(choice.value, choice.label));
+  o.default = "udp";
+
+  o = itemSection.option(
+    form.Value,
+    "domain_resolver_dns_server",
+    _("DNS server"),
+    _("DNS server used by the resolver"),
+  );
+  o.depends("domain_resolver_enabled", "1");
+  o.default = "8.8.8.8";
+  o.validate = function (itemId, value) {
+    if (optionMapValue(this, itemId, "domain_resolver_enabled") !== "1") {
+      return true;
+    }
+    const validation = main.validateDNS(value);
+    return validation.valid ? true : validation.message;
+  };
+}
+
+function addUrlTestItemOptions(itemSection, options = {}) {
+  const parentSectionForItem =
+    typeof options.parentSectionId === "function"
+      ? options.parentSectionId
+      : parentSectionIdForItem;
+
+  let o = itemSection.option(
+    form.Value,
+    "name",
+    _("Display name"),
+    _("Name displayed on the dashboard"),
+  );
+  o.rmempty = false;
+  o.load = function (itemId) {
+    return (
+      optionMapValue(this, itemId, "name") ||
+      optionMapValue(this, itemId, "display_name") ||
+      itemId
+    );
+  };
+
+  o = itemSection.option(
+    form.Value,
+    "check_interval",
+    _("Interval"),
+    _("Use sing-box duration format like 1d, 12h or 30m"),
+  );
+  o.default = "3m";
+  o.rmempty = false;
+  o.validate = function (_itemId, value) {
+    return validateRequiredSingBoxDuration(value);
+  };
+
+  o = itemSection.option(
+    form.Value,
+    "tolerance",
+    _("Tolerance"),
+    _("Maximum response time delta in milliseconds"),
+  );
+  o.default = "50";
+  o.rmempty = false;
+  o.validate = function (_itemId, value) {
+    return validateUrlTestTolerance(value);
+  };
+
+  o = itemSection.option(form.Value, "testing_url", _("URL"));
+  o.default = "https://www.gstatic.com/generate_204";
+  o.rmempty = false;
+  urlTestUrlChoices().forEach((value) => o.value(value));
+  o.validate = function (_itemId, value) {
+    return validateUrlTestUrl(value);
+  };
+
+  o = itemSection.option(
+    form.Value,
+    "idle_timeout",
+    _("Idle timeout"),
+    _(
+      "Stop checking when URLTest group is not used. Use sing-box duration format like 1d, 12h or 30m.",
+    ),
+  );
+  o.default = "30m";
+  o.rmempty = false;
+  o.validate = function (_itemId, value) {
+    return validateRequiredSingBoxDuration(value);
+  };
+
+  o = itemSection.option(
+    form.Flag,
+    "interrupt_exist_connections",
+    _("Interrupt existing connections"),
+    _("Interrupt existing connections when URLTest switches the selected server"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.Flag,
+    "pin_dashboard",
+    _("Pin on dashboard"),
+    _("Keep URLTest before latency-sorted servers"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.Flag,
+    "hide_added_outbounds",
+    _("Hide added servers"),
+    _("Hide dashboard servers added to URLTest"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.ListValue,
+    "filter_mode",
+    _("Server filtering"),
+    _("Allows limiting the list of servers for URLTest"),
+  );
+  urlTestFilterModeChoices().forEach((choice) => o.value(choice.value, choice.label));
+  o.default = "disabled";
+
+  o = itemSection.option(form.ListValue, "detect_server_country", _("Detect server country"));
+  o.depends("filter_mode", "exclude");
+  o.depends("filter_mode", "include");
+  o.depends("filter_mode", "mixed");
+  serverCountryDetectionChoices().forEach((choice) => o.value(choice.value, choice.label));
+  o.default = "flag_emoji";
+
+  [
+    [
+      "include_countries",
+      _("Include countries"),
+      _("Test servers only from the specified countries."),
+      countryChoices(),
+      validateCountryCode,
+      ["include", "mixed"],
+    ],
+    [
+      "include_outbounds",
+      _("Include servers"),
+      _("Test only selected servers."),
+      null,
+      null,
+      ["include", "mixed"],
+    ],
+    [
+      "include_regex",
+      _("Include by regular expression"),
+      _("Test servers whose names match the expression."),
+      null,
+      validateRegex,
+      ["include", "mixed"],
+    ],
+    [
+      "exclude_countries",
+      _("Exclude countries"),
+      _("Do not test servers from these countries."),
+      countryChoices(),
+      validateCountryCode,
+      ["exclude", "mixed"],
+    ],
+    [
+      "exclude_outbounds",
+      _("Exclude servers"),
+      _("Do not test specified servers."),
+      null,
+      null,
+      ["exclude", "mixed"],
+    ],
+    [
+      "exclude_regex",
+      _("Exclude by regular expression"),
+      _("Do not test servers whose names match the expression."),
+      null,
+      validateRegex,
+      ["exclude", "mixed"],
+    ],
+  ].forEach(([key, label, description, choices, validator, modes]) => {
+    const list = itemSection.option(form.DynamicList, key, label, description);
+    modes.forEach((mode) => list.depends("filter_mode", mode));
+    list.rmempty = true;
+    if (choices) {
+      choices.forEach((choice) => list.value(choice.value, choice.label));
+      list.placeholder = _("-- Select --");
+    }
+    if (key.endsWith("_outbounds")) {
+      list.load = function (itemId) {
+        const sectionId = parentSectionForItem(itemId);
+        const values = normalizeOptionValues(optionMapValue(this, itemId, key));
+
+        return loadOutboundNameChoices(sectionId).then(() => {
+          refreshOptionChoices(
+            this,
+            currentOutboundNameChoices(sectionId, values),
+          );
+          return values;
+        });
+      };
+      list.placeholder = _("-- Select --");
+    }
+    if (validator) {
+      list.validate = function (_itemId, value) {
+        return validator(null, value);
+      };
+    }
   });
 }
 
-function showSubscriptionUrlSettingsModal(
-  section_id,
-  itemValue,
-  option,
-  widget,
-) {
-  const settings = getItemSettings(
-    section_id,
-    "subscription_url_settings",
-    itemValue,
-    {
-      subscription_update_enabled: "1",
-      subscription_update_interval: "1h",
-      download_via_proxy_enabled: "0",
-      download_via_proxy_section: "",
-      user_agent: "",
-      hwid: "",
-      show_dashboard_metadata: "1",
-      hide_urltest_group_outbounds: "1",
-      hide_detour_outbounds: "1",
-    },
-  );
-  const autoUpdate = createFlagInput(
-    itemSettingsFlag(settings, "subscription_update_enabled", true),
-  );
-  const updateInterval = createTextInput(
-    itemSettingsValue(settings, "subscription_update_interval", "1h"),
-    "1h",
-  );
-  const downloadThroughSection = createFlagInput(
-    itemSettingsFlag(settings, "download_via_proxy_enabled", false),
-  );
-  const downloadSection = createSelectInput(
-    subscriptionDownloadTargetChoices(section_id),
-    itemSettingsValue(settings, "download_via_proxy_section", ""),
-  );
-  const userAgent = createTextInput(
-    itemSettingsValue(settings, "user_agent", ""),
-    "",
-  );
-  const hwid = createTextInput(itemSettingsValue(settings, "hwid", ""), "");
-  const showDashboardMetadata = createFlagInput(
-    itemSettingsFlag(settings, "show_dashboard_metadata", true),
-  );
-  const hideUrltestGroupOutbounds = createFlagInput(
-    itemSettingsFlag(settings, "hide_urltest_group_outbounds", true),
-  );
-  const hideDetourOutbounds = createFlagInput(
-    itemSettingsFlag(settings, "hide_detour_outbounds", true),
-  );
-  const updateIntervalRow = createModalFieldRow(
-    _("Subscription update interval"),
-    updateInterval,
-    _("Use sing-box duration format like 1d, 12h or 30m"),
-  );
-  const downloadSectionRow = createModalFieldRow(
-    _("Download through"),
-    downloadSection,
-  );
-  const updateState = () => {
-    setRowVisible(updateIntervalRow, autoUpdate.checked);
-    setRowVisible(downloadSectionRow, downloadThroughSection.checked);
+function settingValueEquals(left, right) {
+  const normalize = (value) => {
+    if (Array.isArray(value)) {
+      return JSON.stringify(value.map((item) => `${item || ""}`));
+    }
+
+    return value === undefined || value === null ? "" : `${value}`;
   };
 
-  autoUpdate.addEventListener("change", updateState);
-  downloadThroughSection.addEventListener("change", updateState);
-  updateState();
-
-  showItemSettingsModal(
-    _("Subscription URL settings"),
-    [
-      createModalFieldRow(
-        _("Subscription auto updates"),
-        autoUpdate,
-        _("Update this subscription automatically"),
-      ),
-      updateIntervalRow,
-      createModalFieldRow(
-        _("Download subscription through a section"),
-        downloadThroughSection,
-        _("Download subscriptions via the selected section"),
-      ),
-      downloadSectionRow,
-      createModalFieldRow(
-        _("User-Agent"),
-        userAgent,
-        _("Leave empty to use automatic User-Agent selection"),
-      ),
-      createModalFieldRow(
-        _("HWID"),
-        hwid,
-        _("Leave empty to generate HWID automatically"),
-      ),
-      createModalFieldRow(
-        _("Show metadata on dashboard"),
-        showDashboardMetadata,
-        _("Show subscription metadata for this source on the dashboard"),
-      ),
-      createModalFieldRow(
-        _("Hide URLTest group nodes"),
-        hideUrltestGroupOutbounds,
-        _("Hide individual nodes that are already included in subscription URLTest groups"),
-      ),
-      createModalFieldRow(
-        _("Hide cascade connection nodes"),
-        hideDetourOutbounds,
-        _("Hide intermediate nodes used as detours by other subscription nodes"),
-      ),
-    ],
-    () => {
-      const listValidation = validateDynamicListWidgetValues(
-        option,
-        section_id,
-        widget,
-      );
-      if (listValidation !== true) {
-        return listValidation;
-      }
-
-      if (autoUpdate.checked) {
-        const intervalValidation = validateRequiredSingBoxDuration(
-          updateInterval.value,
-        );
-        if (intervalValidation !== true) {
-          return intervalValidation;
-        }
-      }
-
-      if (downloadThroughSection.checked && !downloadSection.value) {
-        return _("Select a section for downloading this subscription");
-      }
-
-      if (downloadSection.value === section_id) {
-        return _("Current section cannot download its own subscription");
-      }
-
-      writeItemSettings(section_id, "subscription_url_settings", itemValue, {
-        subscription_update_enabled: autoUpdate.checked ? "1" : "0",
-        subscription_update_interval: autoUpdate.checked
-          ? `${updateInterval.value || ""}`.trim() || "1h"
-          : "",
-        download_via_proxy_enabled: downloadThroughSection.checked ? "1" : "0",
-        download_via_proxy_section: downloadThroughSection.checked
-          ? downloadSection.value
-          : "",
-        user_agent: `${userAgent.value || ""}`.trim(),
-        hwid: `${hwid.value || ""}`.trim(),
-        show_dashboard_metadata: showDashboardMetadata.checked ? "1" : "0",
-        hide_urltest_group_outbounds: hideUrltestGroupOutbounds.checked
-          ? "1"
-          : "0",
-        hide_detour_outbounds: hideDetourOutbounds.checked ? "1" : "0",
-      });
-
-      return saveItemSettingsChanges(option, section_id, widget);
-    },
-  );
+  return normalize(left) === normalize(right);
 }
 
-function showInterfaceSettingsModal(section_id, itemValue, option, widget) {
-  const settings = getItemSettings(
-    section_id,
-    "interface_settings",
-    itemValue,
-    {
-      domain_resolver_enabled: "0",
-      domain_resolver_dns_type: "udp",
-      domain_resolver_dns_server: "8.8.8.8",
-    },
-  );
-  const resolverEnabled = createFlagInput(
-    itemSettingsFlag(settings, "domain_resolver_enabled", false),
-  );
-  const dnsType = createSelectInput(
-    dnsTypeChoices(),
-    itemSettingsValue(settings, "domain_resolver_dns_type", "udp"),
-  );
-  const dnsServerInputId = `pdk-dns-server-${section_id}-${Math.random()
-    .toString(16)
-    .slice(2)}`;
-  const dnsServer = createTextInput(
-    itemSettingsValue(settings, "domain_resolver_dns_server", "8.8.8.8"),
-    "8.8.8.8",
-  );
-  const dnsTypeRow = createModalFieldRow(
-    _("DNS protocol"),
-    dnsType,
-    _("DNS protocol used by the resolver"),
-  );
-  const dnsServerRow = createModalFieldRow(
-    _("DNS server"),
-    [dnsServer, dnsServerDatalist(dnsServerInputId)],
-    _("DNS server used by the resolver"),
-  );
-  const updateState = () => {
-    setRowVisible(dnsTypeRow, resolverEnabled.checked);
-    setRowVisible(dnsServerRow, resolverEnabled.checked);
-  };
+function readChildSettings(itemId, keys, defaults) {
+  const result = Object.assign({}, defaults || {});
 
-  dnsServer.setAttribute("list", dnsServerInputId);
-  resolverEnabled.addEventListener("change", updateState);
-  updateState();
+  keys.forEach((key) => {
+    const value = uci.get(UCI_PACKAGE, itemId, key);
+    if (value !== null && value !== undefined) {
+      result[key] = Array.isArray(value) ? value.slice() : value;
+    }
+  });
 
-  showItemSettingsModal(
-    _("Network interface settings"),
-    [
-      createModalFieldRow(
-        _("Domain Resolver"),
-        resolverEnabled,
-        _("Enable built-in DNS resolver for domains handled by this section"),
+  return result;
+}
+
+function changedSettings(base, next, keys) {
+  const result = {};
+
+  keys.forEach((key) => {
+    if (!settingValueEquals(base ? base[key] : null, next ? next[key] : null)) {
+      result[key] = next ? next[key] : null;
+    }
+  });
+
+  return result;
+}
+
+function hasChangedSettings(settings) {
+  return Object.keys(settings || {}).length > 0;
+}
+
+function childPendingSettingsStore(option, section_id) {
+  if (!option.pendingChildSettings) {
+    option.pendingChildSettings = {};
+  }
+
+  if (!option.pendingChildSettings[section_id]) {
+    option.pendingChildSettings[section_id] = {};
+  }
+
+  return option.pendingChildSettings[section_id];
+}
+
+function pendingChildSettings(option, section_id, value, defaults) {
+  value = `${value || ""}`.trim();
+  const store = childPendingSettingsStore(option, section_id);
+
+  if (!store[value]) {
+    store[value] = Object.assign({}, defaults || {});
+  }
+
+  return store[value];
+}
+
+function renderStackedJsonSettingsModal(title, map, onSave) {
+  const modal = document.querySelector("#modal_overlay > .modal.cbi-modal");
+  const activeMap = modal
+    ? modal.querySelector(".cbi-map:not(.hidden)")
+    : null;
+  const buttonRow = modal ? modal.querySelector("div.button-row") : null;
+  const heading = modal ? modal.querySelector("h4") : null;
+
+  if (!modal || !activeMap || !buttonRow || !heading) {
+    return Promise.resolve();
+  }
+
+  return map.render().then((nodes) => {
+    const titleNode = E("span", title ? ` » ${title}` : "");
+    const originalButtonClass = buttonRow.getAttribute("class") || "";
+    const originalButtonNodes = Array.from(buttonRow.childNodes);
+    let closed = false;
+    let saveButton;
+
+    const restoreButtonRow = () => {
+      buttonRow.textContent = "";
+      originalButtonNodes.forEach((node) => buttonRow.appendChild(node));
+      buttonRow.setAttribute("class", originalButtonClass);
+    };
+
+    const close = () => {
+      if (closed) {
+        return;
+      }
+
+      closed = true;
+
+      if (nodes.parentNode) {
+        nodes.parentNode.removeChild(nodes);
+      }
+      if (titleNode.parentNode) {
+        titleNode.parentNode.removeChild(titleNode);
+      }
+
+      activeMap.classList.remove("hidden");
+      restoreButtonRow();
+    };
+
+    const save = () => {
+      if (saveButton) {
+        saveButton.disabled = true;
+      }
+
+      return map.parse()
+        .then(() => {
+          onSave(cleanFormSectionData(map.data.get(map.config, "settings")));
+          close();
+        })
+        .catch(() => {
+          if (saveButton) {
+            saveButton.disabled = false;
+          }
+        });
+    };
+
+    buttonRow.textContent = "";
+    buttonRow.append(
+      E(
+        "button",
+        {
+          class: "btn cbi-button",
+          click: close,
+        },
+        _("Dismiss"),
       ),
-      dnsTypeRow,
-      dnsServerRow,
-    ],
-    () => {
-      const listValidation = validateDynamicListWidgetValues(
-        option,
-        section_id,
-        widget,
+      " ",
+      (saveButton = E(
+        "button",
+        {
+          class: "btn cbi-button cbi-button-positive important",
+          click: save,
+        },
+        _("Save"),
+      )),
+    );
+
+    heading.appendChild(titleNode);
+    activeMap.classList.add("hidden");
+    activeMap.parentNode.insertBefore(nodes, activeMap.nextElementSibling);
+  });
+}
+
+function showChildItemSettingsModal(section_id, itemValue, option, settings) {
+  const value = `${itemValue || ""}`.trim();
+  const existing = isExistingChildItem(section_id, value, settings.typeName);
+  const inputValue = childItemInputValue(
+    section_id,
+    value,
+    settings.typeName,
+    settings.valueOption,
+  );
+  const defaults =
+    typeof settings.defaults === "function"
+      ? settings.defaults(inputValue)
+      : Object.assign({}, settings.defaults || {});
+  const initialSettings = existing
+    ? readChildSettings(value, settings.keys, defaults)
+    : Object.assign(
+        {},
+        pendingChildSettings(option, section_id, inputValue, defaults),
       );
-      if (listValidation !== true) {
-        return listValidation;
-      }
+  const data = {
+    settings: Object.assign({}, initialSettings),
+  };
+  const map = new form.JSONMap(data);
+  const itemSection = map.section(form.NamedSection, "settings");
+  itemSection.anonymous = true;
+  itemSection.addremove = false;
+  settings.addOptions(itemSection, {
+    parentSectionId: () => section_id,
+  });
 
-      if (resolverEnabled.checked) {
-        const validation = main.validateDNS(dnsServer.value);
-        if (!validation.valid) {
-          return validation.message;
+  return renderStackedJsonSettingsModal(
+    settings.title(inputValue),
+    map,
+    (nextSettings) => {
+      if (existing) {
+        const diff = changedSettings(initialSettings, nextSettings, settings.keys);
+        if (hasChangedSettings(diff)) {
+          applyChildItemSettings(value, diff);
         }
+        if (typeof settings.afterSave === "function") {
+          settings.afterSave(value, inputValue, nextSettings, existing);
+        }
+        return;
       }
 
-      writeItemSettings(section_id, "interface_settings", itemValue, {
-        domain_resolver_enabled: resolverEnabled.checked ? "1" : "0",
-        domain_resolver_dns_type: resolverEnabled.checked ? dnsType.value : "",
-        domain_resolver_dns_server: resolverEnabled.checked
-          ? `${dnsServer.value || ""}`.trim()
-          : "",
-      });
-
-      return saveItemSettingsChanges(option, section_id, widget);
+      childPendingSettingsStore(option, section_id)[inputValue] = nextSettings;
+      if (typeof settings.afterSave === "function") {
+        settings.afterSave(value, inputValue, nextSettings, existing);
+      }
     },
   );
 }
@@ -1738,35 +2099,108 @@ function ruleSetIncludesSubnets(section_id, value) {
   );
 }
 
-function showRuleSetSettingsModal(section_id, itemValue, option, widget) {
-  const includeSubnets = createFlagInput(
-    ruleSetIncludesSubnets(section_id, itemValue),
-  );
+function showConnectionUrlSettingsModal(_section_id, itemValue, option) {
+  return showChildItemSettingsModal(_section_id, itemValue, option, {
+    typeName: "connection_url",
+    valueOption: "url",
+    keys: connectionUrlSettingsKeys(),
+    defaults: defaultConnectionUrlSettings(),
+    addOptions: addConnectionUrlItemOptions,
+    title: () => _("Connection URL settings"),
+  });
+}
 
-  showItemSettingsModal(
+function showSubscriptionUrlSettingsModal(_section_id, itemValue, option) {
+  return showChildItemSettingsModal(_section_id, itemValue, option, {
+    typeName: "subscription_url",
+    valueOption: "url",
+    keys: subscriptionUrlSettingsKeys(),
+    defaults: defaultSubscriptionUrlSettings(),
+    addOptions: addSubscriptionUrlItemOptions,
+    title: () => _("Subscription URL settings"),
+  });
+}
+
+function showUrlTestSettingsModal(_section_id, itemValue, option, _widget, itemNode) {
+  return showChildItemSettingsModal(_section_id, itemValue, option, {
+    typeName: "urltest",
+    valueOption: "name",
+    keys: urlTestSettingsKeys(),
+    defaults: defaultUrlTestSettings,
+    addOptions: addUrlTestItemOptions,
+    title: (name) => `${_("URLTest settings")}: ${name}`,
+    afterSave: (itemId, inputValue, settings, existing) => {
+      if (existing) {
+        uci.unset(UCI_PACKAGE, itemId, "id");
+        uci.unset(UCI_PACKAGE, itemId, "display_name");
+      }
+      updateDynamicListItemLabel(itemNode, settings.name || inputValue);
+    },
+  });
+}
+
+function showInterfaceSettingsModal(_section_id, itemValue, option) {
+  return showChildItemSettingsModal(_section_id, itemValue, option, {
+    typeName: "section_interface",
+    valueOption: "name",
+    keys: interfaceSettingsKeys(),
+    defaults: defaultInterfaceSettings(),
+    addOptions: addInterfaceItemOptions,
+    title: () => _("Network interface settings"),
+  });
+}
+
+function showRuleSetSettingsModal(section_id, itemValue, option, widget) {
+  const data = {
+    settings: {
+      include_subnets: ruleSetIncludesSubnets(section_id, itemValue) ? "1" : "0",
+    },
+  };
+  const map = new form.JSONMap(data);
+  const section = map.section(form.NamedSection, "settings");
+  section.anonymous = true;
+  section.addremove = false;
+
+  const includeSubnets = section.option(
+    form.Flag,
+    "include_subnets",
+    _("Include IP addresses and subnets"),
+    _("Subnets from the list will be extracted and added to nftables"),
+  );
+  includeSubnets.default = "0";
+  includeSubnets.rmempty = false;
+
+  return renderStackedJsonSettingsModal(
     _("Rule set settings"),
-    [
-      createModalFieldRow(
-        _("Include IP addresses and subnets"),
-        includeSubnets,
-        _("Subnets from the list will be extracted and added to nftables"),
-      ),
-    ],
-    () => {
-      const listValidation = validateDynamicListWidgetValues(
-        option,
-        section_id,
-        widget,
+    map,
+    (settings) => {
+      const value = settings.include_subnets === "1";
+      const refs = uniqueDynamicListItems(
+        widget && typeof widget.getValue === "function"
+          ? widget.getValue()
+          : getCustomRulesetReferences(section_id),
       );
-      if (listValidation !== true) {
-        return listValidation;
+      const subnets = new Set(
+        getConfigListValues(section_id, "rule_set_with_subnets").filter((ref) =>
+          refs.includes(ref),
+        ),
+      );
+
+      if (value) {
+        subnets.add(itemValue);
+      } else {
+        subnets.delete(itemValue);
       }
 
-      writeItemSettings(section_id, RULE_SET_ITEM_SETTINGS_KEY, itemValue, {
-        include_subnets: includeSubnets.checked ? "1" : "0",
-      });
-
-      return saveItemSettingsChanges(option, section_id, widget);
+      writeListOption(
+        section_id,
+        "rule_set",
+        refs.filter((ref) => !subnets.has(ref)),
+      );
+      writeListOption(section_id, "rule_set_with_subnets", [...subnets]);
+      if (option && typeof option.getUIElement === "function") {
+        option.getUIElement(section_id).setValue(refs);
+      }
     },
   );
 }
@@ -1953,14 +2387,192 @@ function getConfigListValues(section_id, key) {
   return normalizeOptionValues(uci.get(UCI_PACKAGE, section_id, key));
 }
 
+function stringArraysEqual(left, right) {
+  left = normalizeDynamicListItems(left);
+  right = normalizeDynamicListItems(right);
+
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
 function writeListOption(section_id, key, values) {
   const normalized = normalizeOptionValues(values);
+
+  if (stringArraysEqual(getConfigListValues(section_id, key), normalized)) {
+    return;
+  }
 
   if (normalized.length) {
     uci.set(UCI_PACKAGE, section_id, key, normalized);
   } else {
     uci.unset(UCI_PACKAGE, section_id, key);
   }
+}
+
+function getChildItemIds(section_id, typeName) {
+  return uci
+    .sections(UCI_PACKAGE, typeName)
+    .filter((item) => item.section === section_id)
+    .map((item) => item[".name"])
+    .filter(Boolean);
+}
+
+function childItemValue(itemId, valueOption, fallback) {
+  if (!valueOption) {
+    return itemId;
+  }
+
+  const value = uci.get(UCI_PACKAGE, itemId, valueOption);
+  return value == null || value === "" ? fallback || itemId : `${value}`;
+}
+
+function childItemInputValue(section_id, value, typeName, valueOption) {
+  const itemId = `${value || ""}`;
+
+  if (
+    isExistingChildItem(section_id, itemId, typeName)
+  ) {
+    return childItemValue(itemId, valueOption, itemId);
+  }
+
+  return itemId;
+}
+
+function isExistingChildItem(section_id, itemId, typeName) {
+  return Boolean(
+    itemId &&
+      uci.get(UCI_PACKAGE, itemId, ".type") === typeName &&
+      uci.get(UCI_PACKAGE, itemId, "section") === section_id,
+  );
+}
+
+function findChildItemForInput(section_id, options, inputValue) {
+  const rawValue = `${inputValue || ""}`.trim();
+
+  if (isExistingChildItem(section_id, rawValue, options.typeName)) {
+    return rawValue;
+  }
+
+  if (options.valueOption) {
+    return getChildItemIds(section_id, options.typeName).find(
+      (itemId) => childItemValue(itemId, options.valueOption, itemId) === rawValue,
+    );
+  }
+
+  return null;
+}
+
+function createChildItem(section_id, options, inputValue) {
+  const rawValue = `${inputValue || ""}`.trim();
+  const existing = findChildItemForInput(section_id, options, rawValue);
+
+  if (existing) {
+    return {
+      value: existing,
+      text: options.valueOption
+        ? childItemValue(existing, options.valueOption, existing)
+        : existing,
+      created: false,
+    };
+  }
+
+  const itemId = uci.add(UCI_PACKAGE, options.typeName);
+
+  uci.set(UCI_PACKAGE, itemId, "section", section_id);
+
+  if (options.valueOption) {
+    uci.set(UCI_PACKAGE, itemId, options.valueOption, rawValue);
+  }
+
+  if (options.defaults && typeof options.defaults === "object") {
+    Object.entries(options.defaults).forEach(([key, value]) => {
+      value = typeof value === "function" ? value(rawValue, section_id, itemId) : value;
+      if (value !== undefined && value !== null && value !== "") {
+        uci.set(UCI_PACKAGE, itemId, key, `${value}`);
+      }
+    });
+  }
+
+  return {
+    value: itemId,
+    text: options.valueOption ? rawValue : itemId,
+    created: true,
+  };
+}
+
+function applyChildItemSettings(itemId, settings) {
+  Object.entries(settings || {}).forEach(([key, value]) => {
+    if (!key || key.charAt(0) === ".") {
+      return;
+    }
+
+    if (value === undefined || value === null || value === "") {
+      uci.unset(UCI_PACKAGE, itemId, key);
+    } else if (Array.isArray(value)) {
+      uci.set(
+        UCI_PACKAGE,
+        itemId,
+        key,
+        value.map((item) => `${item || ""}`.trim()).filter((item) => item.length),
+      );
+    } else {
+      uci.set(UCI_PACKAGE, itemId, key, `${value}`);
+    }
+  });
+}
+
+function materializeChildItems(section_id, options, inputValue) {
+  const result = [];
+  const seen = new Set();
+
+  normalizeDynamicListItems(inputValue).forEach((value) => {
+    const createdItem = createChildItem(section_id, options, value);
+    const itemId = createdItem.value;
+    const stagedSettings =
+      createdItem.created && typeof options.stagedSettings === "function"
+        ? options.stagedSettings(value, itemId, createdItem.created)
+        : null;
+
+    if (stagedSettings) {
+      applyChildItemSettings(itemId, stagedSettings);
+    }
+
+    if (itemId && !seen.has(itemId)) {
+      seen.add(itemId);
+      result.push(itemId);
+    }
+  });
+
+  return result;
+}
+
+function cleanupRemovedChildItems(section_id, typeName, keepValues) {
+  const keep = new Set(normalizeDynamicListItems(keepValues));
+
+  getChildItemIds(section_id, typeName).forEach((itemId) => {
+    if (!keep.has(itemId)) {
+      uci.remove(UCI_PACKAGE, itemId);
+    }
+  });
+}
+
+function parentSectionIdForItem(itemId) {
+  return uci.get(UCI_PACKAGE, itemId, "section") || "";
+}
+
+function refreshOptionChoices(option, choices) {
+  delete option.keylist;
+  delete option.vallist;
+
+  (choices || []).forEach((choice) => {
+    if (typeof choice === "object") {
+      option.value(choice.value, choice.label);
+    } else {
+      option.value(choice);
+    }
+  });
 }
 
 function validateRegex(_section_id, value) {
@@ -2789,11 +3401,12 @@ function uniqueDomainTextValues(values) {
 }
 
 function loadCombinedDomainText(section_id) {
-  const textValue = uci.get(UCI_PACKAGE, section_id, "domain_suffix_text");
+  const textValue =
+    uci.get(UCI_PACKAGE, section_id, "domain") ||
+    uci.get(UCI_PACKAGE, section_id, "domain_suffix_text");
   const values = uniqueDomainTextValues([
     ...(textValue ? main.parseValueList(textValue) : []),
     ...domainValuesWithPrefix(section_id, "domain_suffix", ""),
-    ...domainValuesWithPrefix(section_id, "domain", "full"),
     ...domainValuesWithPrefix(section_id, "domain_keyword", "keyword"),
     ...domainValuesWithPrefix(section_id, "domain_regex", "regex"),
     ...domainTextValuesWithPrefix(section_id, "domain_suffix", ""),
@@ -4367,10 +4980,13 @@ function addLocalDeviceSubnetDynamicField(section, config) {
 }
 
 function addTextConditionField(section, config) {
+  const optionName = config.optionName || `${config.key}_text`;
+  const legacyTextOptionName =
+    config.legacyTextOptionName || `${config.key}_text`;
   const o = section.taboption(
     "conditions",
     form.TextValue,
-    `${config.key}_text`,
+    optionName,
     config.label,
     config.description,
   );
@@ -4394,9 +5010,11 @@ function addTextConditionField(section, config) {
       return config.loadText(section_id);
     }
 
-    const textValue = uci.get(UCI_PACKAGE, section_id, `${config.key}_text`);
+    const textValue =
+      uci.get(UCI_PACKAGE, section_id, optionName) ||
+      uci.get(UCI_PACKAGE, section_id, legacyTextOptionName);
     if (textValue) {
-      return textValue;
+      return valuesToText(textValue);
     }
 
     return valuesToText(uci.get(UCI_PACKAGE, section_id, config.key));
@@ -4406,12 +5024,17 @@ function addTextConditionField(section, config) {
     const normalized = value ? `${value}`.trim() : "";
 
     if (normalized.length) {
-      uci.set(UCI_PACKAGE, section_id, `${config.key}_text`, normalized);
+      uci.set(UCI_PACKAGE, section_id, optionName, normalized);
     } else {
-      uci.unset(UCI_PACKAGE, section_id, `${config.key}_text`);
+      uci.unset(UCI_PACKAGE, section_id, optionName);
     }
 
-    uci.unset(UCI_PACKAGE, section_id, config.key);
+    if (config.key !== optionName) {
+      uci.unset(UCI_PACKAGE, section_id, config.key);
+    }
+    if (legacyTextOptionName !== optionName) {
+      uci.unset(UCI_PACKAGE, section_id, legacyTextOptionName);
+    }
     uci.unset(UCI_PACKAGE, section_id, `${config.key}_text_mode`);
 
     if (typeof config.afterWrite === "function") {
@@ -4495,15 +5118,9 @@ function getRulesetReferences(section_id) {
 }
 
 function getBuiltInRulesetReferences(section_id) {
-  const communityValues = getConfigListValues(
-    section_id,
-    "community_lists",
-  ).filter((value) => isBuiltinRulesetValue(value));
-  const legacyBuiltIns = getRulesetReferences(section_id).filter((value) =>
-    isBuiltinRulesetValue(value),
+  const values = getConfigListValues(section_id, "community_lists").filter(
+    (value) => isBuiltinRulesetValue(value),
   );
-
-  const values = communityValues.length > 0 ? communityValues : legacyBuiltIns;
 
   return values.filter(
     (value, index, values) =>
@@ -4512,42 +5129,39 @@ function getBuiltInRulesetReferences(section_id) {
 }
 
 function getCustomRulesetReferences(section_id) {
-  const values = [
+  return uniqueDynamicListItems([
     ...getRulesetReferences(section_id).filter(
       (value) => !isBuiltinRulesetValue(value),
     ),
     ...getConfigListValues(section_id, "rule_set_with_subnets"),
-  ];
-  const seen = new Set();
+  ]);
+}
 
-  return values.filter((value) => {
-    if (!value || seen.has(value)) {
-      return false;
-    }
-
-    seen.add(value);
-    return true;
-  });
+function writeBuiltInRulesetReferences(section_id, values) {
+  const refs = normalizeDynamicListItems(values).filter((value) =>
+    isBuiltinRulesetValue(value),
+  );
+  writeListOption(section_id, "community_lists", refs);
 }
 
 function writeCustomRulesetReferences(section_id, values) {
-  const domainRulesets = [];
-  const subnetRulesets = [];
+  const refs = uniqueDynamicListItems(values);
+  const subnetRefs = getConfigListValues(section_id, "rule_set_with_subnets").filter(
+    (value) => refs.includes(value),
+  );
+  const subnetRefSet = new Set(subnetRefs);
 
-  normalizeDynamicListItems(values).forEach((value) => {
-    if (ruleSetIncludesSubnets(section_id, value)) {
-      subnetRulesets.push(value);
-    } else {
-      domainRulesets.push(value);
-    }
-  });
-
-  writeListOption(section_id, "rule_set", domainRulesets);
-  writeListOption(section_id, "rule_set_with_subnets", subnetRulesets);
-  cleanupListItemSettings(section_id, RULE_SET_ITEM_SETTINGS_KEY, [
-    ...domainRulesets,
-    ...subnetRulesets,
-  ]);
+  writeListOption(
+    section_id,
+    "rule_set",
+    refs.filter((value) => !subnetRefSet.has(value)),
+  );
+  writeListOption(
+    section_id,
+    "rule_set_with_subnets",
+    subnetRefs,
+  );
+  uci.unset(UCI_PACKAGE, section_id, RULE_SET_ITEM_SETTINGS_KEY);
 }
 
 function createSectionContent(section) {
@@ -4745,7 +5359,7 @@ function createSectionContent(section) {
   o = section.taboption(
     "settings",
     SettingsDynamicList,
-    "selector_proxy_links",
+    "connection_url",
     _("Connection URL"),
     _(
       "vless://, vmess://, ss://, trojan://, socks4/5://, http(s)://, hy2/hysteria2:// links",
@@ -4753,9 +5367,33 @@ function createSectionContent(section) {
   );
   o.depends("action", "connection");
   o.modalonly = true;
-  o.settingsKey = "connection_url_settings";
+  o.childType = "connection_url";
+  o.childValueOption = "url";
+  o.childDefaults = defaultConnectionUrlSettings();
   o.renderItemSettingsModal = showConnectionUrlSettingsModal;
+  o.hasItemSettings = function (section_id, value) {
+    const normalized = `${value || ""}`.trim();
+    if (isExistingChildItem(section_id, normalized, "connection_url")) {
+      return true;
+    }
+
+    return this.validate(section_id, normalized) === true;
+  };
+  o.stagedChildSettings = function (section_id, value) {
+    const inputValue = childItemInputValue(section_id, value, "connection_url", "url");
+    const store = childPendingSettingsStore(this, section_id);
+    return store[inputValue] ? Object.assign({}, store[inputValue]) : null;
+  };
+  o.clearStagedChildSettings = function (section_id) {
+    if (this.pendingChildSettings) {
+      delete this.pendingChildSettings[section_id];
+    }
+  };
+  o.renderListItemLabel = function (section_id, itemId) {
+    return childItemInputValue(section_id, itemId, "connection_url", "url");
+  };
   o.validate = function (_section_id, value) {
+    value = childItemInputValue(_section_id, value, "connection_url", "url");
     if (!value || value.length === 0) {
       return true;
     }
@@ -4767,21 +5405,50 @@ function createSectionContent(section) {
   o = section.taboption(
     "settings",
     SettingsDynamicList,
-    "subscription_urls",
+    "subscription_url",
     _("Subscription URL"),
     _("Enter the subscription URL"),
   );
   o.depends("action", "connection");
   o.rmempty = true;
   o.modalonly = true;
-  o.settingsKey = "subscription_url_settings";
+  o.childType = "subscription_url";
+  o.childValueOption = "url";
+  o.childDefaults = defaultSubscriptionUrlSettings();
   o.renderItemSettingsModal = showSubscriptionUrlSettingsModal;
+  o.hasItemSettings = function (section_id, value) {
+    const normalized = `${value || ""}`.trim();
+    if (isExistingChildItem(section_id, normalized, "subscription_url")) {
+      return true;
+    }
+
+    return this.validate(section_id, normalized) === true;
+  };
+  o.stagedChildSettings = function (section_id, value) {
+    const inputValue = childItemInputValue(section_id, value, "subscription_url", "url");
+    const store = childPendingSettingsStore(this, section_id);
+    return store[inputValue] ? Object.assign({}, store[inputValue]) : null;
+  };
+  o.clearStagedChildSettings = function (section_id) {
+    if (this.pendingChildSettings) {
+      delete this.pendingChildSettings[section_id];
+    }
+  };
+  o.renderListItemLabel = function (section_id, itemId) {
+    return childItemInputValue(section_id, itemId, "subscription_url", "url");
+  };
   o.validate = validateSubscriptionUrlEntry;
+  o.validate = function (section_id, value) {
+    return validateSubscriptionUrlEntry(
+      section_id,
+      childItemInputValue(section_id, value, "subscription_url", "url"),
+    );
+  };
 
   o = section.taboption(
     "settings",
     InterfaceSettingsDynamicList,
-    "interfaces",
+    "interface",
     _("Network Interface"),
     _("Select network interface for VPN connection"),
   );
@@ -4789,8 +5456,28 @@ function createSectionContent(section) {
   o.rmempty = true;
   o.modalonly = true;
   o.placeholder = _("Select a network interface");
-  o.settingsKey = "interface_settings";
+  o.childType = "section_interface";
+  o.childValueOption = "name";
+  o.childDefaults = defaultInterfaceSettings();
   o.renderItemSettingsModal = showInterfaceSettingsModal;
+  o.hasItemSettings = function (section_id, value) {
+    const normalized = `${value || ""}`.trim();
+    if (isExistingChildItem(section_id, normalized, "section_interface")) {
+      return true;
+    }
+
+    return this.validate(section_id, normalized) === true;
+  };
+  o.stagedChildSettings = function (section_id, value) {
+    const inputValue = childItemInputValue(section_id, value, "section_interface", "name");
+    const store = childPendingSettingsStore(this, section_id);
+    return store[inputValue] ? Object.assign({}, store[inputValue]) : null;
+  };
+  o.clearStagedChildSettings = function (section_id) {
+    if (this.pendingChildSettings) {
+      delete this.pendingChildSettings[section_id];
+    }
+  };
 
   o = section.taboption(
     "settings",
@@ -4813,331 +5500,52 @@ function createSectionContent(section) {
 
   o = section.taboption(
     "settings",
-    form.Flag,
-    "urltest_enabled",
-    _("Auto select by URLTest"),
+    SettingsDynamicList,
+    "urltest",
+    _("URLTest"),
+    _("Enter a name to create URLTest"),
   );
-  o.default = "0";
-  o.rmempty = false;
   o.depends("action", "connection");
+  o.rmempty = true;
   o.modalonly = true;
+  o.childType = "urltest";
+  o.childValueOption = "name";
+  o.childDefaults = urlTestChildDefaults();
+  o.renderItemSettingsModal = showUrlTestSettingsModal;
+  o.openSettingsOnAdd = true;
+  o.hasItemSettings = function (section_id, value) {
+    const normalized = `${value || ""}`.trim();
 
-  o = section.taboption(
-    "settings",
-    form.Value,
-    "urltest_check_interval",
-    _("URLTest interval"),
-    _("Use sing-box duration format like 1d, 12h or 30m"),
-  );
-  o.default = "3m";
-  o.placeholder = "3m";
-  o.rmempty = false;
-  o.depends({ action: "connection", urltest_enabled: "1" });
-  o.modalonly = true;
-  o.validate = function (_section_id, value) {
-    return validateRequiredSingBoxDuration(value);
-  };
-
-  o = section.taboption(
-    "settings",
-    form.Value,
-    "urltest_tolerance",
-    _("URLTest tolerance"),
-    _("Maximum response time delta in milliseconds"),
-  );
-  o.default = "50";
-  o.rmempty = false;
-  o.depends({ action: "connection", urltest_enabled: "1" });
-  o.modalonly = true;
-  o.validate = function (_section_id, value) {
-    if (!value || value.length === 0) {
+    if (isExistingChildItem(section_id, normalized, "urltest")) {
       return true;
     }
 
-    const parsed = parseFloat(value);
-    if (
-      /^[0-9]+$/.test(value) &&
-      !isNaN(parsed) &&
-      isFinite(parsed) &&
-      parsed >= 50 &&
-      parsed <= 1000
-    ) {
-      return true;
+    return normalized.length > 0;
+  };
+  o.inputValueForItem = function (section_id, value) {
+    const inputValue = childItemInputValue(section_id, value, "urltest", "name");
+    const store = childPendingSettingsStore(this, section_id);
+    return store[inputValue] && store[inputValue].name
+      ? store[inputValue].name
+      : inputValue;
+  };
+  o.stagedChildSettings = function (section_id, value) {
+    const id = childItemInputValue(section_id, value, "urltest", "name");
+    const store = childPendingSettingsStore(this, section_id);
+    return store[id] ? Object.assign({}, store[id]) : null;
+  };
+  o.clearStagedChildSettings = function (section_id) {
+    if (this.pendingChildSettings) {
+      delete this.pendingChildSettings[section_id];
     }
-
-    return _("Must be a number in the range of 50 - 1000");
   };
-
-  o = section.taboption(
-    "settings",
-    form.Value,
-    "urltest_testing_url",
-    _("URLTest URL"),
-  );
-  o.value(
-    "https://www.gstatic.com/generate_204",
-    "https://www.gstatic.com/generate_204 (Google)",
-  );
-  o.value(
-    "https://cp.cloudflare.com/generate_204",
-    "https://cp.cloudflare.com/generate_204 (Cloudflare)",
-  );
-  o.value("https://captive.apple.com", "https://captive.apple.com (Apple)");
-  o.value(
-    "https://connectivity-check.ubuntu.com",
-    "https://connectivity-check.ubuntu.com (Ubuntu)",
-  );
-  o.default = "https://www.gstatic.com/generate_204";
-  o.rmempty = false;
-  o.depends({ action: "connection", urltest_enabled: "1" });
-  o.modalonly = true;
-  o.validate = function (_section_id, value) {
-    if (!value || value.length === 0) {
-      return true;
-    }
-
-    const validation = main.validateUrl(value);
-    return validation.valid ? true : validation.message;
+  o.renderListItemLabel = function (section_id, itemId) {
+    return E(
+      "span",
+      { class: "pdk-dynlist-label" },
+      this.inputValueForItem(section_id, itemId),
+    );
   };
-
-  o = section.taboption(
-    "settings",
-    form.ListValue,
-    "urltest_filter_mode",
-    _("Server filtering for URLTest"),
-    _("Allows limiting the list of servers for URLTest"),
-  );
-  o.value("disabled", _("All servers"));
-  o.value("exclude", _("All except selected"));
-  o.value("include", _("Only selected"));
-  o.value("mixed", _("Only selected except exclusions"));
-  o.default = "disabled";
-  o.rmempty = false;
-  o.depends({ action: "connection", urltest_enabled: "1" });
-  o.modalonly = true;
-
-  o = section.taboption(
-    "settings",
-    form.Flag,
-    "urltest_hide_filtered_outbounds",
-    _("Hide filtered servers"),
-    _("Show only servers participating in URLTest on the dashboard."),
-  );
-  o.default = "0";
-  o.rmempty = false;
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "exclude",
-  });
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "include",
-  });
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "mixed",
-  });
-  o.modalonly = true;
-
-  o = section.taboption(
-    "settings",
-    form.ListValue,
-    "detect_server_country",
-    _("Detect server country"),
-  );
-  o.value("flag_emoji", _("By flag emoji from name"));
-  o.value("country_is", _("Via country.is"));
-  o.default = "flag_emoji";
-  o.rmempty = false;
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "exclude",
-  });
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "include",
-  });
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "mixed",
-  });
-  o.modalonly = true;
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_include_countries",
-    _("Include country in URLTest"),
-    _("Only servers from selected countries will be tested by URLTest"),
-  );
-  populateCountryOptionValues(o);
-  o.create = false;
-  o.rmempty = true;
-  o.depends({
-    action: "connection",
-    detect_server_country: "flag_emoji",
-    urltest_filter_mode: "include",
-    urltest_enabled: "1",
-  });
-  o.depends({
-    action: "connection",
-    detect_server_country: "flag_emoji",
-    urltest_filter_mode: "mixed",
-    urltest_enabled: "1",
-  });
-  o.depends({
-    action: "connection",
-    detect_server_country: "country_is",
-    urltest_filter_mode: "include",
-    urltest_enabled: "1",
-  });
-  o.depends({
-    action: "connection",
-    detect_server_country: "country_is",
-    urltest_filter_mode: "mixed",
-    urltest_enabled: "1",
-  });
-  o.modalonly = true;
-  o.validate = validateCountryCode;
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_include_outbounds",
-    _("Include server in URLTest"),
-    _(
-      "Select servers that will participate in URLTest checks. Other servers will be ignored.",
-    ),
-  );
-  o.placeholder = _("-- Select --");
-  o.rmempty = true;
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "include",
-  });
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "mixed",
-  });
-  o.modalonly = true;
-  o.renderWidget = function (section_id, _option_index, cfgvalue) {
-    return createOutboundNameDynamicListWidget(this, section_id, cfgvalue);
-  };
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_include_regex",
-    _("Include server by regular expression in URLTest"),
-    _(
-      "Only servers whose names match these regular expressions will be checked through URLTest",
-    ),
-  );
-  o.rmempty = true;
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "include",
-  });
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "mixed",
-  });
-  o.modalonly = true;
-  o.validate = validateRegex;
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_exclude_countries",
-    _("Exclude country from URLTest"),
-    _("Servers from selected countries will not be tested by URLTest"),
-  );
-  populateCountryOptionValues(o);
-  o.create = false;
-  o.rmempty = true;
-  o.depends({
-    action: "connection",
-    detect_server_country: "flag_emoji",
-    urltest_filter_mode: "exclude",
-    urltest_enabled: "1",
-  });
-  o.depends({
-    action: "connection",
-    detect_server_country: "flag_emoji",
-    urltest_filter_mode: "mixed",
-    urltest_enabled: "1",
-  });
-  o.depends({
-    action: "connection",
-    detect_server_country: "country_is",
-    urltest_filter_mode: "exclude",
-    urltest_enabled: "1",
-  });
-  o.depends({
-    action: "connection",
-    detect_server_country: "country_is",
-    urltest_filter_mode: "mixed",
-    urltest_enabled: "1",
-  });
-  o.modalonly = true;
-  o.validate = validateCountryCode;
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_exclude_outbounds",
-    _("Exclude server from URLTest"),
-    _("Select a loaded server or enter an exact server name"),
-  );
-  o.placeholder = _("-- Select --");
-  o.rmempty = true;
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "exclude",
-  });
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "mixed",
-  });
-  o.modalonly = true;
-  o.renderWidget = function (section_id, _option_index, cfgvalue) {
-    return createOutboundNameDynamicListWidget(this, section_id, cfgvalue);
-  };
-
-  o = section.taboption(
-    "settings",
-    form.DynamicList,
-    "urltest_exclude_regex",
-    _("Exclude server by regular expression from URLTest"),
-    _(
-      "Servers with names matching these regular expressions will not be tested by URLTest",
-    ),
-  );
-  o.rmempty = true;
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "exclude",
-  });
-  o.depends({
-    action: "connection",
-    urltest_enabled: "1",
-    urltest_filter_mode: "mixed",
-  });
-  o.modalonly = true;
-  o.validate = validateRegex;
 
   o = section.taboption(
     "settings",
@@ -5307,6 +5715,8 @@ function createSectionContent(section) {
 
   addTextConditionField(section, {
     key: "domain_suffix",
+    optionName: "domain",
+    legacyTextOptionName: "domain_suffix_text",
     label: _("Domains"),
     description: _(
       "The rule applies to the domain and all its subdomains. Use full:, keyword:, or regex: prefixes for exact match, keyword match, or regular expression.",
@@ -5315,7 +5725,9 @@ function createSectionContent(section) {
     loadText: loadCombinedDomainText,
     afterWrite: function (section_id) {
       [
-        "domain",
+        "domain_suffix",
+        "domain_suffix_text",
+        "domain_suffix_text_mode",
         "domain_keyword",
         "domain_regex",
         "domain_text",
@@ -5332,6 +5744,8 @@ function createSectionContent(section) {
 
   addTextConditionField(section, {
     key: "ip_cidr",
+    optionName: "ip_cidr",
+    legacyTextOptionName: "ip_cidr_text",
     label: _("IPs"),
     description: _("Match destination IPs or subnets"),
     textAnalyze: analyzeIpCidrText,
@@ -5349,6 +5763,12 @@ function createSectionContent(section) {
   builtInRulesetOption.load = function (section_id) {
     loadRulesetValues(this);
     return getBuiltInRulesetReferences(section_id);
+  };
+  builtInRulesetOption.write = function (section_id, values) {
+    writeBuiltInRulesetReferences(section_id, values);
+  };
+  builtInRulesetOption.remove = function (section_id) {
+    uci.unset(UCI_PACKAGE, section_id, "community_lists");
   };
   let isProcessingBuiltIns = false;
   builtInRulesetOption.onchange = function (_ev, section_id, value) {
@@ -5439,7 +5859,6 @@ function createSectionContent(section) {
     _("Add URLs or local paths to .srs / .json lists"),
   );
   ruleSetOption.modalonly = true;
-  ruleSetOption.settingsKey = RULE_SET_ITEM_SETTINGS_KEY;
   ruleSetOption.renderItemSettingsModal = showRuleSetSettingsModal;
   ruleSetOption.load = function (section_id) {
     return getCustomRulesetReferences(section_id);
@@ -5452,7 +5871,7 @@ function createSectionContent(section) {
     uci.unset(UCI_PACKAGE, section_id, "rule_set_with_subnets");
     uci.unset(UCI_PACKAGE, section_id, RULE_SET_ITEM_SETTINGS_KEY);
   };
-  ruleSetOption.validate = function (_section_id, value) {
+  ruleSetOption.validate = function (section_id, value) {
     return validateCustomRulesetReference(value);
   };
 

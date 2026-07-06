@@ -44,7 +44,7 @@ const fixture = {
       proxy_config_type: 'url',
       proxy_string: 'vless://one\n//commented\n ss://two ',
       urltest_check_interval_disabled: '1',
-      domain: [ 'Example.COM' ],
+      domain: [ 'Example.COM', 'full:Already.EXAMPLE' ],
       domain_keyword_text_mode: '1',
       domain_keyword_text: 'Video, Stream # comment',
       domain_regex_text: '^api[.]example$, ^cdn[.]example$',
@@ -125,6 +125,11 @@ const fs = require('fs');
 const out = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const config = out.config;
 const sections = Object.fromEntries(config.section.map(section => [section['.name'], section]));
+const childByType = type => config[type] || [];
+const connectionUrls = childByType('connection_url');
+const subscriptionUrls = childByType('subscription_url');
+const interfaces = childByType('section_interface');
+const urltests = childByType('urltest');
 
 function assert(condition, message) {
   if (!condition) {
@@ -135,6 +140,18 @@ function assert(condition, message) {
 
 function absent(object, key, label) {
   assert(!Object.prototype.hasOwnProperty.call(object, key), `${label}: ${key} should be absent`);
+}
+
+function childObjects(parent, children) {
+  return children.filter(child => child.section === parent['.name']);
+}
+
+function childValues(parent, children, valueKey) {
+  return childObjects(parent, children).map(child => child[valueKey]).filter(Boolean);
+}
+
+function urltestByOwner(parent) {
+  return urltests.find(item => item.section === parent['.name']);
 }
 
 assert(out.changed === true, 'migration should report changes');
@@ -152,51 +169,90 @@ absent(config.settings, 'routing_excluded_ips', 'settings');
 const legacyUrl = sections['legacy-url'];
 assert(legacyUrl['.type'] === 'section', 'legacy rule should become section');
 assert(legacyUrl.action === 'connection', 'legacy-url action');
-assert(JSON.stringify(legacyUrl.selector_proxy_links) === JSON.stringify(['vless://one', 'ss://two']), 'proxy_string links');
-assert(legacyUrl.urltest_enabled === '0', 'urltest disabled flag');
-assert(legacyUrl.domain_suffix.includes('full:Example.COM'), 'full domain list value migrated');
-assert(legacyUrl.domain_suffix.includes('keyword:Video'), 'keyword migrated');
-assert(legacyUrl.domain_suffix.includes('keyword:Stream'), 'keyword comment stripped');
-assert(legacyUrl.domain_suffix.includes('regex:^api[.]example$'), 'regex migrated');
-assert(legacyUrl.domain_suffix.includes('regex:^cdn[.]example$'), 'second regex migrated');
-const legacyUrlRuleSetSettings = JSON.parse(legacyUrl.rule_set_settings);
-assert(legacyUrlRuleSetSettings['https://example.com/mixed.srs'].include_subnets === '1', 'rule set subnet setting migrated');
+assert(JSON.stringify(childValues(legacyUrl, connectionUrls, 'url')) === JSON.stringify(['vless://one', 'ss://two']), 'proxy_string links');
+const legacyUrlDomains = (legacyUrl.domain || '').split(/\s+/).filter(Boolean);
+assert(legacyUrlDomains.includes('full:Example.COM'), 'full domain list value migrated');
+assert(legacyUrlDomains.includes('full:Already.EXAMPLE'), 'prefixed full domain list value migrated without duplicate prefix');
+assert(!legacyUrlDomains.includes('full:full:Already.EXAMPLE'), 'prefixed full domain list value should not get duplicate prefix');
+assert(legacyUrlDomains.includes('keyword:Video'), 'keyword migrated');
+assert(legacyUrlDomains.includes('keyword:Stream'), 'keyword comment stripped');
+assert(legacyUrlDomains.includes('regex:^api[.]example$'), 'regex migrated');
+assert(legacyUrlDomains.includes('regex:^cdn[.]example$'), 'second regex migrated');
+assert(JSON.stringify(legacyUrl.rule_set) === JSON.stringify(['https://example.com/domains.srs']), 'domain rule set preserved');
+assert(JSON.stringify(legacyUrl.rule_set_with_subnets) === JSON.stringify(['https://example.com/mixed.srs']), 'rule set subnet list preserved');
 absent(legacyUrl, 'proxy_string', 'legacy-url');
+absent(legacyUrl, 'selector_proxy_links', 'legacy-url');
 absent(legacyUrl, 'proxy_config_type', 'legacy-url');
 absent(legacyUrl, 'connection_type', 'legacy-url');
-absent(legacyUrl, 'domain', 'legacy-url');
+absent(legacyUrl, 'urltest_enabled', 'legacy-url');
+absent(legacyUrl, 'rule_set_settings', 'legacy-url');
+absent(legacyUrl, 'domain_suffix', 'legacy-url');
+absent(legacyUrl, 'connection_url_items', 'legacy-url');
+absent(legacyUrl, 'rule_set_items', 'legacy-url');
 absent(legacyUrl, 'domain_keyword_text', 'legacy-url');
 absent(legacyUrl, 'domain_regex_text', 'legacy-url');
 
 const legacySub = sections['legacy-sub'];
-assert(JSON.stringify(legacySub.subscription_urls) === JSON.stringify(['https://example.com/sub.txt']), 'subscription entry');
+assert(JSON.stringify(childValues(legacySub, subscriptionUrls, 'url')) === JSON.stringify(['https://example.com/sub.txt']), 'subscription entry');
 assert(legacySub.action === 'connection', 'legacy-sub action');
-const legacySubSettings = JSON.parse(legacySub.subscription_url_settings);
-assert(legacySubSettings['https://example.com/sub.txt'].user_agent === 'Agent/1.0', 'subscription user-agent setting');
-assert(legacySubSettings['https://example.com/sub.txt'].subscription_update_enabled === '0', 'subscription update disabled flag');
-assert(legacySubSettings['https://example.com/sub.txt'].download_via_proxy_enabled === '1', 'subscription download through section flag');
-assert(legacySubSettings['https://example.com/sub.txt'].download_via_proxy_section === 'legacy-urltest', 'subscription download target');
-assert(legacySub.detect_server_country === 'flag_emoji', 'detect server country normalized');
+const legacySubSource = childObjects(legacySub, subscriptionUrls)[0];
+assert(legacySubSource.user_agent === 'Agent/1.0', 'subscription user-agent setting');
+assert(legacySubSource.subscription_update_enabled === '0', 'subscription update disabled flag');
+assert(legacySubSource.download_via_proxy_enabled === '1', 'subscription download through section flag');
+assert(legacySubSource.download_via_proxy_section === 'legacy-urltest', 'subscription download target');
+absent(legacySub, 'urltests', 'legacy-sub');
+const legacySubUrltest = urltestByOwner(legacySub);
+assert(Boolean(legacySubUrltest), 'legacy-sub URLTest child migrated');
+assert(legacySubUrltest.section === 'legacy-sub', 'legacy-sub URLTest owner migrated');
+absent(legacySubUrltest, 'id', 'legacy-sub URLTest');
+absent(legacySubUrltest, 'display_name', 'legacy-sub URLTest');
+assert(legacySubUrltest.name === 'Fastest', 'legacy-sub URLTest name migrated');
+assert(legacySubUrltest.check_interval === '3m', 'legacy-sub URLTest interval default migrated');
+assert(legacySubUrltest.tolerance === '50', 'legacy-sub URLTest tolerance default migrated');
+assert(legacySubUrltest.testing_url === 'https://www.gstatic.com/generate_204', 'legacy-sub URLTest URL default migrated');
+assert(legacySubUrltest.filter_mode === 'include', 'legacy-sub URLTest filter mode migrated');
+assert(legacySubUrltest.detect_server_country === 'flag_emoji', 'legacy-sub detect server country normalized');
+assert(legacySubUrltest.interrupt_exist_connections === '1', 'legacy-sub URLTest interrupt default migrated');
+assert(legacySubUrltest.pin_dashboard === '1', 'legacy-sub URLTest dashboard pin default migrated');
 absent(legacySub, 'subscription_update_enabled', 'legacy-sub');
 absent(legacySub, 'subscription_update_interval', 'legacy-sub');
+absent(legacySub, 'subscription_urls', 'legacy-sub');
+absent(legacySub, 'subscription_url_items', 'legacy-sub');
+absent(legacySub, 'subscription_url_settings', 'legacy-sub');
 absent(legacySub, 'subscription_url', 'legacy-sub');
 absent(legacySub, 'subscription_user_agent', 'legacy-sub');
 absent(legacySub, 'proxy_config_type', 'legacy-sub');
+absent(legacySub, 'urltest_enabled', 'legacy-sub');
+absent(legacySub, 'urltest_filter_mode', 'legacy-sub');
+absent(legacySub, 'detect_server_country', 'legacy-sub');
 
 const legacyListSub = sections['legacy-list-sub'];
-assert(JSON.stringify(legacyListSub.subscription_urls) === JSON.stringify(['https://example.com/list.txt']), 'legacy list subscription entry normalized');
-const legacyListSubSettings = JSON.parse(legacyListSub.subscription_url_settings);
-assert(legacyListSubSettings['https://example.com/list.txt'].user_agent === 'ListAgent/2.0', 'legacy list subscription user-agent migrated');
-assert(legacyListSubSettings['https://example.com/list.txt'].show_dashboard_metadata === '0', 'legacy list subscription settings moved');
-assert(legacyListSubSettings['https://example.com/list.txt'].subscription_update_interval === '6h', 'legacy list subscription interval migrated');
-assert(!legacyListSubSettings['https://example.com/list.txt | ListAgent/2.0'], 'legacy list subscription old settings key removed');
+assert(JSON.stringify(childValues(legacyListSub, subscriptionUrls, 'url')) === JSON.stringify(['https://example.com/list.txt']), 'legacy list subscription entry normalized');
+const legacyListSubSource = childObjects(legacyListSub, subscriptionUrls)[0];
+assert(legacyListSubSource.user_agent === 'ListAgent/2.0', 'legacy list subscription user-agent migrated');
+assert(legacyListSubSource.subscription_update_interval === '6h', 'legacy list subscription interval migrated');
+absent(legacyListSub, 'subscription_url_settings', 'legacy-list-sub');
+absent(legacyListSub, 'subscription_url_items', 'legacy-list-sub');
 
 const legacyUrltest = sections['legacy-urltest'];
 assert(legacyUrltest.action === 'connection', 'legacy-urltest action');
-assert(legacyUrltest.urltest_filter_mode === 'exclude', 'urltest filter mode migration');
-assert(legacyUrltest.detect_server_country === 'flag_emoji', 'detect server country kept when urltest filter enabled');
-assert(JSON.stringify(legacyUrltest.selector_proxy_links) === JSON.stringify(['vmess://a', 'trojan://b']), 'urltest links deduped');
+assert(JSON.stringify(childValues(legacyUrltest, connectionUrls, 'url')) === JSON.stringify(['vmess://a', 'trojan://b']), 'urltest links deduped');
+absent(legacyUrltest, 'urltests', 'legacy-urltest');
+const legacyUrltestConfig = urltestByOwner(legacyUrltest);
+assert(Boolean(legacyUrltestConfig), 'legacy-urltest URLTest child migrated');
+absent(legacyUrltestConfig, 'id', 'legacy-urltest URLTest');
+absent(legacyUrltestConfig, 'display_name', 'legacy-urltest URLTest');
+assert(legacyUrltestConfig.name === 'Fastest', 'legacy-urltest URLTest name migrated');
+assert(legacyUrltestConfig.filter_mode === 'exclude', 'legacy-urltest URLTest filter mode migrated');
+assert(legacyUrltestConfig.detect_server_country === 'flag_emoji', 'legacy-urltest detect server country normalized');
+assert(JSON.stringify(legacyUrltestConfig.exclude_regex) === JSON.stringify(['bad.*']), 'legacy-urltest exclude regex migrated');
 absent(legacyUrltest, 'urltest_proxy_links', 'legacy-urltest');
+absent(legacyUrltest, 'selector_proxy_links', 'legacy-urltest');
+absent(legacyUrltest, 'connection_url_items', 'legacy-urltest');
+absent(legacyUrltest, 'urltest_enabled', 'legacy-urltest');
+absent(legacyUrltest, 'urltest_filter_mode', 'legacy-urltest');
+absent(legacyUrltest, 'detect_server_country', 'legacy-urltest');
+absent(legacyUrltest, 'urltest_exclude_regex', 'legacy-urltest');
 
 const legacyDirect = sections['legacy-direct'];
 assert(legacyDirect.action === 'bypass', 'direct action migrated to bypass');
@@ -212,13 +268,16 @@ absent(legacyZap, 'cmd_opts', 'legacy-zap');
 
 const legacyVpn = sections['legacy-vpn'];
 assert(legacyVpn.action === 'connection', 'vpn action inferred');
-assert(JSON.stringify(legacyVpn.interfaces) === JSON.stringify(['awg0']), 'vpn interface migrated to interfaces list');
-const legacyVpnSettings = JSON.parse(legacyVpn.interface_settings);
-assert(legacyVpnSettings.awg0.domain_resolver_enabled === '1', 'vpn domain resolver enabled migrated');
-assert(legacyVpnSettings.awg0.domain_resolver_dns_type === 'doh', 'vpn domain resolver type migrated');
-assert(legacyVpnSettings.awg0.domain_resolver_dns_server === 'https://dns.example/dns-query', 'vpn domain resolver server migrated');
+assert(JSON.stringify(childValues(legacyVpn, interfaces, 'name')) === JSON.stringify(['awg0']), 'vpn interface migrated to interface item');
+const legacyVpnInterface = childObjects(legacyVpn, interfaces)[0];
+assert(legacyVpnInterface.domain_resolver_enabled === '1', 'vpn domain resolver enabled migrated');
+assert(legacyVpnInterface.domain_resolver_dns_type === 'doh', 'vpn domain resolver type migrated');
+assert(legacyVpnInterface.domain_resolver_dns_server === 'https://dns.example/dns-query', 'vpn domain resolver server migrated');
 absent(legacyVpn, 'proxy_config_type', 'legacy-vpn');
 absent(legacyVpn, 'interface', 'legacy-vpn');
+absent(legacyVpn, 'interfaces', 'legacy-vpn');
+absent(legacyVpn, 'interface_items', 'legacy-vpn');
+absent(legacyVpn, 'interface_settings', 'legacy-vpn');
 absent(legacyVpn, 'domain_resolver_enabled', 'legacy-vpn');
 
 assert(out.removed_caches.includes('/tmp/sing-box/subscriptions/legacy-sub.json'), 'subscription runtime cache removal');
@@ -254,8 +313,21 @@ grep -Fxq 'podkop-plus.legacy.action=connection' "$WORK_DIR/runtime-migrate.stat
   fail "runtime migration must write migrated action through core.uci"
 grep -Fxq 'podkop-plus.old_direct.action=bypass' "$WORK_DIR/runtime-migrate.state" ||
   fail "runtime migration must convert direct action to bypass through core.uci"
-grep -Fxq 'podkop-plus.legacy.selector_proxy_links=vless://one' "$WORK_DIR/runtime-migrate.state" ||
-  fail "runtime migration must write migrated list option through core.uci"
+grep -Eq '^podkop-plus\\.cfg[0-9a-f]+=$' "$WORK_DIR/runtime-migrate.state" && fail "anonymous fixture section should include a type"
+child_section="$(awk -F= '$2 == "connection_url" { sub(/^podkop-plus[.]/, "", $1); print $1; exit }' "$WORK_DIR/runtime-migrate.state")"
+if [ -z "$child_section" ]; then
+  fail "runtime migration must create connection_url child section through core.uci"
+fi
+grep -Fxq "podkop-plus.${child_section}.section=legacy" "$WORK_DIR/runtime-migrate.state" ||
+  fail "runtime migration must link anonymous connection_url child through section option"
+grep -Fxq "podkop-plus.${child_section}.url=vless://one" "$WORK_DIR/runtime-migrate.state" ||
+  fail "runtime migration must write connection_url child value through core.uci"
+if grep -Fq 'podkop-plus.legacy.connection_url_items=' "$WORK_DIR/runtime-migrate.state"; then
+  fail "runtime migration must not write parent child-reference lists"
+fi
+if grep -Fq 'podkop-plus.legacy.urltest_enabled=' "$WORK_DIR/runtime-migrate.state"; then
+  fail "runtime migration must delete migrated urltest_enabled through core.uci"
+fi
 if grep -Fq 'podkop-plus.settings.routing_excluded_ips=' "$WORK_DIR/runtime-migrate.state"; then
   fail "runtime migration must delete removed routing_excluded_ips through core.uci"
 fi

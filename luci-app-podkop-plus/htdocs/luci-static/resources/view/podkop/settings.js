@@ -11,6 +11,17 @@ function isSingBoxDuration(value) {
   return /^([0-9]+(?:\.[0-9]+)?(?:ns|us|ms|s|m|h|d))+$/.test(value);
 }
 
+function latencyTestUrlChoices() {
+  return Array.isArray(main.LATENCY_TEST_URL_OPTIONS)
+    ? main.LATENCY_TEST_URL_OPTIONS
+    : [main.DEFAULT_LATENCY_TEST_URL || "https://www.gstatic.com/generate_204"];
+}
+
+function validateLatencyTestUrl(value) {
+  const validation = main.validateUrl(`${value || ""}`.trim());
+  return validation.valid ? true : validation.message;
+}
+
 function isDownloadSectionAction(action, capabilities) {
   switch (action) {
     case "connection":
@@ -34,7 +45,6 @@ function refreshDownloadSectionChoices(option, capabilities) {
 
   option.keylist = [];
   option.vallist = [];
-  option.value("", _("Not selected"));
 
   for (const secName in sections) {
     const sec = sections[secName];
@@ -50,33 +60,44 @@ function refreshDownloadSectionChoices(option, capabilities) {
 
 function configureDownloadSectionOption(
   option,
-  flagOption,
   sectionOption,
   capabilities,
 ) {
   option.default = "";
-  option.rmempty = true;
+  option.rmempty = false;
   option.cfgvalue = function (section_id) {
     return uci.get(UCI_PACKAGE, section_id, sectionOption) || "";
   };
-  option.load = function () {
+  option.load = function (section_id) {
     refreshDownloadSectionChoices(this, capabilities);
-    return Promise.resolve();
+    return this.cfgvalue(section_id);
   };
   option.write = function (section_id, value) {
     const normalized = value ? `${value}`.trim() : "";
 
     if (normalized) {
       uci.set(UCI_PACKAGE, section_id, sectionOption, normalized);
-      uci.set(UCI_PACKAGE, section_id, flagOption, "1");
     } else {
       uci.unset(UCI_PACKAGE, section_id, sectionOption);
-      uci.set(UCI_PACKAGE, section_id, flagOption, "0");
     }
   };
   option.remove = function (section_id) {
     uci.unset(UCI_PACKAGE, section_id, sectionOption);
-    uci.set(UCI_PACKAGE, section_id, flagOption, "0");
+  };
+  option.validate = function (_section_id, value) {
+    return value ? true : _("Select a section");
+  };
+}
+
+function configureDownloadViaProxyFlag(option, sectionOption) {
+  option.default = "0";
+  option.rmempty = false;
+  option.write = function (section_id, value) {
+    const enabled = value === "1" || value === true;
+    uci.set(UCI_PACKAGE, section_id, this.option, enabled ? "1" : "0");
+    if (!enabled) {
+      uci.unset(UCI_PACKAGE, section_id, sectionOption);
+    }
   };
 }
 
@@ -393,27 +414,57 @@ function createSettingsContent(section, capabilities) {
   };
 
   o = section.option(
-    form.ListValue,
-    "download_lists_via_proxy_section",
+    form.Value,
+    "latency_test_url",
+    _("Latency test URL"),
+    _(
+      "Default address for checking server availability and latency. URLTest uses its own address.",
+    ),
+  );
+  latencyTestUrlChoices().forEach((value) => o.value(value));
+  o.default =
+    main.DEFAULT_LATENCY_TEST_URL || "https://www.gstatic.com/generate_204";
+  o.rmempty = false;
+  o.validate = function (_section_id, value) {
+    return validateLatencyTestUrl(value);
+  };
+
+  o = section.option(
+    form.Flag,
+    "download_lists_via_proxy",
     _("Download lists through a section"),
     _("Download remote lists and rule sets via the selected section"),
   );
+  configureDownloadViaProxyFlag(o, "download_lists_via_proxy_section");
+
+  o = section.option(
+    form.ListValue,
+    "download_lists_via_proxy_section",
+    _("Download lists through"),
+  );
+  o.depends("download_lists_via_proxy", "1");
   configureDownloadSectionOption(
     o,
-    "download_lists_via_proxy",
     "download_lists_via_proxy_section",
     capabilities,
   );
 
   o = section.option(
-    form.ListValue,
-    "download_components_via_proxy_section",
+    form.Flag,
+    "download_components_via_proxy",
     _("Download components through a section"),
     _("Download component packages via the selected section"),
   );
+  configureDownloadViaProxyFlag(o, "download_components_via_proxy_section");
+
+  o = section.option(
+    form.ListValue,
+    "download_components_via_proxy_section",
+    _("Download components through"),
+  );
+  o.depends("download_components_via_proxy", "1");
   configureDownloadSectionOption(
     o,
-    "download_components_via_proxy",
     "download_components_via_proxy_section",
     capabilities,
   );

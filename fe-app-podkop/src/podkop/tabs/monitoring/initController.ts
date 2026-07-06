@@ -100,6 +100,38 @@ function normalizeString(value?: string | number | null): string {
   return value == null ? '' : String(value).trim();
 }
 
+function getListValues(value?: string[] | string) {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeString(item)).filter(Boolean);
+  }
+
+  return normalizeString(value)
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getUrlTestIds(section: Podkop.ConfigSection) {
+  const values = getListValues(section.urltests);
+  return values.length
+    ? values
+    : section.urltest_enabled === '1'
+      ? ['urltest']
+      : [];
+}
+
+function getUrlTestTag(sectionName: string, id: string) {
+  return getOutboundTagBySection(
+    id === 'urltest'
+      ? `${sectionName}-urltest`
+      : `${sectionName}-urltest-${id}`,
+  );
+}
+
 function formatEndpoint(address?: string, port?: string | number): string {
   const normalizedAddress = normalizeString(address);
   const normalizedPort = normalizeString(port);
@@ -135,6 +167,19 @@ function buildRouteDisplayNames(sections: Podkop.ConfigSection[]) {
   const serverMap: Record<string, string> = {};
   const routeSectionItems: Array<{ sectionName: string; displayName: string }> =
     [];
+  const urltestsBySection = new Map<string, string[]>();
+
+  sections
+    .filter((section) => section['.type'] === 'urltest')
+    .forEach((section) => {
+      const owner = normalizeString(section.section);
+      const id = normalizeString(section.id) || section['.name'];
+      if (!owner || !id) {
+        return;
+      }
+
+      urltestsBySection.set(owner, [...(urltestsBySection.get(owner) || []), id]);
+    });
 
   sections
     .filter((section) => section['.type'] === 'section')
@@ -149,7 +194,10 @@ function buildRouteDisplayNames(sections: Podkop.ConfigSection[]) {
 
       routeSectionItems.push({ sectionName, displayName });
       map[getOutboundTagBySection(sectionName)] = displayName;
-      map[getOutboundTagBySection(`${sectionName}-urltest`)] = displayName;
+      const urltestIds = urltestsBySection.get(sectionName) || getUrlTestIds(section);
+      urltestIds.forEach((id) => {
+        map[getUrlTestTag(sectionName, id)] = displayName;
+      });
     });
 
   sections
