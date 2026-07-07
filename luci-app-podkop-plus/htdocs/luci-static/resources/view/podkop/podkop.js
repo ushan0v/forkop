@@ -308,27 +308,27 @@ const EntryPoint = {
         return uiCapabilitiesPromise;
       }
 
-      uiCapabilitiesPromise = main.PodkopShellMethods.getUiState()
+      uiCapabilitiesPromise = main.PodkopShellMethods.getUiCapabilities()
         .then((response) => {
           if (!response?.success) {
-            throw new Error("UI state request failed");
+            throw new Error("UI capabilities request failed");
           }
 
-          return applyUiState(response.data);
+          return updateUiCapabilities(response.data);
         })
         .catch((error) => {
-          console.warn("Failed to load Podkop Plus UI state", error);
-          return main.PodkopShellMethods.getUiCapabilities()
+          console.warn("Failed to load Podkop Plus UI capabilities", error);
+          return main.PodkopShellMethods.getUiState()
             .then((response) => {
               if (!response?.success) {
-                throw new Error("UI capabilities request failed");
+                throw new Error("UI state request failed");
               }
 
-              return updateUiCapabilities(response.data);
+              return applyUiState(response.data);
             })
             .catch((fallbackError) => {
               console.warn(
-                "Failed to load Podkop Plus UI capabilities",
+                "Failed to load Podkop Plus UI state",
                 fallbackError,
               );
               return loadFallbackUiCapabilities();
