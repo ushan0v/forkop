@@ -8721,9 +8721,11 @@ function getAvailableActionsDisabledState({
 }
 function shouldShowRestartAction({
   podkopRunning,
-  restartLoading
+  restartLoading,
+  startLoading,
+  stopLoading
 }) {
-  return restartLoading || podkopRunning;
+  return restartLoading || podkopRunning && !startLoading && !stopLoading;
 }
 function shouldShowStartAction({
   podkopRunning,
@@ -9611,7 +9613,9 @@ function renderDiagnosticAvailableActionsWidget() {
       loading: restartLoading,
       visible: shouldShowRestartAction({
         podkopRunning,
-        restartLoading
+        restartLoading,
+        startLoading,
+        stopLoading
       }),
       onClick: handleRestart,
       disabled: serviceControlsDisabled

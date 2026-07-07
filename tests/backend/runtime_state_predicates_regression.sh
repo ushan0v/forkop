@@ -9,6 +9,7 @@ WORK_DIR="$(mktemp -d)"
 export ZAPRET_DEFAULT_NFQWS_OPT="--default-zapret"
 export ZAPRET2_DEFAULT_NFQWS2_OPT="--default-zapret2"
 export BYEDPI_DEFAULT_CMD_OPTS="--default-bye"
+export PODKOP_FAKE_INIT_CAPTURE="$WORK_DIR/pending-reload-init.args"
 
 cleanup() {
   rm -rf "$WORK_DIR"
@@ -110,6 +111,23 @@ state_ucode consume-pending-reload "$PENDING_RELOAD_FILE" >/dev/null ||
 if state_ucode consume-pending-reload "$PENDING_RELOAD_FILE" >/dev/null 2>&1; then
   fail "missing pending reload should not be consumed"
 fi
+
+cat >"$WORK_DIR/fake-init" <<'SH'
+#!/bin/sh
+printf '%s\n' "$1" >"$PODKOP_FAKE_INIT_CAPTURE"
+SH
+chmod +x "$WORK_DIR/fake-init"
+state_ucode mark-pending-reload "$PENDING_RELOAD_FILE" "reload_busy"
+state_ucode run-pending-reload-if-requested "$PENDING_RELOAD_FILE" "$WORK_DIR/fake-init"
+for _ in $(seq 1 20); do
+  [ -s "$PODKOP_FAKE_INIT_CAPTURE" ] && break
+  sleep 0.1
+done
+assert_eq "reload" \
+  "$(cat "$PODKOP_FAKE_INIT_CAPTURE")" \
+  "pending reload should invoke init.d reload"
+[ ! -e "$PENDING_RELOAD_FILE" ] ||
+  fail "pending reload should be consumed when worker is started"
 
 LOCK_DIR="$WORK_DIR/runtime.lock"
 state_ucode acquire-runtime-dir-lock "$LOCK_DIR" "$$" ||

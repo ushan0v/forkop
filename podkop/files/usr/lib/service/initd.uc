@@ -320,8 +320,13 @@ function initd_should_restore_dnsmasq_on_start_from_value(reason, shutdown_corre
 
 function initd_should_ignore_config_change_reload(reason, expected_reason, runtime_running, service_enabled) {
     return as_string(reason) == as_string(expected_reason || CONFIG_CHANGE_REASON) &&
+        !bool_text(runtime_running);
+}
+
+function initd_should_queue_config_change_reload(reason, expected_reason, runtime_running, active_service_action) {
+    return as_string(reason) == as_string(expected_reason || CONFIG_CHANGE_REASON) &&
         !bool_text(runtime_running) &&
-        !bool_text(service_enabled);
+        as_string(active_service_action) != "";
 }
 
 function initd_should_sync_service_triggers(reason, expected_reason, sync_file) {
@@ -394,6 +399,17 @@ function retry_start_on_wan_up(owner_pid) {
 
 function service_is_enabled() {
     return file_exists("/etc/rc.d/S99" + SERVICE_NAME);
+}
+
+function active_service_action_value() {
+    if (!file_exists(UI_UC))
+        return "";
+
+    return trim(module_output(UI_UC, [ "active-service-action" ]));
+}
+
+function ui_action_tracked() {
+    return as_string(getenv("PODKOP_UI_ACTION_TRACKED") || "0") == "1";
 }
 
 function start_plan_value(reason, owner_pid, settings, bin_ok) {
@@ -470,7 +486,7 @@ function stop_service(owner_pid) {
     return stop_finish(job_id, status);
 }
 
-function reload_begin_value(reason, owner_pid, runtime_running_value, service_enabled_value) {
+function reload_begin_value(reason, owner_pid, runtime_running_value, service_enabled_value, active_service_action) {
     reason = as_string(reason);
 
     if (initd_should_skip_internal_config_reload(
@@ -483,8 +499,31 @@ function reload_begin_value(reason, owner_pid, runtime_running_value, service_en
         return { action: "skip", job_id: "" };
     }
 
+    active_service_action = active_service_action == null ? active_service_action_value() : as_string(active_service_action);
+    if (reason == "pending" && active_service_action != "" && !ui_action_tracked()) {
+        mark_pending_reload(PENDING_RELOAD_FILE, reason);
+        return { action: "skip", job_id: "" };
+    }
+
+    if (reason == "pending") {
+        if (!acquire_runtime_dir_lock(RELOAD_LOCK_DIR, owner_pid || owner_pid_value())) {
+            mark_pending_reload(PENDING_RELOAD_FILE, reason || "reload_busy");
+            return { action: "skip", job_id: "" };
+        }
+
+        unlink_file(SERVICE_TRIGGER_SYNC_FILE);
+        let job_id = begin_external_service_action("reload", "initd", owner_pid);
+        return { action: "run", job_id };
+    }
+
     let running = runtime_running_value == null ? runtime_is_running() : bool_text(runtime_running_value);
     let enabled = service_enabled_value == null ? service_is_enabled() : bool_text(service_enabled_value);
+
+    if (initd_should_queue_config_change_reload(reason, CONFIG_CHANGE_REASON, running, active_service_action)) {
+        mark_pending_reload(PENDING_RELOAD_FILE, reason || "reload_queued");
+        return { action: "skip", job_id: "" };
+    }
+
     if (initd_should_ignore_config_change_reload(reason, CONFIG_CHANGE_REASON, running, enabled)) {
         return { action: "skip", job_id: "" };
     }
@@ -500,7 +539,7 @@ function reload_begin_value(reason, owner_pid, runtime_running_value, service_en
 }
 
 function reload_begin(reason, owner_pid, runtime_running_value, service_enabled_value) {
-    let plan = reload_begin_value(reason, owner_pid, runtime_running_value, service_enabled_value);
+    let plan = reload_begin_value(reason, owner_pid, runtime_running_value, service_enabled_value, null);
     shell_assignment("INITD_RELOAD_ACTION", plan.action);
     if (plan.action == "run")
         shell_assignment("INITD_UI_JOB_ID", plan.job_id);
@@ -512,7 +551,8 @@ function reload_finish_value(reason, job_id, status) {
     finish_external_service_action("reload", job_id, status);
     let sync = status == 0 && initd_should_sync_service_triggers(reason, CONFIG_CHANGE_REASON, SERVICE_TRIGGER_SYNC_FILE);
     release_runtime_dir_lock(RELOAD_LOCK_DIR);
-    run_pending_reload_if_requested(PENDING_RELOAD_FILE, SERVICE_INIT);
+    if (active_service_action_value() == "")
+        run_pending_reload_if_requested(PENDING_RELOAD_FILE, SERVICE_INIT);
     return { status, sync };
 }
 
@@ -602,8 +642,13 @@ else if (mode == "stop-service")
     exit(stop_service(ARGV[1]));
 else if (mode == "reload-begin")
     exit(reload_begin(ARGV[1], ARGV[2], null, null));
-else if (mode == "reload-begin-fixture")
-    exit(reload_begin(ARGV[1], ARGV[2] || "0", ARGV[3], ARGV[4]));
+else if (mode == "reload-begin-fixture") {
+    let plan = reload_begin_value(ARGV[1], ARGV[2] || "0", ARGV[3], ARGV[4], ARGV[5]);
+    shell_assignment("INITD_RELOAD_ACTION", plan.action);
+    if (plan.action == "run")
+        shell_assignment("INITD_UI_JOB_ID", plan.job_id);
+    exit(plan.action == "run" ? 0 : 1);
+}
 else if (mode == "reload-finish")
     exit(reload_finish(ARGV[1], ARGV[2], ARGV[3]));
 else if (mode == "reload-service")
@@ -624,6 +669,8 @@ else if (mode == "initd-should-restore-dnsmasq-on-start-fixture")
     exit(initd_should_restore_dnsmasq_on_start_from_value(ARGV[1], ARGV[2]) ? 0 : 1);
 else if (mode == "initd-should-ignore-config-change-reload")
     exit(initd_should_ignore_config_change_reload(ARGV[1], ARGV[2], ARGV[3], ARGV[4]) ? 0 : 1);
+else if (mode == "initd-should-queue-config-change-reload")
+    exit(initd_should_queue_config_change_reload(ARGV[1], ARGV[2], ARGV[3], ARGV[4]) ? 0 : 1);
 else if (mode == "initd-should-sync-service-triggers")
     exit(initd_should_sync_service_triggers(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
 else {

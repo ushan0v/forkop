@@ -844,6 +844,8 @@ function renderDiagnosticAvailableActionsWidget() {
       visible: shouldShowRestartAction({
         podkopRunning,
         restartLoading,
+        startLoading,
+        stopLoading,
       }),
       onClick: handleRestart,
       disabled: serviceControlsDisabled,

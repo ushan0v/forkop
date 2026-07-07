@@ -8,7 +8,10 @@ const LIB_DIR = getenv("PODKOP_LIB") || "/usr/lib/podkop-plus";
 const BIN_PATH = getenv("PODKOP_BIN") || "/usr/bin/podkop-plus";
 const SERVICE_INIT = getenv("PODKOP_SERVICE_INIT") || "/etc/init.d/podkop-plus";
 const SERVICE_NAME = getenv("PODKOP_SERVICE_NAME") || "podkop-plus";
+const STATE_UC = LIB_DIR + "/service/state.uc";
+const UI_UC = LIB_DIR + "/service/ui.uc";
 const STATE_DIR = getenv("PODKOP_UI_STATE_DIR") || "/var/run/podkop-plus/ui-state";
+const PENDING_RELOAD_FILE = getenv("PODKOP_PENDING_RELOAD_FILE") || "/var/run/podkop-plus/reload.pending";
 const SERVICE_ACTION_DIR = getenv("PODKOP_UI_SERVICE_ACTION_DIR") || STATE_DIR + "/service-actions";
 const SERVICE_ACTION_LOCK_DIR = getenv("PODKOP_UI_SERVICE_ACTION_LOCK_DIR") || STATE_DIR + "/service-actions.lock";
 const LATENCY_ACTION_DIR = getenv("PODKOP_UI_LATENCY_ACTION_DIR") || STATE_DIR + "/latency-actions";
@@ -489,6 +492,8 @@ function job_refresh_plan(path, now, grace_seconds) {
 }
 
 function active_service_action(dir) {
+    dir = as_string(dir || SERVICE_ACTION_DIR);
+
     for (let path in fs.glob(as_string(dir) + "/*.json")) {
         let value = read_json_file(path);
         if (type(value) == "object" && value.running === true && as_string(value.action) != "") {
@@ -759,6 +764,11 @@ function refresh_action_dirs() {
         refresh_pid_job_state(path, "Component action worker exited unexpectedly");
     for (let path in fs.glob(SUBSCRIPTION_ACTION_DIR + "/*.json"))
         refresh_pid_job_state(path, "Subscription update worker exited unexpectedly");
+}
+
+function active_service_action_default() {
+    refresh_action_dirs();
+    active_service_action(SERVICE_ACTION_DIR);
 }
 
 function action_state_from_dir(dir) {
@@ -1104,7 +1114,7 @@ function finish_service_action_mode(job_id_value, success, message, exit_code) {
 }
 
 function launch_worker(args) {
-    let command_args = [ "ucode", "-L", LIB_DIR, LIB_DIR + "/service/ui.uc" ];
+    let command_args = [ "ucode", "-L", LIB_DIR, UI_UC ];
     for (let arg in args)
         push(command_args, arg);
 
@@ -1128,6 +1138,7 @@ function launch_worker(args) {
         PODKOP_UI_ACTION_STALE_GRACE_SECONDS: ACTION_STALE_GRACE_SECONDS,
         PODKOP_UI_SERVICE_ACTION_TIMEOUT_SECONDS: SERVICE_ACTION_TIMEOUT_SECONDS,
         PODKOP_UI_SERVICE_ACTION_SETTLE_SECONDS: SERVICE_ACTION_SETTLE_SECONDS,
+        PODKOP_PENDING_RELOAD_FILE: PENDING_RELOAD_FILE,
         NFT_TABLE_NAME,
         RT_TABLE_NAME,
         NFT_FAKEIP_MARK,
@@ -1141,6 +1152,72 @@ function launch_worker(args) {
     return trim(command_output("sh -c " + shell_quote(command)));
 }
 
+function start_service_action(action, source, reason) {
+    let begin = begin_service_action_if_idle(action, source || "ui");
+    if (begin.status != 0)
+        return { success: false, job_id: "" };
+
+    let path = job_state_path_value(SERVICE_ACTION_DIR, begin.job_id);
+    if (path == "")
+        return { success: false, job_id: begin.job_id };
+
+    let pid = launch_worker([ "service-action-worker", path, action, begin.job_id, reason || "" ]);
+    if (pid == "" || !set_running_job_pid_file(path, pid)) {
+        if (pid != "")
+            command_success_from_args([ "kill", pid ]);
+        write_finished_action_state(path, false, "Failed to write service action worker pid", 1);
+        return { success: false, job_id: begin.job_id };
+    }
+
+    return { success: true, job_id: begin.job_id };
+}
+
+function service_action_allows_pending_reload(action) {
+    action = as_string(action);
+    return action == "start" || action == "restart" || action == "reload";
+}
+
+function consume_pending_reload() {
+    return command_success_from_args([
+        "ucode",
+        "-L", LIB_DIR,
+        STATE_UC,
+        "consume-pending-reload",
+        PENDING_RELOAD_FILE
+    ]);
+}
+
+function mark_pending_reload(reason) {
+    return command_success_from_args([
+        "ucode",
+        "-L", LIB_DIR,
+        STATE_UC,
+        "mark-pending-reload",
+        PENDING_RELOAD_FILE,
+        reason
+    ]);
+}
+
+function run_pending_reload_after_service_action(action, success) {
+    if (!success || !service_action_allows_pending_reload(action) || fs.stat(STATE_UC) == null)
+        return;
+
+    if (!consume_pending_reload())
+        return;
+
+    command_success_from_args([ "logger", "-t", SERVICE_NAME, "[info] Applying pending Podkop Plus reload" ]);
+    let started = start_service_action("reload", "initd", "pending");
+    if (!started.success)
+        mark_pending_reload("pending");
+}
+
+function write_finished_service_action_state(path, action, success, message, exit_code) {
+    let written = write_finished_action_state(path, success, message, exit_code);
+    if (written)
+        run_pending_reload_after_service_action(action, success);
+    return written;
+}
+
 function finish_service_action_after_command(action, job_id_value, status, spawn_waiter) {
     status = arg_number(status);
     if (as_string(job_id_value) == "")
@@ -1151,12 +1228,12 @@ function finish_service_action_after_command(action, job_id_value, status, spawn
         return 0;
 
     if (status != 0) {
-        write_finished_action_state(path, false, "Service " + as_string(action) + " failed", status);
+        write_finished_service_action_state(path, action, false, "Service " + as_string(action) + " failed", status);
         return 0;
     }
 
     if (!service_enabled() && !podkop_running()) {
-        write_finished_action_state(path, true, "Service " + as_string(action) + " completed", 0);
+        write_finished_service_action_state(path, action, true, "Service " + as_string(action) + " completed", 0);
         return 0;
     }
 
@@ -1168,9 +1245,9 @@ function finish_service_action_after_command(action, job_id_value, status, spawn
     }
 
     if (service_action_wait_for_expected_state(action, SERVICE_ACTION_TIMEOUT_SECONDS, SERVICE_ACTION_SETTLE_SECONDS))
-        write_finished_action_state(path, true, "Service " + as_string(action) + " completed", 0);
+        write_finished_service_action_state(path, action, true, "Service " + as_string(action) + " completed", 0);
     else
-        write_finished_action_state(path, false, "Service " + as_string(action) + " did not reach expected state", 1);
+        write_finished_service_action_state(path, action, false, "Service " + as_string(action) + " did not reach expected state", 1);
     return 0;
 }
 
@@ -1183,17 +1260,21 @@ function update_service_action_pid_mode(job_id_value, pid) {
     exit(path != "" && set_running_job_pid_file(path, pid) ? 0 : 1);
 }
 
-function service_action_worker(path, action, job_id_value) {
-    let command = "PODKOP_UI_ACTION_TRACKED=1 " + command_from_args([ SERVICE_INIT, action ]) + " >/dev/null 2>&1";
+function service_action_worker(path, action, job_id_value, reason) {
+    let args = [ SERVICE_INIT, action ];
+    reason = as_string(reason || "");
+    if (reason != "")
+        push(args, reason);
+    let command = "PODKOP_UI_ACTION_TRACKED=1 " + command_from_args(args) + " >/dev/null 2>&1";
     let status = command_status(command);
     finish_service_action_after_command(action, job_id_value, status, false);
 }
 
 function service_action_wait_worker(path, action, job_id_value) {
     if (service_action_wait_for_expected_state(action, SERVICE_ACTION_TIMEOUT_SECONDS, SERVICE_ACTION_SETTLE_SECONDS))
-        write_finished_action_state(path, true, "Service " + as_string(action) + " completed", 0);
+        write_finished_service_action_state(path, action, true, "Service " + as_string(action) + " completed", 0);
     else
-        write_finished_action_state(path, false, "Service " + as_string(action) + " did not reach expected state", 1);
+        write_finished_service_action_state(path, action, false, "Service " + as_string(action) + " did not reach expected state", 1);
 }
 
 function service_action_async(action) {
@@ -1203,31 +1284,17 @@ function service_action_async(action) {
         exit(1);
     }
 
-    let begin = begin_service_action_if_idle(action, "ui");
-    if (begin.status == 2) {
+    let started = start_service_action(action, "ui", "");
+    if (!started.success && active_service_action_value() != "") {
         action_start_response(false, "", "Another service action is already running");
         exit(1);
     }
-    if (begin.status != 0) {
-        action_start_response(false, "", "Failed to write service action state");
-        exit(1);
-    }
-
-    let path = job_state_path_value(SERVICE_ACTION_DIR, begin.job_id);
-    if (path == "") {
-        action_start_response(false, "", "Failed to prepare service action state");
-        exit(1);
-    }
-
-    let pid = launch_worker([ "service-action-worker", path, action, begin.job_id ]);
-    if (pid == "" || !set_running_job_pid_file(path, pid)) {
-        if (pid != "")
-            command_success_from_args([ "kill", pid ]);
+    if (!started.success) {
         action_start_response(false, "", "Failed to write service action worker pid");
         exit(1);
     }
 
-    action_start_response(true, begin.job_id, "Service " + action + " started");
+    action_start_response(true, started.job_id, "Service " + action + " started");
 }
 
 function service_action_status(job_id_value) {
@@ -1395,7 +1462,7 @@ else if (mode == "job-state-path")
 else if (mode == "job-refresh-plan")
     job_refresh_plan(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "active-service-action")
-    active_service_action(ARGV[1]);
+    ARGV[1] == null ? active_service_action_default() : active_service_action(ARGV[1]);
 else if (mode == "component-action-running-for")
     exit(component_action_running_for(ARGV[1]) ? 0 : 1);
 else if (mode == "service-action-begin-if-idle")

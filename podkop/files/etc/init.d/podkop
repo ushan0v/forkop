@@ -31,6 +31,12 @@ sync_service_triggers_payload() {
 
 start_service() {
     initd_ucode start-service "$1" "$$"
+    PODKOP_LAST_START_STATUS="$?"
+    return "$PODKOP_LAST_START_STATUS"
+}
+
+service_started() {
+    return "${PODKOP_LAST_START_STATUS:-0}"
 }
 
 stop_service() {

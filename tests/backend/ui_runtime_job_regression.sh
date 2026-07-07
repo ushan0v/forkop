@@ -63,6 +63,14 @@ grep -Fq '"podkop-stably-running"' "$UI_UC" ||
   fail "UI Podkop status must use stable runtime state to avoid crash-loop flicker"
 grep -Fq '"sing-box-service-stable"' "$UI_UC" ||
   fail "UI sing-box status must use stable runtime state to avoid crash-loop flicker"
+grep -Fq 'run_pending_reload_after_service_action(action, success)' "$UI_UC" ||
+  fail "UI service actions must run pending reload after the current action finishes"
+grep -Fq 'service_action_wait_for_expected_state(action, SERVICE_ACTION_TIMEOUT_SECONDS, SERVICE_ACTION_SETTLE_SECONDS)' "$UI_UC" ||
+  fail "UI service action worker must keep action state until the expected service state is stable"
+grep -Fq 'let args = [ SERVICE_INIT, action ];' "$UI_UC" ||
+  fail "UI service action worker must use init.d so procd triggers stay registered"
+grep -Fq 'start_service_action("reload", "initd", "pending")' "$UI_UC" ||
+  fail "pending reload must enter the normal reload service action immediately"
 if grep -n -E 'pgrep.*sing-box|service-list-instance-running' "$UI_UC" >/dev/null 2>&1; then
   fail "service/ui.uc must not use transient sing-box process probes for visible status"
 fi
@@ -228,6 +236,9 @@ job_id="$(ui_ucode service-action-begin-if-idle reload test)"
 [ -n "$job_id" ] || fail "service-action-begin-if-idle should create a job"
 service_state="$PODKOP_UI_SERVICE_ACTION_DIR/$job_id.json"
 [ -f "$service_state" ] || fail "service action state file should be created"
+assert_eq "reload" \
+  "$(ui_ucode active-service-action)" \
+  "active-service-action should use the default service action dir"
 
 if ui_ucode service-action-begin-if-idle restart test >/dev/null 2>&1; then
   fail "second service action should be rejected while first is running"

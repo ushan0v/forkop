@@ -77,9 +77,36 @@ fi
 if initd_ucode initd-should-ignore-config-change-reload on_config_change on_config_change 1 0 >/dev/null 2>&1; then
   fail "running service should not ignore config-change reload"
 fi
-if initd_ucode initd-should-ignore-config-change-reload on_config_change on_config_change 0 1 >/dev/null 2>&1; then
-  fail "enabled service should not ignore config-change reload"
+initd_ucode initd-should-ignore-config-change-reload on_config_change on_config_change 0 1 >/dev/null ||
+  fail "stopped service should ignore config-change reload even when autostart is enabled"
+initd_ucode initd-should-queue-config-change-reload on_config_change on_config_change 0 start >/dev/null ||
+  fail "config-change reload during service start should be queued"
+if initd_ucode initd-should-queue-config-change-reload on_config_change on_config_change 0 "" >/dev/null 2>&1; then
+  fail "stopped service without active service action should not queue config-change reload"
 fi
+if initd_ucode initd-should-queue-config-change-reload on_config_change on_config_change 1 reload >/dev/null 2>&1; then
+  fail "running service should not use stopped-service queue path"
+fi
+
+pending_file="$WORK_DIR/reload.pending"
+if PODKOP_PENDING_RELOAD_FILE="$pending_file" \
+  initd_ucode reload-begin-fixture on_config_change 123 0 1 start >/dev/null 2>&1; then
+  fail "queued config-change reload should not run immediately while service is starting"
+fi
+[ -f "$pending_file" ] ||
+  fail "config-change reload during service start should create pending reload"
+grep -Fq 'reason=on_config_change' "$pending_file" ||
+  fail "pending reload should preserve config-change reason"
+
+rm -f "$pending_file"
+if PODKOP_PENDING_RELOAD_FILE="$pending_file" \
+  initd_ucode reload-begin-fixture pending 123 1 1 start >/dev/null 2>&1; then
+  fail "pending reload should not run while another service action is active"
+fi
+[ -f "$pending_file" ] ||
+  fail "pending reload should stay pending while another service action is active"
+grep -Fq 'reason=pending' "$pending_file" ||
+  fail "pending reload should preserve pending reason while delayed by active action"
 
 initd_ucode initd-should-restore-dnsmasq-on-start-fixture "" 0 >/dev/null ||
   fail "unclean shutdown should request dnsmasq restore on start"

@@ -96,20 +96,45 @@ describe('diagnostic service transitions', () => {
       shouldShowRestartAction({
         podkopRunning: true,
         restartLoading: false,
+        startLoading: false,
+        stopLoading: false,
       }),
     ).toBe(true);
     expect(
       shouldShowRestartAction({
         podkopRunning: false,
         restartLoading: false,
+        startLoading: false,
+        stopLoading: false,
       }),
     ).toBe(false);
     expect(
       shouldShowRestartAction({
         podkopRunning: false,
         restartLoading: true,
+        startLoading: false,
+        stopLoading: false,
       }),
     ).toBe(true);
+  });
+
+  it('does not show restart from transient running state while start or stop is active', () => {
+    expect(
+      shouldShowRestartAction({
+        podkopRunning: true,
+        restartLoading: false,
+        startLoading: true,
+        stopLoading: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowRestartAction({
+        podkopRunning: true,
+        restartLoading: false,
+        startLoading: false,
+        stopLoading: true,
+      }),
+    ).toBe(false);
   });
 
   it('allows diagnostics while the service is running even when autostart is disabled', () => {

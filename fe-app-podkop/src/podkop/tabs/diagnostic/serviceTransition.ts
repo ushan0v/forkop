@@ -102,11 +102,15 @@ export function getAvailableActionsDisabledState({
 export function shouldShowRestartAction({
   podkopRunning,
   restartLoading,
+  startLoading,
+  stopLoading,
 }: {
   podkopRunning: boolean;
   restartLoading: boolean;
+  startLoading: boolean;
+  stopLoading: boolean;
 }) {
-  return restartLoading || podkopRunning;
+  return restartLoading || (podkopRunning && !startLoading && !stopLoading);
 }
 
 export function shouldShowStartAction({

@@ -15,6 +15,7 @@ function constant_value(name, fallback) {
 }
 
 const CONFIG_NAME = getenv("PODKOP_CONFIG_NAME") || constant_value("PODKOP_CONFIG_NAME", "podkop-plus");
+const CONFIG_FILE = getenv("PODKOP_CONFIG_FILE") || "/etc/config/" + CONFIG_NAME;
 const LIB_DIR = getenv("PODKOP_LIB") || "/usr/lib/podkop-plus";
 const BIN_PATH = getenv("PODKOP_BIN") || constant_value("PODKOP_BIN", "/usr/bin/podkop-plus");
 const SERVICE_INIT = getenv("PODKOP_SERVICE_INIT") || constant_value("PODKOP_SERVICE_INIT", "/etc/init.d/podkop-plus");
@@ -47,6 +48,8 @@ const SUBSCRIPTION_UPDATE_CRON_MARKER = getenv("PODKOP_SUBSCRIPTION_UPDATE_CRON_
 const RELOAD_STATE_FORMAT = int(getenv("PODKOP_RELOAD_STATE_FORMAT") || "1");
 const RUNTIME_CACHE_FORMAT = int(getenv("PODKOP_RUNTIME_CACHE_FORMAT") || "7");
 const RUNTIME_STABLE_MIN_AGE = int(getenv("PODKOP_RUNTIME_STABLE_MIN_AGE") || "2");
+const SING_BOX_START_STABLE_MIN_AGE = int(getenv("PODKOP_SING_BOX_START_STABLE_MIN_AGE") || "8");
+const SING_BOX_START_VERIFY_TIMEOUT = int(getenv("PODKOP_SING_BOX_START_VERIFY_TIMEOUT") || "10");
 const NFT_POPULATE_ENABLED_DEFAULT = int(getenv("PODKOP_NFT_POPULATE_ENABLED") || "1");
 
 const TMP_SING_BOX_FOLDER = getenv("TMP_SING_BOX_FOLDER") || constant_value("TMP_SING_BOX_FOLDER", "/tmp/sing-box");
@@ -110,6 +113,7 @@ let subscription_runtime_no_refresh = getenv("PODKOP_SUBSCRIPTION_RUNTIME_NO_REF
 let subscription_deferred_sections = "";
 let nft_populate_enabled = NFT_POPULATE_ENABLED_DEFAULT;
 let rule_condition_cache_enabled = 0;
+let startup_config_fingerprint = "";
 
 function shell_quote(value) {
     return "'" + replace(as_string(value), /'/g, "'\\''") + "'";
@@ -160,6 +164,19 @@ function command_output_from_args(args) {
 
 function command_success_from_args(args) {
     return command_status(command_from_args(args) + " >/dev/null 2>&1") == 0;
+}
+
+function external_config_fingerprint() {
+    let data = fs.readfile(CONFIG_FILE);
+    if (data == null)
+        return "";
+
+    let lines = [];
+    for (let line in split(as_string(data), "\n"))
+        if (match(as_string(line), /^[ \t]*option[ \t]+shutdown_correctly([ \t]|$)/) == null)
+            push(lines, line);
+
+    return join("\n", lines);
 }
 
 function trim(value) {
@@ -264,6 +281,43 @@ function module_success(module_path, args) {
     return module_status(module_path, args) == 0;
 }
 
+function mark_pending_reload(reason) {
+    return module_success(STATE_UC, [ "mark-pending-reload", PENDING_RELOAD_FILE, reason ]);
+}
+
+function pending_reload_log_context(reason) {
+    reason = as_string(reason);
+    if (reason == "config_changed_during_reload")
+        return "current reload";
+    return "startup";
+}
+
+function mark_pending_reload_if_config_changed(initial_fingerprint, reason) {
+    initial_fingerprint = as_string(initial_fingerprint);
+    if (initial_fingerprint == "")
+        return false;
+
+    let current_fingerprint = external_config_fingerprint();
+    if (current_fingerprint == "" || current_fingerprint == initial_fingerprint)
+        return false;
+
+    let context = pending_reload_log_context(reason);
+    if (mark_pending_reload(reason)) {
+        log_message("Configuration changed during " + context + "; queued reload after " + context + " completes", "info");
+        return true;
+    }
+
+    log_message("Configuration changed during " + context + ", but pending reload could not be queued", "warn");
+    return false;
+}
+
+function finish_reload_status(status, initial_fingerprint) {
+    status = int(status || 0);
+    if (status == 0)
+        mark_pending_reload_if_config_changed(initial_fingerprint, "config_changed_during_reload");
+    return status;
+}
+
 function module_output(module_path, args) {
     let result = module_capture(module_path, args);
     return result.status == 0 ? result.output : "";
@@ -289,6 +343,20 @@ function config_commit() {
         return 1;
     migration.mark_internal_config_guard();
     return 0;
+}
+
+function mark_runtime_stopped_clean() {
+    let status = 0;
+    if (!config_set(CONFIG_NAME + ".settings.shutdown_correctly", "1"))
+        status = 1;
+    else {
+        let commit_status = config_commit();
+        if (commit_status != 0)
+            status = commit_status;
+    }
+
+    module_success(STATE_UC, [ "clear-reload-state", RELOAD_STATE_FILE, RELOAD_STATE_SNAPSHOT_FILE ]);
+    return status;
 }
 
 function setting_bool(name, fallback) {
@@ -472,6 +540,8 @@ function start_main() {
     if (status != 0)
         return status;
 
+    startup_config_fingerprint = external_config_fingerprint();
+
     status = module_status(NFT_UC, [ "ensure-bridge-netfilter-disabled" ]);
     if (status != 0)
         return status;
@@ -512,6 +582,19 @@ function start_main() {
     if (!command_success_from_args([ "/etc/init.d/sing-box", "start" ])) {
         log_message("Failed to start sing-box. Aborted.", "fatal");
         return 1;
+    }
+
+    status = module_status(STATE_UC, [
+        "wait-podkop-stable-start",
+        RT_TABLE_NAME,
+        NFT_TABLE_NAME,
+        NFT_FAKEIP_MARK,
+        as_string(SING_BOX_START_STABLE_MIN_AGE),
+        as_string(SING_BOX_START_VERIFY_TIMEOUT)
+    ]);
+    if (status != 0) {
+        log_message("sing-box did not reach a stable running state after start. Aborted.", "fatal");
+        return status;
     }
 
     status = module_status(SUBSCRIPTION_CACHE_UC, [ "run-deferred-bootstrap", subscription_deferred_sections ]);
@@ -595,15 +678,39 @@ function stop_main() {
     return status;
 }
 
+function cleanup_failed_runtime() {
+    let status = 0;
+
+    log_message("Cleaning up Podkop Plus runtime after failed start/reload", "info");
+
+    let stop_status = stop_main();
+    if (stop_status != 0)
+        status = stop_status;
+
+    let dns_status = dnsmasq_restore_fail_safe();
+    if (dns_status != 0 && status == 0)
+        status = dns_status;
+
+    let mark_status = mark_runtime_stopped_clean();
+    if (mark_status != 0 && status == 0)
+        status = mark_status;
+
+    if (status != 0)
+        log_message("Failed to fully clean up Podkop Plus runtime after start/reload failure", "warn");
+
+    return status;
+}
+
 function start() {
     let status = start_impl();
     release_start_subscription_update_lock();
 
     if (status != 0) {
-        stop_main();
-        dnsmasq_restore_fail_safe();
+        cleanup_failed_runtime();
         return status;
     }
+
+    mark_pending_reload_if_config_changed(startup_config_fingerprint, "config_changed_during_start");
 
     status = module_status(STATE_UC, [
         "wait-podkop-stable-start",
@@ -615,12 +722,11 @@ function start() {
     ]);
     if (status != 0) {
         log_message("Startup verification failed after Podkop Plus was started; rolling back DNS changes", "warn");
-        stop_main();
-        dnsmasq_restore_fail_safe();
+        cleanup_failed_runtime();
         return status;
     }
 
-    return module_status(STATE_UC, [ "run-pending-reload-if-requested", PENDING_RELOAD_FILE, SERVICE_INIT ]);
+    return 0;
 }
 
 function stop_impl() {
@@ -671,8 +777,10 @@ function restart_runtime_for_reload() {
         return status;
 
     status = start_main();
-    if (status != 0)
+    if (status != 0) {
+        cleanup_failed_runtime();
         return status;
+    }
 
     status = module_status(STATE_UC, [
         "wait-podkop-stable-start",
@@ -684,8 +792,7 @@ function restart_runtime_for_reload() {
     ]);
     if (status != 0) {
         log_message("Reload runtime restart verification failed after Podkop Plus was started; rolling back DNS changes", "fatal");
-        stop_main();
-        dnsmasq_restore_fail_safe();
+        cleanup_failed_runtime();
         return status;
     }
 
@@ -774,6 +881,7 @@ function reload_actions_summary(plan) {
 function reload(reason) {
     let status;
     let force_runtime_reload = as_string(reason || "") == "on_config_change" ? 0 : 1;
+    let reload_config_fingerprint = external_config_fingerprint();
     rule_condition_cache_enabled = force_runtime_reload;
 
     log_message("Reloading Podkop Plus", "info");
@@ -788,7 +896,7 @@ function reload(reason) {
 
     if (!module_success(STATE_UC, [ "podkop-running", RT_TABLE_NAME, NFT_TABLE_NAME, NFT_FAKEIP_MARK ])) {
         log_message("Runtime state is incomplete; restarting Podkop Plus runtime", "info");
-        return restart_runtime_for_reload();
+        return finish_reload_status(restart_runtime_for_reload(), reload_config_fingerprint);
     }
 
     remove_file(RELOAD_STATE_SNAPSHOT_FILE);
@@ -841,7 +949,7 @@ function reload(reason) {
     if (plan_result.status != 0) {
         if (plan_result.status == 2) {
             log_message("Reload state is unavailable; restarting Podkop Plus runtime", "info");
-            return restart_runtime_for_reload();
+            return finish_reload_status(restart_runtime_for_reload(), reload_config_fingerprint);
         }
         return plan_result.status;
     }
@@ -861,7 +969,7 @@ function reload(reason) {
         ]);
         if (status == 0)
             log_message("Reload skipped: runtime-relevant configuration is unchanged", "info");
-        return status;
+        return finish_reload_status(status, reload_config_fingerprint);
     }
 
     let actions = reload_actions_summary(plan);
@@ -899,13 +1007,12 @@ function reload(reason) {
             RT_TABLE_NAME,
             NFT_TABLE_NAME,
             NFT_FAKEIP_MARK,
-            as_string(RUNTIME_STABLE_MIN_AGE),
-            "8"
+            as_string(SING_BOX_START_STABLE_MIN_AGE),
+            as_string(SING_BOX_START_VERIFY_TIMEOUT)
         ]);
         if (status != 0) {
             log_message("Reload verification failed after sing-box was reloaded; stopping Podkop Plus runtime", "fatal");
-            stop_main();
-            dnsmasq_restore_fail_safe();
+            cleanup_failed_runtime();
             return status;
         }
     }
@@ -944,7 +1051,7 @@ function reload(reason) {
     if (plan.needs_list_update == 1)
         module_background(UPDATES_UC, [ "list-update" ]);
 
-    return module_status(STATE_UC, [
+    return finish_reload_status(module_status(STATE_UC, [
         "write-captured-reload-state",
         RELOAD_STATE_FILE,
         RELOAD_STATE_SNAPSHOT_FILE,
@@ -952,7 +1059,7 @@ function reload(reason) {
         RULE_CONDITION_CACHE_DIR,
         "1",
         "1"
-    ]);
+    ]), reload_config_fingerprint);
 }
 
 function reload_tracked(reason) {
@@ -978,8 +1085,10 @@ function restart() {
         return status;
 
     status = start_impl();
-    if (status != 0)
+    if (status != 0) {
+        cleanup_failed_runtime();
         return status;
+    }
 
     if (module_success(STATE_UC, [
         "podkop-stably-running",
@@ -988,8 +1097,10 @@ function restart() {
         NFT_FAKEIP_MARK,
         as_string(RUNTIME_STABLE_MIN_AGE)
     ]))
-        return module_status(STATE_UC, [ "run-pending-reload-if-requested", PENDING_RELOAD_FILE, SERVICE_INIT ]);
+        return 0;
 
+    log_message("Restart verification failed after Podkop Plus was started; stopping Podkop Plus runtime", "fatal");
+    cleanup_failed_runtime();
     return 1;
 }
 
