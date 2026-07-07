@@ -7,7 +7,7 @@ export function copyToClipboard(text: string) {
   textarea.select();
   try {
     document.execCommand('copy');
-    showToast(_('Successfully copied!'), 'success');
+    showToast(_('Copied'), 'success');
   } catch (_err) {
     showToast(_('Failed to copy!'), 'error');
     console.error('copyToClipboard - e', _err);

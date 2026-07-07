@@ -283,7 +283,7 @@ async function completeSubscriptionUpdateJob(
   }
 
   if (shouldNotify) {
-    showToast(_('Subscription update completed'), 'success');
+    showToast(_('Subscriptions updated'), 'success');
   }
   void fetchDashboardSections({ force: true });
   void fetchServicesInfo();

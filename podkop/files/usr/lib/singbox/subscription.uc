@@ -204,16 +204,39 @@ function remember_outbound_metadata(state, tag_name, display_name, outbound) {
         state.servers[tag_name] = server;
 }
 
+function starts_with(value, prefix) {
+    value = as_string(value);
+    prefix = as_string(prefix);
+    return substr(value, 0, length(prefix)) == prefix;
+}
+
+function is_copyable_link(value) {
+    value = lc(as_string(value));
+    let prefixes = [
+        "vless://", "vmess://", "trojan://", "ss://", "ssr://",
+        "hysteria2://", "hy2://", "tuic://",
+        "socks4://", "socks4a://", "socks5://"
+    ];
+    for (let prefix in prefixes)
+        if (starts_with(value, prefix))
+            return true;
+    return false;
+}
+
 function remember_source_outbound(state, tag_name, source_section, source_index, source_outbound_index, display_name, outbound) {
     if (type(state) != "object")
         return;
     remember_outbound_metadata(state, tag_name, display_name, outbound);
     let outbound_type = as_string(outbound.type || "");
-    if (outbound_type != "selector" && outbound_type != "urltest")
+    if (outbound_type != "selector" && outbound_type != "urltest") {
+        let source_link = as_string(outbound.source_link || "");
+        if (is_copyable_link(source_link))
+            state.links[tag_name] = source_link;
         state.linkRefs[tag_name] = {
             sourceSection: source_section,
             sourceIndex: source_outbound_index
         };
+    }
 }
 
 function remember_urltest_group(state, tag_name, display_name, outbound) {

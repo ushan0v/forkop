@@ -659,6 +659,39 @@ describe('getDashboardSections', () => {
     expect(subscriptionOutbound?.canCopyLink).toBe(true);
   });
 
+  it('uses cached subscription links without a click-time backend lookup', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({
+        subscription_urls: ['https://subscription.example/list'],
+      }),
+    ]);
+    mocks.fsRead.mockResolvedValue(
+      JSON.stringify({
+        links: {
+          'main-2-out': 'vless://00000000-0000-4000-8000-000000000002@example.com:443#Subscription',
+        },
+        linkRefs: {
+          'main-2-out': {
+            sourceSection: 'main-subscription-1',
+            sourceIndex: 1,
+          },
+        },
+      }),
+    );
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+    const subscriptionOutbound = section.outbounds.find(
+      (item) => item.code === 'main-2-out',
+    );
+
+    expect(result.success).toBe(true);
+    expect(subscriptionOutbound?.link).toBe(
+      'vless://00000000-0000-4000-8000-000000000002@example.com:443#Subscription',
+    );
+    expect(subscriptionOutbound?.canCopyLink).toBe(true);
+  });
+
   it('does not expose countries when URLTest filtering is set to all servers', async () => {
     mocks.getConfigSections.mockResolvedValue([
       proxySection({

@@ -2414,7 +2414,7 @@ function copyToClipboard(text) {
   textarea.select();
   try {
     document.execCommand("copy");
-    showToast(_("Successfully copied!"), "success");
+    showToast(_("Copied"), "success");
   } catch (_err) {
     showToast(_("Failed to copy!"), "error");
     console.error("copyToClipboard - e", _err);
@@ -3534,6 +3534,7 @@ function buildUrlTestInfo({
   groupCache,
   proxyByCode,
   manualLinkByCode,
+  cachedProxyLinks,
   outboundMetadata,
   subscriptionCopyableCodes,
   showDetectedCountries
@@ -3545,7 +3546,7 @@ function buildUrlTestInfo({
   const outbounds = sortUrlTestMembers(
     childCodes.flatMap((childCode) => {
       const childEntry = proxyByCode.get(childCode);
-      const link = manualLinkByCode.get(childCode) || "";
+      const link = manualLinkByCode.get(childCode) || cachedProxyLinks.get(childCode) || "";
       const canCopyLink = isCopyableProxyLink(link) || subscriptionCopyableCodes.has(childCode);
       return [
         {
@@ -3580,7 +3581,7 @@ function buildUrlTestInfo({
     outbounds
   };
 }
-function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGroups = {}, subscriptionCopyableCodes = /* @__PURE__ */ new Set()) {
+function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGroups = {}, subscriptionCopyableCodes = /* @__PURE__ */ new Set(), cachedProxyLinks = /* @__PURE__ */ new Map()) {
   const sectionName = section[".name"];
   const proxyByCode = getProxyEntryByCode(proxies);
   const selectorTag = getOutboundTagBySection(sectionName);
@@ -3626,7 +3627,7 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGro
       return [];
     }
     const urlTestConfig = urlTestConfigByCode.get(item.code);
-    const link = manualLinkByCode.get(item.code) || "";
+    const link = manualLinkByCode.get(item.code) || cachedProxyLinks.get(item.code) || "";
     const canCopyLink = isCopyableProxyLink(link) || subscriptionCopyableCodes.has(item.code);
     const displayName = urlTestConfig?.displayName || getOutboundDisplayName(item.code, item, link, outboundMetadata);
     return [
@@ -3646,6 +3647,7 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGro
           groupCache: urltestGroups[item.code],
           proxyByCode,
           manualLinkByCode,
+          cachedProxyLinks,
           outboundMetadata,
           subscriptionCopyableCodes,
           showDetectedCountries: urlTestConfig?.showDetectedCountries || showDetectedCountries
@@ -3758,6 +3760,13 @@ function getSubscriptionCopyableCodes(dashboardCache) {
   }
   return codes;
 }
+function getCachedProxyLinks(dashboardCache) {
+  return new Map(
+    Object.entries(objectMap(dashboardCache?.links)).filter(
+      ([, link]) => isCopyableProxyLink(link)
+    )
+  );
+}
 async function getDashboardSections(options = {}) {
   const includeSubscriptionCopyState = options.includeSubscriptionCopyState ?? true;
   const configSections = hydrateConfigSections(await getConfigSections());
@@ -3793,13 +3802,15 @@ async function getDashboardSections(options = {}) {
           dashboardCache
         ) : void 0;
         const subscriptionCopyableCodes = includeSubscriptionCopyState ? getSubscriptionCopyableCodes(dashboardCache) : /* @__PURE__ */ new Set();
+        const cachedProxyLinks = includeSubscriptionCopyState ? getCachedProxyLinks(dashboardCache) : /* @__PURE__ */ new Map();
         const urltestGroups = getUrlTestGroups(dashboardCache);
         const { selector, latencyTestCode, latencyTestCodes, outbounds } = buildProxyGroupOutbounds(
           section,
           proxies,
           outboundMetadata,
           urltestGroups,
-          subscriptionCopyableCodes
+          subscriptionCopyableCodes,
+          cachedProxyLinks
         );
         return {
           withTagSelect: true,
@@ -5425,7 +5436,7 @@ async function completeSubscriptionUpdateJob(jobId, sectionName, response) {
     return;
   }
   if (shouldNotify) {
-    showToast(_("Subscription update completed"), "success");
+    showToast(_("Subscriptions updated"), "success");
   }
   void fetchDashboardSections({ force: true });
   void fetchServicesInfo();

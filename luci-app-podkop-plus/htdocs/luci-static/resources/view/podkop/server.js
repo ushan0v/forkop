@@ -1551,7 +1551,7 @@ function copyText(text) {
 
   try {
     document.execCommand("copy");
-    main.showToast(_("Successfully copied!"), "success");
+    main.showToast(_("Copied"), "success");
   } catch (error) {
     main.showToast(_("Failed to copy!"), "error");
     console.warn("Failed to copy server client link", error);

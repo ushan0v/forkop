@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-06 23:38+0300\n"
-"PO-Revision-Date: 2026-07-06 23:38+0300\n"
+"POT-Creation-Date: 2026-07-07 01:46+0300\n"
+"PO-Revision-Date: 2026-07-07 01:46+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -283,6 +283,9 @@ msgstr "Подключения недоступны"
 
 msgid "Connectivity probe failed"
 msgstr "Проверка соединения не прошла"
+
+msgid "Copied"
+msgstr ""
 
 msgid "Copy"
 msgstr "Копировать"
@@ -1568,9 +1571,6 @@ msgstr "Автообновление подписи"
 msgid "Subscription info:"
 msgstr "Информация о подписке:"
 
-msgid "Subscription update completed"
-msgstr "Обновление подписок завершено"
-
 msgid "Subscription update failed"
 msgstr "Обновление подписки завершилось ошибкой"
 
@@ -1586,8 +1586,8 @@ msgstr "URL подписки не может быть пустым"
 msgid "Subscription URL settings"
 msgstr "Настройки URL подписки"
 
-msgid "Successfully copied!"
-msgstr "Успешно скопировано!"
+msgid "Subscriptions updated"
+msgstr ""
 
 msgid "System info"
 msgstr "Системная информация"

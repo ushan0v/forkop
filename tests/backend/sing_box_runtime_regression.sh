@@ -615,7 +615,7 @@ JSON
 mkdir -p "$WORK_DIR/subscriptions" "$WORK_DIR/persistent-subscription-cache"
 for source in proxy-subscription-1 proxy-subscription-2 test-subscription-1; do
   cat >"$WORK_DIR/subscriptions/$source.json" <<'JSON'
-{"outbounds":[{"type":"socks","tag":"subscription-proxy","server":"127.0.0.1","server_port":1080}]}
+{"outbounds":[{"type":"socks","tag":"subscription-proxy","server":"127.0.0.1","server_port":1080,"share_link":"socks5://127.0.0.1:1080#subscription-proxy"}]}
 JSON
   printf '%s' 'https://example.com/sub.txt' >"$WORK_DIR/subscriptions/$source.url"
   cat >"$WORK_DIR/persistent-subscription-cache/$source.metadata.json" <<'JSON'
@@ -922,6 +922,11 @@ assert(disabled_grouped_state.linkRefs["grouped-out-1"].sourceIndex == 2, "visib
 
 let proxy_cache = json(fs.readfile(dir + "/subscription-metadata.json.section-cache/proxy.json"));
 let test_cache = json(fs.readfile(dir + "/subscription-metadata.json.section-cache/test.json"));
+let proxy_share_link_cached = false;
+for (let tag, link in proxy_cache.links || {})
+    if (link == "socks5://127.0.0.1:1080#subscription-proxy")
+        proxy_share_link_cached = true;
+assert(proxy_share_link_cached, "subscription share link cached for instant dashboard copy");
 let proxy_metadata = as_array(proxy_cache.subscriptionMetadata);
 let test_metadata = as_array(test_cache.subscriptionMetadata);
 assert(length(proxy_metadata) == 2, "duplicate subscription URL metadata kept for both proxy sources");

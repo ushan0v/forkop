@@ -624,6 +624,7 @@ function buildUrlTestInfo({
   groupCache,
   proxyByCode,
   manualLinkByCode,
+  cachedProxyLinks,
   outboundMetadata,
   subscriptionCopyableCodes,
   showDetectedCountries,
@@ -634,6 +635,7 @@ function buildUrlTestInfo({
   groupCache?: UrlTestCacheGroup;
   proxyByCode: Map<string, ClashProxyEntry>;
   manualLinkByCode: Map<string, string>;
+  cachedProxyLinks: Map<string, string>;
   outboundMetadata?: Podkop.GetOutboundMetadata;
   subscriptionCopyableCodes: Set<string>;
   showDetectedCountries: boolean;
@@ -647,7 +649,10 @@ function buildUrlTestInfo({
   const outbounds = sortUrlTestMembers(
     childCodes.flatMap((childCode) => {
       const childEntry = proxyByCode.get(childCode);
-      const link = manualLinkByCode.get(childCode) || '';
+      const link =
+        manualLinkByCode.get(childCode) ||
+        cachedProxyLinks.get(childCode) ||
+        '';
       const canCopyLink =
         isCopyableProxyLink(link) || subscriptionCopyableCodes.has(childCode);
 
@@ -696,6 +701,7 @@ function buildProxyGroupOutbounds(
   outboundMetadata?: Podkop.GetOutboundMetadata,
   urltestGroups: Record<string, UrlTestCacheGroup> = {},
   subscriptionCopyableCodes: Set<string> = new Set(),
+  cachedProxyLinks: Map<string, string> = new Map(),
 ) {
   const sectionName = section['.name'];
   const proxyByCode = getProxyEntryByCode(proxies);
@@ -752,7 +758,8 @@ function buildProxyGroupOutbounds(
     }
 
     const urlTestConfig = urlTestConfigByCode.get(item.code);
-    const link = manualLinkByCode.get(item.code) || '';
+    const link =
+      manualLinkByCode.get(item.code) || cachedProxyLinks.get(item.code) || '';
     const canCopyLink =
       isCopyableProxyLink(link) || subscriptionCopyableCodes.has(item.code);
     const displayName =
@@ -779,6 +786,7 @@ function buildProxyGroupOutbounds(
               groupCache: urltestGroups[item.code],
               proxyByCode,
               manualLinkByCode,
+              cachedProxyLinks,
               outboundMetadata,
               subscriptionCopyableCodes,
               showDetectedCountries:
@@ -968,6 +976,14 @@ function getSubscriptionCopyableCodes(dashboardCache?: DashboardSectionCache) {
   return codes;
 }
 
+function getCachedProxyLinks(dashboardCache?: DashboardSectionCache) {
+  return new Map(
+    Object.entries(objectMap(dashboardCache?.links)).filter(([, link]) =>
+      isCopyableProxyLink(link),
+    ),
+  );
+}
+
 export async function getDashboardSections(
   options: IGetDashboardSectionsOptions = {},
 ): Promise<IGetDashboardSectionsResponse> {
@@ -1017,6 +1033,9 @@ export async function getDashboardSections(
           const subscriptionCopyableCodes = includeSubscriptionCopyState
             ? getSubscriptionCopyableCodes(dashboardCache)
             : new Set<string>();
+          const cachedProxyLinks = includeSubscriptionCopyState
+            ? getCachedProxyLinks(dashboardCache)
+            : new Map<string, string>();
           const urltestGroups = getUrlTestGroups(dashboardCache);
           const { selector, latencyTestCode, latencyTestCodes, outbounds } =
             buildProxyGroupOutbounds(
@@ -1025,6 +1044,7 @@ export async function getDashboardSections(
               outboundMetadata,
               urltestGroups,
               subscriptionCopyableCodes,
+              cachedProxyLinks,
             );
 
           return {

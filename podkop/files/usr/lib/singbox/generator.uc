@@ -592,6 +592,7 @@ function add_subscription_source_with_state(config, section, source_index, sourc
     let prepared = [];
     let source_indices = [];
     let display_names = [];
+    let source_links = [];
     let group_flags = [];
     let hidden_flags = [];
     let tag_map = {};
@@ -618,6 +619,7 @@ function add_subscription_source_with_state(config, section, source_index, sourc
         push(prepared, copy_subscription_outbound(outbound, new_tag));
         push(source_indices, i + 1);
         push(display_names, display_name);
+        push(source_links, as_string(outbound.share_link || ""));
         push(group_flags, subscription_group_outbound(outbound));
         push(hidden_flags, subscription_hidden_outbound(outbound, visibility_refs, hide_urltest_group_outbounds, hide_detour_outbounds));
     }
@@ -639,7 +641,10 @@ function add_subscription_source_with_state(config, section, source_index, sourc
         added++;
         if (!is_group)
             push(urltest_candidate_tags, outbound.tag);
+        if (source_links[i] != "")
+            outbound.source_link = source_links[i];
         runtime_subscription.remember_source_outbound(state, outbound.tag, source_section, source_index, source_indices[i], display_names[i], outbound);
+        delete outbound.source_link;
         if (hidden_flags[i] !== true) {
             push(selector_tags, outbound.tag);
             runtime_subscription.remember_urltest_group(state, outbound.tag, display_names[i], outbound);
