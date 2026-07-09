@@ -696,6 +696,23 @@ function renderDetailsUrl(value: unknown) {
   );
 }
 
+function getDetectedCountryFlag(country?: string) {
+  const code = `${country || ''}`.trim().toUpperCase();
+
+  if (!/^[A-Z]{2}$/.test(code)) {
+    return '';
+  }
+
+  return String.fromCodePoint(
+    ...code.split('').map((char) => 0x1f1e6 + char.charCodeAt(0) - 65),
+  );
+}
+
+function renderDetailsMemberName(member: Podkop.UrlTestMember) {
+  const countryFlag = getDetectedCountryFlag(member.country);
+  return countryFlag ? `${countryFlag} ${member.displayName}` : member.displayName;
+}
+
 function renderUrlTestSelectedValue(info: Podkop.UrlTestInfo) {
   const selectedMember = info.outbounds.find((member) => member.selected);
   const selectedName =
@@ -713,7 +730,7 @@ function renderUrlTestSelectedValue(info: Podkop.UrlTestInfo) {
       E(
         'span',
         { class: 'pdk_dashboard-page__urltest-details__selected-name' },
-        name,
+        selectedMember ? renderDetailsMemberName(selectedMember) : name,
       ),
       ...(selectedMember?.type
         ? [
@@ -828,7 +845,7 @@ function renderUrlTestInfoModal(
                       class: 'pdk_dashboard-page__urltest-details__row-name',
                     },
                     [
-                      E('b', {}, member.displayName),
+                      E('b', {}, renderDetailsMemberName(member)),
                       ...(member.type
                         ? [
                             E(
@@ -976,7 +993,7 @@ function renderPriorityMemberName(member: Podkop.PriorityMember) {
     E(
       'span',
       { class: 'pdk_dashboard-page__urltest-details__priority-node' },
-      member.displayName,
+      renderDetailsMemberName(member),
     ),
   ];
 }
@@ -1011,11 +1028,11 @@ function renderPriorityInfoModal(
       value: info.recoveryCheckInterval,
     },
     {
-      label: _('Fastest node selection'),
+      label: _('Select the fastest node'),
       value: info.pickFastest,
     },
     {
-      label: _('Current-level fastest node selection'),
+      label: _('Automatically select the fastest node in the current level'),
       value: info.switchToFasterSamePriority,
     },
     ...(info.switchToFasterSamePriority

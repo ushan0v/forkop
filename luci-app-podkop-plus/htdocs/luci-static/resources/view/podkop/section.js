@@ -2543,9 +2543,9 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   o = itemSection.option(
     form.Flag,
     "pick_fastest",
-    _("Fastest node selection"),
+    _("Select the fastest node"),
     _(
-      "Check the whole level and select the alive server with the lowest delay",
+      "When switching to another level, test every server and select the fastest instead of the first working one.",
     ),
   );
   o.default = "0";
@@ -2554,9 +2554,9 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   o = itemSection.option(
     form.Flag,
     "switch_to_faster_same_priority",
-    _("Current-level fastest node selection"),
+    _("Automatically select the fastest node in the current level"),
     _(
-      "Periodically check the current level and switch to a faster alive server",
+      "Periodically check the current level and switch to a faster server even when the current one works.",
     ),
   );
   o.default = "0";

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-09 21:50+0300\n"
-"PO-Revision-Date: 2026-07-09 21:50+0300\n"
+"POT-Creation-Date: 2026-07-09 23:41+0300\n"
+"PO-Revision-Date: 2026-07-09 23:41+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -40,13 +40,13 @@ msgstr ""
 msgid "+ Add URLTest"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1538
-#: src/podkop/tabs/dashboard/initController.ts:1549
+#: src/podkop/tabs/dashboard/initController.ts:1555
+#: src/podkop/tabs/dashboard/initController.ts:1566
 msgid "✔ Running"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1539
-#: src/podkop/tabs/dashboard/initController.ts:1550
+#: src/podkop/tabs/dashboard/initController.ts:1556
+#: src/podkop/tabs/dashboard/initController.ts:1567
 msgid "✘ Stopped"
 msgstr ""
 
@@ -68,7 +68,7 @@ msgstr ""
 msgid "Active"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1496
+#: src/podkop/tabs/dashboard/initController.ts:1513
 msgid "Active Connections"
 msgstr ""
 
@@ -183,6 +183,11 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1968
 msgid "Automatic User-Agent selection"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2557
+#: src/podkop/tabs/dashboard/initController.ts:1035
+msgid "Automatically select the fastest node in the current level"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:43
@@ -312,12 +317,8 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2124
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2508
-#: src/podkop/tabs/dashboard/initController.ts:1005
+#: src/podkop/tabs/dashboard/initController.ts:1022
 msgid "Check interval"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2547
-msgid "Check the whole level and select the alive server with the lowest delay"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2521
@@ -330,7 +331,7 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2150
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2495
-#: src/podkop/tabs/dashboard/initController.ts:1003
+#: src/podkop/tabs/dashboard/initController.ts:1020
 msgid "Check URL"
 msgstr ""
 
@@ -388,8 +389,8 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1707
 #: src/partials/modal/renderModal.ts:263
-#: src/podkop/tabs/dashboard/initController.ts:890
-#: src/podkop/tabs/dashboard/initController.ts:1146
+#: src/podkop/tabs/dashboard/initController.ts:907
+#: src/podkop/tabs/dashboard/initController.ts:1163
 #: src/podkop/tabs/monitoring/initController.ts:791
 #: src/podkop/tabs/monitoring/initController.ts:841
 msgid "Close"
@@ -468,10 +469,10 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:860
-#: src/podkop/tabs/dashboard/initController.ts:1116
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:469
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:470
+#: src/podkop/tabs/dashboard/initController.ts:877
+#: src/podkop/tabs/dashboard/initController.ts:1133
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:366
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:367
 msgid "Copy proxy link"
 msgstr ""
 
@@ -487,11 +488,6 @@ msgstr ""
 msgid "Current section cannot download its own subscription"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2557
-#: src/podkop/tabs/dashboard/initController.ts:1018
-msgid "Current-level fastest node selection"
-msgstr ""
-
 #: src/podkop/tabs/dashboard/partials/renderWidget.ts:22
 msgid "Currently unavailable"
 msgstr ""
@@ -504,7 +500,7 @@ msgstr ""
 msgid "Dashboard"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:142
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:47
 msgid "Dashboard currently unavailable"
 msgstr ""
 
@@ -672,8 +668,8 @@ msgstr ""
 msgid "Dont Touch My DHCP!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1422
-#: src/podkop/tabs/dashboard/initController.ts:1460
+#: src/podkop/tabs/dashboard/initController.ts:1439
+#: src/podkop/tabs/dashboard/initController.ts:1477
 msgid "Downlink"
 msgstr ""
 
@@ -837,7 +833,7 @@ msgstr ""
 msgid "Expecting: %s"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:229
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:134
 msgid "Expires"
 msgstr ""
 
@@ -882,8 +878,8 @@ msgstr ""
 #: src/podkop/tabs/dashboard/initController.ts:280
 #: src/podkop/tabs/dashboard/initController.ts:326
 #: src/podkop/tabs/dashboard/initController.ts:330
-#: src/podkop/tabs/dashboard/initController.ts:1204
-#: src/podkop/tabs/dashboard/initController.ts:1208
+#: src/podkop/tabs/dashboard/initController.ts:1221
+#: src/podkop/tabs/dashboard/initController.ts:1225
 msgid "Failed to update subscriptions"
 msgstr ""
 
@@ -908,17 +904,12 @@ msgid "Fallback on unknown DC"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2568
-#: src/podkop/tabs/dashboard/initController.ts:1024
+#: src/podkop/tabs/dashboard/initController.ts:1041
 msgid "Faster server search interval"
 msgstr ""
 
 #: src/podkop/methods/custom/getDashboardSections.ts:677
 msgid "Fastest"
-msgstr ""
-
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2546
-#: src/podkop/tabs/dashboard/initController.ts:1014
-msgid "Fastest node selection"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:136
@@ -1007,7 +998,7 @@ msgid "Hide values"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2532
-#: src/podkop/tabs/dashboard/initController.ts:1010
+#: src/podkop/tabs/dashboard/initController.ts:1027
 msgid "Higher-level check interval"
 msgstr ""
 
@@ -1038,7 +1029,7 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2163
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3036
-#: src/podkop/tabs/dashboard/initController.ts:779
+#: src/podkop/tabs/dashboard/initController.ts:796
 msgid "Idle timeout"
 msgstr ""
 
@@ -1126,8 +1117,8 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2177
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2584
-#: src/podkop/tabs/dashboard/initController.ts:781
-#: src/podkop/tabs/dashboard/initController.ts:1030
+#: src/podkop/tabs/dashboard/initController.ts:798
+#: src/podkop/tabs/dashboard/initController.ts:1047
 msgid "Interrupt existing connections"
 msgstr ""
 
@@ -1139,7 +1130,7 @@ msgstr ""
 msgid "Interrupt existing connections when URLTest switches the selected server"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:777
+#: src/podkop/tabs/dashboard/initController.ts:794
 msgid "Interval"
 msgstr ""
 
@@ -1481,7 +1472,7 @@ msgstr ""
 msgid "Latest: %s"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:963
+#: src/podkop/tabs/dashboard/initController.ts:980
 msgid "Level"
 msgstr ""
 
@@ -1534,7 +1525,7 @@ msgstr ""
 msgid "Match destination ports. Use a single port or a range"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1500
+#: src/podkop/tabs/dashboard/initController.ts:1517
 msgid "Memory Usage"
 msgstr ""
 
@@ -1617,8 +1608,8 @@ msgstr ""
 
 #: src/podkop/tabs/dashboard/initController.ts:653
 #: src/podkop/tabs/dashboard/initController.ts:657
-#: src/podkop/tabs/dashboard/initController.ts:705
-#: src/podkop/tabs/dashboard/initController.ts:918
+#: src/podkop/tabs/dashboard/initController.ts:722
+#: src/podkop/tabs/dashboard/initController.ts:935
 msgid "No"
 msgstr ""
 
@@ -1658,13 +1649,13 @@ msgstr ""
 msgid "No rules use Zapret2"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:875
-#: src/podkop/tabs/dashboard/initController.ts:1131
+#: src/podkop/tabs/dashboard/initController.ts:892
+#: src/podkop/tabs/dashboard/initController.ts:1148
 msgid "Node list is empty"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:805
-#: src/podkop/tabs/dashboard/initController.ts:1054
+#: src/podkop/tabs/dashboard/initController.ts:822
+#: src/podkop/tabs/dashboard/initController.ts:1071
 msgid "Nodes"
 msgstr ""
 
@@ -1828,7 +1819,7 @@ msgid "Pending"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2558
-msgid "Periodically check the current level and switch to a faster alive server"
+msgid "Periodically check the current level and switch to a faster server even when the current one works."
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2188
@@ -1933,13 +1924,13 @@ msgstr ""
 msgid "Preferred IP"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1161
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:507
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:508
+#: src/podkop/tabs/dashboard/initController.ts:1178
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:404
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:405
 msgid "Priority details"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:991
+#: src/podkop/tabs/dashboard/initController.ts:1008
 msgid "Priority details are unavailable"
 msgstr ""
 
@@ -2004,7 +1995,7 @@ msgstr ""
 msgid "Reality short ID must contain 1-8 hex digits"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:230
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:135
 msgid "Refill"
 msgstr ""
 
@@ -2225,6 +2216,11 @@ msgstr ""
 msgid "Select path for sing-box config file. Change this ONLY if you know what you are doing"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2546
+#: src/podkop/tabs/dashboard/initController.ts:1031
+msgid "Select the fastest node"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:534
 msgid "Select the log level for sing-box"
 msgstr ""
@@ -2241,8 +2237,8 @@ msgstr ""
 msgid "Select the WAN interfaces to be monitored"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:773
-#: src/podkop/tabs/dashboard/initController.ts:1000
+#: src/podkop/tabs/dashboard/initController.ts:790
+#: src/podkop/tabs/dashboard/initController.ts:1017
 msgid "Selected"
 msgstr ""
 
@@ -2310,7 +2306,7 @@ msgstr ""
 msgid "Service list"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1533
+#: src/podkop/tabs/dashboard/initController.ts:1550
 msgid "Services info"
 msgstr ""
 
@@ -2455,7 +2451,7 @@ msgstr ""
 msgid "Subscription auto update"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:244
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:149
 msgid "Subscription info:"
 msgstr ""
 
@@ -2484,7 +2480,7 @@ msgstr ""
 msgid "Subscriptions updated"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1493
+#: src/podkop/tabs/dashboard/initController.ts:1510
 msgid "System info"
 msgstr ""
 
@@ -2512,9 +2508,9 @@ msgstr ""
 msgid "Tailscale hostname"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:337
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:345
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:594
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:242
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:250
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:491
 msgid "Test latency"
 msgstr ""
 
@@ -2530,7 +2526,7 @@ msgstr ""
 msgid "Test servers whose names match the expression."
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:776
+#: src/podkop/tabs/dashboard/initController.ts:793
 msgid "Testing URL"
 msgstr ""
 
@@ -2620,7 +2616,7 @@ msgid "tiny"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2136
-#: src/podkop/tabs/dashboard/initController.ts:778
+#: src/podkop/tabs/dashboard/initController.ts:795
 msgid "Tolerance"
 msgstr ""
 
@@ -2628,8 +2624,8 @@ msgstr ""
 msgid "Top level has the highest priority; lower levels are used as fallback"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1419
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:225
+#: src/podkop/tabs/dashboard/initController.ts:1436
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:130
 msgid "Traffic"
 msgstr ""
 
@@ -2637,7 +2633,7 @@ msgstr ""
 msgid "Traffic for this level goes directly."
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1453
+#: src/podkop/tabs/dashboard/initController.ts:1470
 msgid "Traffic Total"
 msgstr ""
 
@@ -2707,7 +2703,7 @@ msgid "Unable to validate the NFQWS2 strategy through the backend parser."
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2520
-#: src/podkop/tabs/dashboard/initController.ts:1008
+#: src/podkop/tabs/dashboard/initController.ts:1025
 msgid "Unavailability timeout"
 msgstr ""
 
@@ -2790,9 +2786,9 @@ msgstr ""
 msgid "Update is available"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:314
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:327
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:328
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:219
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:232
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:233
 msgid "Update subscriptions"
 msgstr ""
 
@@ -2800,8 +2796,8 @@ msgstr ""
 msgid "Update this subscription automatically"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1421
-#: src/podkop/tabs/dashboard/initController.ts:1456
+#: src/podkop/tabs/dashboard/initController.ts:1438
+#: src/podkop/tabs/dashboard/initController.ts:1473
 msgid "Uplink"
 msgstr ""
 
@@ -2830,13 +2826,13 @@ msgstr ""
 msgid "URLTest"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:905
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:488
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:489
+#: src/podkop/tabs/dashboard/initController.ts:922
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:385
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:386
 msgid "URLTest details"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:764
+#: src/podkop/tabs/dashboard/initController.ts:781
 msgid "URLTest details are unavailable"
 msgstr ""
 
@@ -3005,6 +3001,10 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:6331
 msgid "What Podkop Plus should do when this section matches"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2547
+msgid "When switching to another level, test every server and select the fastest instead of the first working one."
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:2784

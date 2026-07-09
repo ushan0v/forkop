@@ -37,101 +37,6 @@ interface IRenderSectionsProps {
   selectorSwitchingTag?: string;
 }
 
-const REGION_NAME_FALLBACKS: Record<string, string> = {
-  XK: 'Kosovo',
-};
-const regionDisplayNamesCache: Record<string, string> = {};
-
-function getLuciLanguage() {
-  const luci = (globalThis as { L?: { env?: { lang?: string } } }).L;
-
-  if (luci?.env?.lang) {
-    return `${luci.env.lang}`.replace('_', '-');
-  }
-
-  if (document.documentElement.lang) {
-    return document.documentElement.lang;
-  }
-
-  return navigator.language || 'en';
-}
-
-function getCountryDisplayName(country?: string) {
-  const code = `${country || ''}`.trim().toUpperCase();
-
-  if (!/^[A-Z]{2}$/.test(code)) {
-    return '';
-  }
-
-  const language = getLuciLanguage();
-  const cacheKey = `${language}:${code}`;
-
-  if (regionDisplayNamesCache[cacheKey]) {
-    return regionDisplayNamesCache[cacheKey];
-  }
-
-  try {
-    const displayNamesConstructor = (
-      Intl as unknown as {
-        DisplayNames?: new (
-          locales: string[],
-          options: { type: 'region' },
-        ) => { of(code: string): string | undefined };
-      }
-    ).DisplayNames;
-
-    if (displayNamesConstructor) {
-      const displayNames = new displayNamesConstructor([language, 'en'], {
-        type: 'region',
-      });
-      const displayName = displayNames.of(code);
-
-      if (displayName && displayName !== code) {
-        regionDisplayNamesCache[cacheKey] = displayName;
-        return displayName;
-      }
-    }
-  } catch (_error) {
-    // Fall through to the static fallback.
-  }
-
-  const fallback = REGION_NAME_FALLBACKS[code] || code;
-  regionDisplayNamesCache[cacheKey] = fallback;
-  return fallback;
-}
-
-function getCountryFlagEmoji(country?: string) {
-  const code = `${country || ''}`.trim().toUpperCase();
-
-  if (!/^[A-Z]{2}$/.test(code)) {
-    return '';
-  }
-
-  return String.fromCodePoint(
-    ...code.split('').map((char) => 0x1f1e6 + char.charCodeAt(0) - 65),
-  );
-}
-
-function renderCountryFlag(country?: string) {
-  const countryFlag = getCountryFlagEmoji(country);
-
-  if (!countryFlag) {
-    return undefined;
-  }
-
-  const countryName = getCountryDisplayName(country);
-
-  return E(
-    'span',
-    {
-      class: 'pdk_dashboard-page__outbound-grid__item__country',
-      title: countryName || undefined,
-      'aria-label': countryName || undefined,
-    },
-    countryFlag,
-  );
-}
-
 function renderFailedState() {
   return E(
     'div',
@@ -394,7 +299,6 @@ function renderDefaultState({
 
     const canCopyLink =
       Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
-    const countryFlag = renderCountryFlag(outbound.country);
     const selectorSwitching = Boolean(selectorSwitchingTag);
     const outboundSwitching = selectorSwitchingTag === outbound.code;
     const canChooseOutbound =
@@ -419,13 +323,6 @@ function renderDefaultState({
     ]
       .filter(Boolean)
       .join(' ');
-    const typeChildren = countryFlag
-      ? ([countryFlag, outbound.type ? ` ${outbound.type}` : ''] as (
-          | Node
-          | string
-        )[])
-      : ([outbound.type].filter(Boolean) as string[]);
-
     return E(
       'div',
       {
@@ -520,7 +417,7 @@ function renderDefaultState({
           E(
             'div',
             { class: 'pdk_dashboard-page__outbound-grid__item__type' },
-            typeChildren,
+            [outbound.type].filter(Boolean),
           ),
           E(
             'div',

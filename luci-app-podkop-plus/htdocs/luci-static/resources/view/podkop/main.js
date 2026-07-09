@@ -1895,73 +1895,6 @@ function prettyBytes(n) {
 }
 
 // src/podkop/tabs/dashboard/partials/renderSections.ts
-var REGION_NAME_FALLBACKS = {
-  XK: "Kosovo"
-};
-var regionDisplayNamesCache = {};
-function getLuciLanguage() {
-  const luci = globalThis.L;
-  if (luci?.env?.lang) {
-    return `${luci.env.lang}`.replace("_", "-");
-  }
-  if (document.documentElement.lang) {
-    return document.documentElement.lang;
-  }
-  return navigator.language || "en";
-}
-function getCountryDisplayName(country) {
-  const code = `${country || ""}`.trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) {
-    return "";
-  }
-  const language = getLuciLanguage();
-  const cacheKey = `${language}:${code}`;
-  if (regionDisplayNamesCache[cacheKey]) {
-    return regionDisplayNamesCache[cacheKey];
-  }
-  try {
-    const displayNamesConstructor = Intl.DisplayNames;
-    if (displayNamesConstructor) {
-      const displayNames = new displayNamesConstructor([language, "en"], {
-        type: "region"
-      });
-      const displayName = displayNames.of(code);
-      if (displayName && displayName !== code) {
-        regionDisplayNamesCache[cacheKey] = displayName;
-        return displayName;
-      }
-    }
-  } catch (_error) {
-  }
-  const fallback = REGION_NAME_FALLBACKS[code] || code;
-  regionDisplayNamesCache[cacheKey] = fallback;
-  return fallback;
-}
-function getCountryFlagEmoji(country) {
-  const code = `${country || ""}`.trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) {
-    return "";
-  }
-  return String.fromCodePoint(
-    ...code.split("").map((char) => 127462 + char.charCodeAt(0) - 65)
-  );
-}
-function renderCountryFlag(country) {
-  const countryFlag = getCountryFlagEmoji(country);
-  if (!countryFlag) {
-    return void 0;
-  }
-  const countryName = getCountryDisplayName(country);
-  return E(
-    "span",
-    {
-      class: "pdk_dashboard-page__outbound-grid__item__country",
-      title: countryName || void 0,
-      "aria-label": countryName || void 0
-    },
-    countryFlag
-  );
-}
 function renderFailedState() {
   return E(
     "div",
@@ -2165,7 +2098,6 @@ function renderDefaultState({
       return "pdk_dashboard-page__outbound-grid__item__latency--red";
     }
     const canCopyLink = Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
-    const countryFlag = renderCountryFlag(outbound.country);
     const selectorSwitching = Boolean(selectorSwitchingTag);
     const outboundSwitching = selectorSwitchingTag === outbound.code;
     const canChooseOutbound = section.withTagSelect && outbound.runtimeAvailable !== false && !selectorSwitching && !outbound.selected;
@@ -2176,7 +2108,6 @@ function renderDefaultState({
       section.withTagSelect && !canChooseOutbound ? "pdk_dashboard-page__outbound-grid__item--disabled" : "",
       outboundSwitching ? "pdk_dashboard-page__outbound-grid__item--switching" : ""
     ].filter(Boolean).join(" ");
-    const typeChildren = countryFlag ? [countryFlag, outbound.type ? ` ${outbound.type}` : ""] : [outbound.type].filter(Boolean);
     return E(
       "div",
       {
@@ -2257,7 +2188,7 @@ function renderDefaultState({
           E(
             "div",
             { class: "pdk_dashboard-page__outbound-grid__item__type" },
-            typeChildren
+            [outbound.type].filter(Boolean)
           ),
           E(
             "div",
@@ -6133,6 +6064,19 @@ function renderDetailsUrl(value) {
     url
   );
 }
+function getDetectedCountryFlag(country) {
+  const code = `${country || ""}`.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) {
+    return "";
+  }
+  return String.fromCodePoint(
+    ...code.split("").map((char) => 127462 + char.charCodeAt(0) - 65)
+  );
+}
+function renderDetailsMemberName(member) {
+  const countryFlag = getDetectedCountryFlag(member.country);
+  return countryFlag ? `${countryFlag} ${member.displayName}` : member.displayName;
+}
 function renderUrlTestSelectedValue(info) {
   const selectedMember = info.outbounds.find((member) => member.selected);
   const selectedName = selectedMember?.displayName || info.selectedName || info.selectedCode || "";
@@ -6147,7 +6091,7 @@ function renderUrlTestSelectedValue(info) {
       E(
         "span",
         { class: "pdk_dashboard-page__urltest-details__selected-name" },
-        name
+        selectedMember ? renderDetailsMemberName(selectedMember) : name
       ),
       ...selectedMember?.type ? [
         E(
@@ -6238,7 +6182,7 @@ function renderUrlTestInfoModal(section, outbound) {
                   class: "pdk_dashboard-page__urltest-details__row-name"
                 },
                 [
-                  E("b", {}, member.displayName),
+                  E("b", {}, renderDetailsMemberName(member)),
                   ...member.type ? [
                     E(
                       "span",
@@ -6358,7 +6302,7 @@ function renderPriorityMemberName(member) {
     E(
       "span",
       { class: "pdk_dashboard-page__urltest-details__priority-node" },
-      member.displayName
+      renderDetailsMemberName(member)
     )
   ];
 }
@@ -6383,11 +6327,11 @@ function renderPriorityInfoModal(section, outbound) {
       value: info.recoveryCheckInterval
     },
     {
-      label: _("Fastest node selection"),
+      label: _("Select the fastest node"),
       value: info.pickFastest
     },
     {
-      label: _("Current-level fastest node selection"),
+      label: _("Automatically select the fastest node in the current level"),
       value: info.switchToFasterSamePriority
     },
     ...info.switchToFasterSamePriority ? [
