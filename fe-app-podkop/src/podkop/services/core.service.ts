@@ -2,7 +2,11 @@ import { TabServiceInstance } from './tab.service';
 import { store } from './store.service';
 import { logger } from './logger.service';
 import { PodkopLogWatcher } from './podkopLogWatcher.service';
-import { LogNotificationDeduper } from './logNotificationDeduper.service';
+import {
+  getPodkopLogNotification,
+  LogNotificationDeduper,
+  PodkopLogNotification,
+} from './logNotificationDeduper.service';
 import { PodkopShellMethods } from '../methods';
 import {
   registerRuntimeStateResumeRefresh,
@@ -17,10 +21,36 @@ type CoreServiceOptions = {
 const LOG_WATCHER_INTERVAL_MS = 10000;
 const LOG_WATCHER_START_DELAY_MS = 5000;
 
-function showLogErrorNotification(line: string) {
+function componentDisplayName(component: string) {
+  const names: Record<string, string> = {
+    podkop: 'Podkop Plus',
+    sing_box: 'sing-box',
+    zapret: 'Zapret',
+    zapret2: 'Zapret2',
+    byedpi: 'ByeDPI',
+  };
+
+  return names[component] || component;
+}
+
+function showLogNotification(notification: PodkopLogNotification) {
+  if (notification.kind === 'component-update') {
+    const message = _('New version %s is available for %s')
+      .replace('%s', notification.version)
+      .replace('%s', componentDisplayName(notification.component));
+
+    ui.addNotification(
+      _('Component update available'),
+      E('div', {}, message),
+      'warning',
+      'pdk-component-update-notification',
+    );
+    return;
+  }
+
   ui.addNotification(
     _('Podkop Plus Error'),
-    E('div', {}, line),
+    E('div', {}, notification.line),
     'error',
     'pdk-log-error-notification',
   );
@@ -54,7 +84,10 @@ export function coreService(options: CoreServiceOptions = {}) {
       intervalMs: LOG_WATCHER_INTERVAL_MS,
       onNewLog: (line) => {
         if (logNotificationDeduper.shouldNotify(line)) {
-          showLogErrorNotification(line);
+          const notification = getPodkopLogNotification(line);
+          if (notification) {
+            showLogNotification(notification);
+          }
         }
       },
     },
@@ -70,12 +103,9 @@ export function coreService(options: CoreServiceOptions = {}) {
     watcher.start();
   };
   const scheduleStartWatcher = () =>
-    window.setTimeout(
-      () => {
-        void startWatcher();
-      },
-      options.logWatcherStartDelayMs ?? LOG_WATCHER_START_DELAY_MS,
-    );
+    window.setTimeout(() => {
+      void startWatcher();
+    }, options.logWatcherStartDelayMs ?? LOG_WATCHER_START_DELAY_MS);
 
   if (typeof window !== 'undefined') {
     scheduleStartWatcher();

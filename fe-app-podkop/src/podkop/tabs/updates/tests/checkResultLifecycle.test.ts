@@ -41,6 +41,16 @@ describe('updates check result lifecycle', () => {
     ).toBe(false);
   });
 
+  it('keeps cached results on every reopen when automatic checks are enabled', () => {
+    expect(
+      shouldResetCheckResultsOnMount({
+        anyActionLoading: false,
+        preserveCheckResultsOnNextMount: false,
+        persistentCacheEnabled: true,
+      }),
+    ).toBe(false);
+  });
+
   it('requires a fresh state read before rendering cached running component actions', () => {
     expect(
       shouldRefreshComponentStateBeforeRender({

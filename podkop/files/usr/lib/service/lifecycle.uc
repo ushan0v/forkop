@@ -47,6 +47,7 @@ const RELOAD_LOCK_DIR = getenv("PODKOP_RELOAD_LOCK_DIR") || "/var/run/podkop-plu
 
 const LIST_UPDATE_CRON_MARKER = getenv("PODKOP_LIST_UPDATE_CRON_MARKER") || "# podkop-plus-list-update";
 const SUBSCRIPTION_UPDATE_CRON_MARKER = getenv("PODKOP_SUBSCRIPTION_UPDATE_CRON_MARKER") || "# podkop-plus-subscription-update";
+const COMPONENT_UPDATE_CHECK_CRON_MARKER = getenv("PODKOP_COMPONENT_UPDATE_CHECK_CRON_MARKER") || "# podkop-plus-component-update-check";
 const RELOAD_STATE_FORMAT = int(getenv("PODKOP_RELOAD_STATE_FORMAT") || "1");
 const RUNTIME_CACHE_FORMAT = int(getenv("PODKOP_RUNTIME_CACHE_FORMAT") || "7");
 const RUNTIME_STABLE_MIN_AGE = int(getenv("PODKOP_RUNTIME_STABLE_MIN_AGE") || "2");
@@ -620,7 +621,8 @@ function refresh_cron() {
         "refresh-cron-from-uci",
         BIN_PATH,
         LIST_UPDATE_CRON_MARKER,
-        SUBSCRIPTION_UPDATE_CRON_MARKER
+        SUBSCRIPTION_UPDATE_CRON_MARKER,
+        COMPONENT_UPDATE_CHECK_CRON_MARKER
     ]);
 }
 
@@ -628,7 +630,8 @@ function remove_cron_jobs() {
     return module_status(UPDATES_UC, [
         "remove-cron-jobs",
         LIST_UPDATE_CRON_MARKER,
-        SUBSCRIPTION_UPDATE_CRON_MARKER
+        SUBSCRIPTION_UPDATE_CRON_MARKER,
+        COMPONENT_UPDATE_CHECK_CRON_MARKER
     ]);
 }
 

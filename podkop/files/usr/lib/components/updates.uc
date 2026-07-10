@@ -32,6 +32,9 @@ const SERVICE_INIT = getenv("PODKOP_SERVICE_INIT") || "/etc/init.d/podkop-plus";
 const PRIORITY_UC = getenv("PODKOP_PRIORITY_UC") || LIB_DIR + "/singbox/priority.uc";
 const DNS_FAILOVER_UC = getenv("PODKOP_DNS_FAILOVER_UC") || LIB_DIR + "/singbox/dns_failover.uc";
 const COMPONENT_JOB_DIR = getenv("UPDATES_JOB_DIR") || getenv("PODKOP_UI_COMPONENT_ACTION_DIR") || "/var/run/podkop-plus/component-actions";
+const COMPONENT_UPDATE_CHECK_CACHE_DIR = getenv("PODKOP_COMPONENT_UPDATE_CHECK_CACHE_DIR") || RUNTIME_STATE_DIR + "/component-update-checks";
+const COMPONENT_UPDATE_CHECK_STATE_FILE = getenv("PODKOP_COMPONENT_UPDATE_CHECK_STATE_FILE") || RUNTIME_STATE_DIR + "/component-update-check.timestamp";
+const COMPONENT_UPDATE_CHECK_LOCK_DIR = getenv("PODKOP_COMPONENT_UPDATE_CHECK_LOCK_DIR") || RUNTIME_STATE_DIR + "/component-update-check.lock";
 const COMPONENT_JOB_FINISHED_TTL_MINUTES = getenv("UPDATES_JOB_FINISHED_TTL_MINUTES") || "60";
 const COMPONENT_JOB_ORPHAN_OUTPUT_TTL_MINUTES = getenv("UPDATES_JOB_ORPHAN_OUTPUT_TTL_MINUTES") || "60";
 const COMPONENT_JOB_STALE_GRACE_SECONDS = getenv("UPDATES_JOB_STALE_GRACE_SECONDS") || getenv("PODKOP_UI_ACTION_STALE_GRACE_SECONDS") || "15";
@@ -590,6 +593,16 @@ function settings_update_interval(settings) {
     return value != "" ? value : "1d";
 }
 
+function settings_component_update_check_interval(settings) {
+    settings = object_or_empty(settings);
+
+    if (!bool_option(settings, "component_update_check_enabled", false))
+        return "";
+
+    let value = option(settings, "component_update_check_interval", "1d");
+    return value != "" ? value : "1d";
+}
+
 function section_subscription_update_interval(section) {
     let result = "";
     let result_seconds = 0;
@@ -653,7 +666,7 @@ function filter_cron_markers(markers) {
     print(filter_cron_markers_text(read_stdin(), markers));
 }
 
-function cron_refresh_plan_rows(settings, sections, bin, list_marker, subscription_marker) {
+function cron_refresh_plan_rows(settings, sections, bin, list_marker, subscription_marker, component_marker) {
     let status = 0;
     let rows = [];
 
@@ -703,6 +716,18 @@ function cron_refresh_plan_rows(settings, sections, bin, list_marker, subscripti
             push(rows, "subscription\t" + due_check_cron_schedule_text(min_interval) + " " + as_string(bin) + " subscription_update_if_due " + as_string(subscription_marker));
     }
 
+    let component_interval = settings_component_update_check_interval(settings);
+    if (component_interval != "") {
+        let component_seconds = duration_to_seconds_value(component_interval);
+        if (component_seconds == null) {
+            push(rows, "component-error\t" + as_string(component_interval));
+            status = 1;
+        }
+        else {
+            push(rows, "component\t" + due_check_cron_schedule_text(component_seconds) + " " + as_string(bin) + " component_updates_if_due " + as_string(component_marker));
+        }
+    }
+
     return {
         status,
         rows
@@ -716,13 +741,13 @@ function print_cron_refresh_plan(result) {
     exit(int(result.status || 0));
 }
 
-function cron_refresh_plan(settings, sections, bin, list_marker, subscription_marker) {
-    print_cron_refresh_plan(cron_refresh_plan_rows(settings, sections, bin, list_marker, subscription_marker));
+function cron_refresh_plan(settings, sections, bin, list_marker, subscription_marker, component_marker) {
+    print_cron_refresh_plan(cron_refresh_plan_rows(settings, sections, bin, list_marker, subscription_marker, component_marker));
 }
 
-function cron_refresh_apply_result(settings, sections, existing_crontab, bin, list_marker, subscription_marker) {
-    let plan = cron_refresh_plan_rows(settings, sections, bin, list_marker, subscription_marker);
-    let filtered_crontab = filter_cron_markers_text(existing_crontab, [ list_marker, subscription_marker ]);
+function cron_refresh_apply_result(settings, sections, existing_crontab, bin, list_marker, subscription_marker, component_marker) {
+    let plan = cron_refresh_plan_rows(settings, sections, bin, list_marker, subscription_marker, component_marker);
+    let filtered_crontab = filter_cron_markers_text(existing_crontab, [ list_marker, subscription_marker, component_marker ]);
     let cron_jobs = "";
     let logs = [ { level: "info", message: "The cron job removed" } ];
     let tab = "\t";
@@ -753,6 +778,13 @@ function cron_refresh_apply_result(settings, sections, existing_crontab, bin, li
             let interval = section_separator >= 0 ? substr(rest, section_separator + 1) : "";
             push(logs, { level: "error", message: "Invalid subscription_update_interval value for rule '" + section + "': " + interval });
         }
+        else if (type == "component") {
+            cron_jobs += rest + "\n";
+            push(logs, { level: "info", message: "The component update check cron job has been created: " + rest });
+        }
+        else if (type == "component-error") {
+            push(logs, { level: "error", message: "Invalid component_update_check_interval value: " + rest });
+        }
     }
 
     return {
@@ -782,10 +814,10 @@ function log_cron_apply_result(result) {
         log_message(item.message, item.level);
 }
 
-function remove_cron_jobs(list_marker, subscription_marker) {
+function remove_cron_jobs(list_marker, subscription_marker, component_marker) {
     let crontab = command_output_from_args([ "crontab", "-l" ]);
     let result = {
-        crontab: filter_cron_markers_text(crontab, [ list_marker, subscription_marker ]),
+        crontab: filter_cron_markers_text(crontab, [ list_marker, subscription_marker, component_marker ]),
         logs: [ { level: "info", message: "The cron job removed" } ]
     };
 
@@ -795,14 +827,15 @@ function remove_cron_jobs(list_marker, subscription_marker) {
     log_cron_apply_result(result);
 }
 
-function refresh_cron_from_sources(settings, sections, bin, list_marker, subscription_marker) {
+function refresh_cron_from_sources(settings, sections, bin, list_marker, subscription_marker, component_marker) {
     let result = cron_refresh_apply_result(
         settings,
         sections,
         command_output_from_args([ "crontab", "-l" ]),
         bin,
         list_marker,
-        subscription_marker
+        subscription_marker,
+        component_marker
     );
 
     if (!write_crontab_text(result.crontab))
@@ -1318,6 +1351,125 @@ function normalize_component_name(component) {
     return component;
 }
 
+function valid_component_name(component) {
+    component = normalize_component_name(component);
+    return component == "podkop" || component == "sing_box" || component == "zapret" ||
+        component == "zapret2" || component == "byedpi";
+}
+
+function component_update_check_cache_path(component) {
+    component = normalize_component_name(component);
+    if (!valid_component_name(component))
+        return "";
+    return COMPONENT_UPDATE_CHECK_CACHE_DIR + "/" + component + ".json";
+}
+
+function component_update_check_cache_enabled() {
+    return settings_component_update_check_interval(uci_settings()) != "";
+}
+
+function component_update_check_result_cacheable(value) {
+    value = object_or_empty(value);
+    let status = as_string(value.status || "");
+    return value.success === true && as_string(value.action) == "check_update" &&
+        valid_component_name(value.component) &&
+        (status == "latest" || status == "outdated" || status == "dev");
+}
+
+function cache_component_update_check_result(value, notify_update) {
+    value = object_or_empty(value);
+    if (!component_update_check_result_cacheable(value))
+        return false;
+
+    let component = normalize_component_name(value.component);
+    let path = component_update_check_cache_path(component);
+    if (path == "" || !ensure_dir(COMPONENT_UPDATE_CHECK_CACHE_DIR))
+        return false;
+
+    let previous = object_or_empty(read_json_file(path));
+    let cached = {
+        success: true,
+        component,
+        action: "check_update",
+        message: as_string(value.message),
+        current_version: as_string(value.current_version),
+        latest_version: as_string(value.latest_version),
+        release_url: as_string(value.release_url),
+        changed: 0,
+        status: as_string(value.status),
+        updated_at: now_seconds()
+    };
+    if (!write_state_file(path, cached))
+        return false;
+
+    if (arg_bool(notify_update) && cached.status == "outdated" &&
+        (as_string(previous.status) != "outdated" ||
+            as_string(previous.latest_version) != cached.latest_version)) {
+        log_message("[component-update] " + component + " " + cached.latest_version, "info");
+    }
+
+    return true;
+}
+
+function update_component_check_cache_from_action(value) {
+    value = object_or_empty(value);
+    let component = normalize_component_name(value.component);
+    let action = as_string(value.action);
+    let path = component_update_check_cache_path(component);
+    if (path == "")
+        return;
+
+    if (action == "remove" && value.success === true) {
+        remove_file(path);
+        return;
+    }
+
+    if (!component_update_check_cache_enabled())
+        return;
+
+    if (action == "check_update") {
+        cache_component_update_check_result(value, false);
+        return;
+    }
+
+    if (value.success === true && (action == "install" || match(action, /^install_/) != null)) {
+        let latest_version = as_string(value.latest_version);
+        if (latest_version == "")
+            latest_version = as_string(value.current_version);
+        cache_component_update_check_result({
+            success: true,
+            component,
+            action: "check_update",
+            message: "Latest version is installed",
+            current_version: as_string(value.current_version),
+            latest_version,
+            release_url: as_string(value.release_url),
+            status: "latest"
+        }, false);
+    }
+}
+
+function clear_component_update_check_cache() {
+    for (let path in fs.glob(COMPONENT_UPDATE_CHECK_CACHE_DIR + "/*.json"))
+        remove_file(path);
+    remove_file(COMPONENT_UPDATE_CHECK_STATE_FILE);
+}
+
+function component_update_check_cache() {
+    let enabled = component_update_check_cache_enabled();
+    let results = [];
+
+    if (enabled) {
+        for (let component in [ "podkop", "sing_box", "zapret", "zapret2", "byedpi" ]) {
+            let value = read_json_file(component_update_check_cache_path(component));
+            if (component_update_check_result_cacheable(value))
+                push(results, value);
+        }
+    }
+
+    write_json({ enabled, results });
+}
+
 function valid_component_job_id(job_id) {
     job_id = as_string(job_id);
     return job_id != "" && job_id != "." && job_id != ".." && match(job_id, /[^A-Za-z0-9._-]/) == null;
@@ -1536,6 +1688,7 @@ function finish_component_job(path, component, action, exit_code, output_file) {
         value.kind = "component";
         value.exit_code = arg_number(exit_code);
         value.updated_at = updated_at;
+        update_component_check_cache_from_action(value);
         ok = write_state_file(path, value);
     }
     else {
@@ -1642,6 +1795,91 @@ function component_action_status(job_id) {
 
     refresh_component_running_job_state(state_file);
     print(as_string(fs.readfile(state_file)));
+}
+
+function automatic_component_check_names() {
+    let result = [ "podkop" ];
+
+    if (fs.stat("/usr/bin/sing-box") != null)
+        push(result, "sing_box");
+    if (module_success([ LIB_DIR + "/providers/zapret/runtime.uc", "installed" ]))
+        push(result, "zapret");
+    if (module_success([ LIB_DIR + "/providers/zapret2/runtime.uc", "installed" ]))
+        push(result, "zapret2");
+    if (module_success([ LIB_DIR + "/providers/byedpi/runtime.uc", "installed" ]))
+        push(result, "byedpi");
+
+    return result;
+}
+
+function run_automatic_component_update_check(component) {
+    let output_file = temp_path();
+    if (output_file == "")
+        return false;
+
+    let command = command_env(component_worker_env()) + " " +
+        command_from_args([
+            "ucode",
+            "-L", LIB_DIR,
+            LIB_DIR + "/components/action.uc",
+            "component-action",
+            as_string(component),
+            "check_update"
+        ]) + " >" + shell_quote(output_file) + " 2>&1";
+    let status = command_status(command);
+    let value = output_json_object(output_file);
+    remove_file(output_file);
+
+    if (status != 0 || !component_update_check_result_cacheable(value))
+        return false;
+
+    return cache_component_update_check_result(value, true);
+}
+
+function component_updates_if_due() {
+    let interval = settings_component_update_check_interval(uci_settings());
+    if (interval == "")
+        exit(0);
+
+    let seconds = duration_to_seconds_value(interval);
+    if (seconds == null) {
+        log_message("Invalid component_update_check_interval value: " + interval, "error");
+        exit(1);
+    }
+
+    let due = update_due_status(
+        now_seconds(),
+        file_first_line_value(COMPONENT_UPDATE_CHECK_STATE_FILE),
+        seconds
+    );
+    if (due == 1)
+        exit(0);
+    if (due != 0)
+        exit(1);
+
+    if (!acquire_runtime_lock(COMPONENT_UPDATE_CHECK_LOCK_DIR, false))
+        exit(0);
+
+    due = update_due_status(
+        now_seconds(),
+        file_first_line_value(COMPONENT_UPDATE_CHECK_STATE_FILE),
+        seconds
+    );
+    if (due != 0) {
+        release_runtime_lock(COMPONENT_UPDATE_CHECK_LOCK_DIR);
+        exit(due == 1 ? 0 : 1);
+    }
+
+    ensure_dir(COMPONENT_UPDATE_CHECK_CACHE_DIR);
+    for (let component in automatic_component_check_names())
+        run_automatic_component_update_check(component);
+
+    if (!write_file(COMPONENT_UPDATE_CHECK_STATE_FILE, as_string(now_seconds()) + "\n")) {
+        release_runtime_lock(COMPONENT_UPDATE_CHECK_LOCK_DIR);
+        log_message("Failed to write component update check timestamp", "error");
+        exit(1);
+    }
+    release_runtime_lock(COMPONENT_UPDATE_CHECK_LOCK_DIR);
 }
 
 function download_via_proxy_option_for_purpose(purpose) {
@@ -2512,7 +2750,7 @@ function fixture_section_list(data, type_name) {
     return type(plural) == "array" ? plural : [];
 }
 
-function fixture_cron_refresh_plan(path, bin, list_marker, subscription_marker) {
+function fixture_cron_refresh_plan(path, bin, list_marker, subscription_marker, component_marker) {
     let data = object_or_empty(read_json_file(path));
     connections.set_item_sections_from_data(data);
     cron_refresh_plan(
@@ -2520,11 +2758,12 @@ function fixture_cron_refresh_plan(path, bin, list_marker, subscription_marker) 
         fixture_section_list(data),
         bin,
         list_marker,
-        subscription_marker
+        subscription_marker,
+        component_marker
     );
 }
 
-function fixture_cron_refresh_apply(path, existing_crontab_path, bin, list_marker, subscription_marker) {
+function fixture_cron_refresh_apply(path, existing_crontab_path, bin, list_marker, subscription_marker, component_marker) {
     let data = object_or_empty(read_json_file(path));
     connections.set_item_sections_from_data(data);
     let result = cron_refresh_apply_result(
@@ -2533,7 +2772,8 @@ function fixture_cron_refresh_apply(path, existing_crontab_path, bin, list_marke
         fs.readfile(as_string(existing_crontab_path)) || "",
         bin,
         list_marker,
-        subscription_marker
+        subscription_marker,
+        component_marker
     );
 
     write_json({
@@ -2551,23 +2791,28 @@ function fixture_section_by_name(data, target_name) {
     return {};
 }
 
-function uci_cron_refresh_plan(bin, list_marker, subscription_marker) {
+function uci_cron_refresh_plan(bin, list_marker, subscription_marker, component_marker) {
     cron_refresh_plan(
         uci_settings(),
         uci_sections("section"),
         bin,
         list_marker,
-        subscription_marker
+        subscription_marker,
+        component_marker
     );
 }
 
-function uci_refresh_cron(bin, list_marker, subscription_marker) {
+function uci_refresh_cron(bin, list_marker, subscription_marker, component_marker) {
+    let settings = uci_settings();
+    if (settings_component_update_check_interval(settings) == "")
+        clear_component_update_check_cache();
     refresh_cron_from_sources(
-        uci_settings(),
+        settings,
         uci_sections("section"),
         bin,
         list_marker,
-        subscription_marker
+        subscription_marker,
+        component_marker
     );
 }
 
@@ -2608,15 +2853,15 @@ else if (mode == "subscription-update-cron-job")
 else if (mode == "subscription-update-interval-plan")
     subscription_update_interval_plan();
 else if (mode == "cron-refresh-plan")
-    uci_cron_refresh_plan(ARGV[1], ARGV[2], ARGV[3]);
+    uci_cron_refresh_plan(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "cron-refresh-plan-fixture")
-    fixture_cron_refresh_plan(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
+    fixture_cron_refresh_plan(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]);
 else if (mode == "refresh-cron-from-uci")
-    uci_refresh_cron(ARGV[1], ARGV[2], ARGV[3]);
+    uci_refresh_cron(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "refresh-cron-fixture")
-    fixture_cron_refresh_apply(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]);
+    fixture_cron_refresh_apply(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6]);
 else if (mode == "remove-cron-jobs")
-    remove_cron_jobs(ARGV[1], ARGV[2]);
+    remove_cron_jobs(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "list-update")
     list_update();
 else if (mode == "list-update-if-due")
@@ -2671,6 +2916,10 @@ else if (mode == "component-action-async")
     component_action_async(ARGV[1], ARGV[2]);
 else if (mode == "component-action-status")
     component_action_status(ARGV[1]);
+else if (mode == "component-updates-if-due")
+    component_updates_if_due();
+else if (mode == "component-update-check-cache")
+    component_update_check_cache();
 else {
     warn("Usage: components/updates.uc <operation> ...\n");
     exit(1);

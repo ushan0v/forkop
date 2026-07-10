@@ -13,11 +13,17 @@ export function shouldPreserveCompletedCheckResultOnNextMount({
 export function shouldResetCheckResultsOnMount({
   anyActionLoading,
   preserveCheckResultsOnNextMount,
+  persistentCacheEnabled = false,
 }: {
   anyActionLoading: boolean;
   preserveCheckResultsOnNextMount: boolean;
+  persistentCacheEnabled?: boolean;
 }) {
-  return !anyActionLoading && !preserveCheckResultsOnNextMount;
+  return (
+    !persistentCacheEnabled &&
+    !anyActionLoading &&
+    !preserveCheckResultsOnNextMount
+  );
 }
 
 export function shouldRefreshComponentStateBeforeRender(

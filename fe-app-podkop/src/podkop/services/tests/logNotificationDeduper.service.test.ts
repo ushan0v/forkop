@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getLogNotificationKey,
+  getPodkopLogNotification,
   isErrorLogLine,
   LogNotificationDeduper,
 } from '../logNotificationDeduper.service';
@@ -35,10 +36,21 @@ class MemoryStorage implements Storage {
 }
 
 describe('LogNotificationDeduper', () => {
-  it('only accepts error and fatal log lines', () => {
+  it('accepts error, fatal, and component update log lines', () => {
     expect(isErrorLogLine('podkop-plus: [info] ok')).toBe(false);
     expect(isErrorLogLine('podkop-plus: [error] failed')).toBe(true);
     expect(isErrorLogLine('podkop-plus: [fatal] failed')).toBe(true);
+    expect(
+      getPodkopLogNotification(
+        'podkop-plus: [info] [component-update] zapret2 v1.2.3',
+      ),
+    ).toEqual({
+      kind: 'component-update',
+      line: 'podkop-plus: [info] [component-update] zapret2 v1.2.3',
+      component: 'zapret2',
+      version: 'v1.2.3',
+    });
+    expect(getPodkopLogNotification('podkop-plus: [info] ok')).toBeNull();
   });
 
   it('dedupes already shown log lines through session storage', () => {
@@ -50,6 +62,9 @@ describe('LogNotificationDeduper', () => {
     expect(first.shouldNotify('podkop-plus: [error] another failure')).toBe(
       true,
     );
+    expect(
+      first.shouldNotify('podkop-plus: [info] [component-update] podkop 1.2.3'),
+    ).toBe(true);
 
     const afterReload = new LogNotificationDeduper(storage);
 

@@ -334,10 +334,9 @@ export const PodkopShellMethods = {
       '/etc/init.d/podkop-plus',
     ),
   globalCheck: async (masked = true) =>
-    callBaseMethod<unknown>(
-      Podkop.AvailableMethods.GLOBAL_CHECK,
-      [masked ? 'masked' : 'raw'],
-    ),
+    callBaseMethod<unknown>(Podkop.AvailableMethods.GLOBAL_CHECK, [
+      masked ? 'masked' : 'raw',
+    ]),
   showSingBoxConfig: async (masked = true) =>
     callBaseMethod<unknown>(Podkop.AvailableMethods.SHOW_SING_BOX_CONFIG, [
       masked ? 'masked' : 'raw',
@@ -582,6 +581,10 @@ export const PodkopShellMethods = {
       data: parsedResponse,
     } as Podkop.MethodSuccessResponse<Podkop.ComponentActionResult>;
   },
+  componentUpdateCheckCache: async () =>
+    callBaseMethod<Podkop.ComponentUpdateCheckCache>(
+      Podkop.AvailableMethods.COMPONENT_UPDATE_CHECK_CACHE,
+    ),
   waitComponentActionJob: async (
     jobId: string,
     component: Podkop.ComponentName,

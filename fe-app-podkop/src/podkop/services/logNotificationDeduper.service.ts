@@ -2,6 +2,15 @@ const LOG_NOTIFICATION_STORAGE_KEY =
   'podkop-plus:shown-log-error-notifications:v1';
 const MAX_STORED_LOG_NOTIFICATIONS = 500;
 
+export type PodkopLogNotification =
+  | { kind: 'error'; line: string }
+  | {
+      kind: 'component-update';
+      line: string;
+      component: string;
+      version: string;
+    };
+
 function getSessionStorage(): Storage | null {
   if (typeof window === 'undefined') {
     return null;
@@ -52,6 +61,29 @@ export function isErrorLogLine(line: string) {
   return lower.includes('[error]') || lower.includes('[fatal]');
 }
 
+export function getPodkopLogNotification(
+  line: string,
+): PodkopLogNotification | null {
+  if (isErrorLogLine(line)) {
+    return { kind: 'error', line };
+  }
+
+  const update = line.match(
+    /\[component-update\]\s+(podkop|sing_box|zapret|zapret2|byedpi)\s+(\S+)/i,
+  );
+
+  if (!update) {
+    return null;
+  }
+
+  return {
+    kind: 'component-update',
+    line,
+    component: update[1].toLowerCase(),
+    version: update[2],
+  };
+}
+
 export function getLogNotificationKey(line: string) {
   return line.trim();
 }
@@ -66,7 +98,7 @@ export class LogNotificationDeduper {
   }
 
   shouldNotify(line: string) {
-    if (!isErrorLogLine(line)) {
+    if (!getPodkopLogNotification(line)) {
       return false;
     }
 

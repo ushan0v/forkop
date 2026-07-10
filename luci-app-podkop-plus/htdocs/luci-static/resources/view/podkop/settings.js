@@ -490,6 +490,50 @@ function createSettingsContent(section, capabilities) {
   };
 
   o = section.option(
+    form.Flag,
+    "component_update_check_enabled",
+    _("Automatic component update checks"),
+    _("Automatically check installed components for new versions"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = section.option(
+    form.Value,
+    "component_update_check_interval",
+    _("Component update check interval"),
+    _("Use sing-box duration format like 1d, 12h or 30m"),
+  );
+  o.depends("component_update_check_enabled", "1");
+  o.placeholder = "1d";
+  o.default = "1d";
+  o.rmempty = false;
+  o.cfgvalue = function (section_id) {
+    return (
+      uci.get(UCI_PACKAGE, section_id, "component_update_check_interval") ||
+      "1d"
+    );
+  };
+  o.write = function (section_id, value) {
+    const normalized = value ? `${value}`.trim() : "";
+    uci.set(
+      UCI_PACKAGE,
+      section_id,
+      "component_update_check_interval",
+      normalized.length ? normalized : "1d",
+    );
+  };
+  o.validate = function (_section_id, value) {
+    const normalized = value ? `${value}`.trim() : "";
+
+    if (normalized.length && isSingBoxDuration(normalized)) {
+      return true;
+    }
+
+    return _("Use sing-box duration format like 1d, 12h or 30m");
+  };
+
+  o = section.option(
     form.Value,
     "latency_test_url",
     _("Latency test URL"),

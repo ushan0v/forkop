@@ -72,6 +72,14 @@ component_out="$(PODKOP_LIB="$fake_lib" ucode "$PODKOP_BIN" component_action sin
 [ "$component_out" = $'action\tcomponent-action\tsing_box\tupdate' ] ||
   fail "component_action must dispatch through components/action.uc with arguments"
 
+component_check_cache_out="$(PODKOP_LIB="$fake_lib" ucode "$PODKOP_BIN" component_update_check_cache)"
+[ "$component_check_cache_out" = $'updates\tcomponent-update-check-cache\t\t' ] ||
+  fail "component_update_check_cache must dispatch through components/updates.uc"
+
+component_updates_out="$(PODKOP_LIB="$fake_lib" ucode "$PODKOP_BIN" component_updates_if_due)"
+[ "$component_updates_out" = $'updates\tcomponent-updates-if-due\t\t' ] ||
+  fail "component_updates_if_due must dispatch through components/updates.uc"
+
 rm -f "$fake_lib/service/lifecycle.uc"
 set +e
 PODKOP_TEST_DNS_RESTORE_MARKER="$WORK_DIR/dns-restore.marker" PODKOP_LIB="$fake_lib" \

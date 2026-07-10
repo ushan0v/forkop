@@ -112,7 +112,9 @@ cat >"$WORK_DIR/cron-plan.json" <<'JSON'
 {
   "settings": {
     "list_update_enabled": "1",
-    "update_interval": "30m"
+    "update_interval": "30m",
+    "component_update_check_enabled": "1",
+    "component_update_check_interval": "2h"
   },
   "section": [
     {
@@ -148,8 +150,8 @@ cat >"$WORK_DIR/cron-plan.json" <<'JSON'
 }
 JSON
 
-assert_eq $'list\t*/30 * * * * /usr/bin/podkop list_update_if_due # list\nsubscription-error\tbad_sub\tbad\nsubscription\t*/45 * * * * /usr/bin/podkop subscription_update_if_due # subscription' \
-  "$(updates_ucode cron-refresh-plan-fixture "$WORK_DIR/cron-plan.json" /usr/bin/podkop '# list' '# subscription')" \
+assert_eq $'list\t*/30 * * * * /usr/bin/podkop list_update_if_due # list\nsubscription-error\tbad_sub\tbad\nsubscription\t*/45 * * * * /usr/bin/podkop subscription_update_if_due # subscription\ncomponent\t0 */2 * * * /usr/bin/podkop component_updates_if_due # component' \
+  "$(updates_ucode cron-refresh-plan-fixture "$WORK_DIR/cron-plan.json" /usr/bin/podkop '# list' '# subscription' '# component')" \
   "cron refresh plan"
 
 grep -Fq 'fs.writefile(tmp, as_string(text)) == null' "$UPDATES_UC" ||
@@ -173,7 +175,7 @@ cat >"$WORK_DIR/cron-plan-list-disabled.json" <<'JSON'
 JSON
 
 assert_eq "list-disabled" \
-  "$(updates_ucode cron-refresh-plan-fixture "$WORK_DIR/cron-plan-list-disabled.json" /usr/bin/podkop '# list' '# subscription')" \
+  "$(updates_ucode cron-refresh-plan-fixture "$WORK_DIR/cron-plan-list-disabled.json" /usr/bin/podkop '# list' '# subscription' '# component')" \
   "disabled list cron plan"
 
 cat >"$WORK_DIR/cron-plan-invalid-list.json" <<'JSON'
@@ -194,7 +196,7 @@ cat >"$WORK_DIR/cron-plan-invalid-list.json" <<'JSON'
 JSON
 
 status=0
-invalid_plan="$(updates_ucode cron-refresh-plan-fixture "$WORK_DIR/cron-plan-invalid-list.json" /usr/bin/podkop '# list' '# subscription')" || status="$?"
+invalid_plan="$(updates_ucode cron-refresh-plan-fixture "$WORK_DIR/cron-plan-invalid-list.json" /usr/bin/podkop '# list' '# subscription' '# component')" || status="$?"
 assert_eq 1 "$status" "invalid list cron plan status"
 assert_eq $'list-error\tbad' "$invalid_plan" "invalid list cron plan output"
 
@@ -202,9 +204,10 @@ cat >"$WORK_DIR/existing.cron" <<'CRON'
 0 1 * * * /bin/true # keep
 * * * * * /usr/bin/podkop list_update_if_due # list
 * * * * * /usr/bin/podkop subscription_update_if_due # subscription
+* * * * * /usr/bin/podkop component_updates_if_due # component
 CRON
 
-updates_ucode refresh-cron-fixture "$WORK_DIR/cron-plan.json" "$WORK_DIR/existing.cron" /usr/bin/podkop '# list' '# subscription' >"$WORK_DIR/cron-apply.json"
+updates_ucode refresh-cron-fixture "$WORK_DIR/cron-plan.json" "$WORK_DIR/existing.cron" /usr/bin/podkop '# list' '# subscription' '# component' >"$WORK_DIR/cron-apply.json"
 node - "$WORK_DIR/cron-apply.json" <<'JS'
 const fs = require("fs");
 const value = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
@@ -212,6 +215,7 @@ const expected = [
   "0 1 * * * /bin/true # keep",
   "*/30 * * * * /usr/bin/podkop list_update_if_due # list",
   "*/45 * * * * /usr/bin/podkop subscription_update_if_due # subscription",
+  "0 */2 * * * /usr/bin/podkop component_updates_if_due # component",
   ""
 ].join("\n");
 if (value.crontab !== expected) {
@@ -221,14 +225,15 @@ if (value.crontab !== expected) {
 const messages = value.logs.map(item => item.message);
 if (!messages.includes("The cron job removed") ||
     !messages.includes("The cron job has been created: */30 * * * * /usr/bin/podkop list_update_if_due # list") ||
-    !messages.includes("The subscription cron job has been created: */45 * * * * /usr/bin/podkop subscription_update_if_due # subscription")) {
+    !messages.includes("The subscription cron job has been created: */45 * * * * /usr/bin/podkop subscription_update_if_due # subscription") ||
+    !messages.includes("The component update check cron job has been created: 0 */2 * * * /usr/bin/podkop component_updates_if_due # component")) {
   console.error("unexpected cron apply logs", JSON.stringify(value.logs));
   process.exit(1);
 }
 JS
 
 status=0
-updates_ucode refresh-cron-fixture "$WORK_DIR/cron-plan-invalid-list.json" "$WORK_DIR/existing.cron" /usr/bin/podkop '# list' '# subscription' >"$WORK_DIR/cron-apply-invalid.json" || status="$?"
+updates_ucode refresh-cron-fixture "$WORK_DIR/cron-plan-invalid-list.json" "$WORK_DIR/existing.cron" /usr/bin/podkop '# list' '# subscription' '# component' >"$WORK_DIR/cron-apply-invalid.json" || status="$?"
 assert_eq 1 "$status" "invalid cron apply status"
 node - "$WORK_DIR/cron-apply-invalid.json" <<'JS'
 const fs = require("fs");

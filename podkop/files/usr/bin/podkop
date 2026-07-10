@@ -115,6 +115,8 @@ function show_help() {
     print("    component_action        Manage Podkop Plus, sing-box, zapret, zapret2, and ByeDPI components\n");
     print("    component_action_async  Start a component action in the background\n");
     print("    component_action_status Get background component action status\n");
+    print("    component_updates_if_due Check installed components for updates when due\n");
+    print("    component_update_check_cache Get cached component update check results\n");
     print("    check_dns_available     Check DNS server availability\n");
     print("    global_check            Run global system check\n");
     print("    validate_nfqws_strategy_json\n");
@@ -185,6 +187,8 @@ function command_spec(command) {
         component_action: [ "components/action.uc", "component-action", 2 ],
         component_action_async: [ "components/updates.uc", "component-action-async", 2 ],
         component_action_status: [ "components/updates.uc", "component-action-status", 1 ],
+        component_updates_if_due: [ "components/updates.uc", "component-updates-if-due", 0 ],
+        component_update_check_cache: [ "components/updates.uc", "component-update-check-cache", 0 ],
         check_dns_available: [ "diagnostics/runtime.uc", "check-dns-available", 0 ],
         global_check: [ "diagnostics/runtime.uc", "global-check", 2 ],
         validate_nfqws_strategy_json: [ "diagnostics/runtime.uc", "validate-nfqws-strategy-json", 1 ],

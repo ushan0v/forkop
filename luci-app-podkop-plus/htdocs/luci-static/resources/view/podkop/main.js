@@ -59,9 +59,7 @@ function validAsciiDomain(hostname, requireDot = true) {
   if (parts.some((part) => !part || part.length > 63)) {
     return false;
   }
-  if (parts.some(
-    (part) => !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(part)
-  )) {
+  if (parts.some((part) => !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(part))) {
     return false;
   }
   if (!requireDot) {
@@ -2590,6 +2588,7 @@ var Podkop;
     AvailableMethods2["UI_ACTION_ACK"] = "ui_action_ack";
     AvailableMethods2["COMPONENT_ACTION_ASYNC"] = "component_action_async";
     AvailableMethods2["COMPONENT_ACTION_STATUS"] = "component_action_status";
+    AvailableMethods2["COMPONENT_UPDATE_CHECK_CACHE"] = "component_update_check_cache";
     AvailableMethods2["SUBSCRIPTION_UPDATE_ASYNC"] = "subscription_update_async";
     AvailableMethods2["SUBSCRIPTION_UPDATE_STATUS"] = "subscription_update_status";
   })(AvailableMethods = Podkop2.AvailableMethods || (Podkop2.AvailableMethods = {}));
@@ -2862,10 +2861,9 @@ var PodkopShellMethods = {
     [],
     "/etc/init.d/podkop-plus"
   ),
-  globalCheck: async (masked = true) => callBaseMethod(
-    Podkop.AvailableMethods.GLOBAL_CHECK,
-    [masked ? "masked" : "raw"]
-  ),
+  globalCheck: async (masked = true) => callBaseMethod(Podkop.AvailableMethods.GLOBAL_CHECK, [
+    masked ? "masked" : "raw"
+  ]),
   showSingBoxConfig: async (masked = true) => callBaseMethod(Podkop.AvailableMethods.SHOW_SING_BOX_CONFIG, [
     masked ? "masked" : "raw"
   ]),
@@ -3054,6 +3052,9 @@ var PodkopShellMethods = {
       data: parsedResponse
     };
   },
+  componentUpdateCheckCache: async () => callBaseMethod(
+    Podkop.AvailableMethods.COMPONENT_UPDATE_CHECK_CACHE
+  ),
   waitComponentActionJob: async (jobId, component, action, expectedLatestVersion) => {
     let selfUpdateVersionMatchedAt = 0;
     let lastStatusRefreshAt = 0;
@@ -4804,6 +4805,23 @@ function isErrorLogLine(line) {
   const lower = line.toLowerCase();
   return lower.includes("[error]") || lower.includes("[fatal]");
 }
+function getPodkopLogNotification(line) {
+  if (isErrorLogLine(line)) {
+    return { kind: "error", line };
+  }
+  const update = line.match(
+    /\[component-update\]\s+(podkop|sing_box|zapret|zapret2|byedpi)\s+(\S+)/i
+  );
+  if (!update) {
+    return null;
+  }
+  return {
+    kind: "component-update",
+    line,
+    component: update[1].toLowerCase(),
+    version: update[2]
+  };
+}
 function getLogNotificationKey(line) {
   return line.trim();
 }
@@ -4813,7 +4831,7 @@ var LogNotificationDeduper = class {
     this.seenKeys = new Set(readStoredKeys(storage));
   }
   shouldNotify(line) {
-    if (!isErrorLogLine(line)) {
+    if (!getPodkopLogNotification(line)) {
       return false;
     }
     const key = getLogNotificationKey(line);
@@ -5203,10 +5221,30 @@ function startRuntimeUiStatePolling() {
 // src/podkop/services/core.service.ts
 var LOG_WATCHER_INTERVAL_MS = 1e4;
 var LOG_WATCHER_START_DELAY_MS = 5e3;
-function showLogErrorNotification(line) {
+function componentDisplayName(component) {
+  const names = {
+    podkop: "Podkop Plus",
+    sing_box: "sing-box",
+    zapret: "Zapret",
+    zapret2: "Zapret2",
+    byedpi: "ByeDPI"
+  };
+  return names[component] || component;
+}
+function showLogNotification(notification) {
+  if (notification.kind === "component-update") {
+    const message = _("New version %s is available for %s").replace("%s", notification.version).replace("%s", componentDisplayName(notification.component));
+    ui.addNotification(
+      _("Component update available"),
+      E("div", {}, message),
+      "warning",
+      "pdk-component-update-notification"
+    );
+    return;
+  }
   ui.addNotification(
     _("Podkop Plus Error"),
-    E("div", {}, line),
+    E("div", {}, notification.line),
     "error",
     "pdk-log-error-notification"
   );
@@ -5235,7 +5273,10 @@ function coreService(options = {}) {
       intervalMs: LOG_WATCHER_INTERVAL_MS,
       onNewLog: (line) => {
         if (logNotificationDeduper.shouldNotify(line)) {
-          showLogErrorNotification(line);
+          const notification = getPodkopLogNotification(line);
+          if (notification) {
+            showLogNotification(notification);
+          }
         }
       }
     }
@@ -5246,12 +5287,9 @@ function coreService(options = {}) {
     }
     watcher.start();
   };
-  const scheduleStartWatcher = () => window.setTimeout(
-    () => {
-      void startWatcher();
-    },
-    options.logWatcherStartDelayMs ?? LOG_WATCHER_START_DELAY_MS
-  );
+  const scheduleStartWatcher = () => window.setTimeout(() => {
+    void startWatcher();
+  }, options.logWatcherStartDelayMs ?? LOG_WATCHER_START_DELAY_MS);
   if (typeof window !== "undefined") {
     scheduleStartWatcher();
   } else {
@@ -9363,7 +9401,9 @@ async function runSectionsCheck() {
             latency: `[${selectedOutbound2.displayName ?? ""}] ${_("Not responding")}`
           };
         }
-        const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(section.code);
+        const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
+          section.code
+        );
         const success2 = latencyGroup.success && !latencyGroup.data.message;
         if (success2) {
           const latencyValues = Object.values(latencyGroup.data);
@@ -11123,7 +11163,10 @@ function buildRouteDisplayNames(sections) {
     if (!owner || !id) {
       return;
     }
-    urltestsBySection.set(owner, [...urltestsBySection.get(owner) || [], id]);
+    urltestsBySection.set(owner, [
+      ...urltestsBySection.get(owner) || [],
+      id
+    ]);
   });
   sections.filter((section) => section[".type"] === "section").filter((section) => section.enabled !== "0").forEach((section) => {
     const sectionName = section[".name"];
@@ -12915,9 +12958,10 @@ function shouldPreserveCompletedCheckResultOnNextMount({
 }
 function shouldResetCheckResultsOnMount({
   anyActionLoading,
-  preserveCheckResultsOnNextMount: preserveCheckResultsOnNextMount2
+  preserveCheckResultsOnNextMount: preserveCheckResultsOnNextMount2,
+  persistentCacheEnabled = false
 }) {
-  return !anyActionLoading && !preserveCheckResultsOnNextMount2;
+  return !persistentCacheEnabled && !anyActionLoading && !preserveCheckResultsOnNextMount2;
 }
 function shouldRefreshComponentStateBeforeRender(uiState) {
   return Boolean(
@@ -12947,28 +12991,9 @@ if (typeof window !== "undefined") {
 function isNotInstalled(version) {
   return !version || version === "not installed";
 }
-function getCheckTag(component) {
-  const status = store.get().updatesChecks[component].status;
-  if (!status) {
-    return void 0;
-  }
-  if (status === "latest") {
-    return { label: _("Latest"), kind: "success" };
-  }
-  if (status === "outdated") {
-    return { label: _("Outdated"), kind: "warning" };
-  }
-  return { label: _("Dev"), kind: "neutral" };
-}
 function shouldShowInstallAfterCheck(component) {
   const status = store.get().updatesChecks[component].status;
   return status === "outdated" || status === "dev";
-}
-function getInstallActionText(component) {
-  if (shouldShowInstallAfterCheck(component)) {
-    return _("Update");
-  }
-  return _("Install");
 }
 function getLatestVersion(component) {
   const checkResult = store.get().updatesChecks[component];
@@ -13029,6 +13054,26 @@ function setCheckResult(component, status, latestVersion, releaseUrl = "") {
 }
 function resetCheckResult(component) {
   setCheckResult(component, null, "");
+}
+function applyCachedCheckResults(results) {
+  results.forEach((result) => {
+    const status = result.status || null;
+    if (status === "latest" || status === "outdated" || status === "dev") {
+      setCheckResult(
+        result.component,
+        status,
+        result.latest_version || "",
+        result.release_url || ""
+      );
+    }
+  });
+}
+async function loadComponentUpdateCheckCache() {
+  const response = await PodkopShellMethods.componentUpdateCheckCache();
+  return response.success ? response.data : {
+    enabled: false,
+    results: []
+  };
 }
 function getErrorMessage(error, fallback) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -13394,23 +13439,54 @@ async function handleComponentAction(button) {
     }
   }
 }
-function getPrimaryUpdateAction(component, checkKey, installKey) {
-  if (shouldShowInstallAfterCheck(component)) {
-    return {
-      key: installKey,
-      text: getInstallActionText(component),
-      icon: renderRotateCcwIcon24,
-      component,
-      action: "install"
-    };
-  }
+function getCheckAction(component, key) {
   return {
-    key: checkKey,
+    key,
     text: _("Check update"),
     icon: renderSearchIcon24,
     component,
     action: "check_update"
   };
+}
+function getInstallAction(component, key, installed) {
+  return {
+    key,
+    text: installed ? _("Update") : _("Install"),
+    icon: installed ? renderRotateCcwIcon24 : renderDownloadIcon24,
+    component,
+    action: "install"
+  };
+}
+function getInstalledUpdateActions(component, checkKey, installKey, installed = true) {
+  if (!installed) {
+    return [];
+  }
+  const actions = [getCheckAction(component, checkKey)];
+  if (shouldShowInstallAfterCheck(component)) {
+    actions.push(getInstallAction(component, installKey, true));
+  }
+  return actions;
+}
+function getOptionalComponentActions({
+  component,
+  installed,
+  checkKey,
+  installKey,
+  removeKey
+}) {
+  if (!installed) {
+    return [getInstallAction(component, installKey, false)];
+  }
+  return [
+    ...getInstalledUpdateActions(component, checkKey, installKey),
+    {
+      key: removeKey,
+      text: _("Remove"),
+      icon: renderXIcon24,
+      component,
+      action: "remove"
+    }
+  ];
 }
 function getComponentCards() {
   const systemInfo = normalizeSingBoxVariantFields(
@@ -13425,13 +13501,21 @@ function getComponentCards() {
   const singBoxExtended = Boolean(systemInfo.sing_box_extended) && !systemInfo.sing_box_compressed;
   const singBoxExtendedCompressed = Boolean(systemInfo.sing_box_extended) && Boolean(systemInfo.sing_box_compressed);
   const singBoxTiny = Boolean(systemInfo.sing_box_tiny);
-  const singBoxActions = [
-    getPrimaryUpdateAction("sing_box", "singBoxCheck", "singBoxInstall")
-  ];
+  const podkopActions = getInstalledUpdateActions(
+    "podkop",
+    "podkopCheck",
+    "podkopInstall"
+  );
+  const singBoxActions = getInstalledUpdateActions(
+    "sing_box",
+    "singBoxCheck",
+    "singBoxInstall",
+    singBoxInstalled
+  );
   if (!singBoxStable) {
     singBoxActions.push({
       key: "singBoxInstallStable",
-      text: _("Install stable"),
+      text: "Stable",
       icon: renderDownloadIcon24,
       component: "sing_box",
       action: "install_stable"
@@ -13440,7 +13524,7 @@ function getComponentCards() {
   if (!singBoxTiny) {
     singBoxActions.push({
       key: "singBoxInstallTiny",
-      text: _("Install tiny"),
+      text: "Tiny",
       icon: renderDownloadIcon24,
       component: "sing_box",
       action: "install_tiny"
@@ -13449,7 +13533,7 @@ function getComponentCards() {
   if (!singBoxExtended) {
     singBoxActions.push({
       key: "singBoxInstallExtended",
-      text: _("Install extended"),
+      text: "Extended",
       icon: renderDownloadIcon24,
       component: "sing_box",
       action: "install_extended"
@@ -13458,189 +13542,264 @@ function getComponentCards() {
   if (!singBoxExtendedCompressed) {
     singBoxActions.push({
       key: "singBoxInstallExtendedCompressed",
-      text: _("Install extended compressed"),
+      text: "Extended compressed",
       icon: renderDownloadIcon24,
       component: "sing_box",
       action: "install_extended_compressed"
     });
   }
+  const zapretActions = getOptionalComponentActions({
+    component: "zapret",
+    installed: zapretInstalled,
+    checkKey: "zapretCheck",
+    installKey: "zapretInstall",
+    removeKey: "zapretRemove"
+  });
+  const zapret2Actions = getOptionalComponentActions({
+    component: "zapret2",
+    installed: zapret2Installed,
+    checkKey: "zapret2Check",
+    installKey: "zapret2Install",
+    removeKey: "zapret2Remove"
+  });
+  const byedpiActions = getOptionalComponentActions({
+    component: "byedpi",
+    installed: byedpiInstalled,
+    checkKey: "byedpiCheck",
+    installKey: "byedpiInstall",
+    removeKey: "byedpiRemove"
+  });
   return [
     {
+      component: "podkop",
+      column: 0,
       title: "Podkop Plus",
       version: normalizeCompiledVersion(systemInfo.podkop_version),
       latestVersion: getLatestVersion("podkop"),
       releaseUrl: getGitHubReleaseUrl("podkop"),
-      tag: getCheckTag("podkop"),
-      actions: [
-        getPrimaryUpdateAction("podkop", "podkopCheck", "podkopInstall")
-      ]
+      actions: podkopActions
     },
     {
+      component: "sing_box",
+      column: 0,
       title: "Sing-box",
       version: formatSingBoxVersion(systemInfo),
       latestVersion: getLatestVersion("sing_box"),
       releaseUrl: getGitHubReleaseUrl("sing_box"),
-      tag: getCheckTag("sing_box"),
       actions: singBoxActions
     },
     {
+      component: "zapret",
+      column: 1,
       title: "Zapret",
-      version: systemInfoLoading ? "loading" : zapretInstalled ? systemInfo.zapret_version : _("Not installed"),
+      version: systemInfoLoading ? _("Loading...") : zapretInstalled ? systemInfo.zapret_version : _("Not installed"),
       latestVersion: getLatestVersion("zapret"),
       releaseUrl: getGitHubReleaseUrl("zapret"),
-      tag: zapretInstalled ? getCheckTag("zapret") : void 0,
-      actions: zapretInstalled ? [
-        getPrimaryUpdateAction("zapret", "zapretCheck", "zapretInstall"),
-        {
-          key: "zapretRemove",
-          text: _("Remove"),
-          icon: renderXIcon24,
-          component: "zapret",
-          action: "remove"
-        }
-      ] : [
-        {
-          key: "zapretInstall",
-          text: _("Install"),
-          icon: renderDownloadIcon24,
-          component: "zapret",
-          action: "install"
-        }
-      ]
+      actions: zapretActions
     },
     {
+      component: "zapret2",
+      column: 1,
       title: "Zapret2",
-      version: systemInfoLoading ? "loading" : zapret2Installed ? systemInfo.zapret2_version : _("Not installed"),
+      version: systemInfoLoading ? _("Loading...") : zapret2Installed ? systemInfo.zapret2_version : _("Not installed"),
       latestVersion: getLatestVersion("zapret2"),
       releaseUrl: getGitHubReleaseUrl("zapret2"),
-      tag: zapret2Installed ? getCheckTag("zapret2") : void 0,
-      actions: zapret2Installed ? [
-        getPrimaryUpdateAction("zapret2", "zapret2Check", "zapret2Install"),
-        {
-          key: "zapret2Remove",
-          text: _("Remove"),
-          icon: renderXIcon24,
-          component: "zapret2",
-          action: "remove"
-        }
-      ] : [
-        {
-          key: "zapret2Install",
-          text: _("Install"),
-          icon: renderDownloadIcon24,
-          component: "zapret2",
-          action: "install"
-        }
-      ]
+      actions: zapret2Actions
     },
     {
+      component: "byedpi",
+      column: 1,
       title: "ByeDPI",
-      version: systemInfoLoading ? "loading" : byedpiInstalled ? systemInfo.byedpi_version : _("Not installed"),
+      version: systemInfoLoading ? _("Loading...") : byedpiInstalled ? systemInfo.byedpi_version : _("Not installed"),
       latestVersion: getLatestVersion("byedpi"),
       releaseUrl: getGitHubReleaseUrl("byedpi"),
-      tag: byedpiInstalled ? getCheckTag("byedpi") : void 0,
-      actions: byedpiInstalled ? [
-        getPrimaryUpdateAction("byedpi", "byedpiCheck", "byedpiInstall"),
-        {
-          key: "byedpiRemove",
-          text: _("Remove"),
-          icon: renderXIcon24,
-          component: "byedpi",
-          action: "remove"
-        }
-      ] : [
-        {
-          key: "byedpiInstall",
-          text: _("Install"),
-          icon: renderDownloadIcon24,
-          component: "byedpi",
-          action: "install"
-        }
-      ]
+      actions: byedpiActions
     }
   ];
-}
-function renderComponentTag(card) {
-  if (!card.tag) {
-    return null;
-  }
-  return E(
-    "span",
-    {
-      class: [
-        "pdk_updates-page__component__tag",
-        card.tag.kind === "success" ? "pdk_updates-page__component__tag--success" : "",
-        card.tag.kind === "warning" ? "pdk_updates-page__component__tag--warning" : ""
-      ].filter(Boolean).join(" ")
-    },
-    card.tag.label
-  );
 }
 function renderComponentCard(card) {
   const updatesActions = store.get().updatesActions;
   const anyActionLoading = isAnyActionLoading();
   const serviceRuntimeActionLoading = isServiceRuntimeActionLoading();
   const systemInfoLoading = isSystemInfoLoading();
-  const tag = renderComponentTag(card);
   const headerChildren = [
-    E("b", { class: "pdk_updates-page__component__title" }, card.title)
-  ];
-  const statusChildren = [];
-  if (card.releaseUrl) {
-    statusChildren.push(
-      E(
-        "a",
-        {
-          class: "pdk_updates-page__component__release-link",
-          href: card.releaseUrl,
-          target: "_blank",
-          rel: "noopener noreferrer"
-        },
-        card.latestVersion ? _("Latest: %s").replace("%s", card.latestVersion) : _("Latest release")
-      )
-    );
-  }
-  if (tag) {
-    statusChildren.push(tag);
-  }
-  if (statusChildren.length > 0) {
-    headerChildren.push(
-      E(
-        "div",
-        { class: "pdk_updates-page__component__status" },
-        statusChildren
-      )
-    );
-  }
-  return E("div", { class: "pdk_updates-page__component" }, [
-    E("div", { class: "pdk_updates-page__component__header" }, headerChildren),
-    E("div", { class: "pdk_updates-page__component__version" }, [
-      E(
-        "span",
-        { class: "pdk_updates-page__component__version__label" },
-        _("Version")
-      ),
-      E(
-        "span",
-        { class: "pdk_updates-page__component__version__value" },
-        card.version
-      )
-    ]),
+    E("b", { class: "pdk_updates-page__component__title" }, card.title),
     E(
-      "div",
-      { class: "pdk_updates-page__component__actions" },
-      card.actions.map((action) => {
-        const loading2 = updatesActions[action.key].loading;
-        return renderButton({
-          text: action.text,
-          icon: action.icon,
-          loading: loading2,
-          disabled: systemInfoLoading || serviceRuntimeActionLoading || anyActionLoading && !loading2,
-          onClick: () => void handleComponentAction(action)
-        });
-      })
+      "span",
+      { class: "pdk_updates-page__component__header-version" },
+      card.version
     )
-  ]);
+  ];
+  const header = E(
+    "div",
+    { class: "pdk_updates-page__component__header" },
+    headerChildren
+  );
+  const detailsChildren = [];
+  const checkResult = store.get().updatesChecks[card.component];
+  if (checkResult && checkResult.status) {
+    let labelText = "";
+    const latestValueNodes = [];
+    if (checkResult.status === "outdated") {
+      labelText = _("Update is available:");
+      const versionToShow = checkResult.latest_version || card.latestVersion || card.version;
+      if (checkResult.release_url) {
+        latestValueNodes.push(
+          E(
+            "a",
+            {
+              class: "pdk_updates-page__component__release-version-link",
+              href: checkResult.release_url,
+              target: "_blank",
+              rel: "noopener noreferrer"
+            },
+            versionToShow || _("Open")
+          )
+        );
+      } else if (versionToShow) {
+        latestValueNodes.push(document.createTextNode(versionToShow));
+      }
+    } else if (checkResult.status === "latest") {
+      labelText = _("Latest version is installed");
+    } else if (checkResult.status === "dev") {
+      labelText = `${_("Installed version is newer than release")}. ${_("Latest version:")}`;
+      const versionToShow = checkResult.latest_version || card.latestVersion;
+      if (checkResult.release_url) {
+        latestValueNodes.push(
+          E(
+            "a",
+            {
+              class: "pdk_updates-page__component__release-version-link",
+              href: checkResult.release_url,
+              target: "_blank",
+              rel: "noopener noreferrer"
+            },
+            versionToShow || _("Open")
+          )
+        );
+      } else if (versionToShow) {
+        latestValueNodes.push(document.createTextNode(versionToShow));
+      }
+    }
+    if (labelText) {
+      const rowChildren = [
+        E(
+          "span",
+          { class: "pdk_updates-page__component__info-label" },
+          labelText
+        )
+      ];
+      if (latestValueNodes.length > 0) {
+        rowChildren.push(
+          E(
+            "span",
+            {
+              class: "pdk_updates-page__component__info-value pdk_updates-page__component__info-value--latest"
+            },
+            latestValueNodes
+          )
+        );
+      }
+      detailsChildren.push(
+        E(
+          "div",
+          { class: "pdk_updates-page__component__info-row" },
+          rowChildren
+        )
+      );
+    }
+  }
+  const detailsContainer = detailsChildren.length > 0 ? E(
+    "div",
+    { class: "pdk_updates-page__component__details" },
+    detailsChildren
+  ) : null;
+  const primaryActions = [];
+  const dangerActions = [];
+  const variantActions = [];
+  card.actions.forEach((action) => {
+    if (action.action === "remove") {
+      dangerActions.push(action);
+    } else if (action.action.startsWith("install_")) {
+      variantActions.push(action);
+    } else {
+      primaryActions.push(action);
+    }
+  });
+  const actionElements = [];
+  const primaryButtons = primaryActions.map((action) => {
+    const loading2 = updatesActions[action.key].loading;
+    const isUpdateOrInstall = action.action === "install";
+    return renderButton({
+      classNames: isUpdateOrInstall ? ["cbi-button-save"] : [],
+      text: action.text,
+      icon: action.icon,
+      loading: loading2,
+      disabled: systemInfoLoading || serviceRuntimeActionLoading || anyActionLoading && !loading2,
+      onClick: () => void handleComponentAction(action)
+    });
+  });
+  const dangerButtons = dangerActions.map((action) => {
+    const loading2 = updatesActions[action.key].loading;
+    return renderButton({
+      classNames: ["cbi-button-remove"],
+      text: action.text,
+      icon: action.icon,
+      loading: loading2,
+      disabled: systemInfoLoading || serviceRuntimeActionLoading || anyActionLoading && !loading2,
+      onClick: () => void handleComponentAction(action)
+    });
+  });
+  if (primaryButtons.length > 0 || dangerButtons.length > 0) {
+    actionElements.push(
+      E("div", { class: "pdk_updates-page__component__actions-main" }, [
+        ...primaryButtons,
+        ...dangerButtons
+      ])
+    );
+  }
+  if (variantActions.length > 0) {
+    const variantButtons = variantActions.map((action) => {
+      const loading2 = updatesActions[action.key].loading;
+      return renderButton({
+        text: action.text,
+        icon: action.icon,
+        loading: loading2,
+        disabled: systemInfoLoading || serviceRuntimeActionLoading || anyActionLoading && !loading2,
+        onClick: () => void handleComponentAction(action)
+      });
+    });
+    actionElements.push(
+      E("div", { class: "pdk_updates-page__component__variants" }, [
+        E(
+          "div",
+          { class: "pdk_updates-page__component__variants-title" },
+          _("Install another build:")
+        ),
+        E(
+          "div",
+          { class: "pdk_updates-page__component__variants-buttons" },
+          variantButtons
+        )
+      ])
+    );
+  }
+  const actionsContainer = E(
+    "div",
+    {
+      class: [
+        "pdk_updates-page__component__actions",
+        detailsContainer ? "pdk_updates-page__component__actions--with-details" : ""
+      ].filter(Boolean).join(" ")
+    },
+    actionElements
+  );
+  const cardChildren = [header];
+  if (detailsContainer) {
+    cardChildren.push(detailsContainer);
+  }
+  cardChildren.push(actionsContainer);
+  return E("div", { class: "pdk_updates-page__component" }, cardChildren);
 }
 function renderUpdatesComponents() {
   const container = document.getElementById("pdk_updates-components");
@@ -13648,8 +13807,8 @@ function renderUpdatesComponents() {
     return;
   }
   const columns = [[], []];
-  getComponentCards().forEach((card, index) => {
-    columns[index % 2].push(renderComponentCard(card));
+  getComponentCards().forEach((card) => {
+    columns[card.column].push(renderComponentCard(card));
   });
   return preserveScrollForPage(() => {
     container.replaceChildren(
@@ -13677,9 +13836,18 @@ async function onPageMount4() {
       return;
     }
   }
+  const componentUpdateCheckCache = await loadComponentUpdateCheckCache();
+  if (!updatesMounted || mountId !== updatesMountId) {
+    return;
+  }
+  if (componentUpdateCheckCache.enabled) {
+    store.reset(["updatesChecks"]);
+    applyCachedCheckResults(componentUpdateCheckCache.results);
+  }
   if (shouldResetCheckResultsOnMount({
     anyActionLoading: isAnyActionLoading(),
-    preserveCheckResultsOnNextMount
+    preserveCheckResultsOnNextMount,
+    persistentCacheEnabled: componentUpdateCheckCache.enabled
   })) {
     store.reset(["updatesChecks"]);
   }
@@ -13747,14 +13915,16 @@ var styles6 = `
     display: flex;
     align-items: flex-start;
     gap: 10px;
+    width: 100%;
+    flex-wrap: wrap;
 }
 
 .pdk_updates-page__components-column {
     display: flex;
-    flex: 1 1 0;
+    flex: 1 1 auto;
     flex-direction: column;
     gap: 10px;
-    min-width: 0;
+    min-width: max-content;
 }
 
 @media (max-width: 760px) {
@@ -13764,6 +13934,7 @@ var styles6 = `
 
     .pdk_updates-page__components-column {
         width: 100%;
+        min-width: 0;
     }
 }
 
@@ -13771,101 +13942,120 @@ var styles6 = `
     border: 2px var(--background-color-low, lightgray) solid;
     border-radius: 4px;
     padding: 10px;
-    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    background-color: var(--background-color-high, #fff);
+    min-width: max-content;
 }
 
 .pdk_updates-page__component__header {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    align-items: start;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
-    min-width: 0;
+    border-bottom: 1px var(--background-color-low, lightgray) solid;
+    padding-bottom: 8px;
+    margin-bottom: 2px;
 }
 
 .pdk_updates-page__component__title {
     color: var(--text-color-high);
-    line-height: 1.25;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.pdk_updates-page__component__header-version {
+    color: var(--text-color-medium, #888);
+    font-size: 13px;
+    font-weight: normal;
+}
+
+.pdk_updates-page__component__details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pdk_updates-page__component__info-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    min-height: 24px;
+    gap: 8px;
     white-space: nowrap;
 }
 
-.pdk_updates-page__component__status {
+.pdk_updates-page__component__info-label {
+    color: var(--text-color-medium, #888);
+    font-size: 12px;
+}
+
+.pdk_updates-page__component__info-value {
+    color: var(--text-color-high, #000);
+    font-weight: 500;
+    font-size: 13px;
+    text-align: left;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
     gap: 6px;
-    min-width: 0;
-}
-
-.pdk_updates-page__component__version {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-column-gap: 6px;
-    align-items: baseline;
-    min-width: 0;
-}
-
-.pdk_updates-page__component__version__label {
-    color: var(--text-color-medium);
-}
-
-.pdk_updates-page__component__version__value {
     min-width: 0;
     overflow-wrap: anywhere;
 }
 
-.pdk_updates-page__component__tag {
-    flex: 0 0 auto;
-    padding: 2px 5px;
-    border: 1px var(--background-color-high, gray) solid;
-    border-radius: 4px;
-    color: var(--text-color-medium, gray);
-    line-height: 1.2;
+.pdk_updates-page__component__info-value--latest {
+    flex-wrap: wrap;
+    justify-content: flex-start;
 }
 
-.pdk_updates-page__component__tag--success {
-    border-color: var(--success-color-medium, green);
-    color: var(--success-color-medium, green);
+.pdk_updates-page__component__release-version-link {
+    color: var(--link-color, #3498db) !important;
+    text-decoration: underline;
+    font-weight: bold;
 }
 
-.pdk_updates-page__component__tag--warning {
-    border-color: var(--warn-color-medium, orange);
-    color: var(--warn-color-medium, orange);
+.pdk_updates-page__component__release-version-link:hover {
+    color: var(--link-color-dark, #2980b9) !important;
 }
 
 .pdk_updates-page__component__actions {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    align-content: flex-start;
-    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.pdk_updates-page__component__actions--with-details {
+    border-top: 1px var(--background-color-low, lightgray) solid;
+    padding-top: 10px;
+}
+
+.pdk_updates-page__component__actions-main {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: nowrap;
     gap: 6px;
-    min-height: 0;
 }
 
-.pdk_updates-page__component__actions > .pdk-partial-button {
-    margin-left: 0;
-    align-self: flex-start;
-    flex: 0 0 auto;
-    height: auto;
-    min-height: 0;
-    width: auto;
+.pdk_updates-page__component__variants {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
 }
 
-.pdk_updates-page__component__release-link {
-    display: inline-block;
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow-wrap: anywhere;
+.pdk_updates-page__component__variants-title {
     font-size: 11px;
-    line-height: 1.2;
-    text-align: right;
+    font-weight: bold;
+    color: var(--text-color-medium, gray);
+}
+
+.pdk_updates-page__component__variants-buttons {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
 }
 `;
 

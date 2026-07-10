@@ -983,7 +983,9 @@ cat >"$WORK_DIR/reload-state-signatures.json" <<'JSON'
 {
   "settings": {
     "list_update_enabled": "1",
-    "update_interval": "6h"
+    "update_interval": "6h",
+    "component_update_check_enabled": "1",
+    "component_update_check_interval": "2h"
   },
   "section": [
     {
@@ -1096,6 +1098,8 @@ EOF_LIST_SIG
 cat >"$WORK_DIR/cron-signature.expected" <<'EOF_CRON_SIG'
 [settings.update_interval]
 6h
+[settings.component_update_check_interval]
+2h
 [lists.list_proxy.ports]
 443,80,443-444
 [lists.list_proxy.community_subnet_lists]

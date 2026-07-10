@@ -56,14 +56,12 @@ interface ComponentActionButton {
 }
 
 interface ComponentCard {
+  component: Podkop.ComponentName;
+  column: 0 | 1;
   title: string;
   version: string;
   latestVersion?: string;
   releaseUrl?: string;
-  tag?: {
-    label: string;
-    kind: 'neutral' | 'success' | 'warning';
-  };
   actions: ComponentActionButton[];
 }
 
@@ -91,36 +89,10 @@ function isNotInstalled(version: string | undefined) {
   return !version || version === 'not installed';
 }
 
-function getCheckTag(component: Podkop.ComponentName): ComponentCard['tag'] {
-  const status = store.get().updatesChecks[component].status;
-
-  if (!status) {
-    return undefined;
-  }
-
-  if (status === 'latest') {
-    return { label: _('Latest'), kind: 'success' };
-  }
-
-  if (status === 'outdated') {
-    return { label: _('Outdated'), kind: 'warning' };
-  }
-
-  return { label: _('Dev'), kind: 'neutral' };
-}
-
 function shouldShowInstallAfterCheck(component: Podkop.ComponentName) {
   const status = store.get().updatesChecks[component].status;
 
   return status === 'outdated' || status === 'dev';
-}
-
-function getInstallActionText(component: Podkop.ComponentName) {
-  if (shouldShowInstallAfterCheck(component)) {
-    return _('Update');
-  }
-
-  return _('Install');
 }
 
 function getLatestVersion(component: Podkop.ComponentName) {
@@ -212,6 +184,32 @@ function setCheckResult(
 
 function resetCheckResult(component: Podkop.ComponentName) {
   setCheckResult(component, null, '');
+}
+
+function applyCachedCheckResults(results: Podkop.ComponentActionResult[]) {
+  results.forEach((result) => {
+    const status = result.status || null;
+
+    if (status === 'latest' || status === 'outdated' || status === 'dev') {
+      setCheckResult(
+        result.component,
+        status,
+        result.latest_version || '',
+        result.release_url || '',
+      );
+    }
+  });
+}
+
+async function loadComponentUpdateCheckCache() {
+  const response = await PodkopShellMethods.componentUpdateCheckCache();
+
+  return response.success
+    ? response.data
+    : ({
+        enabled: false,
+        results: [],
+      } satisfies Podkop.ComponentUpdateCheckCache);
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -689,28 +687,77 @@ async function handleComponentAction(button: ComponentActionButton) {
   }
 }
 
-function getPrimaryUpdateAction(
+function getCheckAction(
   component: Podkop.ComponentName,
-  checkKey: UpdatesActionKey,
-  installKey: UpdatesActionKey,
+  key: UpdatesActionKey,
 ): ComponentActionButton {
-  if (shouldShowInstallAfterCheck(component)) {
-    return {
-      key: installKey,
-      text: getInstallActionText(component),
-      icon: renderRotateCcwIcon24,
-      component,
-      action: 'install',
-    };
-  }
-
   return {
-    key: checkKey,
+    key,
     text: _('Check update'),
     icon: renderSearchIcon24,
     component,
     action: 'check_update',
   };
+}
+
+function getInstallAction(
+  component: Podkop.ComponentName,
+  key: UpdatesActionKey,
+  installed: boolean,
+): ComponentActionButton {
+  return {
+    key,
+    text: installed ? _('Update') : _('Install'),
+    icon: installed ? renderRotateCcwIcon24 : renderDownloadIcon24,
+    component,
+    action: 'install',
+  };
+}
+
+function getInstalledUpdateActions(
+  component: Podkop.ComponentName,
+  checkKey: UpdatesActionKey,
+  installKey: UpdatesActionKey,
+  installed = true,
+) {
+  if (!installed) {
+    return [];
+  }
+
+  const actions = [getCheckAction(component, checkKey)];
+  if (shouldShowInstallAfterCheck(component)) {
+    actions.push(getInstallAction(component, installKey, true));
+  }
+  return actions;
+}
+
+function getOptionalComponentActions({
+  component,
+  installed,
+  checkKey,
+  installKey,
+  removeKey,
+}: {
+  component: 'zapret' | 'zapret2' | 'byedpi';
+  installed: boolean;
+  checkKey: UpdatesActionKey;
+  installKey: UpdatesActionKey;
+  removeKey: UpdatesActionKey;
+}) {
+  if (!installed) {
+    return [getInstallAction(component, installKey, false)];
+  }
+
+  return [
+    ...getInstalledUpdateActions(component, checkKey, installKey),
+    {
+      key: removeKey,
+      text: _('Remove'),
+      icon: renderXIcon24,
+      component,
+      action: 'remove' as const,
+    },
+  ];
 }
 
 function getComponentCards(): ComponentCard[] {
@@ -732,187 +779,138 @@ function getComponentCards(): ComponentCard[] {
     Boolean(systemInfo.sing_box_extended) &&
     Boolean(systemInfo.sing_box_compressed);
   const singBoxTiny = Boolean(systemInfo.sing_box_tiny);
-  const singBoxActions: ComponentActionButton[] = [
-    getPrimaryUpdateAction('sing_box', 'singBoxCheck', 'singBoxInstall'),
-  ];
 
+  const podkopActions = getInstalledUpdateActions(
+    'podkop',
+    'podkopCheck',
+    'podkopInstall',
+  );
+  const singBoxActions = getInstalledUpdateActions(
+    'sing_box',
+    'singBoxCheck',
+    'singBoxInstall',
+    singBoxInstalled,
+  );
+
+  // Add Sing-box variant actions (only show names, no 'Install' prefix)
   if (!singBoxStable) {
     singBoxActions.push({
       key: 'singBoxInstallStable',
-      text: _('Install stable'),
+      text: 'Stable',
       icon: renderDownloadIcon24,
       component: 'sing_box',
       action: 'install_stable',
     });
   }
-
   if (!singBoxTiny) {
     singBoxActions.push({
       key: 'singBoxInstallTiny',
-      text: _('Install tiny'),
+      text: 'Tiny',
       icon: renderDownloadIcon24,
       component: 'sing_box',
       action: 'install_tiny',
     });
   }
-
   if (!singBoxExtended) {
     singBoxActions.push({
       key: 'singBoxInstallExtended',
-      text: _('Install extended'),
+      text: 'Extended',
       icon: renderDownloadIcon24,
       component: 'sing_box',
       action: 'install_extended',
     });
   }
-
   if (!singBoxExtendedCompressed) {
     singBoxActions.push({
       key: 'singBoxInstallExtendedCompressed',
-      text: _('Install extended compressed'),
+      text: 'Extended compressed',
       icon: renderDownloadIcon24,
       component: 'sing_box',
       action: 'install_extended_compressed',
     });
   }
 
+  const zapretActions = getOptionalComponentActions({
+    component: 'zapret',
+    installed: zapretInstalled,
+    checkKey: 'zapretCheck',
+    installKey: 'zapretInstall',
+    removeKey: 'zapretRemove',
+  });
+  const zapret2Actions = getOptionalComponentActions({
+    component: 'zapret2',
+    installed: zapret2Installed,
+    checkKey: 'zapret2Check',
+    installKey: 'zapret2Install',
+    removeKey: 'zapret2Remove',
+  });
+  const byedpiActions = getOptionalComponentActions({
+    component: 'byedpi',
+    installed: byedpiInstalled,
+    checkKey: 'byedpiCheck',
+    installKey: 'byedpiInstall',
+    removeKey: 'byedpiRemove',
+  });
+
   return [
     {
+      component: 'podkop',
+      column: 0,
       title: 'Podkop Plus',
       version: normalizeCompiledVersion(systemInfo.podkop_version),
       latestVersion: getLatestVersion('podkop'),
       releaseUrl: getGitHubReleaseUrl('podkop'),
-      tag: getCheckTag('podkop'),
-      actions: [
-        getPrimaryUpdateAction('podkop', 'podkopCheck', 'podkopInstall'),
-      ],
+      actions: podkopActions,
     },
     {
+      component: 'sing_box',
+      column: 0,
       title: 'Sing-box',
       version: formatSingBoxVersion(systemInfo),
       latestVersion: getLatestVersion('sing_box'),
       releaseUrl: getGitHubReleaseUrl('sing_box'),
-      tag: getCheckTag('sing_box'),
       actions: singBoxActions,
     },
     {
+      component: 'zapret',
+      column: 1,
       title: 'Zapret',
       version: systemInfoLoading
-        ? 'loading'
+        ? _('Loading...')
         : zapretInstalled
           ? systemInfo.zapret_version
           : _('Not installed'),
       latestVersion: getLatestVersion('zapret'),
       releaseUrl: getGitHubReleaseUrl('zapret'),
-      tag: zapretInstalled ? getCheckTag('zapret') : undefined,
-      actions: zapretInstalled
-        ? [
-            getPrimaryUpdateAction('zapret', 'zapretCheck', 'zapretInstall'),
-            {
-              key: 'zapretRemove',
-              text: _('Remove'),
-              icon: renderXIcon24,
-              component: 'zapret',
-              action: 'remove',
-            },
-          ]
-        : [
-            {
-              key: 'zapretInstall',
-              text: _('Install'),
-              icon: renderDownloadIcon24,
-              component: 'zapret',
-              action: 'install',
-            },
-          ],
+      actions: zapretActions,
     },
     {
+      component: 'zapret2',
+      column: 1,
       title: 'Zapret2',
       version: systemInfoLoading
-        ? 'loading'
+        ? _('Loading...')
         : zapret2Installed
           ? systemInfo.zapret2_version
           : _('Not installed'),
       latestVersion: getLatestVersion('zapret2'),
       releaseUrl: getGitHubReleaseUrl('zapret2'),
-      tag: zapret2Installed ? getCheckTag('zapret2') : undefined,
-      actions: zapret2Installed
-        ? [
-            getPrimaryUpdateAction('zapret2', 'zapret2Check', 'zapret2Install'),
-            {
-              key: 'zapret2Remove',
-              text: _('Remove'),
-              icon: renderXIcon24,
-              component: 'zapret2',
-              action: 'remove',
-            },
-          ]
-        : [
-            {
-              key: 'zapret2Install',
-              text: _('Install'),
-              icon: renderDownloadIcon24,
-              component: 'zapret2',
-              action: 'install',
-            },
-          ],
+      actions: zapret2Actions,
     },
     {
+      component: 'byedpi',
+      column: 1,
       title: 'ByeDPI',
       version: systemInfoLoading
-        ? 'loading'
+        ? _('Loading...')
         : byedpiInstalled
           ? systemInfo.byedpi_version
           : _('Not installed'),
       latestVersion: getLatestVersion('byedpi'),
       releaseUrl: getGitHubReleaseUrl('byedpi'),
-      tag: byedpiInstalled ? getCheckTag('byedpi') : undefined,
-      actions: byedpiInstalled
-        ? [
-            getPrimaryUpdateAction('byedpi', 'byedpiCheck', 'byedpiInstall'),
-            {
-              key: 'byedpiRemove',
-              text: _('Remove'),
-              icon: renderXIcon24,
-              component: 'byedpi',
-              action: 'remove',
-            },
-          ]
-        : [
-            {
-              key: 'byedpiInstall',
-              text: _('Install'),
-              icon: renderDownloadIcon24,
-              component: 'byedpi',
-              action: 'install',
-            },
-          ],
+      actions: byedpiActions,
     },
   ];
-}
-
-function renderComponentTag(card: ComponentCard) {
-  if (!card.tag) {
-    return null;
-  }
-
-  return E(
-    'span',
-    {
-      class: [
-        'pdk_updates-page__component__tag',
-        card.tag.kind === 'success'
-          ? 'pdk_updates-page__component__tag--success'
-          : '',
-        card.tag.kind === 'warning'
-          ? 'pdk_updates-page__component__tag--warning'
-          : '',
-      ]
-        .filter(Boolean)
-        .join(' '),
-    },
-    card.tag.label,
-  );
 }
 
 function renderComponentCard(card: ComponentCard) {
@@ -920,76 +918,229 @@ function renderComponentCard(card: ComponentCard) {
   const anyActionLoading = isAnyActionLoading();
   const serviceRuntimeActionLoading = isServiceRuntimeActionLoading();
   const systemInfoLoading = isSystemInfoLoading();
-  const tag = renderComponentTag(card);
+
+  // 1. Header (displays Title, Current Version, no badges)
   const headerChildren: Node[] = [
     E('b', { class: 'pdk_updates-page__component__title' }, card.title),
-  ];
-  const statusChildren: Node[] = [];
-
-  if (card.releaseUrl) {
-    statusChildren.push(
-      E(
-        'a',
-        {
-          class: 'pdk_updates-page__component__release-link',
-          href: card.releaseUrl,
-          target: '_blank',
-          rel: 'noopener noreferrer',
-        },
-        card.latestVersion
-          ? _('Latest: %s').replace('%s', card.latestVersion)
-          : _('Latest release'),
-      ),
-    );
-  }
-
-  if (tag) {
-    statusChildren.push(tag);
-  }
-
-  if (statusChildren.length > 0) {
-    headerChildren.push(
-      E(
-        'div',
-        { class: 'pdk_updates-page__component__status' },
-        statusChildren,
-      ),
-    );
-  }
-
-  return E('div', { class: 'pdk_updates-page__component' }, [
-    E('div', { class: 'pdk_updates-page__component__header' }, headerChildren),
-    E('div', { class: 'pdk_updates-page__component__version' }, [
-      E(
-        'span',
-        { class: 'pdk_updates-page__component__version__label' },
-        _('Version'),
-      ),
-      E(
-        'span',
-        { class: 'pdk_updates-page__component__version__value' },
-        card.version,
-      ),
-    ]),
     E(
-      'div',
-      { class: 'pdk_updates-page__component__actions' },
-      card.actions.map((action) => {
-        const loading = updatesActions[action.key].loading;
-
-        return renderButton({
-          text: action.text,
-          icon: action.icon,
-          loading,
-          disabled:
-            systemInfoLoading ||
-            serviceRuntimeActionLoading ||
-            (anyActionLoading && !loading),
-          onClick: () => void handleComponentAction(action),
-        });
-      }),
+      'span',
+      { class: 'pdk_updates-page__component__header-version' },
+      card.version,
     ),
-  ]);
+  ];
+  const header = E(
+    'div',
+    { class: 'pdk_updates-page__component__header' },
+    headerChildren,
+  );
+
+  // 2. Details (renders status messages for check results)
+  const detailsChildren: Node[] = [];
+  const checkResult = store.get().updatesChecks[card.component];
+
+  if (checkResult && checkResult.status) {
+    let labelText = '';
+    const latestValueNodes: Node[] = [];
+
+    if (checkResult.status === 'outdated') {
+      labelText = _('Update is available:');
+      const versionToShow =
+        checkResult.latest_version || card.latestVersion || card.version;
+
+      if (checkResult.release_url) {
+        latestValueNodes.push(
+          E(
+            'a',
+            {
+              class: 'pdk_updates-page__component__release-version-link',
+              href: checkResult.release_url,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+            },
+            versionToShow || _('Open'),
+          ),
+        );
+      } else if (versionToShow) {
+        latestValueNodes.push(document.createTextNode(versionToShow));
+      }
+    } else if (checkResult.status === 'latest') {
+      labelText = _('Latest version is installed');
+    } else if (checkResult.status === 'dev') {
+      labelText = `${_('Installed version is newer than release')}. ${_('Latest version:')}`;
+      const versionToShow = checkResult.latest_version || card.latestVersion;
+
+      if (checkResult.release_url) {
+        latestValueNodes.push(
+          E(
+            'a',
+            {
+              class: 'pdk_updates-page__component__release-version-link',
+              href: checkResult.release_url,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+            },
+            versionToShow || _('Open'),
+          ),
+        );
+      } else if (versionToShow) {
+        latestValueNodes.push(document.createTextNode(versionToShow));
+      }
+    }
+
+    if (labelText) {
+      const rowChildren: Node[] = [
+        E(
+          'span',
+          { class: 'pdk_updates-page__component__info-label' },
+          labelText,
+        ),
+      ];
+      if (latestValueNodes.length > 0) {
+        rowChildren.push(
+          E(
+            'span',
+            {
+              class:
+                'pdk_updates-page__component__info-value pdk_updates-page__component__info-value--latest',
+            },
+            latestValueNodes,
+          ),
+        );
+      }
+
+      detailsChildren.push(
+        E(
+          'div',
+          { class: 'pdk_updates-page__component__info-row' },
+          rowChildren,
+        ),
+      );
+    }
+  }
+
+  const detailsContainer =
+    detailsChildren.length > 0
+      ? E(
+          'div',
+          { class: 'pdk_updates-page__component__details' },
+          detailsChildren,
+        )
+      : null;
+
+  // 3. Actions classification
+  const primaryActions: ComponentActionButton[] = [];
+  const dangerActions: ComponentActionButton[] = [];
+  const variantActions: ComponentActionButton[] = [];
+
+  card.actions.forEach((action) => {
+    if (action.action === 'remove') {
+      dangerActions.push(action);
+    } else if (action.action.startsWith('install_')) {
+      variantActions.push(action);
+    } else {
+      primaryActions.push(action);
+    }
+  });
+
+  const actionElements: Node[] = [];
+
+  // Render primary and danger buttons in a main row
+  const primaryButtons = primaryActions.map((action) => {
+    const loading = updatesActions[action.key].loading;
+    const isUpdateOrInstall = action.action === 'install';
+
+    return renderButton({
+      classNames: isUpdateOrInstall ? ['cbi-button-save'] : [],
+      text: action.text,
+      icon: action.icon,
+      loading,
+      disabled:
+        systemInfoLoading ||
+        serviceRuntimeActionLoading ||
+        (anyActionLoading && !loading),
+      onClick: () => void handleComponentAction(action),
+    });
+  });
+
+  const dangerButtons = dangerActions.map((action) => {
+    const loading = updatesActions[action.key].loading;
+
+    return renderButton({
+      classNames: ['cbi-button-remove'],
+      text: action.text,
+      icon: action.icon,
+      loading,
+      disabled:
+        systemInfoLoading ||
+        serviceRuntimeActionLoading ||
+        (anyActionLoading && !loading),
+      onClick: () => void handleComponentAction(action),
+    });
+  });
+
+  if (primaryButtons.length > 0 || dangerButtons.length > 0) {
+    actionElements.push(
+      E('div', { class: 'pdk_updates-page__component__actions-main' }, [
+        ...primaryButtons,
+        ...dangerButtons,
+      ]),
+    );
+  }
+
+  // Render variant buttons if any
+  if (variantActions.length > 0) {
+    const variantButtons = variantActions.map((action) => {
+      const loading = updatesActions[action.key].loading;
+      return renderButton({
+        text: action.text,
+        icon: action.icon,
+        loading,
+        disabled:
+          systemInfoLoading ||
+          serviceRuntimeActionLoading ||
+          (anyActionLoading && !loading),
+        onClick: () => void handleComponentAction(action),
+      });
+    });
+
+    actionElements.push(
+      E('div', { class: 'pdk_updates-page__component__variants' }, [
+        E(
+          'div',
+          { class: 'pdk_updates-page__component__variants-title' },
+          _('Install another build:'),
+        ),
+        E(
+          'div',
+          { class: 'pdk_updates-page__component__variants-buttons' },
+          variantButtons,
+        ),
+      ]),
+    );
+  }
+
+  const actionsContainer = E(
+    'div',
+    {
+      class: [
+        'pdk_updates-page__component__actions',
+        detailsContainer
+          ? 'pdk_updates-page__component__actions--with-details'
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    },
+    actionElements,
+  );
+
+  const cardChildren: Node[] = [header];
+  if (detailsContainer) {
+    cardChildren.push(detailsContainer);
+  }
+  cardChildren.push(actionsContainer);
+
+  return E('div', { class: 'pdk_updates-page__component' }, cardChildren);
 }
 
 function renderUpdatesComponents() {
@@ -1000,8 +1151,8 @@ function renderUpdatesComponents() {
   }
 
   const columns = [[], []] as Node[][];
-  getComponentCards().forEach((card, index) => {
-    columns[index % 2].push(renderComponentCard(card));
+  getComponentCards().forEach((card) => {
+    columns[card.column].push(renderComponentCard(card));
   });
 
   return preserveScrollForPage(() => {
@@ -1047,10 +1198,22 @@ async function onPageMount() {
     }
   }
 
+  const componentUpdateCheckCache = await loadComponentUpdateCheckCache();
+
+  if (!updatesMounted || mountId !== updatesMountId) {
+    return;
+  }
+
+  if (componentUpdateCheckCache.enabled) {
+    store.reset(['updatesChecks']);
+    applyCachedCheckResults(componentUpdateCheckCache.results);
+  }
+
   if (
     shouldResetCheckResultsOnMount({
       anyActionLoading: isAnyActionLoading(),
       preserveCheckResultsOnNextMount,
+      persistentCacheEnabled: componentUpdateCheckCache.enabled,
     })
   ) {
     store.reset(['updatesChecks']);

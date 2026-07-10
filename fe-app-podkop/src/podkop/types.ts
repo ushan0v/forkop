@@ -88,6 +88,7 @@ export namespace Podkop {
     UI_ACTION_ACK = 'ui_action_ack',
     COMPONENT_ACTION_ASYNC = 'component_action_async',
     COMPONENT_ACTION_STATUS = 'component_action_status',
+    COMPONENT_UPDATE_CHECK_CACHE = 'component_update_check_cache',
     SUBSCRIPTION_UPDATE_ASYNC = 'subscription_update_async',
     SUBSCRIPTION_UPDATE_STATUS = 'subscription_update_status',
   }
@@ -570,6 +571,11 @@ export namespace Podkop {
     started_at?: number;
     updated_at?: number | null;
     exit_code?: number | null;
+  }
+
+  export interface ComponentUpdateCheckCache {
+    enabled: boolean;
+    results: ComponentActionResult[];
   }
 
   export type ComponentActionStartResult = UiActionStartResult;
