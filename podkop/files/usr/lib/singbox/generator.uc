@@ -412,12 +412,48 @@ function tproxy_inbound_matcher() {
 
 function base_config(settings, service_address, runtime_context) {
     let log_level = option(settings, "log_level", "warn");
-    let bootstrap_dns_server = option(settings, "bootstrap_dns_server", "77.88.8.8");
     let rewrite_ttl = int_option(settings, "dns_rewrite_ttl", "60");
     let cache_path = option(settings, "cache_path", "/tmp/sing-box/cache.db");
-    let dns_server = runtime_dns.server_config(settings);
-    if (dns_server.unsupported)
-        runtime_generate_unsupported(dns_server.unsupported);
+    let dns_config = runtime_dns.config(settings);
+    if (dns_config.unsupported)
+        runtime_generate_unsupported(dns_config.unsupported);
+
+    let dns_rules = [];
+    for (let rule in dns_config.rules)
+        push(dns_rules, rule);
+    for (let rule in [
+        { action: "reject", query_type: "HTTPS" },
+        { action: "reject", domain_suffix: "use-application-dns.net" },
+        {
+            action: "route",
+            server: runtime_constants.FAKEIP_DNS_SERVER_TAG,
+            rewrite_ttl,
+            domain: [ runtime_constants.FAKEIP_TEST_DOMAIN, runtime_constants.CHECK_PROXY_IP_DOMAIN ]
+        }
+    ])
+        push(dns_rules, rule);
+
+    let dns_servers = [];
+    for (let server in dns_config.servers)
+        push(dns_servers, server);
+    push(dns_servers, {
+        type: "fakeip",
+        tag: runtime_constants.FAKEIP_DNS_SERVER_TAG,
+        inet4_range: runtime_constants.FAKEIP_INET4_RANGE,
+        inet6_range: runtime_constants.FAKEIP_INET6_RANGE
+    });
+
+    let inbounds = [
+        { type: "tproxy", tag: runtime_constants.TPROXY_INBOUND_TAG, listen: runtime_constants.TPROXY_INBOUND_ADDRESS, listen_port: runtime_constants.TPROXY_INBOUND_PORT, tcp_fast_open: true, udp_fragment: true },
+        { type: "tproxy", tag: runtime_constants.TPROXY_INBOUND6_TAG, listen: runtime_constants.TPROXY_INBOUND6_ADDRESS, listen_port: runtime_constants.TPROXY_INBOUND_PORT, tcp_fast_open: true, udp_fragment: true },
+        { type: "direct", tag: runtime_constants.DNS_INBOUND_TAG, listen: runtime_constants.DNS_INBOUND_ADDRESS, listen_port: runtime_constants.DNS_INBOUND_PORT }
+    ];
+    for (let inbound in dns_config.inbounds)
+        push(inbounds, inbound);
+
+    runtime_context = object_or_empty(runtime_context);
+    runtime_context.dns_health_inbounds = dns_config.sniff_inbounds;
+    runtime_context.default_domain_resolver = runtime_dns.default_domain_resolver(settings);
 
     return {
         log: {
@@ -426,26 +462,8 @@ function base_config(settings, service_address, runtime_context) {
             timestamp: false
         },
         dns: {
-            servers: [
-                { type: "udp", tag: runtime_constants.BOOTSTRAP_DNS_SERVER_TAG, server: bootstrap_dns_server, server_port: 53 },
-                dns_server,
-                {
-                    type: "fakeip",
-                    tag: runtime_constants.FAKEIP_DNS_SERVER_TAG,
-                    inet4_range: runtime_constants.FAKEIP_INET4_RANGE,
-                    inet6_range: runtime_constants.FAKEIP_INET6_RANGE
-                }
-            ],
-            rules: [
-                { action: "reject", query_type: "HTTPS" },
-                { action: "reject", domain_suffix: "use-application-dns.net" },
-                {
-                    action: "route",
-                    server: runtime_constants.FAKEIP_DNS_SERVER_TAG,
-                    rewrite_ttl,
-                    domain: [ runtime_constants.FAKEIP_TEST_DOMAIN, runtime_constants.CHECK_PROXY_IP_DOMAIN ]
-                }
-            ],
+            servers: dns_servers,
+            rules: dns_rules,
             final: runtime_constants.DNS_SERVER_TAG,
             strategy: "prefer_ipv4",
             independent_cache: true
@@ -453,11 +471,7 @@ function base_config(settings, service_address, runtime_context) {
         ntp: {},
         certificate: {},
         endpoints: [],
-        inbounds: [
-            { type: "tproxy", tag: runtime_constants.TPROXY_INBOUND_TAG, listen: runtime_constants.TPROXY_INBOUND_ADDRESS, listen_port: runtime_constants.TPROXY_INBOUND_PORT, tcp_fast_open: true, udp_fragment: true },
-            { type: "tproxy", tag: runtime_constants.TPROXY_INBOUND6_TAG, listen: runtime_constants.TPROXY_INBOUND6_ADDRESS, listen_port: runtime_constants.TPROXY_INBOUND_PORT, tcp_fast_open: true, udp_fragment: true },
-            { type: "direct", tag: runtime_constants.DNS_INBOUND_TAG, listen: runtime_constants.DNS_INBOUND_ADDRESS, listen_port: runtime_constants.DNS_INBOUND_PORT }
-        ],
+        inbounds,
         outbounds: [
             { type: "direct", tag: runtime_constants.DIRECT_OUTBOUND_TAG },
             { type: "direct", tag: runtime_constants.BYPASS_OUTBOUND_TAG }

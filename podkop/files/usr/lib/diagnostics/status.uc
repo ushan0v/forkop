@@ -361,6 +361,8 @@ function podkop_config_masked_line(line) {
     line = mask_after_token(line, "list server_users");
     line = mask_after_token_space(line, "option dns_server");
     line = mask_after_token_space(line, "option bootstrap_dns_server");
+    line = mask_after_token_space(line, "list dns_server");
+    line = mask_after_token_space(line, "list bootstrap_dns_server");
     line = mask_after_token_space(line, "option listen");
     line = mask_after_token_space(line, "option listen_port");
     line = mask_after_token_space(line, "option public_host");
@@ -387,6 +389,7 @@ function podkop_config_masked_line(line) {
     line = mask_after_token_space(line, "option mixed_proxy_username");
     line = mask_after_token_space(line, "option mixed_proxy_password");
     line = mask_option_path(line, "option dns_server '");
+    line = mask_option_path(line, "list dns_server '");
     line = mask_after_token(line, "option yacd_secret_key");
 
     return line;
@@ -1414,13 +1417,19 @@ function render_global_dns_check(dont_touch_dhcp) {
     let dns_type = object_value(value, "dns_type") || "unknown";
     let dns_server = object_value(value, "dns_server") || "unknown";
     let bootstrap_dns_server = object_value(value, "bootstrap_dns_server");
+    let dns_position = number_value(value.dns_server_count) > 1
+        ? " (priority " + as_string(number_value(value.dns_server_index) + 1) + "/" + as_string(number_value(value.dns_server_count)) + ")"
+        : "";
+    let bootstrap_position = number_value(value.bootstrap_dns_server_count) > 1
+        ? " (priority " + as_string(number_value(value.bootstrap_dns_server_index) + 1) + "/" + as_string(number_value(value.bootstrap_dns_server_count)) + ")"
+        : "";
     let dump_dhcp_config = false;
 
     if (bootstrap_dns_server != "") {
-        print_line((flag_is_one(value.bootstrap_dns_status) ? "\u2705 Bootstrap DNS: " : "\u274c Bootstrap DNS: ") + bootstrap_dns_server);
+        print_line((flag_is_one(value.bootstrap_dns_status) ? "\u2705 Bootstrap DNS: " : "\u274c Bootstrap DNS: ") + bootstrap_dns_server + bootstrap_position);
     }
 
-    print_line((flag_is_one(value.dns_status) ? "\u2705 Main DNS: " : "\u274c Main DNS: ") + dns_server + " [" + dns_type + "]");
+    print_line((flag_is_one(value.dns_status) ? "\u2705 Main DNS: " : "\u274c Main DNS: ") + dns_server + " [" + dns_type + "]" + dns_position);
     print_line(flag_is_one(value.dns_on_router) ? "\u2705 DNS on router" : "\u274c DNS on router");
 
     if (as_string(dont_touch_dhcp) == "1") {

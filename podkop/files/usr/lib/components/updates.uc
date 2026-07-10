@@ -30,6 +30,7 @@ const RULE_CONDITION_CACHE_DIR = getenv("PODKOP_RULE_CONDITION_CACHE_DIR") || RU
 const RELOAD_LOCK_DIR = getenv("PODKOP_RELOAD_LOCK_DIR") || "/var/run/podkop-plus.reload.lock";
 const SERVICE_INIT = getenv("PODKOP_SERVICE_INIT") || "/etc/init.d/podkop-plus";
 const PRIORITY_UC = getenv("PODKOP_PRIORITY_UC") || LIB_DIR + "/singbox/priority.uc";
+const DNS_FAILOVER_UC = getenv("PODKOP_DNS_FAILOVER_UC") || LIB_DIR + "/singbox/dns_failover.uc";
 const COMPONENT_JOB_DIR = getenv("UPDATES_JOB_DIR") || getenv("PODKOP_UI_COMPONENT_ACTION_DIR") || "/var/run/podkop-plus/component-actions";
 const COMPONENT_JOB_FINISHED_TTL_MINUTES = getenv("UPDATES_JOB_FINISHED_TTL_MINUTES") || "60";
 const COMPONENT_JOB_ORPHAN_OUTPUT_TTL_MINUTES = getenv("UPDATES_JOB_ORPHAN_OUTPUT_TTL_MINUTES") || "60";
@@ -2425,17 +2426,24 @@ function subscription_update_common_locked(force, target_section, target_source_
 
     if (!singbox_runtime_success([ "configure-service" ]))
         return false;
+    module_success([ DNS_FAILOVER_UC, "stop-runtime" ]);
     if (!singbox_runtime_success([ "init-config", "0", "1", "1" ])) {
+        module_success([ DNS_FAILOVER_UC, "start-runtime" ]);
         log_message("Failed to rebuild sing-box after subscription update", "error");
         return false;
     }
     module_success([ PRIORITY_UC, "stop-runtime" ]);
     if (!service_state_success([ "reload-sing-box-runtime" ])) {
         module_success([ PRIORITY_UC, "start-runtime" ]);
+        module_success([ DNS_FAILOVER_UC, "start-runtime" ]);
         return false;
     }
     if (!module_success([ PRIORITY_UC, "start-runtime" ])) {
         log_message("Failed to restart Priority runtime after subscription update", "error");
+        return false;
+    }
+    if (!module_success([ DNS_FAILOVER_UC, "start-runtime" ])) {
+        log_message("Failed to restart DNS failover runtime after subscription update", "error");
         return false;
     }
     if (!write_current_reload_state_clean())

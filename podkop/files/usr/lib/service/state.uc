@@ -449,6 +449,16 @@ function pid_is_sing_box(pid) {
     return path_basename(command_trimmed_output_from_args([ "readlink", "/proc/" + pid + "/exe" ])) == "sing-box";
 }
 
+function hup_sing_box_runtime() {
+    let pid = sing_box_service_pid_runtime();
+    if (pid <= 0 || !pid_is_sing_box(pid))
+        exit(1);
+
+    command_success_from_args([ "logger", "-t", "podkop-plus", "[info] Applying DNS failover with sing-box SIGHUP reload" ]);
+    if (!command_success_from_args([ "kill", "-HUP", as_string(pid) ]))
+        exit(1);
+}
+
 function process_age_seconds(pid) {
     pid = as_string(pid);
     if (match(pid, /^[0-9]+$/) == null)
@@ -547,6 +557,19 @@ function option(section, key, fallback) {
     if (type(value) == "array")
         return join(" ", value);
     return as_string(value);
+}
+
+function list_option(section, key, fallback) {
+    let value = object_or_empty(section)[key];
+    if (type(value) == "array")
+        return value;
+
+    value = trim(as_string(value));
+    if (value != "")
+        return split(value, /[ \t\r\n]+/);
+
+    fallback = as_string(fallback);
+    return fallback == "" ? [] : [ fallback ];
 }
 
 function bool_option(section, key, fallback) {
@@ -1221,8 +1244,17 @@ function sing_box_signature_body(settings, sections, servers, mwan3_active) {
     let body = "";
 
     body = signature_add_value(body, "settings.dns_type", option(settings, "dns_type", "doh"));
-    body = signature_add_value(body, "settings.dns_server", option(settings, "dns_server", "1.1.1.1"));
-    body = signature_add_value(body, "settings.bootstrap_dns_server", option(settings, "bootstrap_dns_server", "77.88.8.8"));
+    for (let value in list_option(settings, "dns_server", "77.88.8.8"))
+        body = signature_add_value(body, "settings.dns_server", value);
+    for (let value in list_option(settings, "bootstrap_dns_server", "77.88.8.8"))
+        body = signature_add_value(body, "settings.bootstrap_dns_server", value);
+    body = signature_add_value(body, "settings.dns_check_interval", option(settings, "dns_check_interval", "10s"));
+    body = signature_add_value(body, "settings.dns_recovery_check_interval", option(settings, "dns_recovery_check_interval", "60s"));
+    body = signature_add_value(body, "settings.dns_check_timeout", option(settings, "dns_check_timeout", "2s"));
+    let dns_detour_enabled = bool_option_value(settings, "dns_detour_enabled", false);
+    body = signature_add_value(body, "settings.dns_detour_enabled", dns_detour_enabled);
+    if (dns_detour_enabled == "1")
+        body = signature_add_value(body, "settings.dns_detour_section", option(settings, "dns_detour_section", ""));
     body = signature_add_value(body, "settings.dns_rewrite_ttl", option(settings, "dns_rewrite_ttl", "60"));
     body = signature_add_value(body, "settings.output_network_interface", option(settings, "output_network_interface", ""));
     body = signature_add_value(body, "settings.disable_quic", bool_option_value(settings, "disable_quic", false));
@@ -1629,6 +1661,8 @@ else if (mode == "release-runtime-dir-lock")
     release_runtime_dir_lock(ARGV[1]);
 else if (mode == "reload-sing-box-runtime")
     reload_sing_box_runtime();
+else if (mode == "hup-sing-box-runtime")
+    hup_sing_box_runtime();
 else if (mode == "clear-reload-state")
     clear_reload_state(ARGV[1], ARGV[2]);
 else if (mode == "remove-file")

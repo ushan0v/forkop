@@ -33,6 +33,8 @@ const fixture = {
     download_lists_via_proxy: '1',
     download_subscriptions_via_proxy: '1',
     download_lists_via_proxy_section: 'legacy-urltest',
+    dns_server: '9.9.9.9',
+    bootstrap_dns_server: '1.1.1.1',
     routing_excluded_ips: [ '192.0.2.0/24' ]
   },
   rule: [
@@ -141,6 +143,9 @@ const sections = Object.fromEntries(config.section.map(section => [section['.nam
 const childByType = type => config[type] || [];
 const subscriptionUrls = childByType('subscription_url');
 const urltests = childByType('urltest');
+
+assert(JSON.stringify(config.settings.dns_server) === JSON.stringify(['9.9.9.9']), 'legacy main DNS scalar migrated to ordered list');
+assert(JSON.stringify(config.settings.bootstrap_dns_server) === JSON.stringify(['1.1.1.1']), 'legacy Bootstrap DNS scalar migrated to ordered list');
 
 function assert(condition, message) {
   if (!condition) {

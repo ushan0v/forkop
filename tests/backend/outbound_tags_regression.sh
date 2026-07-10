@@ -217,8 +217,16 @@ validate_rejects() {
   local fixture="$1"
   local expected="$2"
   local output
+  local normalized="$WORK_DIR/validator-$(basename "$fixture")"
+  node - "$fixture" "$normalized" <<'JS'
+const fs = require('fs');
+const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+input.settings.dns_server = ['77.88.8.8'];
+input.settings.bootstrap_dns_server = ['77.88.8.8'];
+fs.writeFileSync(process.argv[3], JSON.stringify(input));
+JS
   if output="$(PODKOP_LIB="$PODKOP_LIB" ucode -L "$PODKOP_LIB" "$VALIDATOR_UC" \
-      validate-runtime-fixture "$fixture" '{}' 2>/dev/null)"; then
+      validate-runtime-fixture "$normalized" '{}' 2>/dev/null)"; then
     fail "validator accepted $fixture"
   fi
   printf '%s\n' "$output" | grep -Fq "$expected" ||

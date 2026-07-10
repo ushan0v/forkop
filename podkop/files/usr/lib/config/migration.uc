@@ -1057,6 +1057,22 @@ function migrate_list_update_enabled(ctx) {
     }
 }
 
+function normalize_existing_list_option(ctx, section, key) {
+    let current = object_or_empty(section)[key];
+    if (current == null || type(current) == "array")
+        return;
+
+    let value = trim(as_string(current));
+    let values = value == "" ? [] : [ value ];
+    section[key] = values;
+    record_operation(ctx, { op: "set_list", section: section_name(section), option: key, values });
+}
+
+function migrate_dns_server_lists(ctx) {
+    normalize_existing_list_option(ctx, ctx.model.settings, "dns_server");
+    normalize_existing_list_option(ctx, ctx.model.settings, "bootstrap_dns_server");
+}
+
 function migrate_download_via_proxy_flags(ctx) {
     let settings = ctx.model.settings;
     let legacy_section = option(settings, "download_lists_via_proxy_section", "");
@@ -1125,6 +1141,7 @@ function migrate_model(model, constants) {
     constants = object_or_empty(constants);
 
     delete_option(ctx, model.settings, "routing_excluded_ips");
+    migrate_dns_server_lists(ctx);
     migrate_list_update_enabled(ctx);
 
     let converted_sections = [];

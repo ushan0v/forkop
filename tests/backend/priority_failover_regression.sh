@@ -28,8 +28,18 @@ generate_config() {
 }
 
 validate_fixture() {
+  local source="$1"
+  local normalized="$WORK_DIR/validator-$(basename "$source")"
+  node - "$source" "$normalized" <<'JS'
+const fs = require('fs');
+const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+input.settings ??= { '.name': 'settings', '.type': 'settings' };
+input.settings.dns_server ??= ['77.88.8.8'];
+input.settings.bootstrap_dns_server ??= ['77.88.8.8'];
+fs.writeFileSync(process.argv[3], JSON.stringify(input));
+JS
   PODKOP_LIB="$PODKOP_LIB" ucode -L "$PODKOP_LIB" "$VALIDATOR_UC" \
-    validate-runtime-fixture "$1" "{}"
+    validate-runtime-fixture "$normalized" "{}"
 }
 
 assert_rejects() {

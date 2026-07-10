@@ -23,7 +23,17 @@ JSON
 context="$(cat "$WORK_DIR/context.json")"
 
 validate_fixture() {
-  PODKOP_LIB="$PODKOP_LIB" ucode -L "$PODKOP_LIB" "$VALIDATOR" validate-runtime-fixture "$1" "$context"
+  local source="$1"
+  local normalized="$WORK_DIR/normalized-$(basename "$source")"
+  node - "$source" "$normalized" <<'JS'
+const fs = require('fs');
+const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+input.settings ??= { '.name': 'settings', '.type': 'settings' };
+if (input.settings.dns_server === undefined) input.settings.dns_server = ['77.88.8.8'];
+if (input.settings.bootstrap_dns_server === undefined) input.settings.bootstrap_dns_server = ['77.88.8.8'];
+fs.writeFileSync(process.argv[3], JSON.stringify(input));
+JS
+  PODKOP_LIB="$PODKOP_LIB" ucode -L "$PODKOP_LIB" "$VALIDATOR" validate-runtime-fixture "$normalized" "$context"
 }
 
 assert_rejects() {
@@ -48,6 +58,14 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
     "list_update_enabled": "1",
     "update_interval": "1d",
     "latency_test_url": "https://latency.example/generate_204",
+    "dns_type": "doh",
+    "dns_server": [ "dns.google/dns-query", "cloudflare-dns.com/dns-query" ],
+    "bootstrap_dns_server": [ "1.1.1.1", "8.8.8.8" ],
+    "dns_check_interval": "10s",
+    "dns_recovery_check_interval": "60s",
+    "dns_check_timeout": "2s",
+    "dns_detour_enabled": "1",
+    "dns_detour_section": "proxy",
     "download_lists_via_proxy": "1",
     "download_lists_via_proxy_section": "proxy"
   },
@@ -115,6 +133,74 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
 JSON
 
 validate_fixture "$WORK_DIR/valid.json"
+
+cat >"$WORK_DIR/bad-dns-duration.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "dns_server": [ "1.1.1.1", "8.8.8.8" ],
+    "bootstrap_dns_server": [ "77.88.8.8" ],
+    "dns_check_interval": "ten seconds"
+  },
+  "section": []
+}
+JSON
+assert_rejects "bad DNS interval" "$WORK_DIR/bad-dns-duration.json" "settings.dns_check_interval"
+
+cat >"$WORK_DIR/bad-dns-server.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "dns_server": [ "1.1.1.1", "bad value" ],
+    "bootstrap_dns_server": [ "77.88.8.8" ]
+  },
+  "section": []
+}
+JSON
+assert_rejects "bad DNS server" "$WORK_DIR/bad-dns-server.json" "Invalid main DNS server"
+
+cat >"$WORK_DIR/empty-main-dns.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "dns_server": [],
+    "bootstrap_dns_server": [ "77.88.8.8" ]
+  },
+  "section": []
+}
+JSON
+assert_rejects "empty main DNS list" "$WORK_DIR/empty-main-dns.json" "At least one main DNS server is required"
+
+cat >"$WORK_DIR/empty-bootstrap-dns.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "dns_server": [ "77.88.8.8" ],
+    "bootstrap_dns_server": []
+  },
+  "section": []
+}
+JSON
+assert_rejects "empty Bootstrap DNS list" "$WORK_DIR/empty-bootstrap-dns.json" "At least one Bootstrap DNS server is required"
+
+cat >"$WORK_DIR/bad-dns-detour-bypass.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "dns_detour_enabled": "1",
+    "dns_detour_section": "bypass"
+  },
+  "section": [
+    { ".name": "bypass", ".type": "section", "enabled": "1", "action": "bypass" }
+  ]
+}
+JSON
+assert_rejects "DNS detour bypass" "$WORK_DIR/bad-dns-detour-bypass.json" "unsupported action 'bypass'"
 
 cat >"$WORK_DIR/bad-direct-action.json" <<'JSON'
 {
@@ -262,7 +348,7 @@ assert_rejects "bad country" "$WORK_DIR/bad-country.json" "Invalid country code 
 provider_context="$(node -e 'const fs=require("fs"); const c=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); c.byedpi_installed=true; process.stdout.write(JSON.stringify(c));' "$WORK_DIR/context.json")"
 cat >"$WORK_DIR/bad-byedpi.json" <<'JSON'
 {
-  "settings": { ".name": "settings", ".type": "settings" },
+  "settings": { ".name": "settings", ".type": "settings", "dns_server": [ "77.88.8.8" ], "bootstrap_dns_server": [ "77.88.8.8" ] },
   "section": [
     { ".name": "bye", ".type": "section", "enabled": "1", "action": "byedpi", "byedpi_cmd_opts": "--port 1080 --disorder 3" }
   ]
@@ -283,7 +369,7 @@ ln -s "$PODKOP_LIB/providers" "$runtime_lib/providers"
 touch "$WORK_DIR/ciadpi-provider"
 cat >"$WORK_DIR/bad-byedpi-runtime-state.json" <<'JSON'
 {
-  "settings": { ".name": "settings", ".type": "settings" },
+  "settings": { ".name": "settings", ".type": "settings", "dns_server": [ "77.88.8.8" ], "bootstrap_dns_server": [ "77.88.8.8" ] },
   "section": [
     { ".name": "bye", ".type": "section", "enabled": "1", "action": "byedpi", "byedpi_cmd_opts": "--port 1080 --disorder 3" }
   ]

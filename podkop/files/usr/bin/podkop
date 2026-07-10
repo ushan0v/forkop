@@ -130,6 +130,7 @@ function command_spec(command) {
         start: [ "service/lifecycle.uc", "start", 0 ],
         stop: [ "service/lifecycle.uc", "stop", 0 ],
         reload: [ "service/lifecycle.uc", "reload", 1 ],
+        dns_failover_apply: [ "service/lifecycle.uc", "dns-failover-apply", 1 ],
         restart: [ "service/lifecycle.uc", "restart", 0 ],
         enable: [ "service/lifecycle.uc", "enable", 0 ],
         disable: [ "service/lifecycle.uc", "disable", 0 ],

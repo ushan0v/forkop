@@ -58,11 +58,7 @@ function refreshDownloadSectionChoices(option, capabilities) {
   }
 }
 
-function configureDownloadSectionOption(
-  option,
-  sectionOption,
-  capabilities,
-) {
+function configureDownloadSectionOption(option, sectionOption, capabilities) {
   option.default = "";
   option.rmempty = false;
   option.cfgvalue = function (section_id) {
@@ -101,6 +97,62 @@ function configureDownloadViaProxyFlag(option, sectionOption) {
   };
 }
 
+function optionListValues(option, section_id) {
+  const formValue = option.formvalue(section_id);
+  const value = formValue != null ? formValue : option.cfgvalue(section_id);
+  return L.toArray(value)
+    .map((item) => `${item || ""}`.trim())
+    .filter(Boolean);
+}
+
+function configureDnsList(option, choices, defaultValue) {
+  Object.entries(choices).forEach(([key, label]) => {
+    option.value(key, _(label));
+  });
+  option.default = [defaultValue];
+  option.rmempty = false;
+  option.validate = function (_section_id, value) {
+    const normalized = `${value || ""}`.trim();
+    if (!normalized) {
+      return optionListValues(option, _section_id).length > 0
+        ? true
+        : _("Add at least one DNS server");
+    }
+    const validation = main.validateDNS(normalized);
+    return validation.valid ? true : validation.message;
+  };
+}
+
+function configureDnsFailoverVisibility(option, dnsOption, bootstrapOption) {
+  option.depends("dns_server", "__podkop_multiple_dns__");
+  option.depends("bootstrap_dns_server", "__podkop_multiple_dns__");
+  option.retain = true;
+  option.checkDepends = function (section_id) {
+    return (
+      optionListValues(dnsOption, section_id).length > 1 ||
+      optionListValues(bootstrapOption, section_id).length > 1
+    );
+  };
+}
+
+function configureDnsDuration(
+  option,
+  defaultValue,
+  dnsOption,
+  bootstrapOption,
+) {
+  option.default = defaultValue;
+  option.rmempty = false;
+  option.validate = function (_section_id, value) {
+    const normalized = `${value || ""}`.trim();
+    if (!normalized || !isSingBoxDuration(normalized)) {
+      return _("Use sing-box duration format like 10s, 1m or 2m30s");
+    }
+    return true;
+  };
+  configureDnsFailoverVisibility(option, dnsOption, bootstrapOption);
+}
+
 function createSettingsContent(section, capabilities) {
   let o = section.option(
     form.ListValue,
@@ -114,49 +166,55 @@ function createSettingsContent(section, capabilities) {
   o.default = "udp";
   o.rmempty = false;
 
-  o = section.option(
-    form.Value,
+  const dnsOption = section.option(
+    form.DynamicList,
     "dns_server",
-    _("DNS Server"),
-    _("Select or enter DNS server address"),
-  );
-  Object.entries(main.DNS_SERVER_OPTIONS).forEach(([key, label]) => {
-    o.value(key, _(label));
-  });
-  o.default = "8.8.8.8";
-  o.rmempty = false;
-  o.validate = function (section_id, value) {
-    const validation = main.validateDNS(value);
-
-    if (validation.valid) {
-      return true;
-    }
-
-    return validation.message;
-  };
-
-  o = section.option(
-    form.Value,
-    "bootstrap_dns_server",
-    _("Bootstrap DNS server"),
+    _("DNS Servers"),
     _(
-      "The DNS server used to look up the IP address of an upstream DNS server",
+      "Select or enter DNS server addresses. The first available server has priority.",
     ),
   );
-  Object.entries(main.BOOTSTRAP_DNS_SERVER_OPTIONS).forEach(([key, label]) => {
-    o.value(key, _(label));
-  });
-  o.default = "77.88.8.8";
-  o.rmempty = false;
-  o.validate = function (section_id, value) {
-    const validation = main.validateDNS(value);
+  configureDnsList(dnsOption, main.DNS_SERVER_OPTIONS, "77.88.8.8");
 
-    if (validation.valid) {
-      return true;
-    }
+  const bootstrapOption = section.option(
+    form.DynamicList,
+    "bootstrap_dns_server",
+    _("Bootstrap DNS Servers"),
+    _(
+      "Direct DNS servers used to resolve upstream DNS and proxy addresses. The first available server has priority.",
+    ),
+  );
+  configureDnsList(
+    bootstrapOption,
+    main.BOOTSTRAP_DNS_SERVER_OPTIONS,
+    "77.88.8.8",
+  );
 
-    return validation.message;
-  };
+  o = section.option(
+    form.Value,
+    "dns_check_interval",
+    _("DNS Check Interval"),
+    _("How often to check the active DNS servers."),
+  );
+  configureDnsDuration(o, "10s", dnsOption, bootstrapOption);
+
+  o = section.option(
+    form.Value,
+    "dns_recovery_check_interval",
+    _("Higher-priority DNS Check"),
+    _("How often to check whether a higher-priority DNS server has recovered."),
+  );
+  configureDnsDuration(o, "60s", dnsOption, bootstrapOption);
+
+  o = section.option(
+    form.Value,
+    "dns_check_timeout",
+    _("DNS Unavailability Timeout"),
+    _(
+      "Maximum time to wait for example.com to resolve during a DNS health check.",
+    ),
+  );
+  configureDnsDuration(o, "2s", dnsOption, bootstrapOption);
 
   o = section.option(
     form.Value,
@@ -178,6 +236,24 @@ function createSettingsContent(section, capabilities) {
 
     return true;
   };
+
+  o = section.option(
+    form.Flag,
+    "dns_detour_enabled",
+    _("DNS through a section"),
+    _(
+      "Send main DNS requests through the selected section. Bootstrap DNS remains direct.",
+    ),
+  );
+  configureDownloadViaProxyFlag(o, "dns_detour_section");
+
+  o = section.option(
+    form.ListValue,
+    "dns_detour_section",
+    _("DNS requests through"),
+  );
+  o.depends("dns_detour_enabled", "1");
+  configureDownloadSectionOption(o, "dns_detour_section", capabilities);
 
   o = section.option(
     widgets.DeviceSelect,

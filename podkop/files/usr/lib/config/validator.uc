@@ -9,6 +9,7 @@ let zapret2_validator_module = null;
 let byedpi_validator_module = null;
 let constants_module = null;
 let core_url = require("core.url");
+let core_ip = require("core.ip");
 let rule_config = require("config.rule");
 let connections = require("config.connections");
 
@@ -69,6 +70,13 @@ function whitespace_values(value) {
         if (item != "")
             push(result, item);
     return result;
+}
+
+function option_list_values(section, key) {
+    let value = type(section) == "object" ? section[key] : null;
+    if (type(value) == "array")
+        return value;
+    return whitespace_values(value);
 }
 
 function list_has_value(values, needle) {
@@ -881,6 +889,89 @@ function validate_required_duration_option(value, label) {
     validate_duration_option(value, label);
 }
 
+function dns_server_value_valid(value) {
+    value = trim(as_string(value));
+    if (value == "" || match(value, /[ \t\r\n@]/) != null)
+        return false;
+
+    let host = core_url.host(value);
+    if (host == "")
+        return false;
+
+    let port = core_url.port(value);
+    if (port != "" && (match(port, /^[0-9]+$/) == null || int(port) < 1 || int(port) > 65535))
+        return false;
+
+    if (core_ip.valid_ip(host))
+        return true;
+
+    return length(host) <= 253 &&
+        index(host, ".") > 0 &&
+        substr(host, 0, 1) != "." &&
+        substr(host, length(host) - 1, 1) != "." &&
+        match(host, /[\/:\[\]]/) == null;
+}
+
+function dns_setting_values(settings, key) {
+    let values = [];
+    for (let value in option_list_values(settings, key)) {
+        value = trim(as_string(value));
+        if (value != "")
+            push(values, value);
+    }
+    return values;
+}
+
+function validate_dns_settings(settings, sections, context) {
+    let dns_type = option(settings, "dns_type", "udp");
+    if (!contains([ "udp", "dot", "doh" ], dns_type))
+        fail_validation("Unsupported DNS protocol type '" + dns_type + "'. Use udp, dot, or doh. Aborted.");
+
+    let main_servers = dns_setting_values(settings, "dns_server");
+    let bootstrap_servers = dns_setting_values(settings, "bootstrap_dns_server");
+    if (length(main_servers) == 0)
+        fail_validation("At least one main DNS server is required. Aborted.");
+    if (length(bootstrap_servers) == 0)
+        fail_validation("At least one Bootstrap DNS server is required. Aborted.");
+    for (let value in main_servers)
+        if (!dns_server_value_valid(value))
+            fail_validation("Invalid main DNS server '" + value + "'. Aborted.");
+    for (let value in bootstrap_servers)
+        if (!dns_server_value_valid(value))
+            fail_validation("Invalid Bootstrap DNS server '" + value + "'. Aborted.");
+
+    if (length(main_servers) > 1 || length(bootstrap_servers) > 1) {
+        validate_required_duration_option(option(settings, "dns_check_interval", "10s"), "settings.dns_check_interval");
+        validate_required_duration_option(option(settings, "dns_recovery_check_interval", "60s"), "settings.dns_recovery_check_interval");
+        validate_required_duration_option(option(settings, "dns_check_timeout", "2s"), "settings.dns_check_timeout");
+    }
+
+    if (!bool_option(settings, "dns_detour_enabled", false))
+        return;
+
+    let target_name = option(settings, "dns_detour_section", "");
+    if (target_name == "")
+        fail_validation("DNS through a section is enabled, but no section is selected. Aborted.");
+
+    let target = null;
+    for (let section in sections)
+        if (section_name(section) == target_name) {
+            target = {
+                section: target_name,
+                enabled: section_enabled(section),
+                action: rule_action(section)
+            };
+            break;
+        }
+
+    if (target == null)
+        fail_validation("DNS through a section references missing rule '" + target_name + "'. Aborted.");
+    if (!target.enabled)
+        fail_validation("DNS through a section references disabled rule '" + target_name + "'. Aborted.");
+    if (!download_section_action_available(target.action, context.byedpi_installed, context.zapret_installed, context.zapret2_installed))
+        fail_validation("DNS through a section references rule '" + target_name + "' with unsupported action '" + target.action + "'. Select an enabled Connection, VPN, Zapret, Zapret2, or ByeDPI section. Aborted.");
+}
+
 function normalize_port_number_value(value) {
     value = trim(as_string(value));
     if (value == "" || match(value, /^[0-9]+$/) == null)
@@ -1469,6 +1560,7 @@ function validate_runtime_config(context) {
     let sections = sections_by_type("section");
 
     validate_runtime_mark_ranges_context(context);
+    validate_dns_settings(settings, sections, context);
     validate_list_update_settings(settings);
     validate_http_url_option(option(settings, "latency_test_url", DEFAULT_LATENCY_TEST_URL) || DEFAULT_LATENCY_TEST_URL, "settings.latency_test_url");
 

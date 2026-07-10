@@ -4,6 +4,7 @@ let fs = require("fs");
 let constants = require("core.constants");
 let core_ip = require("core.ip");
 let uci_core = require("core.uci");
+let runtime_dns = require("singbox.dns");
 
 const CONFIG_NAME = getenv("PODKOP_CONFIG_NAME") || constants.PODKOP_CONFIG_NAME || "podkop-plus";
 const LIB_DIR = getenv("PODKOP_LIB") || "/usr/lib/podkop-plus";
@@ -1269,7 +1270,7 @@ function url_path(value) {
     return helper_output("url-get-path", [ value ]);
 }
 
-function dns_check_resolve_host(host, resolver) {
+function dns_check_resolve_host(host, resolver, timeout_seconds) {
     host = as_string(host);
     resolver = as_string(resolver);
     if (host == "")
@@ -1279,8 +1280,9 @@ function dns_check_resolve_host(host, resolver) {
     if (resolver == "")
         return "";
 
+    timeout_seconds = int(timeout_seconds || 2);
     for (let line in split(command_output_from_args([
-        "dig", "@" + resolver, host, "A", "+short", "+timeout=2", "+tries=1"
+        "dig", "@" + resolver, host, "A", "+short", "+timeout=" + as_string(timeout_seconds), "+tries=1"
     ]), "\n")) {
         line = trim(as_string(line));
         if (valid_ipv4(line))
@@ -1389,22 +1391,50 @@ function dns_check_router_resolver_available(domain) {
     return false;
 }
 
+function dns_check_timeout_seconds(value) {
+    let rest = as_string(value);
+    let milliseconds = 0.0;
+    let units = { ns: 0.000001, us: 0.001, ms: 1, s: 1000, m: 60000, h: 3600000, d: 86400000 };
+    while (rest != "") {
+        let matched = match(rest, /^([0-9]+(\.[0-9]+)?)(ns|us|ms|s|m|h|d)/);
+        if (!matched)
+            return 2;
+        milliseconds += (matched[1] * 1) * units[matched[3]];
+        rest = substr(rest, length(matched[0]));
+    }
+    return milliseconds > 0 ? int((milliseconds + 999) / 1000) : 2;
+}
+
 function check_dns_available() {
     let cfg = settings();
     let dns_type = option(cfg, "dns_type", "");
-    let dns_server = option(cfg, "dns_server", "");
-    let bootstrap_dns_server = option(cfg, "bootstrap_dns_server", "");
+    let active = runtime_dns.active_values(cfg);
+    let dns_server = active.main;
+    let bootstrap_dns_server = active.bootstrap;
     let dont_touch_dhcp = bool_option(cfg, "dont_touch_dhcp", false) ? 1 : 0;
-    let domain = "google.com";
+    let domain = "example.com";
+    let timeout_seconds = dns_check_timeout_seconds(option(cfg, "dns_check_timeout", "2s"));
     let dns_status = 0;
     let dns_on_router = 0;
     let bootstrap_dns_status = 0;
     let dhcp_config_status = 1;
 
-    if (dns_type == "doh")
-        dns_status = dns_check_doh_server_available(dns_server, bootstrap_dns_server) ? 1 : 0;
-    else if (dns_type == "dot" || dns_type == "udp")
-        dns_status = dns_check_dig_server_available(dns_type, dns_server, bootstrap_dns_server, domain) ? 1 : 0;
+    let active_dns_args = [ "dig" ];
+    if (runtime_dns.failover_enabled(cfg)) {
+        push(active_dns_args, "-p");
+        push(active_dns_args, as_string(runtime_dns.health_port("active", 0)));
+    }
+    push(active_dns_args, "@" + SB_DNS_INBOUND_ADDRESS);
+    push(active_dns_args, domain);
+    push(active_dns_args, "A");
+    push(active_dns_args, "+short");
+    push(active_dns_args, "+timeout=" + as_string(timeout_seconds));
+    push(active_dns_args, "+tries=1");
+    for (let line in split(command_output_from_args(active_dns_args), "\n"))
+        if (valid_ipv4(trim(as_string(line)))) {
+            dns_status = 1;
+            break;
+        }
 
     if (dns_check_router_resolver_available(domain))
         dns_on_router = 1;
@@ -1413,11 +1443,24 @@ function check_dns_available() {
     if (dns_server_host == "")
         dns_server_host = dns_server;
     if (bootstrap_dns_server != "") {
-        let bootstrap_check_domain = domain;
-        if (dns_server_host != "" && !valid_ipv4(dns_server_host))
-            bootstrap_check_domain = dns_server_host;
-        if (dns_check_resolve_host(bootstrap_check_domain, bootstrap_dns_server) != "")
-            bootstrap_dns_status = 1;
+        if (length(active.state.bootstrap_servers) > 1) {
+            for (let line in split(command_output_from_args([
+                "dig", "-p", as_string(runtime_dns.health_port("bootstrap", active.state.bootstrap_index)),
+                "@" + runtime_dns.DNS_HEALTH_ADDRESS, domain, "A", "+short",
+                "+timeout=" + as_string(timeout_seconds), "+tries=1"
+            ]), "\n"))
+                if (valid_ipv4(trim(as_string(line)))) {
+                    bootstrap_dns_status = 1;
+                    break;
+                }
+        }
+        else {
+            let bootstrap_check_domain = domain;
+            if (dns_server_host != "" && !valid_ipv4(dns_server_host))
+                bootstrap_check_domain = dns_server_host;
+            if (dns_check_resolve_host(bootstrap_check_domain, bootstrap_dns_server, timeout_seconds) != "")
+                bootstrap_dns_status = 1;
+        }
     }
 
     if (!module_success(DNS_APPLY_UC, [ "default-config-complete" ]))
@@ -1427,9 +1470,13 @@ function check_dns_available() {
     write_json({
         dns_type,
         dns_server: display_dns_server,
+        dns_server_index: active.state.main_index,
+        dns_server_count: length(active.state.main_servers),
         dns_status,
         dns_on_router,
         bootstrap_dns_server,
+        bootstrap_dns_server_index: active.state.bootstrap_index,
+        bootstrap_dns_server_count: length(active.state.bootstrap_servers),
         bootstrap_dns_status,
         dhcp_config_status,
         dont_touch_dhcp

@@ -351,9 +351,13 @@ export namespace Podkop {
   export interface DnsCheckResult {
     dns_type: 'udp' | 'doh' | 'dot';
     dns_server: string;
+    dns_server_index: number;
+    dns_server_count: number;
     dns_status: 0 | 1;
     dns_on_router: 0 | 1;
     bootstrap_dns_server: string;
+    bootstrap_dns_server_index: number;
+    bootstrap_dns_server_count: number;
     bootstrap_dns_status: 0 | 1;
     dhcp_config_status: 0 | 1;
     dont_touch_dhcp: 0 | 1;
