@@ -40,19 +40,20 @@ export const styles = `
 
 .pdk_monitoring-page__panel {
     margin-top: 0;
-    border: 2px var(--background-color-low, lightgray) solid;
-    border-radius: 4px;
-    padding: 10px;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
 }
 
 .pdk_monitoring-page .btn.pdk_monitoring-page__icon-button {
-    width: var(--pdk-monitoring-control-height);
-    height: var(--pdk-monitoring-control-height);
-    min-width: var(--pdk-monitoring-control-height);
-    min-height: var(--pdk-monitoring-control-height);
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
     padding: 0;
     box-sizing: border-box;
     display: flex;
@@ -62,7 +63,7 @@ export const styles = `
     line-height: 1;
     margin: 0;
     border: 1px solid var(--pdk-monitoring-divider-color) !important;
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--pdk-monitoring-soft-bg) !important;
     color: var(--text-color-medium) !important;
     box-shadow: none;
@@ -84,39 +85,31 @@ export const styles = `
 }
 
 .pdk_monitoring-page #monitoring-close-all.btn.pdk_monitoring-page__icon-button {
-    border-color: var(--pdk-monitoring-danger-color) !important;
-    background: var(--pdk-monitoring-soft-bg) !important;
-    color: var(--pdk-monitoring-danger-color) !important;
+    order: 2;
+    border-color: rgba(217, 83, 79, 0.4) !important;
+    background: transparent !important;
+    color: #d9534f !important;
 }
 
 .pdk_monitoring-page #monitoring-close-all.btn.pdk_monitoring-page__icon-button:hover:not(:disabled) {
-    border-color: var(--pdk-monitoring-danger-color) !important;
-    background: var(--pdk-monitoring-soft-bg-hover) !important;
-    color: var(--pdk-monitoring-danger-color) !important;
+    border-color: rgba(217, 83, 79, 0.6) !important;
+    background: transparent !important;
+    color: #d9534f !important;
 }
 
-.pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button {
-    border-color: var(--pdk-monitoring-success-color) !important;
-    background: var(--pdk-monitoring-soft-bg) !important;
-    color: var(--pdk-monitoring-success-color) !important;
-}
-
-.pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button:hover:not(:disabled) {
-    border-color: var(--pdk-monitoring-success-color) !important;
-    background: var(--pdk-monitoring-soft-bg-hover) !important;
-    color: var(--pdk-monitoring-success-color) !important;
-}
-
+.pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button,
 .pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button--active {
-    border-color: var(--pdk-monitoring-paused-color) !important;
-    background: var(--pdk-monitoring-soft-bg) !important;
-    color: var(--pdk-monitoring-paused-color) !important;
+    order: 1;
+    border-color: rgba(128, 128, 128, 0.3) !important;
+    background: transparent !important;
+    color: var(--text-color-medium, #888) !important;
 }
 
+.pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button:hover:not(:disabled),
 .pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button--active:hover:not(:disabled) {
-    border-color: var(--pdk-monitoring-paused-color) !important;
-    background: var(--pdk-monitoring-soft-bg-hover) !important;
-    color: var(--pdk-monitoring-paused-color) !important;
+    border-color: rgba(128, 128, 128, 0.6) !important;
+    background: transparent !important;
+    color: var(--text-color-high, #eee) !important;
 }
 
 .pdk_monitoring-page__icon-button svg,
@@ -128,11 +121,12 @@ export const styles = `
 }
 
 .pdk_monitoring-page__controls {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: stretch;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
     width: 100%;
     min-width: 0;
 }
@@ -141,7 +135,7 @@ export const styles = `
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
 }
 
@@ -212,16 +206,17 @@ export const styles = `
 }
 
 .pdk_monitoring-page__filters {
-    display: grid;
-    grid-template-columns: minmax(150px, 220px) minmax(200px, 320px);
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
+    justify-content: flex-start;
+    gap: 12px;
     min-width: 0;
 }
 
 .pdk_monitoring-page__device-filter {
-    width: 100%;
+    width: min(220px, 100%);
     min-width: 0;
     height: var(--pdk-monitoring-control-height) !important;
     min-height: var(--pdk-monitoring-control-height) !important;
@@ -236,7 +231,7 @@ export const styles = `
     position: relative;
     display: flex;
     align-items: center;
-    width: 100%;
+    width: min(320px, 100%);
     min-width: 0;
     height: var(--pdk-monitoring-control-height);
     margin: 0;
@@ -270,7 +265,7 @@ export const styles = `
 }
 
 .pdk_monitoring-page__body {
-    margin-top: 10px;
+    margin-top: 0;
     width: 100%;
     min-width: 0;
 }
@@ -295,7 +290,7 @@ export const styles = `
     padding: 8px 6px;
     border-bottom: 1px solid var(--pdk-monitoring-divider-color);
     box-sizing: border-box;
-    text-align: center;
+    text-align: left;
     vertical-align: middle;
     overflow: hidden;
     white-space: nowrap;
@@ -303,7 +298,9 @@ export const styles = `
 
 .pdk_monitoring-page__table th {
     color: var(--text-color-medium);
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
     white-space: nowrap;
     border-bottom-color: rgba(127, 127, 127, 0.32);
 }
@@ -349,6 +346,25 @@ export const styles = `
     padding-bottom: 0;
 }
 
+.pdk_monitoring-page__table th:nth-child(4),
+.pdk_monitoring-page__table td:nth-child(4),
+.pdk_monitoring-page__table th:nth-child(5),
+.pdk_monitoring-page__table td:nth-child(5),
+.pdk_monitoring-page__table th:nth-child(6),
+.pdk_monitoring-page__table td:nth-child(6) {
+    text-align: right;
+}
+
+.pdk_monitoring-page__table th:nth-child(7),
+.pdk_monitoring-page__table td:nth-child(7) {
+    text-align: left;
+}
+
+.pdk_monitoring-page__table th:last-child,
+.pdk_monitoring-page__table td:last-child {
+    text-align: center;
+}
+
 .pdk_monitoring-page__value {
     display: block;
     max-width: 100%;
@@ -356,16 +372,17 @@ export const styles = `
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-align: center;
+    text-align: left;
     line-height: 1.3;
     color: var(--text-color-high);
+    font-size: 13px;
     user-select: text;
 }
 
 .pdk_monitoring-page__source-value {
     display: flex;
     align-items: baseline;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 5px;
 }
 
@@ -404,11 +421,32 @@ export const styles = `
 }
 
 .pdk_monitoring-page__route {
-    font-weight: 600;
+    display: inline-block;
+    width: auto;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(128, 128, 128, 0.15);
+    color: var(--text-color-high, #eee);
+    font-size: 11px;
+    font-weight: 500;
 }
 
 .pdk_monitoring-page__network {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: var(--text-color-medium, #bbb);
+    font-family: inherit;
+    font-size: 13px;
     text-transform: lowercase;
+}
+
+.pdk_monitoring-page__table td:nth-child(4) .pdk_monitoring-page__value,
+.pdk_monitoring-page__table td:nth-child(5) .pdk_monitoring-page__value,
+.pdk_monitoring-page__table td:nth-child(6) .pdk_monitoring-page__value {
+    color: var(--text-color-medium, #bbb);
+    font-family: inherit;
+    text-align: right;
 }
 
 .pdk_monitoring-page .btn.pdk_monitoring-page__row-action {
@@ -471,16 +509,15 @@ export const styles = `
 
 @media (max-width: 900px) {
     .pdk_monitoring-page__controls {
-        grid-template-columns: 1fr auto;
+        align-items: center;
     }
 
     .pdk_monitoring-page__tabs {
-        grid-column: 1 / -1;
+        flex: 1 0 100%;
     }
 
     .pdk_monitoring-page__filters {
-        grid-template-columns: minmax(150px, 220px) minmax(180px, 320px);
-        justify-content: stretch;
+        flex: 1 1 0;
     }
 
     .pdk_monitoring-page__device-filter,
@@ -568,7 +605,11 @@ export const styles = `
 
     .pdk_monitoring-page__controls,
     .pdk_monitoring-page__filters {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
+    .pdk_monitoring-page__actions {
+        align-self: flex-end;
     }
 
     .pdk_monitoring-page__tabs {

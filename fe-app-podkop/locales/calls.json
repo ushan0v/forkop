@@ -42,16 +42,16 @@
     "call": "✔ Running",
     "key": "✔ Running",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1566",
-      "src/podkop/tabs/dashboard/initController.ts:1577"
+      "src/podkop/tabs/dashboard/initController.ts:1675",
+      "src/podkop/tabs/dashboard/initController.ts:1686"
     ]
   },
   {
     "call": "✘ Stopped",
     "key": "✘ Stopped",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1567",
-      "src/podkop/tabs/dashboard/initController.ts:1578"
+      "src/podkop/tabs/dashboard/initController.ts:1676",
+      "src/podkop/tabs/dashboard/initController.ts:1687"
     ]
   },
   {
@@ -80,7 +80,7 @@
     "call": "Active",
     "key": "Active",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:647",
+      "src/podkop/tabs/monitoring/initController.ts:663",
       "src/podkop/tabs/monitoring/render.ts:20"
     ]
   },
@@ -95,7 +95,7 @@
     "call": "Active Connections",
     "key": "Active Connections",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1524"
+      "src/podkop/tabs/dashboard/initController.ts:1633"
     ]
   },
   {
@@ -179,7 +179,7 @@
     "call": "All",
     "key": "All",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:610",
+      "src/podkop/tabs/monitoring/initController.ts:622",
       "src/podkop/tabs/monitoring/render.ts:39"
     ]
   },
@@ -321,7 +321,7 @@
     "key": "Automatically select the fastest node in the current level",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2536",
-      "src/podkop/tabs/dashboard/initController.ts:1046"
+      "src/podkop/tabs/dashboard/initController.ts:1155"
     ]
   },
   {
@@ -539,7 +539,7 @@
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2103",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2487",
-      "src/podkop/tabs/dashboard/initController.ts:1033"
+      "src/podkop/tabs/dashboard/initController.ts:1142"
     ]
   },
   {
@@ -562,7 +562,7 @@
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2129",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2474",
-      "src/podkop/tabs/dashboard/initController.ts:1031"
+      "src/podkop/tabs/dashboard/initController.ts:1140"
     ]
   },
   {
@@ -653,10 +653,10 @@
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1707",
       "src/partials/modal/renderModal.ts:263",
-      "src/podkop/tabs/dashboard/initController.ts:918",
-      "src/podkop/tabs/dashboard/initController.ts:1174",
-      "src/podkop/tabs/monitoring/initController.ts:791",
-      "src/podkop/tabs/monitoring/initController.ts:841"
+      "src/podkop/tabs/dashboard/initController.ts:1027",
+      "src/podkop/tabs/dashboard/initController.ts:1283",
+      "src/podkop/tabs/monitoring/initController.ts:828",
+      "src/podkop/tabs/monitoring/initController.ts:878"
     ]
   },
   {
@@ -671,15 +671,15 @@
     "call": "Close connection",
     "key": "Close connection",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:758",
-      "src/podkop/tabs/monitoring/initController.ts:759"
+      "src/podkop/tabs/monitoring/initController.ts:795",
+      "src/podkop/tabs/monitoring/initController.ts:796"
     ]
   },
   {
     "call": "Closed",
     "key": "Closed",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:653",
+      "src/podkop/tabs/monitoring/initController.ts:670",
       "src/podkop/tabs/monitoring/render.ts:29"
     ]
   },
@@ -750,7 +750,7 @@
     "call": "Connections are unavailable",
     "key": "Connections are unavailable",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:894"
+      "src/podkop/tabs/monitoring/initController.ts:943"
     ]
   },
   {
@@ -780,8 +780,8 @@
     "call": "Copy proxy link",
     "key": "Copy proxy link",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:888",
-      "src/podkop/tabs/dashboard/initController.ts:1144",
+      "src/podkop/tabs/dashboard/initController.ts:997",
+      "src/podkop/tabs/dashboard/initController.ts:1253",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:366",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:367"
     ]
@@ -1121,8 +1121,8 @@
     "call": "Downlink",
     "key": "Downlink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1450",
-      "src/podkop/tabs/dashboard/initController.ts:1488"
+      "src/podkop/tabs/dashboard/initController.ts:1559",
+      "src/podkop/tabs/dashboard/initController.ts:1597"
     ]
   },
   {
@@ -1199,8 +1199,8 @@
     "call": "Downloaded",
     "key": "Downloaded",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:784",
-      "src/podkop/tabs/monitoring/initController.ts:838"
+      "src/podkop/tabs/monitoring/initController.ts:821",
+      "src/podkop/tabs/monitoring/initController.ts:875"
     ]
   },
   {
@@ -1428,16 +1428,16 @@
     "call": "Failed to close connection",
     "key": "Failed to close connection",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:1161",
-      "src/podkop/tabs/monitoring/initController.ts:1176"
+      "src/podkop/tabs/monitoring/initController.ts:1210",
+      "src/podkop/tabs/monitoring/initController.ts:1225"
     ]
   },
   {
     "call": "Failed to close connections",
     "key": "Failed to close connections",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:1195",
-      "src/podkop/tabs/monitoring/initController.ts:1208"
+      "src/podkop/tabs/monitoring/initController.ts:1244",
+      "src/podkop/tabs/monitoring/initController.ts:1257"
     ]
   },
   {
@@ -1464,13 +1464,13 @@
     "call": "Failed to update subscriptions",
     "key": "Failed to update subscriptions",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:260",
-      "src/podkop/tabs/dashboard/initController.ts:261",
-      "src/podkop/tabs/dashboard/initController.ts:280",
-      "src/podkop/tabs/dashboard/initController.ts:326",
-      "src/podkop/tabs/dashboard/initController.ts:330",
-      "src/podkop/tabs/dashboard/initController.ts:1232",
-      "src/podkop/tabs/dashboard/initController.ts:1236"
+      "src/podkop/tabs/dashboard/initController.ts:275",
+      "src/podkop/tabs/dashboard/initController.ts:276",
+      "src/podkop/tabs/dashboard/initController.ts:295",
+      "src/podkop/tabs/dashboard/initController.ts:341",
+      "src/podkop/tabs/dashboard/initController.ts:345",
+      "src/podkop/tabs/dashboard/initController.ts:1341",
+      "src/podkop/tabs/dashboard/initController.ts:1345"
     ]
   },
   {
@@ -1513,7 +1513,7 @@
     "key": "Faster server search interval",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2547",
-      "src/podkop/tabs/dashboard/initController.ts:1052"
+      "src/podkop/tabs/dashboard/initController.ts:1161"
     ]
   },
   {
@@ -1676,7 +1676,7 @@
     "key": "Higher-level check interval",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2511",
-      "src/podkop/tabs/dashboard/initController.ts:1038"
+      "src/podkop/tabs/dashboard/initController.ts:1147"
     ]
   },
   {
@@ -1690,8 +1690,8 @@
     "call": "Host",
     "key": "Host",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:774",
-      "src/podkop/tabs/monitoring/initController.ts:834"
+      "src/podkop/tabs/monitoring/initController.ts:811",
+      "src/podkop/tabs/monitoring/initController.ts:871"
     ]
   },
   {
@@ -1749,7 +1749,7 @@
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2142",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3036",
-      "src/podkop/tabs/dashboard/initController.ts:807"
+      "src/podkop/tabs/dashboard/initController.ts:916"
     ]
   },
   {
@@ -1897,8 +1897,8 @@
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2156",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2563",
-      "src/podkop/tabs/dashboard/initController.ts:809",
-      "src/podkop/tabs/dashboard/initController.ts:1058"
+      "src/podkop/tabs/dashboard/initController.ts:918",
+      "src/podkop/tabs/dashboard/initController.ts:1167"
     ]
   },
   {
@@ -1919,7 +1919,7 @@
     "call": "Interval",
     "key": "Interval",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:805"
+      "src/podkop/tabs/dashboard/initController.ts:914"
     ]
   },
   {
@@ -2507,7 +2507,7 @@
     "call": "Level",
     "key": "Level",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:991"
+      "src/podkop/tabs/dashboard/initController.ts:1100"
     ]
   },
   {
@@ -2563,7 +2563,7 @@
     "call": "Loading connections",
     "key": "Loading connections",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:884",
+      "src/podkop/tabs/monitoring/initController.ts:933",
       "src/podkop/tabs/monitoring/render.ts:88"
     ]
   },
@@ -2606,7 +2606,7 @@
     "call": "Memory Usage",
     "key": "Memory Usage",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1528"
+      "src/podkop/tabs/dashboard/initController.ts:1637"
     ]
   },
   {
@@ -2737,24 +2737,24 @@
     "call": "No",
     "key": "No",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:653",
-      "src/podkop/tabs/dashboard/initController.ts:657",
-      "src/podkop/tabs/dashboard/initController.ts:733",
-      "src/podkop/tabs/dashboard/initController.ts:946"
+      "src/podkop/tabs/dashboard/initController.ts:762",
+      "src/podkop/tabs/dashboard/initController.ts:766",
+      "src/podkop/tabs/dashboard/initController.ts:842",
+      "src/podkop/tabs/dashboard/initController.ts:1055"
     ]
   },
   {
     "call": "No active connections",
     "key": "No active connections",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:908"
+      "src/podkop/tabs/monitoring/initController.ts:957"
     ]
   },
   {
     "call": "No closed connections",
     "key": "No closed connections",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:909"
+      "src/podkop/tabs/monitoring/initController.ts:958"
     ]
   },
   {
@@ -2810,16 +2810,16 @@
     "call": "Node list is empty",
     "key": "Node list is empty",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:903",
-      "src/podkop/tabs/dashboard/initController.ts:1159"
+      "src/podkop/tabs/dashboard/initController.ts:1012",
+      "src/podkop/tabs/dashboard/initController.ts:1268"
     ]
   },
   {
     "call": "Nodes",
     "key": "Nodes",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:833",
-      "src/podkop/tabs/dashboard/initController.ts:1082"
+      "src/podkop/tabs/dashboard/initController.ts:942",
+      "src/podkop/tabs/dashboard/initController.ts:1191"
     ]
   },
   {
@@ -3071,7 +3071,7 @@
     "call": "Pause updates",
     "key": "Pause updates",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:666",
+      "src/podkop/tabs/monitoring/initController.ts:687",
       "src/podkop/tabs/monitoring/render.ts:70",
       "src/podkop/tabs/monitoring/render.ts:71"
     ]
@@ -3131,6 +3131,20 @@
     "key": "Podkop Plus manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here.",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5179"
+    ]
+  },
+  {
+    "call": "Podkop Plus service is stopped. Start the service to display connections.",
+    "key": "Podkop Plus service is stopped. Start the service to display connections.",
+    "places": [
+      "src/podkop/tabs/monitoring/initController.ts:921"
+    ]
+  },
+  {
+    "call": "Podkop Plus service is stopped. Start the service to display the dashboard.",
+    "key": "Podkop Plus service is stopped. Start the service to display the dashboard.",
+    "places": [
+      "src/podkop/tabs/dashboard/render.ts:17"
     ]
   },
   {
@@ -3285,7 +3299,7 @@
     "call": "Priority details",
     "key": "Priority details",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1189",
+      "src/podkop/tabs/dashboard/initController.ts:1298",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:404",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:405"
     ]
@@ -3294,7 +3308,7 @@
     "call": "Priority details are unavailable",
     "key": "Priority details are unavailable",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1019"
+      "src/podkop/tabs/dashboard/initController.ts:1128"
     ]
   },
   {
@@ -3333,7 +3347,7 @@
     "call": "Proxy link is unavailable",
     "key": "Proxy link is unavailable",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:648"
+      "src/podkop/tabs/dashboard/initController.ts:757"
     ]
   },
   {
@@ -3511,15 +3525,15 @@
     "call": "Resume updates",
     "key": "Resume updates",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:666"
+      "src/podkop/tabs/monitoring/initController.ts:687"
     ]
   },
   {
     "call": "Route",
     "key": "Route",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:778",
-      "src/podkop/tabs/monitoring/initController.ts:836"
+      "src/podkop/tabs/monitoring/initController.ts:815",
+      "src/podkop/tabs/monitoring/initController.ts:873"
     ]
   },
   {
@@ -3788,7 +3802,7 @@
     "key": "Select the fastest node",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2525",
-      "src/podkop/tabs/dashboard/initController.ts:1042"
+      "src/podkop/tabs/dashboard/initController.ts:1151"
     ]
   },
   {
@@ -3823,8 +3837,8 @@
     "call": "Selected",
     "key": "Selected",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:801",
-      "src/podkop/tabs/dashboard/initController.ts:1028"
+      "src/podkop/tabs/dashboard/initController.ts:910",
+      "src/podkop/tabs/dashboard/initController.ts:1137"
     ]
   },
   {
@@ -3947,7 +3961,7 @@
     "call": "Services info",
     "key": "Services info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1561"
+      "src/podkop/tabs/dashboard/initController.ts:1670"
     ]
   },
   {
@@ -4055,8 +4069,8 @@
     "call": "Source",
     "key": "Source",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:790",
-      "src/podkop/tabs/monitoring/initController.ts:840"
+      "src/podkop/tabs/monitoring/initController.ts:827",
+      "src/podkop/tabs/monitoring/initController.ts:877"
     ]
   },
   {
@@ -4240,14 +4254,14 @@
     "call": "Subscriptions updated",
     "key": "Subscriptions updated",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:286"
+      "src/podkop/tabs/dashboard/initController.ts:301"
     ]
   },
   {
     "call": "System info",
     "key": "System info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1521"
+      "src/podkop/tabs/dashboard/initController.ts:1630"
     ]
   },
   {
@@ -4326,7 +4340,7 @@
     "call": "Testing URL",
     "key": "Testing URL",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:804"
+      "src/podkop/tabs/dashboard/initController.ts:913"
     ]
   },
   {
@@ -4439,8 +4453,8 @@
     "call": "Time",
     "key": "Time",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:781",
-      "src/podkop/tabs/monitoring/initController.ts:837"
+      "src/podkop/tabs/monitoring/initController.ts:818",
+      "src/podkop/tabs/monitoring/initController.ts:874"
     ]
   },
   {
@@ -4469,7 +4483,7 @@
     "key": "Tolerance",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2115",
-      "src/podkop/tabs/dashboard/initController.ts:806"
+      "src/podkop/tabs/dashboard/initController.ts:915"
     ]
   },
   {
@@ -4483,7 +4497,7 @@
     "call": "Traffic",
     "key": "Traffic",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1447",
+      "src/podkop/tabs/dashboard/initController.ts:1556",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:130"
     ]
   },
@@ -4498,7 +4512,7 @@
     "call": "Traffic Total",
     "key": "Traffic Total",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1481"
+      "src/podkop/tabs/dashboard/initController.ts:1590"
     ]
   },
   {
@@ -4569,8 +4583,8 @@
     "key": "Type",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1627",
-      "src/podkop/tabs/monitoring/initController.ts:775",
-      "src/podkop/tabs/monitoring/initController.ts:835"
+      "src/podkop/tabs/monitoring/initController.ts:812",
+      "src/podkop/tabs/monitoring/initController.ts:872"
     ]
   },
   {
@@ -4609,7 +4623,7 @@
     "key": "Unavailability timeout",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2499",
-      "src/podkop/tabs/dashboard/initController.ts:1036"
+      "src/podkop/tabs/dashboard/initController.ts:1145"
     ]
   },
   {
@@ -4759,16 +4773,16 @@
     "call": "Uplink",
     "key": "Uplink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:1449",
-      "src/podkop/tabs/dashboard/initController.ts:1484"
+      "src/podkop/tabs/dashboard/initController.ts:1558",
+      "src/podkop/tabs/dashboard/initController.ts:1593"
     ]
   },
   {
     "call": "Uploaded",
     "key": "Uploaded",
     "places": [
-      "src/podkop/tabs/monitoring/initController.ts:787",
-      "src/podkop/tabs/monitoring/initController.ts:839"
+      "src/podkop/tabs/monitoring/initController.ts:824",
+      "src/podkop/tabs/monitoring/initController.ts:876"
     ]
   },
   {
@@ -4810,7 +4824,7 @@
     "call": "URLTest details",
     "key": "URLTest details",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:933",
+      "src/podkop/tabs/dashboard/initController.ts:1042",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:385",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:386"
     ]
@@ -4819,7 +4833,7 @@
     "call": "URLTest details are unavailable",
     "key": "URLTest details are unavailable",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:792"
+      "src/podkop/tabs/dashboard/initController.ts:901"
     ]
   },
   {
@@ -5120,7 +5134,7 @@
     "call": "Yes",
     "key": "Yes",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:653"
+      "src/podkop/tabs/dashboard/initController.ts:762"
     ]
   },
   {

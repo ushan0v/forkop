@@ -31,6 +31,7 @@ import {
 import { isActiveLuciTab } from '../../helpers/isActiveLuciTab';
 import { isTransientRpcError } from '../../helpers/isTransientRpcError';
 import { shouldShowLoadingForRestoredAction } from '../../helpers/restoredActionLoading';
+import { getServiceAvailability } from '../../helpers/serviceAvailability';
 
 const SECTIONS_REFRESH_INTERVAL_MS = 10000;
 const LATENCY_TEST_BUTTON_CLASS = 'dashboard-sections-grid-item-test-latency';
@@ -42,6 +43,8 @@ let sectionsRefreshQueued = false;
 let actionStateUnsubscribe: (() => void) | null = null;
 let dashboardMounted = false;
 let dashboardMountId = 0;
+let dashboardDataUpdatesStarted = false;
+let dashboardDataUpdatesId = 0;
 let pageUnloading = false;
 const followedSubscriptionJobs = new Set<string>();
 const followedLatencyJobs = new Set<string>();
@@ -60,6 +63,10 @@ if (typeof window !== 'undefined') {
 // Fetchers
 
 async function fetchDashboardSectionsOnce(mountId: number) {
+  if (getDashboardServiceAvailability() === 'stopped') {
+    return false;
+  }
+
   const prev = store.get().sectionsWidget;
   const hasRenderedData = prev.data.length > 0;
 
@@ -74,7 +81,11 @@ async function fetchDashboardSectionsOnce(mountId: number) {
   try {
     const { data, success } = await CustomPodkopMethods.getDashboardSections();
 
-    if (!dashboardMounted || mountId !== dashboardMountId) {
+    if (
+      !dashboardMounted ||
+      mountId !== dashboardMountId ||
+      getDashboardServiceAvailability() === 'stopped'
+    ) {
       return false;
     }
 
@@ -97,7 +108,11 @@ async function fetchDashboardSectionsOnce(mountId: number) {
   } catch (error) {
     logger.error('[DASHBOARD]', 'fetchDashboardSections: failed', error);
 
-    if (!dashboardMounted || mountId !== dashboardMountId) {
+    if (
+      !dashboardMounted ||
+      mountId !== dashboardMountId ||
+      getDashboardServiceAvailability() === 'stopped'
+    ) {
       return false;
     }
 
@@ -431,12 +446,29 @@ function stopActionStateWatcher() {
   actionStateUnsubscribe = null;
 }
 
-async function connectToClashSockets() {
+async function connectToClashSockets(dataUpdatesId: number) {
+  const mountId = dashboardMountId;
   const clashApiSecret = await getClashApiSecret();
+
+  if (
+    !dashboardMounted ||
+    mountId !== dashboardMountId ||
+    dataUpdatesId !== dashboardDataUpdatesId ||
+    getDashboardServiceAvailability() === 'stopped'
+  ) {
+    return;
+  }
 
   socket.subscribe(
     `${getClashWsUrl()}/traffic?token=${clashApiSecret}`,
     (msg) => {
+      if (
+        dataUpdatesId !== dashboardDataUpdatesId ||
+        getDashboardServiceAvailability() === 'stopped'
+      ) {
+        return;
+      }
+
       const parsedMsg = JSON.parse(msg);
 
       store.set({
@@ -448,6 +480,13 @@ async function connectToClashSockets() {
       });
     },
     (_err) => {
+      if (
+        dataUpdatesId !== dashboardDataUpdatesId ||
+        getDashboardServiceAvailability() === 'stopped'
+      ) {
+        return;
+      }
+
       logger.error(
         '[DASHBOARD]',
         'connectToClashSockets - traffic: failed to connect to',
@@ -466,6 +505,13 @@ async function connectToClashSockets() {
   socket.subscribe(
     `${getClashWsUrl()}/connections?token=${clashApiSecret}`,
     (msg) => {
+      if (
+        dataUpdatesId !== dashboardDataUpdatesId ||
+        getDashboardServiceAvailability() === 'stopped'
+      ) {
+        return;
+      }
+
       const parsedMsg = JSON.parse(msg);
 
       store.set({
@@ -488,6 +534,13 @@ async function connectToClashSockets() {
       });
     },
     (_err) => {
+      if (
+        dataUpdatesId !== dashboardDataUpdatesId ||
+        getDashboardServiceAvailability() === 'stopped'
+      ) {
+        return;
+      }
+
       logger.error(
         '[DASHBOARD]',
         'connectToClashSockets - connections: failed to connect to',
@@ -510,6 +563,62 @@ async function connectToClashSockets() {
       });
     },
   );
+}
+
+function getDashboardServiceAvailability() {
+  const service = store.get().servicesInfoWidget;
+
+  return getServiceAvailability({
+    loading: service.loading,
+    failed: service.failed,
+    running: service.data.podkopRunning,
+  });
+}
+
+function stopDashboardDataUpdates() {
+  dashboardDataUpdatesStarted = false;
+  dashboardDataUpdatesId += 1;
+
+  if (sectionsRefreshTimer) {
+    clearInterval(sectionsRefreshTimer);
+    sectionsRefreshTimer = null;
+  }
+
+  sectionsRefreshQueued = false;
+  socket.resetAll();
+}
+
+function startDashboardDataUpdates() {
+  if (
+    dashboardDataUpdatesStarted ||
+    !dashboardMounted ||
+    getDashboardServiceAvailability() === 'stopped'
+  ) {
+    return;
+  }
+
+  dashboardDataUpdatesStarted = true;
+  const dataUpdatesId = ++dashboardDataUpdatesId;
+  void fetchDashboardSections({ force: true });
+  void connectToClashSockets(dataUpdatesId);
+  sectionsRefreshTimer = setInterval(() => {
+    void fetchDashboardSections();
+  }, SECTIONS_REFRESH_INTERVAL_MS);
+}
+
+function syncDashboardServiceAvailability() {
+  const availability = getDashboardServiceAvailability();
+  const stopped = availability === 'stopped';
+  const container = document.getElementById('dashboard-status');
+
+  container?.classList.toggle('pdk_dashboard-page--service-stopped', stopped);
+
+  if (stopped || availability === 'loading') {
+    stopDashboardDataUpdates();
+    return;
+  }
+
+  startDashboardDataUpdates();
 }
 
 // Handlers
@@ -1618,6 +1727,7 @@ async function onStoreUpdate(
   }
 
   if (diff.servicesInfoWidget) {
+    syncDashboardServiceAvailability();
     renderServicesInfoWidget();
   }
 }
@@ -1651,26 +1761,18 @@ async function onPageMount() {
   void renderTrafficTotalWidget();
   void renderSystemInfoWidget();
   void renderServicesInfoWidget();
+  syncDashboardServiceAvailability();
 
-  void fetchDashboardSections({ force: true });
   if (hasRuntimeSnapshot) {
     void refreshRuntimeUiState({ force: true });
   }
-  void connectToClashSockets();
-
-  sectionsRefreshTimer = setInterval(() => {
-    void fetchDashboardSections();
-  }, SECTIONS_REFRESH_INTERVAL_MS);
 }
 
 function onPageUnmount() {
   dashboardMounted = false;
   dashboardMountId += 1;
 
-  if (sectionsRefreshTimer) {
-    clearInterval(sectionsRefreshTimer);
-    sectionsRefreshTimer = null;
-  }
+  stopDashboardDataUpdates();
   stopActionStateWatcher();
   sectionsRefreshQueued = false;
   sectionsRefreshPromise = null;
@@ -1678,7 +1780,6 @@ function onPageUnmount() {
   store.unsubscribe(onStoreUpdate);
   // Clear store
   store.reset(['bandwidthWidget', 'trafficTotalWidget', 'systemInfoWidget']);
-  socket.resetAll();
 }
 
 let dashboardLifecycleRegistered = false;

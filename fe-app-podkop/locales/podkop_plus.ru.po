@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-10 22:46+0300\n"
-"PO-Revision-Date: 2026-07-10 22:46+0300\n"
+"POT-Creation-Date: 2026-07-10 23:17+0300\n"
+"PO-Revision-Date: 2026-07-10 23:17+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -1297,6 +1297,12 @@ msgstr "Podkop Plus сам управляет жизненным циклом nf
 
 msgid "Podkop Plus manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
 msgstr "Podkop Plus сам управляет жизненным циклом nfqws2, поэтому режим daemon здесь запрещён."
+
+msgid "Podkop Plus service is stopped. Start the service to display connections."
+msgstr "Служба Podkop Plus остановлена. Запустите сервис для отображения подключений."
+
+msgid "Podkop Plus service is stopped. Start the service to display the dashboard."
+msgstr "Служба Podkop Plus остановлена. Запустите сервис для отображения дашборда."
 
 msgid "Podkop Plus Settings"
 msgstr "Настройки Podkop Plus"

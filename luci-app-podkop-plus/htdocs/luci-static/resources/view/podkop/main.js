@@ -2349,61 +2349,93 @@ function render() {
       class: "pdk_dashboard-page"
     },
     [
-      // Widgets section
-      E("div", { class: "pdk_dashboard-page__widgets-section" }, [
-        E(
-          "div",
-          { id: "dashboard-widget-traffic" },
-          renderWidget({ loading: true, failed: false, title: "", items: [] })
-        ),
-        E(
-          "div",
-          { id: "dashboard-widget-traffic-total" },
-          renderWidget({ loading: true, failed: false, title: "", items: [] })
-        ),
-        E(
-          "div",
-          { id: "dashboard-widget-system-info" },
-          renderWidget({ loading: true, failed: false, title: "", items: [] })
-        ),
-        E(
-          "div",
-          { id: "dashboard-widget-service-info" },
-          renderWidget({ loading: true, failed: false, title: "", items: [] })
-        )
-      ]),
-      // All outbounds
       E(
         "div",
-        { id: "dashboard-sections-grid" },
-        renderSections({
-          loading: true,
-          failed: false,
-          section: {
-            code: "",
-            sectionName: "",
-            displayName: "",
-            outbounds: [],
-            withTagSelect: false
-          },
-          onTestLatency: () => {
-          },
-          onChooseOutbound: () => {
-          },
-          onCopyOutbound: () => {
-          },
-          onShowUrlTestInfo: () => {
-          },
-          onShowPriorityInfo: () => {
-          },
-          onUpdateSubscription: () => {
-          },
-          latencyFetching: false,
-          latencyProgress: void 0,
-          subscriptionUpdating: false,
-          selectorSwitchingTag: void 0
-        })
-      )
+        {
+          class: "pdk_dashboard-page__service-stopped",
+          role: "status"
+        },
+        _(
+          "Podkop Plus service is stopped. Start the service to display the dashboard."
+        )
+      ),
+      E("div", { class: "pdk_dashboard-page__content" }, [
+        // Widgets section
+        E("div", { class: "pdk_dashboard-page__widgets-section" }, [
+          E(
+            "div",
+            { id: "dashboard-widget-traffic" },
+            renderWidget({
+              loading: true,
+              failed: false,
+              title: "",
+              items: []
+            })
+          ),
+          E(
+            "div",
+            { id: "dashboard-widget-traffic-total" },
+            renderWidget({
+              loading: true,
+              failed: false,
+              title: "",
+              items: []
+            })
+          ),
+          E(
+            "div",
+            { id: "dashboard-widget-system-info" },
+            renderWidget({
+              loading: true,
+              failed: false,
+              title: "",
+              items: []
+            })
+          ),
+          E(
+            "div",
+            { id: "dashboard-widget-service-info" },
+            renderWidget({
+              loading: true,
+              failed: false,
+              title: "",
+              items: []
+            })
+          )
+        ]),
+        // All outbounds
+        E(
+          "div",
+          { id: "dashboard-sections-grid" },
+          renderSections({
+            loading: true,
+            failed: false,
+            section: {
+              code: "",
+              sectionName: "",
+              displayName: "",
+              outbounds: [],
+              withTagSelect: false
+            },
+            onTestLatency: () => {
+            },
+            onChooseOutbound: () => {
+            },
+            onCopyOutbound: () => {
+            },
+            onShowUrlTestInfo: () => {
+            },
+            onShowPriorityInfo: () => {
+            },
+            onUpdateSubscription: () => {
+            },
+            latencyFetching: false,
+            latencyProgress: void 0,
+            subscriptionUpdating: false,
+            selectorSwitchingTag: void 0
+          })
+        )
+      ])
     ]
   );
 }
@@ -5537,6 +5569,21 @@ function shouldShowLoadingForRestoredAction(state) {
   return state.running === true;
 }
 
+// src/podkop/helpers/serviceAvailability.ts
+function getServiceAvailability({
+  loading: loading2,
+  failed: failed2,
+  running
+}) {
+  if (loading2) {
+    return "loading";
+  }
+  if (failed2) {
+    return "unavailable";
+  }
+  return running ? "running" : "stopped";
+}
+
 // src/podkop/tabs/dashboard/initController.ts
 var SECTIONS_REFRESH_INTERVAL_MS = 1e4;
 var LATENCY_TEST_BUTTON_CLASS = "dashboard-sections-grid-item-test-latency";
@@ -5547,6 +5594,8 @@ var sectionsRefreshQueued = false;
 var actionStateUnsubscribe = null;
 var dashboardMounted = false;
 var dashboardMountId = 0;
+var dashboardDataUpdatesStarted = false;
+var dashboardDataUpdatesId = 0;
 var pageUnloading = false;
 var followedSubscriptionJobs = /* @__PURE__ */ new Set();
 var followedLatencyJobs = /* @__PURE__ */ new Set();
@@ -5561,6 +5610,9 @@ if (typeof window !== "undefined") {
   });
 }
 async function fetchDashboardSectionsOnce(mountId) {
+  if (getDashboardServiceAvailability() === "stopped") {
+    return false;
+  }
   const prev = store.get().sectionsWidget;
   const hasRenderedData = prev.data.length > 0;
   store.set({
@@ -5572,7 +5624,7 @@ async function fetchDashboardSectionsOnce(mountId) {
   });
   try {
     const { data, success } = await CustomPodkopMethods.getDashboardSections();
-    if (!dashboardMounted || mountId !== dashboardMountId) {
+    if (!dashboardMounted || mountId !== dashboardMountId || getDashboardServiceAvailability() === "stopped") {
       return false;
     }
     if (!success) {
@@ -5590,7 +5642,7 @@ async function fetchDashboardSectionsOnce(mountId) {
     return true;
   } catch (error) {
     logger.error("[DASHBOARD]", "fetchDashboardSections: failed", error);
-    if (!dashboardMounted || mountId !== dashboardMountId) {
+    if (!dashboardMounted || mountId !== dashboardMountId || getDashboardServiceAvailability() === "stopped") {
       return false;
     }
     const current = store.get().sectionsWidget;
@@ -5840,11 +5892,18 @@ function stopActionStateWatcher() {
   actionStateUnsubscribe();
   actionStateUnsubscribe = null;
 }
-async function connectToClashSockets() {
+async function connectToClashSockets(dataUpdatesId) {
+  const mountId = dashboardMountId;
   const clashApiSecret = await getClashApiSecret2();
+  if (!dashboardMounted || mountId !== dashboardMountId || dataUpdatesId !== dashboardDataUpdatesId || getDashboardServiceAvailability() === "stopped") {
+    return;
+  }
   socket.subscribe(
     `${getClashWsUrl()}/traffic?token=${clashApiSecret}`,
     (msg) => {
+      if (dataUpdatesId !== dashboardDataUpdatesId || getDashboardServiceAvailability() === "stopped") {
+        return;
+      }
       const parsedMsg = JSON.parse(msg);
       store.set({
         bandwidthWidget: {
@@ -5855,6 +5914,9 @@ async function connectToClashSockets() {
       });
     },
     (_err) => {
+      if (dataUpdatesId !== dashboardDataUpdatesId || getDashboardServiceAvailability() === "stopped") {
+        return;
+      }
       logger.error(
         "[DASHBOARD]",
         "connectToClashSockets - traffic: failed to connect to",
@@ -5872,6 +5934,9 @@ async function connectToClashSockets() {
   socket.subscribe(
     `${getClashWsUrl()}/connections?token=${clashApiSecret}`,
     (msg) => {
+      if (dataUpdatesId !== dashboardDataUpdatesId || getDashboardServiceAvailability() === "stopped") {
+        return;
+      }
       const parsedMsg = JSON.parse(msg);
       store.set({
         trafficTotalWidget: {
@@ -5893,6 +5958,9 @@ async function connectToClashSockets() {
       });
     },
     (_err) => {
+      if (dataUpdatesId !== dashboardDataUpdatesId || getDashboardServiceAvailability() === "stopped") {
+        return;
+      }
       logger.error(
         "[DASHBOARD]",
         "connectToClashSockets - connections: failed to connect to",
@@ -5915,6 +5983,47 @@ async function connectToClashSockets() {
       });
     }
   );
+}
+function getDashboardServiceAvailability() {
+  const service = store.get().servicesInfoWidget;
+  return getServiceAvailability({
+    loading: service.loading,
+    failed: service.failed,
+    running: service.data.podkopRunning
+  });
+}
+function stopDashboardDataUpdates() {
+  dashboardDataUpdatesStarted = false;
+  dashboardDataUpdatesId += 1;
+  if (sectionsRefreshTimer) {
+    clearInterval(sectionsRefreshTimer);
+    sectionsRefreshTimer = null;
+  }
+  sectionsRefreshQueued = false;
+  socket.resetAll();
+}
+function startDashboardDataUpdates() {
+  if (dashboardDataUpdatesStarted || !dashboardMounted || getDashboardServiceAvailability() === "stopped") {
+    return;
+  }
+  dashboardDataUpdatesStarted = true;
+  const dataUpdatesId = ++dashboardDataUpdatesId;
+  void fetchDashboardSections({ force: true });
+  void connectToClashSockets(dataUpdatesId);
+  sectionsRefreshTimer = setInterval(() => {
+    void fetchDashboardSections();
+  }, SECTIONS_REFRESH_INTERVAL_MS);
+}
+function syncDashboardServiceAvailability() {
+  const availability = getDashboardServiceAvailability();
+  const stopped = availability === "stopped";
+  const container = document.getElementById("dashboard-status");
+  container?.classList.toggle("pdk_dashboard-page--service-stopped", stopped);
+  if (stopped || availability === "loading") {
+    stopDashboardDataUpdates();
+    return;
+  }
+  startDashboardDataUpdates();
 }
 async function handleChooseOutbound(sectionName, selector, tag) {
   const sectionsWidget = store.get().sectionsWidget;
@@ -6785,6 +6894,7 @@ async function onStoreUpdate(next, prev, diff) {
     renderSystemInfoWidget();
   }
   if (diff.servicesInfoWidget) {
+    syncDashboardServiceAvailability();
     renderServicesInfoWidget();
   }
 }
@@ -6810,28 +6920,20 @@ async function onPageMount() {
   void renderTrafficTotalWidget();
   void renderSystemInfoWidget();
   void renderServicesInfoWidget();
-  void fetchDashboardSections({ force: true });
+  syncDashboardServiceAvailability();
   if (hasRuntimeSnapshot) {
     void refreshRuntimeUiState({ force: true });
   }
-  void connectToClashSockets();
-  sectionsRefreshTimer = setInterval(() => {
-    void fetchDashboardSections();
-  }, SECTIONS_REFRESH_INTERVAL_MS);
 }
 function onPageUnmount() {
   dashboardMounted = false;
   dashboardMountId += 1;
-  if (sectionsRefreshTimer) {
-    clearInterval(sectionsRefreshTimer);
-    sectionsRefreshTimer = null;
-  }
+  stopDashboardDataUpdates();
   stopActionStateWatcher();
   sectionsRefreshQueued = false;
   sectionsRefreshPromise = null;
   store.unsubscribe(onStoreUpdate);
   store.reset(["bandwidthWidget", "trafficTotalWidget", "systemInfoWidget"]);
-  socket.resetAll();
 }
 var dashboardLifecycleRegistered = false;
 var dashboardControllerInitialized = false;
@@ -6883,6 +6985,15 @@ async function initController() {
 
 // src/podkop/tabs/dashboard/styles.ts
 var styles = `
+#cbi-${PODKOP_UCI_PACKAGE}-dashboard-_mount_node > .cbi-value-title {
+    display: none;
+}
+
+#cbi-${PODKOP_UCI_PACKAGE}-dashboard-_mount_node > .cbi-value-field {
+    margin-left: 0;
+    width: 100%;
+}
+
 #cbi-${PODKOP_UCI_PACKAGE}-dashboard-_mount_node > div {
     width: 100%;
 }
@@ -6895,6 +7006,42 @@ var styles = `
     width: 100%;
     --dashboard-grid-columns: 4;
     --dashboard-grid-min-width: 180px;
+}
+
+.pdk_dashboard-page__service-stopped {
+    display: none;
+    width: 100%;
+    min-height: 180px;
+    margin-top: 10px;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    border: 1px dashed var(--border-color-high, #555);
+    border-radius: 6px;
+    color: var(--text-color-medium, #888);
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    font-style: italic;
+    text-align: center;
+}
+
+.pdk_dashboard-page--service-stopped {
+    display: grid;
+    grid-template-columns: repeat(var(--dashboard-grid-columns), minmax(var(--dashboard-grid-min-width), 1fr));
+    gap: 10px;
+}
+
+.pdk_dashboard-page--service-stopped .pdk_dashboard-page__service-stopped {
+    display: flex;
+    grid-column: 1 / -1;
+}
+
+.pdk_dashboard-page--service-stopped .pdk_dashboard-page__content {
+    display: none;
 }
 
 @media (max-width: 900px) {
@@ -10894,9 +11041,11 @@ var monitoringMounted = false;
 var monitoringMountId = 0;
 var monitoringLifecycleRegistered = false;
 var monitoringControllerInitialized = false;
+var serviceStateUnsubscribe = null;
 var renderTimer = null;
 var connectionsPollTimer = null;
 var connectionsSocketUrl = "";
+var connectionsUpdatesId = 0;
 var renderSkippedForSelection = false;
 var pendingConnectionsPayload = null;
 var pollingConnections = false;
@@ -10913,6 +11062,7 @@ var failed = false;
 var closingAll = false;
 var monitoringPaused = false;
 var monitoringPausedAt = null;
+var serviceAvailability = "loading";
 var activeConnections = /* @__PURE__ */ new Map();
 var closedConnections = /* @__PURE__ */ new Map();
 var closingConnectionIds = /* @__PURE__ */ new Set();
@@ -11314,8 +11464,12 @@ function renderTabButtonContent(label, count) {
   ];
 }
 function renderControls() {
-  const activeButton = document.getElementById("monitoring-tab-active");
-  const closedButton = document.getElementById("monitoring-tab-closed");
+  const activeButton = document.getElementById(
+    "monitoring-tab-active"
+  );
+  const closedButton = document.getElementById(
+    "monitoring-tab-closed"
+  );
   const closeAllButton = document.getElementById(
     "monitoring-close-all"
   );
@@ -11326,17 +11480,19 @@ function renderControls() {
     activeButton.replaceChildren(
       ...renderTabButtonContent(_("Active"), activeConnections.size)
     );
+    activeButton.disabled = serviceAvailability === "stopped";
   }
   if (closedButton) {
     closedButton.replaceChildren(
       ...renderTabButtonContent(_("Closed"), closedConnections.size)
     );
+    closedButton.disabled = serviceAvailability === "stopped";
   }
   setButtonActive(activeButton, activeTab === "active");
   setButtonActive(closedButton, activeTab === "closed");
   if (closeAllButton) {
     closeAllButton.replaceChildren(renderXIcon24());
-    closeAllButton.disabled = activeConnections.size === 0 || closingAll;
+    closeAllButton.disabled = serviceAvailability === "stopped" || activeConnections.size === 0 || closingAll;
   }
   if (pauseToggleButton) {
     const title = monitoringPaused ? _("Resume updates") : _("Pause updates");
@@ -11345,6 +11501,7 @@ function renderControls() {
     );
     pauseToggleButton.title = title;
     pauseToggleButton.setAttribute("aria-label", title);
+    pauseToggleButton.disabled = serviceAvailability === "stopped";
     pauseToggleButton.classList.toggle(
       "pdk_monitoring-page__icon-button--active",
       monitoringPaused
@@ -11357,6 +11514,18 @@ function renderControls() {
     searchIcon.replaceChildren(renderSearchIcon24());
   }
   renderDeviceFilterOptions();
+  const select = document.getElementById(
+    "monitoring-device-filter"
+  );
+  const searchInput = document.getElementById(
+    "monitoring-search"
+  );
+  if (select) {
+    select.disabled = serviceAvailability === "stopped";
+  }
+  if (searchInput) {
+    searchInput.disabled = serviceAvailability === "stopped";
+  }
 }
 function renderValue(value, className = "") {
   const text = value || "-";
@@ -11513,6 +11682,16 @@ function renderConnections(options = {}) {
   }
   renderSkippedForSelection = false;
   const previousScrollLeft = container.scrollLeft;
+  if (serviceAvailability === "stopped") {
+    container.replaceChildren(
+      renderConnectionsTable([], {
+        text: _(
+          "Podkop Plus service is stopped. Start the service to display connections."
+        )
+      })
+    );
+    return;
+  }
   if (loading) {
     container.replaceChildren(
       renderConnectionsTable([], {
@@ -11785,7 +11964,10 @@ function bindControls() {
     };
   }
   if (pauseToggleButton) {
-    pauseToggleButton.onclick = () => setMonitoringPaused(!monitoringPaused);
+    pauseToggleButton.onclick = () => {
+      setMonitoringPaused(!monitoringPaused);
+      pauseToggleButton.blur();
+    };
   }
   if (select) {
     select.onchange = () => {
@@ -11834,14 +12016,14 @@ async function loadRouteDisplayNames() {
   }
 }
 async function pollConnectionsSnapshot() {
-  if (pollingConnections || !monitoringMounted || monitoringPaused) {
+  if (pollingConnections || !monitoringMounted || monitoringPaused || serviceAvailability !== "running") {
     return;
   }
   const mountId = monitoringMountId;
   pollingConnections = true;
   try {
     const response = await PodkopShellMethods.getClashApiConnections();
-    if (!monitoringMounted || mountId !== monitoringMountId) {
+    if (!monitoringMounted || mountId !== monitoringMountId || serviceAvailability !== "running") {
       return;
     }
     if (!response.success) {
@@ -11852,7 +12034,7 @@ async function pollConnectionsSnapshot() {
     }
     applyConnectionsPayload(normalizeConnectionsPayload(response.data));
   } catch (error) {
-    if (!monitoringMounted || mountId !== monitoringMountId) {
+    if (!monitoringMounted || mountId !== monitoringMountId || serviceAvailability !== "running") {
       return;
     }
     logger.error("[MONITORING]", "connections polling failed", error);
@@ -11872,16 +12054,19 @@ function startConnectionsPolling() {
     void pollConnectionsSnapshot();
   }, CONNECTIONS_RPC_POLL_INTERVAL_MS);
 }
-async function connectToConnectionsSocket() {
+async function connectToConnectionsSocket(updatesId) {
   const mountId = monitoringMountId;
   const clashApiSecret = await getClashApiSecret2();
-  if (!monitoringMounted || mountId !== monitoringMountId) {
+  if (!monitoringMounted || mountId !== monitoringMountId || updatesId !== connectionsUpdatesId || serviceAvailability !== "running") {
     return;
   }
   connectionsSocketUrl = `${getClashWsUrl()}/connections?token=${clashApiSecret}`;
   socket.subscribe(
     connectionsSocketUrl,
     (msg) => {
+      if (updatesId !== connectionsUpdatesId || serviceAvailability !== "running") {
+        return;
+      }
       try {
         applyConnectionsPayload(JSON.parse(msg));
       } catch (error) {
@@ -11889,7 +12074,7 @@ async function connectToConnectionsSocket() {
       }
     },
     (_err) => {
-      if (!monitoringMounted || mountId !== monitoringMountId) {
+      if (!monitoringMounted || mountId !== monitoringMountId || updatesId !== connectionsUpdatesId || serviceAvailability !== "running") {
         return;
       }
       failed = true;
@@ -11899,11 +12084,67 @@ async function connectToConnectionsSocket() {
   );
 }
 function startConnectionsUpdates() {
+  if (serviceAvailability !== "running") {
+    return;
+  }
   if (canUseDirectClashApi()) {
-    void connectToConnectionsSocket();
+    const updatesId = ++connectionsUpdatesId;
+    void connectToConnectionsSocket(updatesId);
     return;
   }
   startConnectionsPolling();
+}
+function stopConnectionsUpdates() {
+  connectionsUpdatesId += 1;
+  if (connectionsPollTimer) {
+    clearInterval(connectionsPollTimer);
+    connectionsPollTimer = null;
+  }
+  if (connectionsSocketUrl) {
+    socket.disconnect(connectionsSocketUrl);
+    connectionsSocketUrl = "";
+  }
+}
+function setServiceAvailability(next) {
+  if (serviceAvailability === next) {
+    return;
+  }
+  serviceAvailability = next;
+  if (next === "running") {
+    loading = true;
+    failed = false;
+    startConnectionsUpdates();
+  } else {
+    stopConnectionsUpdates();
+    pendingConnectionsPayload = null;
+    if (next === "stopped") {
+      loading = false;
+      failed = false;
+      activeConnections.clear();
+      closedConnections.clear();
+      closingConnectionIds.clear();
+    } else if (next === "unavailable") {
+      loading = false;
+      failed = true;
+    }
+  }
+  renderControls();
+  renderConnections();
+}
+function watchServiceState() {
+  serviceStateUnsubscribe?.();
+  serviceStateUnsubscribe = subscribeRuntimeUiState((uiState) => {
+    if (!monitoringMounted) {
+      return;
+    }
+    setServiceAvailability(
+      getServiceAvailability({
+        loading: false,
+        failed: false,
+        running: uiState.service.podkop.running
+      })
+    );
+  });
 }
 function resetMonitoringState() {
   activeTab = "active";
@@ -11915,6 +12156,7 @@ function resetMonitoringState() {
   closingAll = false;
   monitoringPaused = false;
   monitoringPausedAt = null;
+  serviceAvailability = "loading";
   pendingConnectionsPayload = null;
   activeConnections.clear();
   closedConnections.clear();
@@ -11926,17 +12168,29 @@ function resetMonitoringState() {
     searchInput.value = "";
   }
 }
-function onPageMount3() {
+async function onPageMount3() {
   onPageUnmount3();
   monitoringMounted = true;
   monitoringMountId += 1;
+  const mountId = monitoringMountId;
   resetMonitoringState();
   bindControls();
   renderControls();
   renderConnections();
+  watchServiceState();
   void loadLocalDevices();
   void loadRouteDisplayNames();
-  startConnectionsUpdates();
+  if (getCachedRuntimeUiState()) {
+    void refreshRuntimeUiState({ force: true });
+  } else {
+    const uiState = await refreshRuntimeUiState({ force: true });
+    if (!monitoringMounted || mountId !== monitoringMountId) {
+      return;
+    }
+    if (!uiState && serviceAvailability === "loading") {
+      setServiceAvailability("unavailable");
+    }
+  }
   document.addEventListener("selectionchange", flushRenderAfterSelection);
   document.addEventListener("copy", handleMonitoringValueCopy);
   renderTimer = setInterval(() => {
@@ -11953,14 +12207,9 @@ function onPageUnmount3() {
     clearInterval(renderTimer);
     renderTimer = null;
   }
-  if (connectionsPollTimer) {
-    clearInterval(connectionsPollTimer);
-    connectionsPollTimer = null;
-  }
-  if (connectionsSocketUrl) {
-    socket.disconnect(connectionsSocketUrl);
-    connectionsSocketUrl = "";
-  }
+  stopConnectionsUpdates();
+  serviceStateUnsubscribe?.();
+  serviceStateUnsubscribe = null;
   document.removeEventListener("selectionchange", flushRenderAfterSelection);
   document.removeEventListener("copy", handleMonitoringValueCopy);
 }
@@ -12040,19 +12289,20 @@ var styles5 = `
 
 .pdk_monitoring-page__panel {
     margin-top: 0;
-    border: 2px var(--background-color-low, lightgray) solid;
-    border-radius: 4px;
-    padding: 10px;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
 }
 
 .pdk_monitoring-page .btn.pdk_monitoring-page__icon-button {
-    width: var(--pdk-monitoring-control-height);
-    height: var(--pdk-monitoring-control-height);
-    min-width: var(--pdk-monitoring-control-height);
-    min-height: var(--pdk-monitoring-control-height);
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
     padding: 0;
     box-sizing: border-box;
     display: flex;
@@ -12062,7 +12312,7 @@ var styles5 = `
     line-height: 1;
     margin: 0;
     border: 1px solid var(--pdk-monitoring-divider-color) !important;
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--pdk-monitoring-soft-bg) !important;
     color: var(--text-color-medium) !important;
     box-shadow: none;
@@ -12084,39 +12334,31 @@ var styles5 = `
 }
 
 .pdk_monitoring-page #monitoring-close-all.btn.pdk_monitoring-page__icon-button {
-    border-color: var(--pdk-monitoring-danger-color) !important;
-    background: var(--pdk-monitoring-soft-bg) !important;
-    color: var(--pdk-monitoring-danger-color) !important;
+    order: 2;
+    border-color: rgba(217, 83, 79, 0.4) !important;
+    background: transparent !important;
+    color: #d9534f !important;
 }
 
 .pdk_monitoring-page #monitoring-close-all.btn.pdk_monitoring-page__icon-button:hover:not(:disabled) {
-    border-color: var(--pdk-monitoring-danger-color) !important;
-    background: var(--pdk-monitoring-soft-bg-hover) !important;
-    color: var(--pdk-monitoring-danger-color) !important;
+    border-color: rgba(217, 83, 79, 0.6) !important;
+    background: transparent !important;
+    color: #d9534f !important;
 }
 
-.pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button {
-    border-color: var(--pdk-monitoring-success-color) !important;
-    background: var(--pdk-monitoring-soft-bg) !important;
-    color: var(--pdk-monitoring-success-color) !important;
-}
-
-.pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button:hover:not(:disabled) {
-    border-color: var(--pdk-monitoring-success-color) !important;
-    background: var(--pdk-monitoring-soft-bg-hover) !important;
-    color: var(--pdk-monitoring-success-color) !important;
-}
-
+.pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button,
 .pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button--active {
-    border-color: var(--pdk-monitoring-paused-color) !important;
-    background: var(--pdk-monitoring-soft-bg) !important;
-    color: var(--pdk-monitoring-paused-color) !important;
+    order: 1;
+    border-color: rgba(128, 128, 128, 0.3) !important;
+    background: transparent !important;
+    color: var(--text-color-medium, #888) !important;
 }
 
+.pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button:hover:not(:disabled),
 .pdk_monitoring-page #monitoring-pause-toggle.btn.pdk_monitoring-page__icon-button--active:hover:not(:disabled) {
-    border-color: var(--pdk-monitoring-paused-color) !important;
-    background: var(--pdk-monitoring-soft-bg-hover) !important;
-    color: var(--pdk-monitoring-paused-color) !important;
+    border-color: rgba(128, 128, 128, 0.6) !important;
+    background: transparent !important;
+    color: var(--text-color-high, #eee) !important;
 }
 
 .pdk_monitoring-page__icon-button svg,
@@ -12128,11 +12370,12 @@ var styles5 = `
 }
 
 .pdk_monitoring-page__controls {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: stretch;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
     width: 100%;
     min-width: 0;
 }
@@ -12141,7 +12384,7 @@ var styles5 = `
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
 }
 
@@ -12212,16 +12455,17 @@ var styles5 = `
 }
 
 .pdk_monitoring-page__filters {
-    display: grid;
-    grid-template-columns: minmax(150px, 220px) minmax(200px, 320px);
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
+    justify-content: flex-start;
+    gap: 12px;
     min-width: 0;
 }
 
 .pdk_monitoring-page__device-filter {
-    width: 100%;
+    width: min(220px, 100%);
     min-width: 0;
     height: var(--pdk-monitoring-control-height) !important;
     min-height: var(--pdk-monitoring-control-height) !important;
@@ -12236,7 +12480,7 @@ var styles5 = `
     position: relative;
     display: flex;
     align-items: center;
-    width: 100%;
+    width: min(320px, 100%);
     min-width: 0;
     height: var(--pdk-monitoring-control-height);
     margin: 0;
@@ -12270,7 +12514,7 @@ var styles5 = `
 }
 
 .pdk_monitoring-page__body {
-    margin-top: 10px;
+    margin-top: 0;
     width: 100%;
     min-width: 0;
 }
@@ -12295,7 +12539,7 @@ var styles5 = `
     padding: 8px 6px;
     border-bottom: 1px solid var(--pdk-monitoring-divider-color);
     box-sizing: border-box;
-    text-align: center;
+    text-align: left;
     vertical-align: middle;
     overflow: hidden;
     white-space: nowrap;
@@ -12303,7 +12547,9 @@ var styles5 = `
 
 .pdk_monitoring-page__table th {
     color: var(--text-color-medium);
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
     white-space: nowrap;
     border-bottom-color: rgba(127, 127, 127, 0.32);
 }
@@ -12349,6 +12595,25 @@ var styles5 = `
     padding-bottom: 0;
 }
 
+.pdk_monitoring-page__table th:nth-child(4),
+.pdk_monitoring-page__table td:nth-child(4),
+.pdk_monitoring-page__table th:nth-child(5),
+.pdk_monitoring-page__table td:nth-child(5),
+.pdk_monitoring-page__table th:nth-child(6),
+.pdk_monitoring-page__table td:nth-child(6) {
+    text-align: right;
+}
+
+.pdk_monitoring-page__table th:nth-child(7),
+.pdk_monitoring-page__table td:nth-child(7) {
+    text-align: left;
+}
+
+.pdk_monitoring-page__table th:last-child,
+.pdk_monitoring-page__table td:last-child {
+    text-align: center;
+}
+
 .pdk_monitoring-page__value {
     display: block;
     max-width: 100%;
@@ -12356,16 +12621,17 @@ var styles5 = `
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-align: center;
+    text-align: left;
     line-height: 1.3;
     color: var(--text-color-high);
+    font-size: 13px;
     user-select: text;
 }
 
 .pdk_monitoring-page__source-value {
     display: flex;
     align-items: baseline;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 5px;
 }
 
@@ -12404,11 +12670,32 @@ var styles5 = `
 }
 
 .pdk_monitoring-page__route {
-    font-weight: 600;
+    display: inline-block;
+    width: auto;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(128, 128, 128, 0.15);
+    color: var(--text-color-high, #eee);
+    font-size: 11px;
+    font-weight: 500;
 }
 
 .pdk_monitoring-page__network {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: var(--text-color-medium, #bbb);
+    font-family: inherit;
+    font-size: 13px;
     text-transform: lowercase;
+}
+
+.pdk_monitoring-page__table td:nth-child(4) .pdk_monitoring-page__value,
+.pdk_monitoring-page__table td:nth-child(5) .pdk_monitoring-page__value,
+.pdk_monitoring-page__table td:nth-child(6) .pdk_monitoring-page__value {
+    color: var(--text-color-medium, #bbb);
+    font-family: inherit;
+    text-align: right;
 }
 
 .pdk_monitoring-page .btn.pdk_monitoring-page__row-action {
@@ -12471,16 +12758,15 @@ var styles5 = `
 
 @media (max-width: 900px) {
     .pdk_monitoring-page__controls {
-        grid-template-columns: 1fr auto;
+        align-items: center;
     }
 
     .pdk_monitoring-page__tabs {
-        grid-column: 1 / -1;
+        flex: 1 0 100%;
     }
 
     .pdk_monitoring-page__filters {
-        grid-template-columns: minmax(150px, 220px) minmax(180px, 320px);
-        justify-content: stretch;
+        flex: 1 1 0;
     }
 
     .pdk_monitoring-page__device-filter,
@@ -12568,7 +12854,11 @@ var styles5 = `
 
     .pdk_monitoring-page__controls,
     .pdk_monitoring-page__filters {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
+    .pdk_monitoring-page__actions {
+        align-self: flex-end;
     }
 
     .pdk_monitoring-page__tabs {

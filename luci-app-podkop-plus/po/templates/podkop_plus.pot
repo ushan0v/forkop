@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-10 19:46+0300\n"
-"PO-Revision-Date: 2026-07-10 19:46+0300\n"
+"POT-Creation-Date: 2026-07-10 20:17+0300\n"
+"PO-Revision-Date: 2026-07-10 20:17+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -40,13 +40,13 @@ msgstr ""
 msgid "+ Add URLTest"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1566
-#: src/podkop/tabs/dashboard/initController.ts:1577
+#: src/podkop/tabs/dashboard/initController.ts:1675
+#: src/podkop/tabs/dashboard/initController.ts:1686
 msgid "✔ Running"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1567
-#: src/podkop/tabs/dashboard/initController.ts:1578
+#: src/podkop/tabs/dashboard/initController.ts:1676
+#: src/podkop/tabs/dashboard/initController.ts:1687
 msgid "✘ Stopped"
 msgstr ""
 
@@ -63,7 +63,7 @@ msgstr ""
 msgid "Action"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:647
+#: src/podkop/tabs/monitoring/initController.ts:663
 #: src/podkop/tabs/monitoring/render.ts:20
 msgid "Active"
 msgstr ""
@@ -72,7 +72,7 @@ msgstr ""
 msgid "Active Bootstrap DNS"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1524
+#: src/podkop/tabs/dashboard/initController.ts:1633
 msgid "Active Connections"
 msgstr ""
 
@@ -120,7 +120,7 @@ msgstr ""
 msgid "Advertise routes"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:610
+#: src/podkop/tabs/monitoring/initController.ts:622
 #: src/podkop/tabs/monitoring/render.ts:39
 msgid "All"
 msgstr ""
@@ -202,7 +202,7 @@ msgid "Automatically add text to the name of each server from this subscription 
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2536
-#: src/podkop/tabs/dashboard/initController.ts:1046
+#: src/podkop/tabs/dashboard/initController.ts:1155
 msgid "Automatically select the fastest node in the current level"
 msgstr ""
 
@@ -333,7 +333,7 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2103
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2487
-#: src/podkop/tabs/dashboard/initController.ts:1033
+#: src/podkop/tabs/dashboard/initController.ts:1142
 msgid "Check interval"
 msgstr ""
 
@@ -347,7 +347,7 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2129
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2474
-#: src/podkop/tabs/dashboard/initController.ts:1031
+#: src/podkop/tabs/dashboard/initController.ts:1140
 msgid "Check URL"
 msgstr ""
 
@@ -405,10 +405,10 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1707
 #: src/partials/modal/renderModal.ts:263
-#: src/podkop/tabs/dashboard/initController.ts:918
-#: src/podkop/tabs/dashboard/initController.ts:1174
-#: src/podkop/tabs/monitoring/initController.ts:791
-#: src/podkop/tabs/monitoring/initController.ts:841
+#: src/podkop/tabs/dashboard/initController.ts:1027
+#: src/podkop/tabs/dashboard/initController.ts:1283
+#: src/podkop/tabs/monitoring/initController.ts:828
+#: src/podkop/tabs/monitoring/initController.ts:878
 msgid "Close"
 msgstr ""
 
@@ -417,12 +417,12 @@ msgstr ""
 msgid "Close all connections"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:758
-#: src/podkop/tabs/monitoring/initController.ts:759
+#: src/podkop/tabs/monitoring/initController.ts:795
+#: src/podkop/tabs/monitoring/initController.ts:796
 msgid "Close connection"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:653
+#: src/podkop/tabs/monitoring/initController.ts:670
 #: src/podkop/tabs/monitoring/render.ts:29
 msgid "Closed"
 msgstr ""
@@ -463,7 +463,7 @@ msgstr ""
 msgid "Connection URL"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:894
+#: src/podkop/tabs/monitoring/initController.ts:943
 msgid "Connections are unavailable"
 msgstr ""
 
@@ -481,8 +481,8 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:888
-#: src/podkop/tabs/dashboard/initController.ts:1144
+#: src/podkop/tabs/dashboard/initController.ts:997
+#: src/podkop/tabs/dashboard/initController.ts:1253
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:366
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:367
 msgid "Copy proxy link"
@@ -678,8 +678,8 @@ msgstr ""
 msgid "Dont Touch My DHCP!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1450
-#: src/podkop/tabs/dashboard/initController.ts:1488
+#: src/podkop/tabs/dashboard/initController.ts:1559
+#: src/podkop/tabs/dashboard/initController.ts:1597
 msgid "Downlink"
 msgstr ""
 
@@ -723,8 +723,8 @@ msgstr ""
 msgid "Download through"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:784
-#: src/podkop/tabs/monitoring/initController.ts:838
+#: src/podkop/tabs/monitoring/initController.ts:821
+#: src/podkop/tabs/monitoring/initController.ts:875
 msgid "Downloaded"
 msgstr ""
 
@@ -859,13 +859,13 @@ msgstr ""
 msgid "External nfqws2 config files bypass Podkop Plus queue management and explicit validation."
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:1161
-#: src/podkop/tabs/monitoring/initController.ts:1176
+#: src/podkop/tabs/monitoring/initController.ts:1210
+#: src/podkop/tabs/monitoring/initController.ts:1225
 msgid "Failed to close connection"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:1195
-#: src/podkop/tabs/monitoring/initController.ts:1208
+#: src/podkop/tabs/monitoring/initController.ts:1244
+#: src/podkop/tabs/monitoring/initController.ts:1257
 msgid "Failed to close connections"
 msgstr ""
 
@@ -883,13 +883,13 @@ msgstr ""
 msgid "Failed to execute"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:260
-#: src/podkop/tabs/dashboard/initController.ts:261
-#: src/podkop/tabs/dashboard/initController.ts:280
-#: src/podkop/tabs/dashboard/initController.ts:326
-#: src/podkop/tabs/dashboard/initController.ts:330
-#: src/podkop/tabs/dashboard/initController.ts:1232
-#: src/podkop/tabs/dashboard/initController.ts:1236
+#: src/podkop/tabs/dashboard/initController.ts:275
+#: src/podkop/tabs/dashboard/initController.ts:276
+#: src/podkop/tabs/dashboard/initController.ts:295
+#: src/podkop/tabs/dashboard/initController.ts:341
+#: src/podkop/tabs/dashboard/initController.ts:345
+#: src/podkop/tabs/dashboard/initController.ts:1341
+#: src/podkop/tabs/dashboard/initController.ts:1345
 msgid "Failed to update subscriptions"
 msgstr ""
 
@@ -914,7 +914,7 @@ msgid "Fallback on unknown DC"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2547
-#: src/podkop/tabs/dashboard/initController.ts:1052
+#: src/podkop/tabs/dashboard/initController.ts:1161
 msgid "Faster server search interval"
 msgstr ""
 
@@ -1008,7 +1008,7 @@ msgid "Hide values"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2511
-#: src/podkop/tabs/dashboard/initController.ts:1038
+#: src/podkop/tabs/dashboard/initController.ts:1147
 msgid "Higher-level check interval"
 msgstr ""
 
@@ -1016,8 +1016,8 @@ msgstr ""
 msgid "Higher-priority DNS Check"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:774
-#: src/podkop/tabs/monitoring/initController.ts:834
+#: src/podkop/tabs/monitoring/initController.ts:811
+#: src/podkop/tabs/monitoring/initController.ts:871
 msgid "Host"
 msgstr ""
 
@@ -1051,7 +1051,7 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2142
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:3036
-#: src/podkop/tabs/dashboard/initController.ts:807
+#: src/podkop/tabs/dashboard/initController.ts:916
 msgid "Idle timeout"
 msgstr ""
 
@@ -1139,8 +1139,8 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2156
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2563
-#: src/podkop/tabs/dashboard/initController.ts:809
-#: src/podkop/tabs/dashboard/initController.ts:1058
+#: src/podkop/tabs/dashboard/initController.ts:918
+#: src/podkop/tabs/dashboard/initController.ts:1167
 msgid "Interrupt existing connections"
 msgstr ""
 
@@ -1152,7 +1152,7 @@ msgstr ""
 msgid "Interrupt existing connections when URLTest switches the selected server"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:805
+#: src/podkop/tabs/dashboard/initController.ts:914
 msgid "Interval"
 msgstr ""
 
@@ -1494,7 +1494,7 @@ msgstr ""
 msgid "Latest: %s"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:991
+#: src/podkop/tabs/dashboard/initController.ts:1100
 msgid "Level"
 msgstr ""
 
@@ -1526,7 +1526,7 @@ msgstr ""
 msgid "Loading client link..."
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:884
+#: src/podkop/tabs/monitoring/initController.ts:933
 #: src/podkop/tabs/monitoring/render.ts:88
 msgid "Loading connections"
 msgstr ""
@@ -1551,7 +1551,7 @@ msgstr ""
 msgid "Maximum time to wait for example.com to resolve during a DNS health check."
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1528
+#: src/podkop/tabs/dashboard/initController.ts:1637
 msgid "Memory Usage"
 msgstr ""
 
@@ -1628,18 +1628,18 @@ msgstr ""
 msgid "NFQWS2 strategy cannot be empty"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:653
-#: src/podkop/tabs/dashboard/initController.ts:657
-#: src/podkop/tabs/dashboard/initController.ts:733
-#: src/podkop/tabs/dashboard/initController.ts:946
+#: src/podkop/tabs/dashboard/initController.ts:762
+#: src/podkop/tabs/dashboard/initController.ts:766
+#: src/podkop/tabs/dashboard/initController.ts:842
+#: src/podkop/tabs/dashboard/initController.ts:1055
 msgid "No"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:908
+#: src/podkop/tabs/monitoring/initController.ts:957
 msgid "No active connections"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:909
+#: src/podkop/tabs/monitoring/initController.ts:958
 msgid "No closed connections"
 msgstr ""
 
@@ -1671,13 +1671,13 @@ msgstr ""
 msgid "No rules use Zapret2"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:903
-#: src/podkop/tabs/dashboard/initController.ts:1159
+#: src/podkop/tabs/dashboard/initController.ts:1012
+#: src/podkop/tabs/dashboard/initController.ts:1268
 msgid "Node list is empty"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:833
-#: src/podkop/tabs/dashboard/initController.ts:1082
+#: src/podkop/tabs/dashboard/initController.ts:942
+#: src/podkop/tabs/dashboard/initController.ts:1191
 msgid "Nodes"
 msgstr ""
 
@@ -1830,7 +1830,7 @@ msgstr ""
 msgid "Path must end with cache.db"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:666
+#: src/podkop/tabs/monitoring/initController.ts:687
 #: src/podkop/tabs/monitoring/render.ts:70
 #: src/podkop/tabs/monitoring/render.ts:71
 msgid "Pause updates"
@@ -1867,6 +1867,14 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:5179
 msgid "Podkop Plus manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
+msgstr ""
+
+#: src/podkop/tabs/monitoring/initController.ts:921
+msgid "Podkop Plus service is stopped. Start the service to display connections."
+msgstr ""
+
+#: src/podkop/tabs/dashboard/render.ts:17
+msgid "Podkop Plus service is stopped. Start the service to display the dashboard."
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:345
@@ -1954,13 +1962,13 @@ msgstr ""
 msgid "Priority"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1189
+#: src/podkop/tabs/dashboard/initController.ts:1298
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:404
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:405
 msgid "Priority details"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1019
+#: src/podkop/tabs/dashboard/initController.ts:1128
 msgid "Priority details are unavailable"
 msgstr ""
 
@@ -1984,7 +1992,7 @@ msgstr ""
 msgid "Protocol"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:648
+#: src/podkop/tabs/dashboard/initController.ts:757
 msgid "Proxy link is unavailable"
 msgstr ""
 
@@ -2087,12 +2095,12 @@ msgstr ""
 msgid "Restart Podkop Plus"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:666
+#: src/podkop/tabs/monitoring/initController.ts:687
 msgid "Resume updates"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:778
-#: src/podkop/tabs/monitoring/initController.ts:836
+#: src/podkop/tabs/monitoring/initController.ts:815
+#: src/podkop/tabs/monitoring/initController.ts:873
 msgid "Route"
 msgstr ""
 
@@ -2247,7 +2255,7 @@ msgid "Select path for sing-box config file. Change this ONLY if you know what y
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2525
-#: src/podkop/tabs/dashboard/initController.ts:1042
+#: src/podkop/tabs/dashboard/initController.ts:1151
 msgid "Select the fastest node"
 msgstr ""
 
@@ -2267,8 +2275,8 @@ msgstr ""
 msgid "Select the WAN interfaces to be monitored"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:801
-#: src/podkop/tabs/dashboard/initController.ts:1028
+#: src/podkop/tabs/dashboard/initController.ts:910
+#: src/podkop/tabs/dashboard/initController.ts:1137
 msgid "Selected"
 msgstr ""
 
@@ -2340,7 +2348,7 @@ msgstr ""
 msgid "Service list"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1561
+#: src/podkop/tabs/dashboard/initController.ts:1670
 msgid "Services info"
 msgstr ""
 
@@ -2403,8 +2411,8 @@ msgstr ""
 msgid "Sorts servers in this section by lowest latency in the dashboard."
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:790
-#: src/podkop/tabs/monitoring/initController.ts:840
+#: src/podkop/tabs/monitoring/initController.ts:827
+#: src/podkop/tabs/monitoring/initController.ts:877
 msgid "Source"
 msgstr ""
 
@@ -2510,11 +2518,11 @@ msgstr ""
 msgid "Subscription URL settings"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:286
+#: src/podkop/tabs/dashboard/initController.ts:301
 msgid "Subscriptions updated"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1521
+#: src/podkop/tabs/dashboard/initController.ts:1630
 msgid "System info"
 msgstr ""
 
@@ -2560,7 +2568,7 @@ msgstr ""
 msgid "Test servers whose names match the expression."
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:804
+#: src/podkop/tabs/dashboard/initController.ts:913
 msgid "Testing URL"
 msgstr ""
 
@@ -2628,8 +2636,8 @@ msgstr ""
 msgid "This option requires a value."
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:781
-#: src/podkop/tabs/monitoring/initController.ts:837
+#: src/podkop/tabs/monitoring/initController.ts:818
+#: src/podkop/tabs/monitoring/initController.ts:874
 msgid "Time"
 msgstr ""
 
@@ -2646,7 +2654,7 @@ msgid "tiny"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2115
-#: src/podkop/tabs/dashboard/initController.ts:806
+#: src/podkop/tabs/dashboard/initController.ts:915
 msgid "Tolerance"
 msgstr ""
 
@@ -2654,7 +2662,7 @@ msgstr ""
 msgid "Top level has the highest priority; lower levels are used as fallback"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1447
+#: src/podkop/tabs/dashboard/initController.ts:1556
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:130
 msgid "Traffic"
 msgstr ""
@@ -2663,7 +2671,7 @@ msgstr ""
 msgid "Traffic for this level goes directly."
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1481
+#: src/podkop/tabs/dashboard/initController.ts:1590
 msgid "Traffic Total"
 msgstr ""
 
@@ -2704,8 +2712,8 @@ msgid "TTL value cannot be empty"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1627
-#: src/podkop/tabs/monitoring/initController.ts:775
-#: src/podkop/tabs/monitoring/initController.ts:835
+#: src/podkop/tabs/monitoring/initController.ts:812
+#: src/podkop/tabs/monitoring/initController.ts:872
 msgid "Type"
 msgstr ""
 
@@ -2729,7 +2737,7 @@ msgid "Unable to validate the NFQWS2 strategy through the backend parser."
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2499
-#: src/podkop/tabs/dashboard/initController.ts:1036
+#: src/podkop/tabs/dashboard/initController.ts:1145
 msgid "Unavailability timeout"
 msgstr ""
 
@@ -2822,13 +2830,13 @@ msgstr ""
 msgid "Update this subscription automatically"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:1449
-#: src/podkop/tabs/dashboard/initController.ts:1484
+#: src/podkop/tabs/dashboard/initController.ts:1558
+#: src/podkop/tabs/dashboard/initController.ts:1593
 msgid "Uplink"
 msgstr ""
 
-#: src/podkop/tabs/monitoring/initController.ts:787
-#: src/podkop/tabs/monitoring/initController.ts:839
+#: src/podkop/tabs/monitoring/initController.ts:824
+#: src/podkop/tabs/monitoring/initController.ts:876
 msgid "Uploaded"
 msgstr ""
 
@@ -2852,13 +2860,13 @@ msgstr ""
 msgid "URLTest"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:933
+#: src/podkop/tabs/dashboard/initController.ts:1042
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:385
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:386
 msgid "URLTest details"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:792
+#: src/podkop/tabs/dashboard/initController.ts:901
 msgid "URLTest details are unavailable"
 msgstr ""
 
@@ -3045,7 +3053,7 @@ msgstr ""
 msgid "YACD Secret Key"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:653
+#: src/podkop/tabs/dashboard/initController.ts:762
 msgid "Yes"
 msgstr ""
 

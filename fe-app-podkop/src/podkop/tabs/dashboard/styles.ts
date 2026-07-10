@@ -2,6 +2,15 @@
 import { PODKOP_UCI_PACKAGE as PODKOP_CBI_PREFIX } from '../../../constants';
 
 export const styles = `
+#cbi-${PODKOP_CBI_PREFIX}-dashboard-_mount_node > .cbi-value-title {
+    display: none;
+}
+
+#cbi-${PODKOP_CBI_PREFIX}-dashboard-_mount_node > .cbi-value-field {
+    margin-left: 0;
+    width: 100%;
+}
+
 #cbi-${PODKOP_CBI_PREFIX}-dashboard-_mount_node > div {
     width: 100%;
 }
@@ -14,6 +23,42 @@ export const styles = `
     width: 100%;
     --dashboard-grid-columns: 4;
     --dashboard-grid-min-width: 180px;
+}
+
+.pdk_dashboard-page__service-stopped {
+    display: none;
+    width: 100%;
+    min-height: 180px;
+    margin-top: 10px;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    border: 1px dashed var(--border-color-high, #555);
+    border-radius: 6px;
+    color: var(--text-color-medium, #888);
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    font-style: italic;
+    text-align: center;
+}
+
+.pdk_dashboard-page--service-stopped {
+    display: grid;
+    grid-template-columns: repeat(var(--dashboard-grid-columns), minmax(var(--dashboard-grid-min-width), 1fr));
+    gap: 10px;
+}
+
+.pdk_dashboard-page--service-stopped .pdk_dashboard-page__service-stopped {
+    display: flex;
+    grid-column: 1 / -1;
+}
+
+.pdk_dashboard-page--service-stopped .pdk_dashboard-page__content {
+    display: none;
 }
 
 @media (max-width: 900px) {
