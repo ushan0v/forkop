@@ -307,7 +307,11 @@ describe('getDashboardSections', () => {
     mocks.getConfigSections.mockResolvedValue([
       proxySection({ urltests: [], urltest_settings: undefined }),
       priorityGroup('pg_main'),
-      priorityLevel('pl_de', { name: 'Germany', order: '0' }),
+      priorityLevel('pl_de', {
+        name: 'Germany',
+        order: '0',
+        detect_server_country: 'country_is',
+      }),
       priorityLevel('pl_nl', {
         name: 'Netherlands',
         order: '1',
@@ -322,11 +326,7 @@ describe('getDashboardSections', () => {
           'main-out': proxy('Selector', {
             name: 'main-out',
             now: 'main-priority-pg_main-out',
-            all: [
-              'main-1-out',
-              'main-2-out',
-              'main-priority-pg_main-out',
-            ],
+            all: ['main-1-out', 'main-2-out', 'main-priority-pg_main-out'],
           }),
           'main-priority-pg_main-out': proxy('Selector', {
             name: 'main-priority-pg_main-out',
@@ -343,7 +343,7 @@ describe('getDashboardSections', () => {
             'main-1-out': 'First cached',
             'main-2-out': 'Second cached',
           },
-          countries: {},
+          countries: { 'main-2-out': 'DE' },
         },
         priorityGroups: {
           'main-priority-pg_main-out': {
@@ -403,6 +403,7 @@ describe('getDashboardSections', () => {
         levelIndex: item.levelIndex,
         levelName: item.levelName,
         selected: item.selected,
+        country: item.country,
       })),
     ).toEqual([
       {
@@ -410,12 +411,14 @@ describe('getDashboardSections', () => {
         levelIndex: 0,
         levelName: 'Germany',
         selected: true,
+        country: 'DE',
       },
       {
         code: 'main-1-out',
         levelIndex: 1,
         levelName: 'Netherlands',
         selected: false,
+        country: undefined,
       },
     ]);
   });
@@ -434,11 +437,7 @@ describe('getDashboardSections', () => {
           'main-out': proxy('Selector', {
             name: 'main-out',
             now: 'main-priority-pg_main-out',
-            all: [
-              'main-1-out',
-              'main-2-out',
-              'main-priority-pg_main-out',
-            ],
+            all: ['main-1-out', 'main-2-out', 'main-priority-pg_main-out'],
           }),
           'main-priority-pg_main-out': proxy('Selector', {
             name: 'main-priority-pg_main-out',
@@ -982,8 +981,13 @@ describe('getDashboardSections', () => {
     ]);
     mocks.fsRead.mockResolvedValue(
       JSON.stringify({
+        outboundMetadata: {
+          names: { 'main-2-out': 'Provider Subscription' },
+          countries: {},
+        },
         links: {
-          'main-2-out': 'vless://00000000-0000-4000-8000-000000000002@example.com:443#Subscription',
+          'main-2-out':
+            'vless://00000000-0000-4000-8000-000000000002@example.com:443#Subscription',
         },
         linkRefs: {
           'main-2-out': {
@@ -1004,6 +1008,7 @@ describe('getDashboardSections', () => {
     expect(subscriptionOutbound?.link).toBe(
       'vless://00000000-0000-4000-8000-000000000002@example.com:443#Subscription',
     );
+    expect(subscriptionOutbound?.displayName).toBe('Provider Subscription');
     expect(subscriptionOutbound?.canCopyLink).toBe(true);
   });
 

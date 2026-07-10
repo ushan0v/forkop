@@ -376,6 +376,7 @@ let actionProvidersAvailabilityPromise = null;
 let actionProvidersAvailabilityLoader = null;
 const outboundNameChoicesCache = new Map();
 const outboundNameChoicesInflight = new Map();
+const outboundNameSourceOptions = new Map();
 const SECTION_CACHE_DIR = "/var/run/podkop-plus/section-cache";
 const COUNTRY_CODES =
   "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW XK".split(
@@ -1372,9 +1373,88 @@ function currentOutboundNameChoices(section_id, values) {
   };
 
   (outboundNameChoicesCache.get(section_id) || []).forEach(append);
+  currentDraftOutboundNames(section_id).forEach(append);
   normalizeDynamicListItems(values).forEach(append);
 
   return result.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function currentSourceOptionValues(section_id, optionName) {
+  const liveValues = currentLiveDynamicListValues(section_id, optionName);
+  if (liveValues != null) {
+    return liveValues;
+  }
+
+  const option = outboundNameSourceOptions.get(optionName);
+
+  if (option && typeof option.formvalue === "function") {
+    try {
+      const value = option.formvalue(section_id);
+      if (value != null) {
+        return normalizeDynamicListItems(value);
+      }
+    } catch (_error) {
+      // Fall back to the LuCI UCI cache when the section widget is not mounted.
+    }
+  }
+
+  return getConfigListValues(section_id, optionName);
+}
+
+function currentLiveDynamicListValues(section_id, optionName) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const widget = document.getElementById(
+    `cbid.${UCI_PACKAGE}.${section_id}.${optionName}`,
+  );
+  if (!widget) {
+    return null;
+  }
+
+  const values = Array.from(
+    widget.querySelectorAll('.item > input[type="hidden"]'),
+  )
+    .map((input) => `${input.value || ""}`.trim())
+    .filter(Boolean);
+  const pendingInput = widget.querySelector('.add-item > input[type="text"]');
+  const pendingValue = `${(pendingInput && pendingInput.value) || ""}`.trim();
+
+  if (
+    pendingValue &&
+    !pendingInput.classList.contains("cbi-input-invalid") &&
+    !values.includes(pendingValue)
+  ) {
+    values.push(pendingValue);
+  }
+
+  return values;
+}
+
+function currentDraftOutboundNames(section_id) {
+  const names = [];
+
+  currentSourceOptionValues(section_id, "selector_proxy_links").forEach(
+    (value, index) => {
+      const name = main.getProxyUrlName(`${value || ""}`);
+      names.push(name || `${section_id}-${index + 1}-out`);
+    },
+  );
+  currentSourceOptionValues(section_id, "interfaces").forEach((name) => {
+    const normalized = `${name || ""}`.trim();
+    if (normalized) {
+      names.push(normalized);
+    }
+  });
+  currentSourceOptionValues(section_id, "outbound_jsons").forEach((value) => {
+    const tag = outboundJsonDisplayTag(value);
+    if (tag) {
+      names.push(tag);
+    }
+  });
+
+  return names;
 }
 
 function isDownloadThroughTargetSection(section, currentSectionId) {
@@ -3037,7 +3117,16 @@ function showOutboundJsonSettingsModal(
   jsonOption.modalonly = true;
   jsonOption.rmempty = false;
   jsonOption.validate = function (_itemId, value) {
-    const validation = main.validateOutboundJson(`${value || ""}`);
+    const usedTags =
+      widget && widget.node
+        ? Array.from(widget.node.querySelectorAll(".item"))
+            .filter((item) => item !== itemNode)
+            .map((item) =>
+              outboundJsonDisplayTag(dynamicListItemCurrentValue(item, "")),
+            )
+            .filter(Boolean)
+        : [];
+    const validation = main.validateOutboundJson(`${value || ""}`, usedTags);
     return validation.valid ? true : validation.message;
   };
   configureTextareaOption(jsonOption);
@@ -3063,13 +3152,17 @@ function showOutboundJsonSettingsModal(
 
 function validateOutboundJsonItemsBeforeSave(_section_id, values) {
   const items = Array.isArray(values) ? values : values ? [values] : [];
+  const tags = [];
 
   for (const value of items) {
-    const validation = main.validateOutboundJson(`${value || ""}`);
+    const validation = main.validateOutboundJson(`${value || ""}`, tags);
     if (!validation.valid) {
       const tag = outboundJsonDisplayTag(value);
       return tag ? `${tag}: ${validation.message}` : validation.message;
     }
+
+    const tag = outboundJsonDisplayTag(value);
+    tags.push(tag);
   }
 
   return true;
@@ -6368,6 +6461,7 @@ function createSectionContent(section) {
     const validation = main.validateProxyUrl(value);
     return validation.valid ? true : validation.message;
   };
+  outboundNameSourceOptions.set("selector_proxy_links", o);
 
   o = section.taboption(
     "settings",
@@ -6428,6 +6522,7 @@ function createSectionContent(section) {
   o.rmempty = true;
   o.modalonly = true;
   o.placeholder = _("Select a network interface");
+  outboundNameSourceOptions.set("interfaces", o);
 
   o = section.taboption(
     "settings",
@@ -6453,6 +6548,7 @@ function createSectionContent(section) {
     const validation = main.validateOutboundJson(value);
     return validation.valid ? true : validation.message;
   };
+  outboundNameSourceOptions.set("outbound_jsons", o);
 
   o = section.taboption(
     "settings",

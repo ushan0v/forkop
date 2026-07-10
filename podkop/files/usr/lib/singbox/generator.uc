@@ -521,9 +521,11 @@ function rewrite_subscription_outbound_references(outbounds, tag_map) {
         if (type(outbound) != "object")
             continue;
 
-        let detour = as_string(outbound.detour || "");
-        if (detour != "" && tag_map[detour])
-            outbound.detour = tag_map[detour];
+        for (let key in [ "detour", "default" ]) {
+            let reference = as_string(outbound[key] || "");
+            if (reference != "" && tag_map[reference])
+                outbound[key] = tag_map[reference];
+        }
 
         if (type(outbound.outbounds) == "array") {
             let rewritten = [];
@@ -568,6 +570,37 @@ function unique_tag(base, taken) {
             return candidate;
     }
     return base + "-overflow";
+}
+
+function reserved_runtime_tag_set(outbounds) {
+    let result = {};
+    for (let tag_name in keys(object_or_empty(runtime_constants.RESERVED_TAGS)))
+        result[tag_name] = true;
+
+    for (let outbound in array_or_empty(outbounds)) {
+        if (type(outbound) != "object")
+            continue;
+
+        let tag_name = as_string(outbound.tag || "");
+        if (tag_name != "")
+            result[tag_name] = true;
+    }
+    return result;
+}
+
+function assert_unique_outbound_tags(config) {
+    let seen = {};
+    for (let outbound in array_or_empty(config.outbounds)) {
+        if (type(outbound) != "object")
+            runtime_generate_unsupported("generated sing-box outbound is not an object");
+
+        let tag_name = as_string(outbound.tag || "");
+        if (tag_name == "")
+            runtime_generate_unsupported("generated sing-box outbound has an empty tag");
+        if (seen[tag_name])
+            runtime_generate_unsupported("generated sing-box config has duplicate outbound tag '" + tag_name + "'");
+        seen[tag_name] = true;
+    }
 }
 
 function add_subscription_source_with_state(config, section, source_index, source_entry, taken, selector_tags, urltest_candidate_tags, state, show_metadata, include_urltest_groups, hide_urltest_group_outbounds, hide_detour_outbounds, node_prefix) {
@@ -1827,30 +1860,77 @@ function parse_outbound_json(value) {
     return type(value) == "object" ? value : null;
 }
 
-function add_json_connection_outbound(config, state, section, json_index, outbound_json, taken, selector_tags, urltest_candidate_tags) {
-    let outbound = parse_outbound_json(outbound_json);
-    if (outbound == null)
-        runtime_generate_unsupported("JSON outbound is invalid");
+function rewrite_json_outbound_references(outbounds, tag_map) {
+    for (let outbound in array_or_empty(outbounds)) {
+        if (type(outbound) != "object")
+            continue;
 
-    let display_name = as_string(outbound.remark || outbound.tag || ("JSON outbound " + json_index));
-    let tag_name = connection_item_tag(section[".name"], "json", json_index);
-    if (taken[tag_name])
-        tag_name = unique_tag(tag_name, taken);
-    taken[tag_name] = true;
+        for (let key in [ "detour", "default" ]) {
+            let reference = as_string(outbound[key] || "");
+            if (reference != "" && tag_map[reference])
+                outbound[key] = tag_map[reference];
+        }
 
-    outbound.tag = tag_name;
-    push(config.outbounds, outbound);
-    push(selector_tags, tag_name);
-    if (urltest_leaf_candidate_outbound(outbound))
-        push(urltest_candidate_tags, tag_name);
-    runtime_subscription.remember_outbound_metadata(state, tag_name, display_name, outbound);
-    runtime_subscription.remember_urltest_group(state, tag_name, display_name, outbound);
+        if (type(outbound.outbounds) == "array") {
+            let rewritten = [];
+            for (let tag_name in outbound.outbounds) {
+                tag_name = as_string(tag_name);
+                if (tag_name != "")
+                    push(rewritten, as_string(tag_map[tag_name] || tag_name));
+            }
+            outbound.outbounds = rewritten;
+        }
+    }
+}
+
+function prepare_json_connection_outbounds(section, taken) {
+    let items = connections.outbound_jsons(section);
+    let prepared = [];
+    let outbounds = [];
+    let tag_map = {};
+    let legacy_tags = [];
+
+    for (let i = 0; i < length(items); i++) {
+        let outbound = parse_outbound_json(items[i]);
+        if (outbound == null)
+            runtime_generate_unsupported("JSON outbound is invalid");
+
+        let display_name = trim(as_string(outbound.tag || ""));
+        let legacy_tag = connection_item_tag(section[".name"], "json", i + 1);
+        let base = display_name != "" ? display_name : legacy_tag;
+        let tag_name = unique_tag(base, taken);
+        taken[tag_name] = true;
+        if (display_name != "" && !tag_map[display_name])
+            tag_map[display_name] = tag_name;
+        push(legacy_tags, [ legacy_tag, tag_name ]);
+
+        outbound.tag = tag_name;
+        push(outbounds, outbound);
+        push(prepared, {
+            outbound,
+            displayName: display_name != "" ? display_name : "JSON outbound " + (i + 1)
+        });
+    }
+
+    for (let entry in legacy_tags)
+        if (!tag_map[entry[0]])
+            tag_map[entry[0]] = entry[1];
+
+    rewrite_json_outbound_references(outbounds, tag_map);
+    return prepared;
 }
 
 function add_connection_json_outbounds(config, state, section, taken, selector_tags, urltest_candidate_tags) {
-    let items = connections.outbound_jsons(section);
-    for (let i = 0; i < length(items); i++)
-        add_json_connection_outbound(config, state, section, i + 1, items[i], taken, selector_tags, urltest_candidate_tags);
+    for (let item in prepare_json_connection_outbounds(section, taken)) {
+        let outbound = item.outbound;
+        let tag_name = outbound.tag;
+        push(config.outbounds, outbound);
+        push(selector_tags, tag_name);
+        if (urltest_leaf_candidate_outbound(outbound))
+            push(urltest_candidate_tags, tag_name);
+        runtime_subscription.remember_outbound_metadata(state, tag_name, item.displayName, outbound);
+        runtime_subscription.remember_urltest_group(state, tag_name, item.displayName, outbound);
+    }
 }
 
 function add_connections_outbound(config, section, taken) {
@@ -2365,6 +2445,14 @@ function reserve_section_outbound_tags(sections, taken) {
         if (connections.is_connections_action(action) ||
             action == "byedpi" || action == "zapret" || action == "zapret2")
             taken[outbound_tag(section[".name"])] = true;
+
+        if (!connections.is_connections_action(action))
+            continue;
+
+        for (let urltest_id in connections.urltests(section))
+            taken[urltest_outbound_tag(section[".name"], urltest_id)] = true;
+        for (let group_id in connections.priority_groups(section))
+            taken[priority_outbound_tag(section[".name"], group_id)] = true;
     }
 }
 
@@ -2482,7 +2570,7 @@ function generate_config(output_path, service_address, mwan3_active) {
         runtime_generate_unsupported("no enabled sections");
 
     let config = base_config(settings, service_address, { mwan3_active: cli_bool(mwan3_active) });
-    let taken = { [runtime_constants.DIRECT_OUTBOUND_TAG]: true };
+    let taken = reserved_runtime_tag_set(config.outbounds);
     reserve_section_outbound_tags(sections, taken);
     for (let server in servers)
         runtime_servers.add_server(config, server);
@@ -2496,6 +2584,7 @@ function generate_config(output_path, service_address, mwan3_active) {
     for (let section in sections)
         add_mixed_proxy_for_section(config, section, service_address);
 
+    assert_unique_outbound_tags(config);
     strip_internal_fields(config);
     if (!write_json_file(output_path, config)) {
         warn("failed to write ", output_path, "\n");

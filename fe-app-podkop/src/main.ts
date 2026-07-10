@@ -21,6 +21,7 @@ export { bulkValidate } from './validators/bulkValidate';
 export { validateOutboundJson } from './validators/validateOutboundJson';
 export { validateProxyUrl } from './validators/validateProxyUrl';
 export { parseValueList } from './helpers/parseValueList';
+export { getProxyUrlName } from './helpers/getProxyUrlName';
 export { injectGlobalStyles } from './helpers/injectGlobalStyles';
 export { showToast } from './helpers/showToast';
 export { getClashUIUrl } from './helpers/getClashApiUrl';

@@ -832,10 +832,13 @@ function getOutboundDisplayName(
   entry: ClashProxyEntry | undefined,
   link: string,
   outboundMetadata?: Podkop.GetOutboundMetadata,
+  preferMetadata = false,
 ) {
+  const metadataName = outboundMetadata?.names?.[code];
+
   return (
-    getProxyUrlName(link) ||
-    outboundMetadata?.names?.[code] ||
+    (preferMetadata ? metadataName : getProxyUrlName(link)) ||
+    (preferMetadata ? getProxyUrlName(link) : metadataName) ||
     entry?.value?.name ||
     code
   );
@@ -888,6 +891,7 @@ function buildUrlTestInfo({
             childEntry,
             link,
             outboundMetadata,
+            subscriptionCopyableCodes.has(childCode),
           ),
           latency: childEntry?.value?.history?.[0]?.delay || 0,
           type: childEntry?.value?.type || '',
@@ -928,6 +932,7 @@ function buildPriorityInfo({
   cachedProxyLinks,
   outboundMetadata,
   subscriptionCopyableCodes,
+  showDetectedCountries,
 }: {
   config: PriorityConfig;
   entry?: ClashProxyEntry;
@@ -937,6 +942,7 @@ function buildPriorityInfo({
   cachedProxyLinks: Map<string, string>;
   outboundMetadata?: Podkop.GetOutboundMetadata;
   subscriptionCopyableCodes: Set<string>;
+  showDetectedCountries: boolean;
 }): Podkop.PriorityInfo {
   const selectedCode = entry?.value.now || '';
   const cacheLevels = Array.isArray(groupCache?.levels)
@@ -1001,12 +1007,16 @@ function buildPriorityInfo({
           childEntry,
           link,
           outboundMetadata,
+          subscriptionCopyableCodes.has(childCode),
         ),
         latency: childEntry?.value?.history?.[0]?.delay || 0,
         type: childEntry?.value?.type || '',
         selected: selectedCode === childCode,
         link,
         canCopyLink,
+        country: showDetectedCountries
+          ? outboundMetadata?.countries?.[childCode]
+          : undefined,
         levelIndex,
         levelName: level.displayName,
         levelId: level.id,
@@ -1155,7 +1165,13 @@ function buildProxyGroupOutbounds(
     const displayName =
       priorityConfig?.displayName ||
       urlTestConfig?.displayName ||
-      getOutboundDisplayName(code, item, link, outboundMetadata);
+      getOutboundDisplayName(
+        code,
+        item,
+        link,
+        outboundMetadata,
+        subscriptionCopyableCodes.has(code),
+      );
     const isRuntimeUrlTest = isUrlTestProxyEntry(item);
 
     return [
@@ -1197,6 +1213,7 @@ function buildProxyGroupOutbounds(
               cachedProxyLinks,
               outboundMetadata,
               subscriptionCopyableCodes,
+              showDetectedCountries: priorityConfig.showDetectedCountries,
             })
           : undefined,
       },

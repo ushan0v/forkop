@@ -1102,15 +1102,20 @@ function validate_common_rule_references(section, context) {
         validate_plain_domain_ip_list_reference_value(value);
 }
 
-function valid_outbound_json(value) {
+function outbound_json_object(value) {
     try {
         value = json(as_string(value));
     }
     catch (e) {
-        return false;
+        return null;
     }
 
-    return type(value) == "object" && type(value.type) == "string";
+    return type(value) == "object" ? value : null;
+}
+
+function valid_outbound_json(value) {
+    value = outbound_json_object(value);
+    return value != null && type(value.type) == "string" && trim(as_string(value.type)) != "";
 }
 
 function validate_outbound_json_rule(section) {
@@ -1127,6 +1132,8 @@ function validate_outbound_json_rule(section) {
 function validate_outbound_json_values(section) {
     let name = section_name(section);
     let values = connections.outbound_jsons(section);
+    let require_user_tag = length(list_option(section, "outbound_jsons")) > 0;
+    let tags = {};
 
     for (let value in values) {
         if (as_string(value) == "")
@@ -1134,6 +1141,15 @@ function validate_outbound_json_values(section) {
 
         if (!valid_outbound_json(value))
             fail_validation("Connection rule '" + name + "' must contain valid sing-box outbound JSON objects with a type field. Aborted.");
+
+        let outbound = outbound_json_object(value);
+        let tag_name = trim(as_string(outbound.tag || ""));
+        if (tag_name == "" && require_user_tag)
+            fail_validation("Connection rule '" + name + "' has JSON outbound without a non-empty tag. Aborted.");
+        if (tag_name != "" && tags[tag_name])
+            fail_validation("Connection rule '" + name + "' has duplicate JSON outbound tag '" + tag_name + "'. Aborted.");
+        if (tag_name != "")
+            tags[tag_name] = true;
     }
 }
 

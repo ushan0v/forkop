@@ -40,7 +40,10 @@ function validateOutbounds(value: unknown): boolean {
   );
 }
 
-export function validateOutboundJson(value: string): ValidationResult {
+export function validateOutboundJson(
+  value: string,
+  usedTags: string[] = [],
+): ValidationResult {
   const normalized = `${value || ''}`.trim();
 
   if (!normalized.length) {
@@ -65,6 +68,11 @@ export function validateOutboundJson(value: string): ValidationResult {
 
   if (!nonEmptyString(parsed.tag)) {
     return invalid(_('JSON outbound must contain a non-empty tag field'));
+  }
+
+  const tag = parsed.tag.trim();
+  if (usedTags.some((usedTag) => `${usedTag || ''}`.trim() === tag)) {
+    return invalid(_('Duplicate JSON outbound tag'));
   }
 
   const type = parsed.type.trim().toLowerCase();

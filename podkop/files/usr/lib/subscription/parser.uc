@@ -2180,12 +2180,8 @@ function xray_transport_from_stream(stream) {
     return null;
 }
 
-function xray_display_name(original_tag, tag_counts, config_index) {
+function xray_display_name(original_tag) {
     original_tag = as_string(original_tag);
-    if (original_tag == "")
-        return "";
-    if (int(tag_counts[original_tag] || 0) > 1)
-        return original_tag + " #" + (config_index + 1);
     return original_tag;
 }
 
@@ -2488,21 +2484,7 @@ function xray_balancer_group_base(plan, display_name, config_index, config_count
     return xray_tag_base("urltest", config_index, config_count);
 }
 
-function xray_tag_counts(configs) {
-    let counts = {};
-    for (let config in configs) {
-        for (let outbound in array_or_empty(config.outbounds)) {
-            if (type(outbound) != "object" || !xray_protocol_supported(outbound.protocol))
-                continue;
-
-            let tag = xray_source_tag(outbound, lc(as_string(outbound.protocol || "server")));
-            counts[tag] = (counts[tag] || 0) + 1;
-        }
-    }
-    return counts;
-}
-
-function xray_plan_config_outbounds(config, config_index, config_count, tag_counts, taken) {
+function xray_plan_config_outbounds(config, config_index, config_count, taken) {
     let source_outbounds = array_or_empty(config.outbounds);
     let planned = [];
     let tag_map = {};
@@ -2563,9 +2545,9 @@ function xray_add_converted_outbound(result, item, tag_map, visible, display_nam
     push(result, converted);
 }
 
-function xray_config_outbounds(config, config_index, config_count, tag_counts, taken) {
+function xray_config_outbounds(config, config_index, config_count, taken) {
     let source_outbounds = array_or_empty(config.outbounds);
-    let plan = xray_plan_config_outbounds(config, config_index, config_count, tag_counts, taken);
+    let plan = xray_plan_config_outbounds(config, config_index, config_count, taken);
     let planned = array_or_empty(plan.planned);
     let tag_map = object_or_empty(plan.tag_map);
     let display_name = xray_config_display_name(config, "");
@@ -2620,7 +2602,7 @@ function xray_config_outbounds(config, config_index, config_count, tag_counts, t
         if (visible || dependency_tags[item.original_tag] || visible_source_tags[item.original_tag] === false) {
             let item_display_name = visible && display_name != ""
                 ? display_name
-                : xray_display_name(item.original_tag, tag_counts, config_index);
+                : xray_display_name(item.original_tag);
             xray_add_converted_outbound(result, item, tag_map, !hidden, item_display_name);
         }
     }
@@ -2642,7 +2624,6 @@ function is_xray_config(value) {
 
 function normalize_xray_configs(configs) {
     configs = array_or_empty(configs);
-    let tag_counts = xray_tag_counts(configs);
     let taken = {};
     let outbounds = [];
 
@@ -2651,7 +2632,7 @@ function normalize_xray_configs(configs) {
         if (!is_xray_config(config))
             continue;
 
-        for (let outbound in xray_config_outbounds(config, i, length(configs), tag_counts, taken))
+        for (let outbound in xray_config_outbounds(config, i, length(configs), taken))
             push(outbounds, outbound);
     }
 

@@ -56,6 +56,16 @@ describe('validateOutboundJson', () => {
     );
   });
 
+  it('rejects a tag already used by another JSON outbound', () => {
+    const result = validateOutboundJson('{"type":"direct","tag":"duplicate"}', [
+      'first',
+      'duplicate',
+    ]);
+
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe('Duplicate JSON outbound tag');
+  });
+
   it('requires server fields for common server outbound types', () => {
     const result = validateOutboundJson(
       '{"type":"socks","tag":"proxy","server":"127.0.0.1"}',

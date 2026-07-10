@@ -272,7 +272,7 @@ function validateServerPort(value) {
 function validateOutbounds(value) {
   return Array.isArray(value) && value.length > 0 && value.every((item) => nonEmptyString(item));
 }
-function validateOutboundJson(value) {
+function validateOutboundJson(value, usedTags = []) {
   const normalized = `${value || ""}`.trim();
   if (!normalized.length) {
     return invalid(_("JSON outbound cannot be empty"));
@@ -291,6 +291,10 @@ function validateOutboundJson(value) {
   }
   if (!nonEmptyString(parsed.tag)) {
     return invalid(_("JSON outbound must contain a non-empty tag field"));
+  }
+  const tag = parsed.tag.trim();
+  if (usedTags.some((usedTag) => `${usedTag || ""}`.trim() === tag)) {
+    return invalid(_("Duplicate JSON outbound tag"));
   }
   const type = parsed.type.trim().toLowerCase();
   if ((type === "selector" || type === "urltest") && !validateOutbounds(parsed.outbounds)) {
@@ -951,6 +955,19 @@ function parseValueList(value) {
   return value.split(/\n/).map((line) => line.split("//")[0].split("#")[0]).join(" ").split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
 }
 
+// src/helpers/getProxyUrlName.ts
+function getProxyUrlName(url) {
+  try {
+    const [_link, hash] = url.split("#");
+    if (!hash) {
+      return "";
+    }
+    return decodeURIComponent(hash);
+  } catch {
+    return "";
+  }
+}
+
 // src/helpers/downloadAsTxt.ts
 function downloadAsTxt(text, filename) {
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
@@ -1133,19 +1150,6 @@ async function executeShellCommand({
     const error = err;
     const code = typeof error?.code === "number" ? error.code : 1;
     return { stdout: "", stderr: error?.message, code };
-  }
-}
-
-// src/helpers/getProxyUrlName.ts
-function getProxyUrlName(url) {
-  try {
-    const [_link, hash] = url.split("#");
-    if (!hash) {
-      return "";
-    }
-    return decodeURIComponent(hash);
-  } catch {
-    return "";
   }
 }
 
@@ -2456,7 +2460,8 @@ var RESERVED_RUNTIME_TAGS = /* @__PURE__ */ new Set([
   "tproxy6-in",
   "dns-in",
   "service-mixed-in",
-  "direct-out"
+  "direct-out",
+  "bypass-out"
 ]);
 function allocateRuntimeTag(base, postfix) {
   let suffix = 1;
@@ -3666,8 +3671,9 @@ function getPriorityGroups(dashboardCache) {
   }
   return groups;
 }
-function getOutboundDisplayName(code, entry, link, outboundMetadata) {
-  return getProxyUrlName(link) || outboundMetadata?.names?.[code] || entry?.value?.name || code;
+function getOutboundDisplayName(code, entry, link, outboundMetadata, preferMetadata = false) {
+  const metadataName = outboundMetadata?.names?.[code];
+  return (preferMetadata ? metadataName : getProxyUrlName(link)) || (preferMetadata ? getProxyUrlName(link) : metadataName) || entry?.value?.name || code;
 }
 function buildUrlTestInfo({
   code,
@@ -3697,7 +3703,8 @@ function buildUrlTestInfo({
             childCode,
             childEntry,
             link,
-            outboundMetadata
+            outboundMetadata,
+            subscriptionCopyableCodes.has(childCode)
           ),
           latency: childEntry?.value?.history?.[0]?.delay || 0,
           type: childEntry?.value?.type || "",
@@ -3731,7 +3738,8 @@ function buildPriorityInfo({
   manualLinkByCode,
   cachedProxyLinks,
   outboundMetadata,
-  subscriptionCopyableCodes
+  subscriptionCopyableCodes,
+  showDetectedCountries
 }) {
   const selectedCode = entry?.value.now || "";
   const cacheLevels = Array.isArray(groupCache?.levels) ? groupCache.levels : [];
@@ -3773,13 +3781,15 @@ function buildPriorityInfo({
           childCode,
           childEntry,
           link,
-          outboundMetadata
+          outboundMetadata,
+          subscriptionCopyableCodes.has(childCode)
         ),
         latency: childEntry?.value?.history?.[0]?.delay || 0,
         type: childEntry?.value?.type || "",
         selected: selectedCode === childCode,
         link,
         canCopyLink,
+        country: showDetectedCountries ? outboundMetadata?.countries?.[childCode] : void 0,
         levelIndex,
         levelName: level.displayName,
         levelId: level.id
@@ -3879,7 +3889,13 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGro
     }
     const link = manualLinkByCode.get(code) || cachedProxyLinks.get(code) || "";
     const canCopyLink = isCopyableProxyLink(link) || subscriptionCopyableCodes.has(code);
-    const displayName = priorityConfig?.displayName || urlTestConfig?.displayName || getOutboundDisplayName(code, item, link, outboundMetadata);
+    const displayName = priorityConfig?.displayName || urlTestConfig?.displayName || getOutboundDisplayName(
+      code,
+      item,
+      link,
+      outboundMetadata,
+      subscriptionCopyableCodes.has(code)
+    );
     const isRuntimeUrlTest = isUrlTestProxyEntry(item);
     return [
       {
@@ -3912,7 +3928,8 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGro
           manualLinkByCode,
           cachedProxyLinks,
           outboundMetadata,
-          subscriptionCopyableCodes
+          subscriptionCopyableCodes,
+          showDetectedCountries: priorityConfig.showDetectedCountries
         }) : void 0
       }
     ];
@@ -6043,7 +6060,17 @@ function getDetectedCountryFlag(country) {
 }
 function renderDetailsMemberName(member) {
   const countryFlag = getDetectedCountryFlag(member.country);
-  return countryFlag ? `${countryFlag} ${member.displayName}` : member.displayName;
+  if (!countryFlag) {
+    return member.displayName;
+  }
+  return [
+    E(
+      "span",
+      { class: "pdk_dashboard-page__urltest-details__country-badge" },
+      countryFlag
+    ),
+    member.displayName
+  ];
 }
 function renderUrlTestSelectedValue(info) {
   const selectedMember = info.outbounds.find((member) => member.selected);
@@ -7394,6 +7421,17 @@ var styles = `
     background: rgba(128, 128, 128, 0.15);
     font-size: 11px;
     font-weight: 400;
+}
+
+.pdk_dashboard-page__urltest-details__country-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 6px;
+    padding: 2px 4px;
+    border: 1px solid rgba(128, 128, 128, 0.25);
+    border-radius: 4px;
+    background: rgba(128, 128, 128, 0.15);
+    line-height: 1;
 }
 
 .pdk_dashboard-page__urltest-details__priority-node {
@@ -13741,6 +13779,7 @@ return baseclass.extend({
   bulkValidate,
   coreService,
   getClashUIUrl,
+  getProxyUrlName,
   injectGlobalStyles,
   parseValueList,
   showToast,

@@ -542,6 +542,17 @@ export const styles = `
     font-weight: 400;
 }
 
+.pdk_dashboard-page__urltest-details__country-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 6px;
+    padding: 2px 4px;
+    border: 1px solid rgba(128, 128, 128, 0.25);
+    border-radius: 4px;
+    background: rgba(128, 128, 128, 0.15);
+    line-height: 1;
+}
+
 .pdk_dashboard-page__urltest-details__priority-node {
     color: var(--text-color-high, #fff);
     font-weight: 600;

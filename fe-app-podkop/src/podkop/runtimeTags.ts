@@ -10,6 +10,7 @@ const RESERVED_RUNTIME_TAGS = new Set([
   'dns-in',
   'service-mixed-in',
   'direct-out',
+  'bypass-out',
 ]);
 
 export function allocateRuntimeTag(base: string, postfix: string): string {

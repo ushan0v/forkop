@@ -710,7 +710,18 @@ function getDetectedCountryFlag(country?: string) {
 
 function renderDetailsMemberName(member: Podkop.UrlTestMember) {
   const countryFlag = getDetectedCountryFlag(member.country);
-  return countryFlag ? `${countryFlag} ${member.displayName}` : member.displayName;
+  if (!countryFlag) {
+    return member.displayName;
+  }
+
+  return [
+    E(
+      'span',
+      { class: 'pdk_dashboard-page__urltest-details__country-badge' },
+      countryFlag,
+    ),
+    member.displayName,
+  ];
 }
 
 function renderUrlTestSelectedValue(info: Podkop.UrlTestInfo) {

@@ -78,7 +78,7 @@ config settings 'settings'
 #        option label 'JSON outbound'
 #        option enabled '1'
 #        option action 'connection'
-#        list outbound_jsons '{"type":"socks","server":"127.0.0.1","server_port":1080,"version":"5"}'
+#        list outbound_jsons '{"type":"socks","tag":"Local SOCKS","server":"127.0.0.1","server_port":1080,"version":"5"}'
 #        list community_lists 'russia_inside'
 
 #config server 'server_json_inbound_example'

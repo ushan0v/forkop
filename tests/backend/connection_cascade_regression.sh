@@ -126,8 +126,8 @@ assert(outbound("independent").detour == "hop-out", "independent subscription ou
 assert(outbound("provider-group").detour == null, "subscription URLTest group must not receive Dial Fields");
 assert(outbound("source-interface-1-out").bind_interface == "wg0", "interface binding was not preserved");
 assert(outbound("source-interface-1-out").detour == null, "network interface must be excluded from section cascade");
-assert(outbound("source-json-1-out").detour == null, "plain JSON outbound must be excluded from section cascade");
-assert(outbound("source-json-2-out").detour == "direct-out", "explicit JSON detour was not preserved");
+assert(outbound("JSON plain").detour == null, "plain JSON outbound must be excluded from section cascade");
+assert(outbound("JSON explicit").detour == "direct-out", "explicit JSON detour was not preserved");
 assert(outbound("source-out").detour == null, "section selector must not receive its own detour");
 ' "$WORK_DIR/output.json" || fail "section cascade generation"
 

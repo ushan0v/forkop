@@ -3,23 +3,12 @@
 let fs = require("fs");
 let constants = require("core.constants");
 let uci_core = require("core.uci");
+let runtime_constants = require("singbox.constants");
 
 const CONFIG_NAME = getenv("PODKOP_CONFIG_NAME") || constants.PODKOP_CONFIG_NAME || "podkop-plus";
 const LIB_DIR = getenv("PODKOP_LIB") || "/usr/lib/podkop-plus";
 const SB_TPROXY_INBOUND_TAG = getenv("SB_TPROXY_INBOUND_TAG") || constants.SB_TPROXY_INBOUND_TAG || "tproxy-in";
 const NFT_TABLE_NAME = getenv("NFT_TABLE_NAME") || constants.NFT_TABLE_NAME || "PodkopPlusTable";
-const RESERVED_RUNTIME_TAGS = [
-    getenv("SB_DNS_SERVER_TAG") || constants.SB_DNS_SERVER_TAG || "dns-server",
-    getenv("SB_FAKEIP_DNS_SERVER_TAG") || constants.SB_FAKEIP_DNS_SERVER_TAG || "fakeip-server",
-    getenv("SB_BOOTSTRAP_SERVER_TAG") || constants.SB_BOOTSTRAP_SERVER_TAG || "bootstrap-dns-server",
-    getenv("SB_FAKEIP_DNS_RULE_TAG") || constants.SB_FAKEIP_DNS_RULE_TAG || "fakeip-dns-rule-tag",
-    getenv("SB_FAKEIP_RULESET_DNS_RULE_TAG") || constants.SB_FAKEIP_RULESET_DNS_RULE_TAG || "fakeip-ruleset-dns-rule-tag",
-    getenv("SB_SERVICE_FAKEIP_DNS_RULE_TAG") || constants.SB_SERVICE_FAKEIP_DNS_RULE_TAG || "service-fakeip-dns-rule-tag",
-    SB_TPROXY_INBOUND_TAG,
-    getenv("SB_DNS_INBOUND_TAG") || constants.SB_DNS_INBOUND_TAG || "dns-in",
-    getenv("SB_SERVICE_MIXED_INBOUND_TAG") || constants.SB_SERVICE_MIXED_INBOUND_TAG || "service-mixed-in",
-    getenv("SB_DIRECT_OUTBOUND_TAG") || constants.SB_DIRECT_OUTBOUND_TAG || "direct-out"
-];
 
 function as_string(value) {
     return value == null ? "" : "" + value;
@@ -502,45 +491,8 @@ function start_runtime(cfg) {
     }
 }
 
-function str_last_index(value, needle) {
-    value = as_string(value);
-    needle = as_string(needle);
-    if (needle == "")
-        return length(value);
-
-    for (let i = length(value) - length(needle); i >= 0; i--)
-        if (substr(value, i, length(needle)) == needle)
-            return i;
-    return -1;
-}
-
-function tag_is_reserved(tag) {
-    for (let value in RESERVED_RUNTIME_TAGS)
-        if (tag == as_string(value))
-            return true;
-    return false;
-}
-
 function runtime_tag(base, postfix) {
-    base = as_string(base);
-    postfix = as_string(postfix);
-    let candidate = base + "-" + postfix;
-    let suffix = 1;
-
-    if (match(base, /-[0-9]/) != null) {
-        let dash = str_last_index(base, "-");
-        let parent = dash >= 0 ? substr(base, 0, dash) : base;
-        if (tag_is_reserved(parent + "-" + postfix)) {
-            candidate = base + "-" + suffix + "-" + postfix;
-            suffix++;
-        }
-    }
-
-    while (tag_is_reserved(candidate)) {
-        candidate = base + "-" + suffix + "-" + postfix;
-        suffix++;
-    }
-    return candidate;
+    return runtime_constants.tag(base, postfix);
 }
 
 function read_json_file(path) {
