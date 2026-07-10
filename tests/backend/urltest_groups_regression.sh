@@ -399,6 +399,81 @@ JSON
 singbox_config="$WORK_DIR/singbox-config.json"
 generate_config "$WORK_DIR/singbox-fixture.json" "$singbox_config"
 
+cat >"$WORK_DIR/singbox-prefix-fixture.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "log_level": "warn"
+  },
+  "section": [
+    {
+      ".name": "proxy",
+      ".type": "section",
+      "enabled": "1",
+      "action": "proxy",
+      "urltest_enabled": "1",
+      "urltest_check_interval": "3m",
+      "urltest_tolerance": "50",
+      "urltest_filter_mode": "include",
+      "urltest_include_regex": [ "^Provider " ],
+      "detect_server_country": "country_is",
+      "subscription_urls": [ "https://singbox.example/sub" ],
+      "subscription_url_settings": "{\"https://singbox.example/sub\":{\"prefix_nodes\":\"1\",\"node_prefix\":\"Provider\"}}"
+    }
+  ]
+}
+JSON
+
+singbox_prefix_config="$WORK_DIR/singbox-prefix-config.json"
+generate_config "$WORK_DIR/singbox-prefix-fixture.json" "$singbox_prefix_config"
+
+ucode -e '
+let fs = require("fs");
+function object_or_empty(value) { return type(value) == "object" ? value : {}; }
+function outbound_by_tag(config, tag) {
+    for (let outbound in config.outbounds || [])
+        if (outbound && outbound.tag == tag)
+            return outbound;
+    return null;
+}
+function contains(values, needle) {
+    for (let value in values || [])
+        if (value == needle)
+            return true;
+    return false;
+}
+let config = json(fs.readfile(ARGV[0]));
+let cache = json(fs.readfile(ARGV[1]));
+let names = object_or_empty(object_or_empty(cache.outboundMetadata).names);
+let groups = object_or_empty(cache.urltestGroups);
+let imported = outbound_by_tag(config, "Provider Native Group");
+let native = outbound_by_tag(config, "Provider Native A");
+let detour = outbound_by_tag(config, "Provider Detour Only");
+let uses_detour = outbound_by_tag(config, "Provider Uses Detour");
+let builtin = outbound_by_tag(config, "proxy-urltest-out");
+if (!imported || !native || !detour || !uses_detour)
+    die("subscription prefix was not applied to every imported outbound\n");
+if (length(imported.outbounds || []) != 1 || imported.outbounds[0] != "Provider Native A")
+    die("subscription prefix did not rewrite imported URLTest group membership\n");
+if (uses_detour.detour != "Provider Detour Only")
+    die("subscription prefix did not rewrite detour references\n");
+if (!builtin || length(builtin.outbounds || []) != 3)
+    die("prefixed node names did not match the configured URLTest filter\n");
+for (let tag in [ "Provider Native A", "Provider Detour Only", "Provider Uses Detour" ])
+    if (!contains(builtin.outbounds, tag))
+        die("built-in URLTest is missing a prefixed node\n");
+if (contains(cache.urltestCandidateTags || [], "Provider Native Group"))
+    die("prefixed imported URLTest group must not become a URLTest candidate\n");
+if (object_or_empty(groups["Provider Native Group"]).displayName != "Provider Native Group")
+    die("prefixed imported URLTest group display name was not retained\n");
+if (names["Provider Native A"] != "Provider Native A" ||
+    names["Provider Native Group"] != "Provider Native Group")
+    die("prefixed outbound metadata names were not retained\n");
+if (names["Native A"] != null || names["Native Group"] != null)
+    die("unprefixed outbound metadata names must not remain\n");
+' "$singbox_prefix_config" "$singbox_prefix_config.section-cache/proxy.json" || fail "subscription node prefix behavior"
+
 cat >"$WORK_DIR/singbox-reveal-urltest-fixture.json" <<'JSON'
 {
   "settings": {

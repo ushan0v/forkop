@@ -1635,6 +1635,8 @@ function subscriptionUrlSettingsKeys() {
     "auto_hwid",
     "hwid",
     "show_dashboard_metadata",
+    "prefix_nodes",
+    "node_prefix",
     "include_urltest_groups",
     "hide_urltest_group_outbounds",
     "hide_detour_outbounds",
@@ -1652,6 +1654,8 @@ function defaultSubscriptionUrlSettings() {
     auto_hwid: "1",
     hwid: "",
     show_dashboard_metadata: "1",
+    prefix_nodes: "0",
+    node_prefix: "",
     include_urltest_groups: "1",
     hide_urltest_group_outbounds: "1",
     hide_detour_outbounds: "1",
@@ -1941,6 +1945,21 @@ function addSubscriptionUrlItemOptions(itemSection, options = {}) {
     _("Show subscription metadata for this source on the dashboard"),
   );
   o.default = "1";
+  o.rmempty = false;
+
+  o = itemSection.option(
+    form.Flag,
+    "prefix_nodes",
+    _("Add prefix to nodes"),
+    _(
+      "Automatically add text to the name of each server from this subscription for convenient filtering.",
+    ),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = itemSection.option(form.Value, "node_prefix", _("Prefix text"));
+  o.depends("prefix_nodes", "1");
   o.rmempty = false;
 
   o = itemSection.option(

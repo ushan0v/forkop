@@ -845,6 +845,8 @@ function subscription_urls_signature(section) {
             auto_hwid: connections.subscription_auto_hwid(section, entry) ? "1" : "0",
             hwid: connections.subscription_hwid(section, entry),
             show_dashboard_metadata: connections.subscription_dashboard_metadata_enabled(section, entry) ? "1" : "0",
+            prefix_nodes: connections.subscription_prefix_nodes(section, entry) ? "1" : "0",
+            node_prefix: connections.subscription_node_prefix(section, entry),
             include_urltest_groups: connections.subscription_include_urltest_groups(section, entry) ? "1" : "0",
             hide_urltest_group_outbounds: connections.subscription_hide_urltest_group_outbounds(section, entry) ? "1" : "0",
             hide_detour_outbounds: connections.subscription_hide_detour_outbounds(section, entry) ? "1" : "0"

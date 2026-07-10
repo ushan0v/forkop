@@ -326,6 +326,8 @@ export namespace Podkop {
     auto_hwid?: '0' | '1';
     hwid?: string;
     show_dashboard_metadata?: '0' | '1';
+    prefix_nodes?: '0' | '1';
+    node_prefix?: string;
     include_urltest_groups?: '0' | '1';
     hide_urltest_group_outbounds?: '0' | '1';
     hide_detour_outbounds?: '0' | '1';

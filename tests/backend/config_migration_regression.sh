@@ -215,6 +215,7 @@ const legacySubSource = childObjects(legacySub, subscriptionUrls)[0];
 assert(legacySubSource.user_agent === 'Agent/1.0', 'subscription user-agent setting');
 assert(legacySubSource.auto_user_agent === '0', 'subscription user-agent manual mode');
 assert(legacySubSource.auto_hwid === '1', 'subscription HWID auto-generation');
+assert(legacySubSource.prefix_nodes === '0', 'subscription node prefix disabled by default');
 assert(legacySubSource.include_urltest_groups === '1', 'subscription URLTest groups import default');
 assert(legacySubSource.hide_urltest_group_outbounds === '1', 'subscription URLTest group member hiding default');
 assert(legacySubSource.hide_detour_outbounds === '1', 'subscription detour hiding default');

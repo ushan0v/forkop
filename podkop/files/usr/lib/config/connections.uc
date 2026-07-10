@@ -526,6 +526,24 @@ function subscription_hide_detour_outbounds(section, value) {
     return item_bool(section, "subscription_url_settings", value, "hide_detour_outbounds", true);
 }
 
+function subscription_prefix_nodes(section, value) {
+    let child = child_item_by_value(section, "subscription_url", "url", value);
+    if (child != null)
+        return child_bool(child, "prefix_nodes", false);
+    return item_bool(section, "subscription_url_settings", value, "prefix_nodes", false);
+}
+
+function subscription_node_prefix(section, value) {
+    if (!subscription_prefix_nodes(section, value))
+        return "";
+
+    let child = child_item_by_value(section, "subscription_url", "url", value);
+    let prefix = child != null
+        ? child_option(child, "node_prefix", "")
+        : item_option(section, "subscription_url_settings", value, "node_prefix", "");
+    return trim(as_string(prefix));
+}
+
 function subscription_user_agent(section, value) {
     if (subscription_auto_user_agent(section, value))
         return "";
@@ -884,6 +902,8 @@ return {
     subscription_include_urltest_groups,
     subscription_hide_urltest_group_outbounds,
     subscription_hide_detour_outbounds,
+    subscription_prefix_nodes,
+    subscription_node_prefix,
     subscription_user_agent,
     subscription_hwid,
     subscription_download_section,

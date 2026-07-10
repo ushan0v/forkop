@@ -255,6 +255,8 @@ function hydrateConfigSections(configSections: Podkop.ConfigSection[]) {
           auto_hwid: item.auto_hwid,
           hwid: item.hwid,
           show_dashboard_metadata: item.show_dashboard_metadata,
+          prefix_nodes: item.prefix_nodes,
+          node_prefix: item.node_prefix,
           include_urltest_groups: item.include_urltest_groups,
           hide_urltest_group_outbounds: item.hide_urltest_group_outbounds,
           hide_detour_outbounds: item.hide_detour_outbounds,

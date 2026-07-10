@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-10 04:26+0300\n"
-"PO-Revision-Date: 2026-07-10 04:26+0300\n"
+"POT-Creation-Date: 2026-07-10 05:05+0300\n"
+"PO-Revision-Date: 2026-07-10 05:05+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -58,6 +58,9 @@ msgstr "Добавить секцию"
 
 msgid "Add a server inbound"
 msgstr "Добавить серверный inbound"
+
+msgid "Add prefix to nodes"
+msgstr "Добавлять префикс к узлам"
 
 msgid "Add URLs or local paths to .lst lists"
 msgstr "Добавляйте URL или локальные пути к спискам .lst"
@@ -133,6 +136,9 @@ msgstr "Авто-генерация HWID"
 
 msgid "Automatic User-Agent selection"
 msgstr "Авто-подбор User-Agent"
+
+msgid "Automatically add text to the name of each server from this subscription for convenient filtering."
+msgstr "Автоматически добавлять текст к имени каждого сервера из этой подписки для удобной фильтрации."
 
 msgid "Automatically select the fastest node in the current level"
 msgstr "Автовыбор самого быстрого узла уровня"
@@ -1309,6 +1315,9 @@ msgstr "Порты"
 
 msgid "Preferred IP"
 msgstr "Предпочитаемый IP"
+
+msgid "Prefix text"
+msgstr "Текст префикса"
 
 msgid "Priority"
 msgstr "Приоритет"

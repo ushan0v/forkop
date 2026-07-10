@@ -570,7 +570,7 @@ function unique_tag(base, taken) {
     return base + "-overflow";
 }
 
-function add_subscription_source_with_state(config, section, source_index, source_entry, taken, selector_tags, urltest_candidate_tags, state, show_metadata, include_urltest_groups, hide_urltest_group_outbounds, hide_detour_outbounds) {
+function add_subscription_source_with_state(config, section, source_index, source_entry, taken, selector_tags, urltest_candidate_tags, state, show_metadata, include_urltest_groups, hide_urltest_group_outbounds, hide_detour_outbounds, node_prefix) {
     let section_name = section[".name"];
     let source_section = runtime_subscription.source_id(section_name, source_index);
     if (!runtime_subscription.source_cache_is_current(
@@ -590,6 +590,7 @@ function add_subscription_source_with_state(config, section, source_index, sourc
     let visibility_refs = subscription_visibility_refs(outbounds);
     if (include_urltest_groups === false)
         hide_urltest_group_outbounds = false;
+    node_prefix = trim(as_string(node_prefix));
     let prepared = [];
     let source_indices = [];
     let display_names = [];
@@ -610,6 +611,10 @@ function add_subscription_source_with_state(config, section, source_index, sourc
             continue;
         let display_name = as_string(outbound.remark || outbound.tag || ("server-" + (i + 1)));
         let base = as_string(outbound.tag || outbound.remark || ("server-" + (i + 1)));
+        if (node_prefix != "") {
+            display_name = node_prefix + " " + display_name;
+            base = display_name;
+        }
         let new_tag = unique_tag(base, taken);
         taken[new_tag] = true;
         tag_map[base] = new_tag;
@@ -1780,7 +1785,8 @@ function add_connection_subscriptions(config, state, section, taken, selector_ta
             connections.subscription_dashboard_metadata_enabled(section, subscription_urls[i]),
             connections.subscription_include_urltest_groups(section, subscription_urls[i]),
             connections.subscription_hide_urltest_group_outbounds(section, subscription_urls[i]),
-            connections.subscription_hide_detour_outbounds(section, subscription_urls[i])
+            connections.subscription_hide_detour_outbounds(section, subscription_urls[i]),
+            connections.subscription_node_prefix(section, subscription_urls[i])
         );
 }
 

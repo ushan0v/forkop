@@ -738,6 +738,7 @@ function migrate_subscription_url_item_settings(ctx, section) {
             set_option(ctx, child, "user_agent", profile.user_agent);
         set_option(ctx, child, "auto_hwid", "1");
         set_option(ctx, child, "show_dashboard_metadata", "1");
+        set_option(ctx, child, "prefix_nodes", "0");
         set_option(ctx, child, "include_urltest_groups", "1");
         set_option(ctx, child, "hide_urltest_group_outbounds", "1");
         set_option(ctx, child, "hide_detour_outbounds", "1");
