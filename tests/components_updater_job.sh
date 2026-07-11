@@ -111,6 +111,19 @@ tmp_file_line="$(grep -n '^function make_tmp_file' "$ACTION_UC" | cut -d: -f1)"
 [ -n "$init_line" ] && [ -n "$tmp_file_line" ] && [ "$init_line" -lt "$tmp_file_line" ] ||
   fail "components/action.uc must declare init_tmp_dir before make_tmp_file for OpenWrt ucode"
 
+sed -n '26,64p' "$ACTION_UC" >"$WORK_DIR/action-command-success.uc"
+cat >>"$WORK_DIR/action-command-success.uc" <<'UCODE'
+let output_path = ARGV[0] || "";
+if (output_path == "" ||
+    !command_success(command_from_args([ "printf", "%s", "extracted payload" ]) + " >" + shell_quote(output_path)))
+    exit(1);
+UCODE
+command_success_output="$WORK_DIR/command-success-output"
+ucode "$WORK_DIR/action-command-success.uc" "$command_success_output" ||
+  fail "components/action.uc command_success should allow commands with explicit output redirection"
+assert_eq "extracted payload" "$(cat "$command_success_output")" \
+  "component command success preserves explicit output redirection"
+
 package_runtime_lib="$WORK_DIR/package-runtime-lib"
 package_runtime_bin="$WORK_DIR/package-runtime-bin"
 mkdir -p "$package_runtime_lib/components" "$package_runtime_lib/core" "$package_runtime_lib/singbox" "$package_runtime_bin"

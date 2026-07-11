@@ -56,7 +56,7 @@ function command_status(command) {
 }
 
 function command_success(command) {
-    return command_status(command + " >/dev/null 2>&1") == 0;
+    return command_status("(" + command + ") >/dev/null 2>&1") == 0;
 }
 
 function command_success_from_args(args) {
