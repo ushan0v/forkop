@@ -1316,6 +1316,44 @@ function restore_sing_box_after_failed_extended_package_install(previous_variant
     return restore_status;
 }
 
+function restore_sing_box_after_failed_package_install(target_package, previous_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, cronet_touched) {
+    pkg_remove_sing_box_conflict(target_package);
+    let restore_status = restore_sing_box_install_backup(previous_variant, backup_binary);
+    if (cronet_touched) {
+        if (!restore_file_backup("/usr/lib/libcronet.so", backup_cronet))
+            restore_status = false;
+        if (file_nonempty("/usr/lib/libcronet.so") && !command_success_from_args([ "chmod", "0644", "/usr/lib/libcronet.so" ]))
+            restore_status = false;
+    }
+    restore_sing_box_variant_state(previous_marker, previous_version_state);
+    if (!restore_sing_box_service_from_marker(previous_marker))
+        restore_status = false;
+    if (restore_status) {
+        remove_file(backup_binary);
+        remove_file(backup_cronet);
+    }
+    clear_version_caches();
+    return restore_status;
+}
+
+function fail_package_sing_box_install(action, tiny, reason, current_version, latest_version,
+    target_package, previous_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, cronet_touched) {
+    let restored = restore_sing_box_after_failed_package_install(
+        target_package,
+        previous_variant,
+        backup_binary,
+        backup_cronet,
+        previous_marker,
+        previous_version_state,
+        cronet_touched
+    );
+
+    let prefix = tiny ? "sing-box-tiny" : "Stable sing-box";
+    if (restored)
+        action_fail("sing_box", action, prefix + " " + reason + "; previous sing-box variant was restored", current_version, latest_version);
+    action_fail("sing_box", action, prefix + " " + reason + " and previous sing-box variant could not be restored", current_version, latest_version);
+}
+
 function install_sing_box_extended_package(action) {
     init_tmp_dir() || action_fail("sing_box", action, "Failed to create temporary directory");
     let current_version = sing_box_runtime_output("version", []);
@@ -1616,26 +1654,47 @@ function install_package_sing_box(action, tiny) {
     if (latest_version == "")
         action_fail("sing_box", action, "Failed to resolve " + (tiny ? "tiny" : "stable") + " sing-box package version", current_version);
 
+    let previous_variant = sing_box_runtime_output("variant", []);
+    let previous_marker = sing_box_runtime_output("read-variant-marker", []);
+    let previous_version_state = sing_box_runtime_output("read-version-state", []);
     stop_forkop_before_sing_box_change();
+
+    let backup_binary = "";
+    let backup_cronet = "";
+    let cronet_touched = false;
+    if (file_exists("/usr/bin/sing-box")) {
+        backup_binary = "/usr/bin/sing-box.forkop-backup." + owner_pid();
+        if (!move_file_to_backup("/usr/bin/sing-box", backup_binary))
+            action_fail("sing_box", action, "Failed to backup current sing-box binary", current_version, latest_version);
+    }
+    if (file_exists("/usr/lib/libcronet.so")) {
+        cronet_touched = true;
+        backup_cronet = "/usr/lib/libcronet.so.forkop-backup." + owner_pid();
+        if (!move_file_to_backup("/usr/lib/libcronet.so", backup_cronet)) {
+            restore_sing_box_backup(backup_binary);
+            action_fail("sing_box", action, "Failed to backup current libcronet.so", current_version, latest_version);
+        }
+    }
+
     if (!run_logged("Installing " + label + " package", "sh -c " + shell_quote("exit 0")) ||
         !replace_sing_box_package_variant(package_name, conflict))
-        action_fail("sing_box", action, "Failed to install " + (tiny ? "sing-box-tiny" : "stable sing-box"), current_version, latest_version);
+        fail_package_sing_box_install(action, tiny, "package installation failed", current_version, latest_version,
+            package_name, previous_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, cronet_touched);
 
     let new_version = read_sing_box_binary_version("/usr/bin/sing-box", "");
-    if (new_version == "") {
-        clear_version_caches();
-        action_fail("sing_box", action, (tiny ? "sing-box-tiny" : "Stable sing-box") + " package was installed, but sing-box binary is not available", current_version, latest_version);
-    }
-    if (sing_box_runtime_success("is-extended", [ new_version ])) {
-        clear_version_caches();
-        action_fail("sing_box", action, (tiny ? "sing-box-tiny" : "Stable sing-box") + " package was installed, but the active binary is still sing-box-extended", new_version, latest_version);
-    }
+    if (new_version == "")
+        fail_package_sing_box_install(action, tiny, "package was installed, but sing-box binary is not available", current_version, latest_version,
+            package_name, previous_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, cronet_touched);
+    if (sing_box_runtime_success("is-extended", [ new_version ]))
+        fail_package_sing_box_install(action, tiny, "package was installed, but the active binary is still sing-box-extended", new_version, latest_version,
+            package_name, previous_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, cronet_touched);
     write_sing_box_variant_state(tiny ? "tiny" : "stable", new_version);
     restart_forkop_after_successful_change();
-    if (!wait_forkop_running_after_sing_box_change()) {
-        clear_version_caches();
-        action_fail("sing_box", action, (tiny ? "Tiny" : "Stable") + " sing-box was installed, but Forkop did not start cleanly", new_version, latest_version);
-    }
+    if (!wait_forkop_running_after_sing_box_change())
+        fail_package_sing_box_install(action, tiny, "was installed, but Forkop did not start cleanly", new_version, latest_version,
+            package_name, previous_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, cronet_touched);
+    remove_file(backup_binary);
+    remove_file(backup_cronet);
     clear_version_caches();
     action_success("sing_box", action, label + " has been installed", new_version, latest_version, new_version == current_version ? 0 : 1, "latest");
 }

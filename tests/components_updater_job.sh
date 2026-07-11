@@ -99,6 +99,12 @@ if grep -n -E 'require\("uci"\)\.cursor|uci -q|uci", "-q"|command_exists\("uci"\
 fi
 grep -Fq 'forkop_status_running_with_timeout()' "$ACTION_UC" ||
   fail "components/action.uc must use bounded Forkop status checks for component actions"
+grep -Fq 'restore_sing_box_after_failed_package_install' "$ACTION_UC" ||
+  fail "stable and tiny sing-box package installs must restore the previous variant after validation failures"
+grep -Fq 'fail_package_sing_box_install(action, tiny, "package was installed, but sing-box binary is not available"' "$ACTION_UC" ||
+  fail "stable and tiny sing-box binary validation failures must use transactional rollback"
+grep -Fq 'fail_package_sing_box_install(action, tiny, "was installed, but Forkop did not start cleanly"' "$ACTION_UC" ||
+  fail "stable and tiny sing-box startup failures must use transactional rollback"
 if grep -Fq 'command_success_from_args([ SERVICE_INIT, "status" ])' "$ACTION_UC"; then
   fail "components/action.uc must not call init.d status without a timeout"
 fi
