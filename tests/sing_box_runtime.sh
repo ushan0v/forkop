@@ -398,6 +398,7 @@ cat >"$WORK_DIR/download-via-proxy-fixture.json" <<'JSON'
       "action": "outbound",
       "outbound_json": "{\"type\":\"socks\",\"server\":\"127.0.0.1\",\"server_port\":1080}",
       "domain_suffix": [ "example.org" ],
+      "community_lists": [ "discord" ],
       "rule_set": [ "https://example.com/rules.srs" ]
     },
     {
@@ -744,6 +745,20 @@ function first_remote_ruleset(config) {
     return null;
 }
 
+function ruleset(config, tag) {
+    for (let rule_set in config.route.rule_set || [])
+        if (rule_set && rule_set.tag == tag)
+            return rule_set;
+    return null;
+}
+
+function ruleset_url(config, url) {
+    for (let rule_set in config.route.rule_set || [])
+        if (rule_set && rule_set.url == url)
+            return rule_set;
+    return null;
+}
+
 function outbound(config, tag) {
     for (let item in config.outbounds || [])
         if (item && item.tag == tag)
@@ -856,7 +871,8 @@ assert(inbound(download, "service-mixed-in") != null, "service mixed inbound");
 assert(route_rule(download, r => r.inbound == "service-mixed-in" && r.outbound == "proxy-out") != null, "service mixed route");
 assert(inbound(download, "service-components-in") != null, "components service mixed inbound");
 assert(route_rule(download, r => r.inbound == "service-components-in" && r.outbound == "components_proxy-out") != null, "components service mixed route");
-assert(first_remote_ruleset(download).download_detour == "proxy-out", "download_detour on remote ruleset");
+assert(ruleset(download, "proxy-discord-community-ruleset").download_detour == "proxy-out", "download_detour on community ruleset");
+assert(ruleset_url(download, "https://example.com/rules.srs").download_detour == "proxy-out", "download_detour on custom remote ruleset");
 
 let fully = cfg("fully-routed");
 assert(route_rule(fully, r => contains(r.inbound, "tproxy-in") && contains(r.inbound, "tproxy6-in") && contains(r.source_ip_cidr, "192.168.1.20/32") && contains(r.source_ip_cidr, "192.168.1.30/32") && contains(r.source_ip_cidr, "2001:db8::20/128")) != null, "fully routed IP route");

@@ -2075,13 +2075,17 @@ function ensure_community_ruleset(config, section_name, community) {
 
     let tag_name = ruleset_tag(section_name, community, "community");
     if (!ruleset_registered(config, tag_name)) {
-        push(config.route.rule_set, {
+        let rule_set = {
             type: "remote",
             tag: tag_name,
             format: "binary",
             url: runtime_rulesets.community_url(community),
             update_interval: remote_ruleset_update_interval()
-        });
+        };
+        let detour = download_detour_tag(runtime_settings(), "lists");
+        if (detour != "")
+            rule_set.download_detour = detour;
+        push(config.route.rule_set, rule_set);
     }
     return {
         tag: tag_name,
