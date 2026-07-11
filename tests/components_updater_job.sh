@@ -130,6 +130,17 @@ ucode "$WORK_DIR/action-command-success.uc" "$command_success_output" ||
 assert_eq "extracted payload" "$(cat "$command_success_output")" \
   "component command success preserves explicit output redirection"
 
+awk '
+prev2 == "    remove_file(archive_file);" &&
+prev1 == "    stop_forkop_before_sing_box_change();" &&
+$0 == "    let new_version = validate_sing_box_extended_binary(tmp_binary, tmp_dir);" {
+  safe_validation = 1
+}
+{ prev2 = prev1; prev1 = $0 }
+END { exit safe_validation ? 0 : 1 }
+' "$ACTION_UC" ||
+  fail "compressed sing-box validation must release the archive and stop the running service to avoid OpenWrt OOM"
+
 package_runtime_lib="$WORK_DIR/package-runtime-lib"
 package_runtime_bin="$WORK_DIR/package-runtime-bin"
 mkdir -p "$package_runtime_lib/components" "$package_runtime_lib/core" "$package_runtime_lib/singbox" "$package_runtime_bin"

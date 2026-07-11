@@ -1523,15 +1523,15 @@ function install_sing_box_extended(action, compressed) {
         }
     }
 
+    remove_file(archive_file);
+    stop_forkop_before_sing_box_change();
     let new_version = validate_sing_box_extended_binary(tmp_binary, tmp_dir);
     if (new_version == "") {
         remove_file(tmp_binary);
         remove_file(tmp_cronet);
-        remove_file(archive_file);
         action_fail("sing_box", action, "Downloaded " + label + " failed validation", current_version, latest_version);
     }
 
-    stop_forkop_before_sing_box_change();
     let backup_binary = "";
     let backup_cronet = "";
     let cronet_touched = false;
