@@ -43,42 +43,42 @@ assert_json_field() {
   [ "$actual" = "$expected" ] || fail "expected $field=$expected, got $actual"
 }
 
-valid_nfqws="$(ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-json nfqws '--dpi-desync=fake --dpi-desync-repeats 2')"
+valid_nfqws="$(ucode -L "$FORKOP_LIB" -- "$VALIDATOR" validate-json nfqws '--dpi-desync=fake --dpi-desync-repeats 2')"
 assert_json_field "$valid_nfqws" valid true
 
-configured="$(ucode -L "$FORKOP_LIB" "$VALIDATOR" strategy-or-default "$(printf -- '--dpi-desync=fake\t--dpi-desync-repeats 2')" '--default')"
+configured="$(ucode -L "$FORKOP_LIB" -- "$VALIDATOR" strategy-or-default "$(printf -- '--dpi-desync=fake\t--dpi-desync-repeats 2')" '--default')"
 [ "$configured" = "--dpi-desync=fake --dpi-desync-repeats 2" ] ||
   fail "configured zapret strategy should be normalized, got '$configured'"
 
-defaulted="$(ucode -L "$FORKOP_LIB" "$VALIDATOR" strategy-or-default "" "$(printf -- '--default\t1')")"
+defaulted="$(ucode -L "$FORKOP_LIB" -- "$VALIDATOR" strategy-or-default "" "$(printf -- '--default\t1')")"
 [ "$defaulted" = "--default 1" ] ||
   fail "empty zapret strategy should use normalized default, got '$defaulted'"
 
-if invalid_nfqws="$(ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-json nfqws '--hostlist domains.txt' 2>/dev/null)"; then
+if invalid_nfqws="$(ucode -L "$FORKOP_LIB" -- "$VALIDATOR" validate-json nfqws '--hostlist domains.txt' 2>/dev/null)"; then
   fail "hostlist selection should be rejected for nfqws"
 fi
 assert_json_field "$invalid_nfqws" valid false
 assert_json_field "$invalid_nfqws" needle --hostlist
 
-if ucode -L "$FORKOP_LIB" "$VALIDATOR" validate nfqws '--qnum=200' >/tmp/zapret-validator.out 2>/dev/null; then
+if ucode -L "$FORKOP_LIB" -- "$VALIDATOR" validate nfqws '--qnum=200' >/tmp/zapret-validator.out 2>/dev/null; then
   fail "qnum override should be rejected for nfqws"
 fi
 grep -q 'NFQUEUE number is assigned by Forkop' /tmp/zapret-validator.out ||
   fail "qnum rejection should explain ownership"
 
-valid_nfqws2="$(ucode -L "$FORKOP_LIB" "$ZAPRET2_VALIDATOR" validate-json nfqws2 '--name forkop --intercept=1')"
+valid_nfqws2="$(ucode -L "$FORKOP_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws2 '--name forkop --intercept=1')"
 assert_json_field "$valid_nfqws2" valid true
 
-if invalid_nfqws2="$(ucode -L "$FORKOP_LIB" "$ZAPRET2_VALIDATOR" validate-json nfqws2 '--intercept=0' 2>/dev/null)"; then
+if invalid_nfqws2="$(ucode -L "$FORKOP_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws2 '--intercept=0' 2>/dev/null)"; then
   fail "disabled nfqws2 intercept should be rejected"
 fi
 assert_json_field "$invalid_nfqws2" valid false
 assert_json_field "$invalid_nfqws2" needle --intercept
 
-if ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-json nfqws2 '--name forkop --intercept=1' >/dev/null 2>&1; then
+if ucode -L "$FORKOP_LIB" -- "$VALIDATOR" validate-json nfqws2 '--name forkop --intercept=1' >/dev/null 2>&1; then
   fail "zapret validator must not own nfqws2 validation"
 fi
-if ucode -L "$FORKOP_LIB" "$ZAPRET2_VALIDATOR" validate-json nfqws '--dpi-desync=fake' >/dev/null 2>&1; then
+if ucode -L "$FORKOP_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws '--dpi-desync=fake' >/dev/null 2>&1; then
   fail "zapret2 validator must not own nfqws validation"
 fi
 

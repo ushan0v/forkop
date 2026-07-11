@@ -139,9 +139,9 @@ if (!Object.prototype.hasOwnProperty.call(value, 'zapret2_installed') ||
 }
 NODE
 
-ucode -L "$FORKOP_LIB" "$ZAPRET2_VALIDATOR" validate-json nfqws2 '--name forkop --intercept=1' >/dev/null ||
+ucode -L "$FORKOP_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws2 '--name forkop --intercept=1' >/dev/null ||
   fail "providers/zapret2/validator.uc must validate nfqws2 strategies"
-if ucode -L "$FORKOP_LIB" "$ZAPRET2_VALIDATOR" validate-json nfqws '--dpi-desync=fake' >/dev/null 2>&1; then
+if ucode -L "$FORKOP_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws '--dpi-desync=fake' >/dev/null 2>&1; then
   fail "providers/zapret2/validator.uc must not validate nfqws strategies"
 fi
 

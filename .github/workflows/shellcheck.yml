@@ -2,30 +2,27 @@ name: Differential ShellCheck
 
 on:
   workflow_dispatch:
-    inputs:
-      base:
-        description: Base revision for manual differential scan
-        required: true
-      head:
-        description: Head revision for manual differential scan
-        required: true
   push:
     branches:
       - main
       - 'rc/**'
     paths:
+      - 'build.sh'
       - 'install.sh'
-      - 'forkop/files/usr/bin/**'
-      - 'forkop/files/usr/lib/**'
+      - 'forkop/files/etc/init.d/**'
+      - 'luci-app-forkop/root/etc/uci-defaults/**'
+      - 'tests/**/*.sh'
       - '.github/workflows/shellcheck.yml'
   pull_request:
     branches:
       - main
       - 'rc/**'
     paths:
+      - 'build.sh'
       - 'install.sh'
-      - 'forkop/files/usr/bin/**'
-      - 'forkop/files/usr/lib/**'
+      - 'forkop/files/etc/init.d/**'
+      - 'luci-app-forkop/root/etc/uci-defaults/**'
+      - 'tests/**/*.sh'
       - '.github/workflows/shellcheck.yml'
 
 permissions:
@@ -34,28 +31,25 @@ permissions:
 jobs:
   shellcheck:
     name: Differential ShellCheck
-    if: ${{ github.event_name != 'push' || github.event.forced != true }}
     runs-on: ubuntu-24.04
-    
-    permissions:
-      contents: read
-      security-events: write
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v5.0.0
-        with:
-          fetch-depth: 0
-      
-      - name: Differential ShellCheck
-        uses: redhat-plumbers-in-action/differential-shellcheck@v5.5.5
-        with:
-          triggering-event: ${{ github.event_name == 'workflow_dispatch' && 'manual' || github.event_name }}
-          base: ${{ github.event.inputs.base }}
-          head: ${{ github.event.inputs.head }}
-          severity: error
-          include-path: |
-            forkop/files/usr/bin/forkop
-            forkop/files/usr/lib/**.sh
-            install.sh
-          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: ShellCheck
+        shell: bash
+        run: |
+          mapfile -d '' scripts < <(
+            find . -type f \
+              \( -name '*.sh' -o -path './build.sh' -o -path './install.sh' \
+                 -o -path './forkop/files/etc/init.d/*' \
+                 -o -path './luci-app-forkop/root/etc/uci-defaults/*' \) \
+              -print0
+          )
+          shellcheck --severity=error "${scripts[@]}"

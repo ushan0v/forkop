@@ -45,15 +45,15 @@ if ucode "$UPDATER" updates-job-state-path /tmp/jobs '../bad' >/dev/null 2>&1; t
 fi
 
 assert_eq outdated \
-  "$(ucode "$UPDATER" updates-status-from-compare -1)" \
+  "$(ucode -- "$UPDATER" updates-status-from-compare -1)" \
   "outdated compare status"
 assert_eq latest \
-  "$(ucode "$UPDATER" updates-status-from-compare 0)" \
+  "$(ucode -- "$UPDATER" updates-status-from-compare 0)" \
   "latest compare status"
 assert_eq dev \
-  "$(ucode "$UPDATER" updates-status-from-compare 1)" \
+  "$(ucode -- "$UPDATER" updates-status-from-compare 1)" \
   "dev compare status"
-if ucode "$UPDATER" updates-status-from-compare invalid >/dev/null 2>&1; then
+if ucode -- "$UPDATER" updates-status-from-compare invalid >/dev/null 2>&1; then
   fail "invalid compare status should be rejected"
 fi
 

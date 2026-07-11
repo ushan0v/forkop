@@ -38,7 +38,7 @@ assert_mark_range_no_overlap() {
 
   for ((index = 1; index <= range_size; index++)); do
     mark=$((base + index))
-    assert_no_overlap "$label[$index]" "$mark" "$mask" "$mask_label"
+    assert_no_overlap "${label}[$index]" "$mark" "$mask" "$mask_label"
   done
 }
 
