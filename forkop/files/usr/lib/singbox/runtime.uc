@@ -292,6 +292,17 @@ function sing_box_supports_tailscale(version, version_output) {
     return output_has_build_tag(sing_box_version_output(), "with_tailscale");
 }
 
+function module_command(args) {
+    let command_args = [ "ucode", "-L", LIB_DIR ];
+    for (let arg in args)
+        push(command_args, arg);
+    return command_from_args(command_args);
+}
+
+function module_success(args) {
+    return command_status(module_command(args)) == 0;
+}
+
 function sing_box_package_installed(name) {
     return module_success([ LIB_DIR + "/core/packages.uc", "installed", as_string(name) ]);
 }
@@ -330,17 +341,6 @@ function sing_box_variant() {
 function log_message(message, level) {
     level = as_string(level || "info");
     command_success_from_args([ "logger", "-t", "forkop", "[" + level + "] " + as_string(message) ]);
-}
-
-function module_command(args) {
-    let command_args = [ "ucode", "-L", LIB_DIR ];
-    for (let arg in args)
-        push(command_args, arg);
-    return command_from_args(command_args);
-}
-
-function module_success(args) {
-    return command_status(module_command(args)) == 0;
 }
 
 function module_env_capture(env, args) {

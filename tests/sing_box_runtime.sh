@@ -76,6 +76,24 @@ END {
   fail "reload-state cleanup must not delete subscription section-cache"
 fi
 
+mkdir -p "$WORK_DIR/bin"
+cat >"$WORK_DIR/bin/sing-box" <<'EOF_SING_BOX'
+#!/bin/sh
+echo 'sing-box version 1.12.25'
+EOF_SING_BOX
+chmod +x "$WORK_DIR/bin/sing-box"
+stable_variant="$({
+  PATH="$WORK_DIR/bin:$PATH" \
+    FORKOP_LIB="$FORKOP_LIB" \
+    SB_VARIANT_STATE_FILE="$WORK_DIR/sing-box-variant" \
+    ucode -L "$FORKOP_LIB" "$SINGBOX_RUNTIME_UC" variant
+} 2>"$WORK_DIR/stable-variant.stderr")" ||
+  fail "singbox/runtime.uc must detect a stable binary without a ucode call-order failure"
+[ "$stable_variant" = "stable" ] ||
+  fail "singbox/runtime.uc should classify a regular sing-box binary as stable"
+[ ! -s "$WORK_DIR/stable-variant.stderr" ] ||
+  fail "stable sing-box variant detection must not emit ucode runtime errors"
+
 mkdir -p "$WORK_DIR/etc" "$WORK_DIR/tmp"
 printf 'old config\n' >"$WORK_DIR/etc/config.json"
 printf 'new config\n' >"$WORK_DIR/tmp/config.json"
