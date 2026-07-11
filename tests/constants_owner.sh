@@ -10,6 +10,8 @@ BUILD_SCRIPT="$ROOT_DIR/build.sh"
 CONSTANTS_SH="$FORKOP_LIB/constants.sh"
 LIFECYCLE_UC="$FORKOP_LIB/service/lifecycle.uc"
 CONSTANTS_UC="$FORKOP_LIB/core/constants.uc"
+SINGBOX_CONSTANTS_UC="$FORKOP_LIB/singbox/constants.uc"
+FRONTEND_CONSTANTS="$ROOT_DIR/fe-app-forkop/src/constants.ts"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -50,5 +52,16 @@ eval "$(ucode -L "$FORKOP_LIB" "$CONSTANTS_UC" shell-env)"
   fail "core/constants.uc shell-env did not derive TMP_RULESET_FOLDER"
 [ "$BYEDPI_PID_DIR" = "/var/run/forkop/byedpi/pid" ] ||
   fail "core/constants.uc shell-env did not derive BYEDPI_PID_DIR"
+
+[ "$(ucode -L "$FORKOP_LIB" "$CONSTANTS_UC" get FAKEIP_TEST_DOMAIN)" = "fakeip.podkop.fyi" ] ||
+  fail "FakeIP diagnostics must use the deployed public endpoint"
+[ "$(ucode -L "$FORKOP_LIB" "$CONSTANTS_UC" get CHECK_PROXY_IP_DOMAIN)" = "ip.podkop.fyi" ] ||
+  fail "public IP diagnostics must use the deployed public endpoint"
+grep -Fq 'const FAKEIP_TEST_DOMAIN = "fakeip.podkop.fyi";' "$SINGBOX_CONSTANTS_UC" ||
+  fail "sing-box constants must match the deployed FakeIP endpoint"
+grep -Fq "export const FAKEIP_CHECK_DOMAIN = 'fakeip.podkop.fyi';" "$FRONTEND_CONSTANTS" ||
+  fail "LuCI diagnostics must use the deployed FakeIP endpoint"
+grep -Fq "export const IP_CHECK_DOMAIN = 'ip.podkop.fyi';" "$FRONTEND_CONSTANTS" ||
+  fail "LuCI diagnostics must use the deployed public IP endpoint"
 
 printf 'constants ownership checks passed\n'

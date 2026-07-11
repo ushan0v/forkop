@@ -27,8 +27,8 @@ const FAKEIP_INET6_RANGE = "fc00::/18";
 
 const DISABLED_UPDATE_INTERVAL = "876000h";
 const URLTEST_DEFAULT_IDLE_TIMEOUT = "30m";
-const CHECK_PROXY_IP_DOMAIN = "ip.forkop.fyi";
-const FAKEIP_TEST_DOMAIN = "fakeip.forkop.fyi";
+const CHECK_PROXY_IP_DOMAIN = "ip.podkop.fyi";
+const FAKEIP_TEST_DOMAIN = "fakeip.podkop.fyi";
 const TMP_SING_BOX_FOLDER = "/tmp/sing-box";
 const TMP_RULESET_FOLDER = TMP_SING_BOX_FOLDER + "/rulesets";
 const ZAPRET_ROUTE_MARK_BASE = 0x01000000;

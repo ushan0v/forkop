@@ -1054,8 +1054,8 @@ async function withTimeout(promise, timeoutMs, operationName, timeoutMessage = _
 var FORKOP_UCI_PACKAGE = "forkop";
 var FORKOP_LUCI_APP_VERSION = "__COMPILED_VERSION_VARIABLE__";
 var FORKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT = "forkop:action-providers-availability";
-var FAKEIP_CHECK_DOMAIN = "fakeip.forkop.fyi";
-var IP_CHECK_DOMAIN = "ip.forkop.fyi";
+var FAKEIP_CHECK_DOMAIN = "fakeip.podkop.fyi";
+var IP_CHECK_DOMAIN = "ip.podkop.fyi";
 var DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
 var LATENCY_TEST_URL_OPTIONS = [
   DEFAULT_LATENCY_TEST_URL,

@@ -2,8 +2,8 @@ export const FORKOP_UCI_PACKAGE = 'forkop';
 export const FORKOP_LUCI_APP_VERSION = '__COMPILED_VERSION_VARIABLE__';
 export const FORKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT =
   'forkop:action-providers-availability';
-export const FAKEIP_CHECK_DOMAIN = 'fakeip.forkop.fyi';
-export const IP_CHECK_DOMAIN = 'ip.forkop.fyi';
+export const FAKEIP_CHECK_DOMAIN = 'fakeip.podkop.fyi';
+export const IP_CHECK_DOMAIN = 'ip.podkop.fyi';
 export const DEFAULT_LATENCY_TEST_URL = 'https://www.gstatic.com/generate_204';
 export const LATENCY_TEST_URL_OPTIONS = [
   DEFAULT_LATENCY_TEST_URL,
