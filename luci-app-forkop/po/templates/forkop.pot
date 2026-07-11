@@ -411,6 +411,7 @@ msgstr ""
 msgid "Client link QR code"
 msgstr ""
 
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2787
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/server.js:1706
 #: src/partials/modal/renderModal.ts:263
 #: src/forkop/tabs/monitoring/initController.ts:832
@@ -599,10 +600,6 @@ msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:5174
 msgid "Disabling interception is incompatible with action=zapret2 because Forkop sends matched traffic through NFQUEUE."
-msgstr ""
-
-#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2787
-msgid "Dismiss"
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2083

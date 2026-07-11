@@ -665,6 +665,7 @@
     "call": "Close",
     "key": "Close",
     "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2787",
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/server.js:1706",
       "src/partials/modal/renderModal.ts:263",
       "src/forkop/tabs/monitoring/initController.ts:832",
@@ -981,13 +982,6 @@
     "key": "Disabling interception is incompatible with action=zapret2 because Forkop sends matched traffic through NFQUEUE.",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:5174"
-    ]
-  },
-  {
-    "call": "Dismiss",
-    "key": "Dismiss",
-    "places": [
-      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2787"
     ]
   },
   {

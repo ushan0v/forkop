@@ -2784,7 +2784,7 @@ function renderStackedJsonSettingsModal(title, map, onSave) {
           class: "btn cbi-button",
           click: close,
         },
-        _("Dismiss"),
+        _("Close"),
       ),
       " ",
       (saveButton = E(
