@@ -36,10 +36,19 @@ grep -Fq 'ensure_bootstrap_package "ucode-mod-uci"' "$INSTALLER" ||
 
 grep -Fq '/usr/bin/forkop component_action sing_box "$action"' "$INSTALLER" ||
   fail "selected sing-box install must delegate to forkop component_action"
-for action in install_stable install_tiny install_extended install_extended_compressed; do
+for action in install_stable install_extended install_extended_compressed; do
   grep -Fq "action=\"$action\"" "$INSTALLER" ||
     fail "selected sing-box installer is missing action mapping: $action"
 done
+grep -Fq 'sing_box_is_present' "$INSTALLER" ||
+  fail "installer must detect an existing sing-box before showing the build choice"
+grep -Fq 'singbox extended (если нужен xhttp)' "$INSTALLER" ||
+  fail "extended sing-box choice must explain that it is needed for xhttp"
+grep -Fq 'Русский пакет интерфейса будет установлен автоматически.' "$INSTALLER" ||
+  fail "Russian LuCI language must enable the Russian interface package without a prompt"
+if grep -n -E 'installer_text (sing_box_tiny|sing_box_extended_compressed)' "$INSTALLER" >/dev/null; then
+  fail "fresh sing-box build choice must contain only stable and extended"
+fi
 
 grep -Fq 'run_args([ bin_path, "restore_dnsmasq" ])' "$INSTALLER" ||
   fail "installer dnsmasq restore must prefer the active backend entrypoint"
@@ -69,9 +78,11 @@ fi
 
 awk '
   /^[[:space:]]*main\(\)[[:space:]]*\{/ { in_main = 1 }
+  in_main && /select_sing_box_installation/ { select_sing_box = NR }
+  in_main && /decide_i18n_installation/ { i18n = NR }
+  in_main && /pkg_list_update/ { update = NR }
   in_main && /ensure_bootstrap_ucode_runtime/ { ensure = NR }
   in_main && /detect_legacy_installation/ { detect = NR }
-  in_main && /decide_i18n_installation/ { i18n = NR }
   in_main && /cleanup_legacy_installation/ { cleanup = NR }
   in_main && /install_backend_package/ { backend = NR }
   in_main && /migrate_legacy_configuration/ { migration = NR }
@@ -79,12 +90,13 @@ awk '
   in_main && /install_selected_sing_box/ { sing_box = NR }
   in_main && /^[[:space:]]*\}/ { in_main = 0 }
   END {
-    if (ensure > 0 && detect > ensure && i18n > detect && cleanup > i18n &&
+    if (detect > 0 && i18n > detect && select_sing_box > i18n &&
+        update > select_sing_box && ensure > update && cleanup > ensure &&
         backend > cleanup && migration > backend && ui > migration && sing_box > ui)
       exit 0
     exit 1
   }
-' "$INSTALLER" || fail "install.sh main order must remove the legacy packages, install the backend, migrate config, and then finish installation"
+' "$INSTALLER" || fail "install.sh must ask initial questions before package update, then migrate and finish installation in order"
 
 helper="$WORK_DIR/install-json.uc"
 awk '

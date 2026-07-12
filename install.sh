@@ -32,8 +32,6 @@ LEGACY_BRAND="$(printf '\160\157\144\153\157\160')"
 LEGACY_BACKEND_PACKAGE="${LEGACY_BRAND}-plus"
 LEGACY_CONFIG_PACKAGE_ALT="${LEGACY_BRAND}_plus"
 LEGACY_CONFIG_BACKUP=""
-SING_BOX_VARIANT_STATE_FILE="/etc/forkop/sing-box-variant"
-SING_BOX_VERSION_STATE_FILE="/etc/forkop/sing-box-version"
 
 command -v apk >/dev/null 2>&1 && PKG_IS_APK=1
 
@@ -60,10 +58,8 @@ Installs or updates Forkop packages:
   - luci-i18n-forkop-ru when requested or when LuCI language is Russian
 
 Can also install or switch sing-box variant:
-  - stable/full sing-box from OpenWrt feeds
-  - sing-box-tiny from OpenWrt feeds
-  - sing-box-extended from GitHub OpenWrt packages
-  - sing-box-extended compressed from GitHub binary archives
+  - stable sing-box from OpenWrt feeds
+  - sing-box-extended from GitHub OpenWrt packages (for xHTTP support)
 EOF
 }
 
@@ -2604,13 +2600,10 @@ installer_text() {
             i18n_installed) printf '%s\n' "Русский пакет интерфейса уже установлен и будет обновлен." ;;
             i18n_prompt) printf '%s\n' "Установить русский пакет интерфейса?" ;;
             i18n_skip) printf '%s\n' "Продолжаю без русского пакета интерфейса." ;;
-            luci_ru) printf '%s\n' "Язык LuCI - русский." ;;
-            sing_box_prompt) printf '%s\n' "Какой вариант sing-box установить?" ;;
-            sing_box_skip) printf '%s\n' "Не менять sing-box" ;;
-            sing_box_stable) printf '%s\n' "Установить обычный sing-box" ;;
-            sing_box_tiny) printf '%s\n' "Установить sing-box tiny" ;;
-            sing_box_extended) printf '%s\n' "Установить sing-box extended" ;;
-            sing_box_extended_compressed) printf '%s\n' "Установить sing-box extended compressed" ;;
+            luci_ru) printf '%s\n' "Русский пакет интерфейса будет установлен автоматически." ;;
+            sing_box_prompt) printf '%s\n' "Какую сборку singbox ставить?" ;;
+            sing_box_stable) printf '%s\n' "singbox stable" ;;
+            sing_box_extended) printf '%s\n' "singbox extended (если нужен xhttp)" ;;
             sing_box_skip_msg) printf '%s\n' "Пропускаю установку sing-box." ;;
             *) printf '%s\n' "$key" ;;
         esac
@@ -2625,13 +2618,10 @@ installer_text() {
         i18n_installed) printf '%s\n' "The Russian interface package is already installed and will be updated." ;;
         i18n_prompt) printf '%s\n' "Install the Russian interface language package?" ;;
         i18n_skip) printf '%s\n' "Continuing without the Russian interface language package." ;;
-        luci_ru) printf '%s\n' "LuCI language is Russian." ;;
-        sing_box_prompt) printf '%s\n' "Which sing-box variant should be installed?" ;;
-        sing_box_skip) printf '%s\n' "Do not change sing-box" ;;
-        sing_box_stable) printf '%s\n' "Install stable sing-box" ;;
-        sing_box_tiny) printf '%s\n' "Install sing-box tiny" ;;
-        sing_box_extended) printf '%s\n' "Install sing-box extended" ;;
-        sing_box_extended_compressed) printf '%s\n' "Install sing-box extended compressed" ;;
+        luci_ru) printf '%s\n' "The Russian interface package will be installed automatically." ;;
+        sing_box_prompt) printf '%s\n' "Which singbox build should be installed?" ;;
+        sing_box_stable) printf '%s\n' "singbox stable" ;;
+        sing_box_extended) printf '%s\n' "singbox extended (if xhttp is needed)" ;;
         sing_box_skip_msg) printf '%s\n' "Skipping sing-box installation." ;;
         *) printf '%s\n' "$key" ;;
     esac
@@ -2687,6 +2677,8 @@ confirm_prompt() {
 }
 
 get_luci_main_lang() {
+    command_exists ucode || return 0
+    ucode -e 'require("fs"); require("uci");' >/dev/null 2>&1 || return 0
     install_json_ucode uci-get luci.main.lang 2>/dev/null || true
 }
 
@@ -2762,109 +2754,16 @@ resolve_forkop_release() {
     fi
 }
 
-sing_box_version_value() {
-    command_exists sing-box || return 0
-
-    if sing_box_compressed_marker_set; then
-        read_sing_box_version_state 2>/dev/null || true
-        return 0
-    fi
-
-    if sing_box_extended_marker_set; then
-        read_sing_box_version_state 2>/dev/null && return 0
-    fi
-
-    read_sing_box_binary_version /usr/bin/sing-box
-}
-
-sing_box_is_extended() {
-    version="${1:-}"
-
-    if [ -z "$version" ] && command_exists sing-box &&
-        { sing_box_compressed_marker_set || sing_box_extended_marker_set; }; then
-        return 0
-    fi
-
-    [ -n "$version" ] || version="$(sing_box_version_value)"
-    case "$version" in
-        *extended*) return 0 ;;
-    esac
-    return 1
-}
-
-sing_box_compressed_marker_set() {
-    [ -r "$SING_BOX_VARIANT_STATE_FILE" ] || return 1
-    [ "$(cat "$SING_BOX_VARIANT_STATE_FILE" 2>/dev/null)" = "extended-compressed" ]
-}
-
-sing_box_extended_marker_set() {
-    [ -r "$SING_BOX_VARIANT_STATE_FILE" ] || return 1
-    [ "$(cat "$SING_BOX_VARIANT_STATE_FILE" 2>/dev/null)" = "extended" ]
-}
-
-sing_box_tiny_marker_set() {
-    [ -r "$SING_BOX_VARIANT_STATE_FILE" ] || return 1
-    [ "$(cat "$SING_BOX_VARIANT_STATE_FILE" 2>/dev/null)" = "tiny" ]
-}
-
-read_sing_box_version_state() {
-    [ -r "$SING_BOX_VERSION_STATE_FILE" ] || return 1
-    sed -n '1p' "$SING_BOX_VERSION_STATE_FILE" 2>/dev/null
-}
-
-read_sing_box_binary_version() {
-    binary_path="$1"
-    library_dir="${2:-}"
-
-    [ -x "$binary_path" ] || return 1
-
-    if [ -n "$library_dir" ]; then
-        LD_LIBRARY_PATH="$library_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$binary_path" version 2>/dev/null | head -n 1 | awk '{print $3}'
-    else
-        "$binary_path" version 2>/dev/null | head -n 1 | awk '{print $3}'
-    fi
-}
-
-sing_box_supports_tailscale() {
-    sing_box_is_extended && return 0
-    command_exists sing-box || return 1
-    sing-box version 2>/dev/null | grep -Eq '(^|[,:[:space:]])with_tailscale([,[:space:]]|$)'
-}
-
-sing_box_active_variant() {
-    if ! command_exists sing-box; then
-        printf '%s\n' "none"
-        return 0
-    fi
-
-    if sing_box_compressed_marker_set; then
-        printf '%s\n' "extended-compressed"
-        return 0
-    fi
-
-    if sing_box_extended_marker_set || sing_box_is_extended; then
-        printf '%s\n' "extended"
-        return 0
-    fi
-
-    if pkg_is_installed "sing-box-tiny" || { sing_box_tiny_marker_set && ! sing_box_supports_tailscale; }; then
-        printf '%s\n' "tiny"
-        return 0
-    fi
-
-    printf '%s\n' "stable"
+sing_box_is_present() {
+    command_exists sing-box ||
+        pkg_is_installed "sing-box" ||
+        pkg_is_installed "sing-box-tiny" ||
+        pkg_is_installed "sing-box-extended"
 }
 
 select_sing_box_installation() {
-    active_variant="$(sing_box_active_variant)"
     answer=""
-    skip_choice=""
     default_choice=1
-    next_choice=1
-    stable_choice=""
-    tiny_choice=""
-    extended_choice=""
-    extended_compressed_choice=""
 
     if [ "$FORKOP_LEGACY_DETECTED" -eq 1 ] &&
         [ -r /etc/init.d/sing-box ] &&
@@ -2874,67 +2773,31 @@ select_sing_box_installation() {
         return 0
     fi
 
-    if [ "$active_variant" != "none" ]; then
-        skip_choice="$next_choice"
-        next_choice=$((next_choice + 1))
-    fi
-    if [ "$active_variant" != "stable" ]; then
-        stable_choice="$next_choice"
-        next_choice=$((next_choice + 1))
-    fi
-    if [ "$active_variant" != "tiny" ]; then
-        tiny_choice="$next_choice"
-        next_choice=$((next_choice + 1))
-    fi
-    if [ "$active_variant" != "extended" ]; then
-        extended_choice="$next_choice"
-        next_choice=$((next_choice + 1))
-    fi
-    if [ "$active_variant" != "extended-compressed" ]; then
-        extended_compressed_choice="$next_choice"
-        next_choice=$((next_choice + 1))
+    if sing_box_is_present; then
+        SING_BOX_INSTALL_VARIANT=""
+        return 0
     fi
 
     if [ ! -t 0 ]; then
-        if [ "$active_variant" = "none" ]; then
-            SING_BOX_INSTALL_VARIANT="stable"
-            msg "$(installer_text sing_box_prompt): $default_choice ($(installer_text sing_box_stable), non-interactive)"
-        else
-            SING_BOX_INSTALL_VARIANT=""
-            msg "$(installer_text sing_box_prompt): $default_choice ($(installer_text sing_box_skip), non-interactive)"
-        fi
+        SING_BOX_INSTALL_VARIANT="stable"
+        msg "$(installer_text sing_box_prompt): $default_choice ($(installer_text sing_box_stable), non-interactive)"
         return 0
     fi
 
     while :; do
         printf '\n%s\n' "$(installer_text sing_box_prompt)"
-        [ -n "$skip_choice" ] && printf '  %s) %s\n' "$skip_choice" "$(installer_text sing_box_skip)"
-        [ -n "$stable_choice" ] && printf '  %s) %s\n' "$stable_choice" "$(installer_text sing_box_stable)"
-        [ -n "$tiny_choice" ] && printf '  %s) %s\n' "$tiny_choice" "$(installer_text sing_box_tiny)"
-        [ -n "$extended_choice" ] && printf '  %s) %s\n' "$extended_choice" "$(installer_text sing_box_extended)"
-        [ -n "$extended_compressed_choice" ] && printf '  %s) %s\n' "$extended_compressed_choice" "$(installer_text sing_box_extended_compressed)"
+        printf '  1) %s\n' "$(installer_text sing_box_stable)"
+        printf '  2) %s\n' "$(installer_text sing_box_extended)"
         printf '%s [%s]: ' "$(installer_text select)" "$default_choice"
         read -r answer || return 1
         [ -n "$answer" ] || answer="$default_choice"
 
-        if [ -n "$skip_choice" ] && [ "$answer" = "$skip_choice" ]; then
-            SING_BOX_INSTALL_VARIANT=""
-            return 0
-        fi
-        if [ -n "$stable_choice" ] && [ "$answer" = "$stable_choice" ]; then
+        if [ "$answer" = "1" ]; then
             SING_BOX_INSTALL_VARIANT="stable"
             return 0
         fi
-        if [ -n "$tiny_choice" ] && [ "$answer" = "$tiny_choice" ]; then
-            SING_BOX_INSTALL_VARIANT="tiny"
-            return 0
-        fi
-        if [ -n "$extended_choice" ] && [ "$answer" = "$extended_choice" ]; then
+        if [ "$answer" = "2" ]; then
             SING_BOX_INSTALL_VARIANT="extended"
-            return 0
-        fi
-        if [ -n "$extended_compressed_choice" ] && [ "$answer" = "$extended_compressed_choice" ]; then
-            SING_BOX_INSTALL_VARIANT="extended-compressed"
             return 0
         fi
 
@@ -2953,9 +2816,6 @@ install_selected_sing_box() {
             ;;
         stable)
             action="install_stable"
-            ;;
-        tiny)
-            action="install_tiny"
             ;;
         extended)
             action="install_extended"
@@ -3027,7 +2887,10 @@ decide_i18n_installation() {
 
     case "$luci_lang" in
         ru|ru_*|ru-*)
+            FORKOP_I18N_REQUESTED=1
+            INSTALLER_LANG="ru"
             msg "$(installer_text luci_ru)"
+            return 0
             ;;
     esac
 
@@ -3106,12 +2969,12 @@ main() {
     sync_time
     check_system
 
-    pkg_list_update || fail "Failed to update package lists"
-    ensure_bootstrap_ucode_runtime
-
     detect_legacy_installation
     decide_i18n_installation
     select_sing_box_installation
+
+    pkg_list_update || fail "Failed to update package lists"
+    ensure_bootstrap_ucode_runtime
 
     resolve_forkop_release
     download_forkop_packages
