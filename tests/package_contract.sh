@@ -3,6 +3,7 @@ set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORKOP_MAKEFILE="$ROOT_DIR/forkop/Makefile"
+FORKOP_CONFIG="$ROOT_DIR/forkop/files/etc/config/forkop"
 BUILD_SCRIPT="$ROOT_DIR/build.sh"
 FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
 
@@ -41,6 +42,7 @@ require_package_dependency() {
 }
 
 require_file "$FORKOP_MAKEFILE"
+require_file "$FORKOP_CONFIG"
 require_file "$BUILD_SCRIPT"
 require_file "$FORKOP_LIB"
 
@@ -48,6 +50,8 @@ grep -Fq "must use x.y.z format" "$FORKOP_MAKEFILE" ||
   fail "forkop/Makefile must enforce the three-part release version contract"
 grep -Fq 'APK_INTERNAL_VERSION="$RELEASE_VERSION"' "$BUILD_SCRIPT" ||
   fail "build.sh must use the exact three-part release version for APK metadata"
+grep -Fq "option component_update_check_enabled '1'" "$FORKOP_CONFIG" ||
+  fail "new installations must enable component update checks by default"
 
 if grep -Rqs 'require("uci")' "$FORKOP_LIB"; then
   require_package_dependency "ucode-mod-uci"
