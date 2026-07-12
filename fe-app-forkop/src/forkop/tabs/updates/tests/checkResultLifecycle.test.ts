@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   shouldPreserveCompletedCheckResultOnNextMount,
+  shouldExposeCheckResults,
   shouldRefreshComponentStateBeforeRender,
   shouldResetCheckResultsOnMount,
 } from '../checkResultLifecycle';
@@ -72,6 +73,36 @@ describe('updates check result lifecycle', () => {
             },
           ],
         },
+      }),
+    ).toBe(true);
+  });
+
+  it('exposes check results immediately on remount once cache state is resolved', () => {
+    expect(
+      shouldExposeCheckResults({
+        mounted: true,
+        cacheResolved: false,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldExposeCheckResults({
+        mounted: true,
+        cacheResolved: true,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldExposeCheckResults({
+        mounted: false,
+        cacheResolved: true,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldExposeCheckResults({
+        mounted: true,
+        cacheResolved: true,
       }),
     ).toBe(true);
   });

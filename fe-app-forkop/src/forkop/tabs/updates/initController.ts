@@ -25,6 +25,7 @@ import {
 import { shouldApplyCompletedComponentActionResult } from './componentActionCompletion';
 import {
   shouldPreserveCompletedCheckResultOnNextMount,
+  shouldExposeCheckResults,
   shouldRefreshComponentStateBeforeRender,
   shouldResetCheckResultsOnMount,
 } from './checkResultLifecycle';
@@ -71,6 +72,11 @@ let updatesMounted = false;
 let updatesMountId = 0;
 let pageUnloading = false;
 let preserveCheckResultsOnNextMount = false;
+let componentUpdateCheckCacheResolved = false;
+let componentUpdateCheckCacheSnapshot: Forkop.ComponentUpdateCheckCache | null =
+  null;
+let componentUpdateCheckCachePromise: Promise<Forkop.ComponentUpdateCheckCache> | null =
+  null;
 let componentActionStateUnsubscribe: (() => void) | null = null;
 let componentActionStateRefreshPromise: Promise<void> | null = null;
 const followedComponentJobs = new Set<string>();
@@ -90,15 +96,28 @@ function isNotInstalled(version: string | undefined) {
 }
 
 function shouldShowInstallAfterCheck(component: Forkop.ComponentName) {
-  const status = store.get().updatesChecks[component].status;
+  const status = getVisibleCheckResult(component)?.status;
 
   return status === 'outdated' || status === 'dev';
 }
 
-function getLatestVersion(component: Forkop.ComponentName) {
-  const checkResult = store.get().updatesChecks[component];
+function getVisibleCheckResult(component: Forkop.ComponentName) {
+  if (
+    !shouldExposeCheckResults({
+      mounted: updatesMounted,
+      cacheResolved: componentUpdateCheckCacheResolved,
+    })
+  ) {
+    return null;
+  }
 
-  if (!shouldShowInstallAfterCheck(component)) {
+  return store.get().updatesChecks[component];
+}
+
+function getLatestVersion(component: Forkop.ComponentName) {
+  const checkResult = getVisibleCheckResult(component);
+
+  if (!checkResult || !shouldShowInstallAfterCheck(component)) {
     return undefined;
   }
 
@@ -106,9 +125,13 @@ function getLatestVersion(component: Forkop.ComponentName) {
 }
 
 function getGitHubReleaseUrl(component: Forkop.ComponentName) {
-  const checkResult = store.get().updatesChecks[component];
+  const checkResult = getVisibleCheckResult(component);
 
-  if (!shouldShowInstallAfterCheck(component) || !checkResult.release_url) {
+  if (
+    !checkResult ||
+    !shouldShowInstallAfterCheck(component) ||
+    !checkResult.release_url
+  ) {
     return undefined;
   }
 
@@ -201,15 +224,36 @@ function applyCachedCheckResults(results: Forkop.ComponentActionResult[]) {
   });
 }
 
-async function loadComponentUpdateCheckCache() {
-  const response = await ForkopShellMethods.componentUpdateCheckCache();
+function loadComponentUpdateCheckCache({ force = false } = {}) {
+  if (!force && componentUpdateCheckCacheSnapshot) {
+    return Promise.resolve(componentUpdateCheckCacheSnapshot);
+  }
 
-  return response.success
-    ? response.data
-    : ({
-        enabled: false,
-        results: [],
-      } satisfies Forkop.ComponentUpdateCheckCache);
+  if (componentUpdateCheckCachePromise) {
+    return componentUpdateCheckCachePromise;
+  }
+
+  const promise = ForkopShellMethods.componentUpdateCheckCache()
+    .then((response) =>
+      response.success
+        ? response.data
+        : ({
+            enabled: false,
+            results: [],
+          } satisfies Forkop.ComponentUpdateCheckCache),
+    )
+    .then((cache) => {
+      componentUpdateCheckCacheSnapshot = cache;
+      return cache;
+    })
+    .finally(() => {
+      if (componentUpdateCheckCachePromise === promise) {
+        componentUpdateCheckCachePromise = null;
+      }
+    });
+
+  componentUpdateCheckCachePromise = promise;
+  return promise;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -940,7 +984,7 @@ function renderComponentCard(card: ComponentCard) {
 
   // 2. Details (renders status messages for check results)
   const detailsChildren: Node[] = [];
-  const checkResult = store.get().updatesChecks[card.component];
+  const checkResult = getVisibleCheckResult(card.component);
 
   if (checkResult && checkResult.status) {
     let labelText = '';
@@ -1183,30 +1227,10 @@ function onStoreUpdate(
   }
 }
 
-async function onPageMount() {
-  onPageUnmount();
-
-  updatesMounted = true;
-  updatesMountId += 1;
-  const mountId = updatesMountId;
-  const cachedRuntimeState = getCachedRuntimeUiState();
-  const hasRuntimeSnapshot = Boolean(cachedRuntimeState);
-  const needsFreshStateBeforeRender =
-    shouldRefreshComponentStateBeforeRender(cachedRuntimeState);
-
-  if (!hasRuntimeSnapshot || needsFreshStateBeforeRender) {
-    await refreshRuntimeUiState({ force: true });
-
-    if (!updatesMounted || mountId !== updatesMountId) {
-      return;
-    }
-  }
-
-  const componentUpdateCheckCache = await loadComponentUpdateCheckCache();
-
-  if (!updatesMounted || mountId !== updatesMountId) {
-    return;
-  }
+function applyComponentUpdateCheckCache(
+  componentUpdateCheckCache: Forkop.ComponentUpdateCheckCache,
+) {
+  componentUpdateCheckCacheResolved = true;
 
   if (componentUpdateCheckCache.enabled) {
     store.reset(['updatesChecks']);
@@ -1222,7 +1246,50 @@ async function onPageMount() {
   ) {
     store.reset(['updatesChecks']);
   }
+}
+
+async function onPageMount() {
+  onPageUnmount();
+
+  updatesMounted = true;
+  updatesMountId += 1;
+  const mountId = updatesMountId;
+  const cachedRuntimeState = getCachedRuntimeUiState();
+  const hasRuntimeSnapshot = Boolean(cachedRuntimeState);
+  const needsFreshStateBeforeRender =
+    shouldRefreshComponentStateBeforeRender(cachedRuntimeState);
+  const runtimeStateRefreshPromise =
+    !hasRuntimeSnapshot || needsFreshStateBeforeRender
+      ? refreshRuntimeUiState({ force: true })
+      : null;
+  const prefetchedComponentUpdateCheckCache = componentUpdateCheckCacheSnapshot;
+
+  if (prefetchedComponentUpdateCheckCache) {
+    applyComponentUpdateCheckCache(prefetchedComponentUpdateCheckCache);
+  }
+
+  renderUpdatesComponents();
+
+  const componentUpdateCheckCache = await loadComponentUpdateCheckCache({
+    force: Boolean(prefetchedComponentUpdateCheckCache),
+  });
+
+  if (!updatesMounted || mountId !== updatesMountId) {
+    return;
+  }
+
+  applyComponentUpdateCheckCache(componentUpdateCheckCache);
   preserveCheckResultsOnNextMount = false;
+  renderUpdatesComponents();
+
+  if (runtimeStateRefreshPromise) {
+    await runtimeStateRefreshPromise;
+
+    if (!updatesMounted || mountId !== updatesMountId) {
+      return;
+    }
+  }
+
   store.subscribe(onStoreUpdate);
   startComponentActionStateWatcher();
   renderUpdatesComponents();
@@ -1270,6 +1337,7 @@ export async function initController(): Promise<void> {
   }
 
   updatesControllerInitialized = true;
+  void loadComponentUpdateCheckCache();
 
   onMount('updates-status').then(() => {
     logger.debug('[UPDATES]', 'initController', 'onMount');

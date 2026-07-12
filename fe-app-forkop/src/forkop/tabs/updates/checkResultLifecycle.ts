@@ -33,3 +33,13 @@ export function shouldRefreshComponentStateBeforeRender(
     uiState?.actions.component.some((state) => state.running === true),
   );
 }
+
+export function shouldExposeCheckResults({
+  mounted,
+  cacheResolved,
+}: {
+  mounted: boolean;
+  cacheResolved: boolean;
+}) {
+  return mounted && cacheResolved;
+}
