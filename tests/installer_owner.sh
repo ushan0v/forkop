@@ -20,10 +20,23 @@ fail() {
 
 [ -r "$INSTALLER" ] || fail "install.sh is missing"
 
-grep -Fq 'wget -T "$METADATA_TIMEOUT_SECONDS" -t 1 -qO-' "$INSTALLER" ||
-  fail "installer wget metadata requests must have a timeout and no hidden retries"
-grep -Fq 'wget -T "$DOWNLOAD_TIMEOUT_SECONDS" -t 1 -q -O' "$INSTALLER" ||
-  fail "installer wget downloads must have a timeout and no hidden retries"
+grep -Fq 'run_with_deadline "$METADATA_TIMEOUT_SECONDS" wget -T "$CONNECT_TIMEOUT_SECONDS" -qO-' "$INSTALLER" ||
+  fail "installer wget metadata requests must have portable connect and total timeouts"
+grep -Fq 'run_with_deadline "$DOWNLOAD_TIMEOUT_SECONDS" wget -T "$CONNECT_TIMEOUT_SECONDS" -q -O' "$INSTALLER" ||
+  fail "installer wget downloads must have portable connect and total timeouts"
+if grep -n -E 'wget.*[[:space:]]-t([[:space:]]|$)' "$INSTALLER" >/dev/null; then
+  fail "installer wget commands must not use the unsupported OpenWrt -t option"
+fi
+eval "$(sed -n '/^run_with_deadline()/,/^}/p' "$INSTALLER")"
+deadline_started="$(date +%s)"
+if run_with_deadline 1 sh -c 'sleep 5'; then
+  fail "installer deadline watchdog must fail a command that exceeds its deadline"
+fi
+deadline_elapsed="$(($(date +%s) - deadline_started))"
+[ "$deadline_elapsed" -lt 4 ] ||
+  fail "installer deadline watchdog did not stop the command promptly"
+run_with_deadline 3 sh -c 'exit 0' ||
+  fail "installer deadline watchdog must preserve successful command status"
 grep -Fq 'curl --connect-timeout "$CONNECT_TIMEOUT_SECONDS" --max-time "$METADATA_TIMEOUT_SECONDS"' "$INSTALLER" ||
   fail "installer curl metadata requests must have connect and total timeouts"
 grep -Fq 'curl --connect-timeout "$CONNECT_TIMEOUT_SECONDS" --max-time "$DOWNLOAD_TIMEOUT_SECONDS"' "$INSTALLER" ||

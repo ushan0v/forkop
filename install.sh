@@ -119,10 +119,32 @@ detect_fetcher() {
     fail "wget or curl is required to download Forkop"
 }
 
+run_with_deadline() {
+    forkop_deadline_seconds="$1"
+    shift
+
+    "$@" &
+    forkop_deadline_command_pid=$!
+    (
+        trap 'kill "$forkop_deadline_sleep_pid" 2>/dev/null || true; exit 0' TERM INT
+        sleep "$forkop_deadline_seconds" &
+        forkop_deadline_sleep_pid=$!
+        wait "$forkop_deadline_sleep_pid"
+        kill "$forkop_deadline_command_pid" 2>/dev/null || true
+    ) &
+    forkop_deadline_watchdog_pid=$!
+
+    wait "$forkop_deadline_command_pid"
+    forkop_deadline_status=$?
+    kill "$forkop_deadline_watchdog_pid" 2>/dev/null || true
+    wait "$forkop_deadline_watchdog_pid" 2>/dev/null || true
+    return "$forkop_deadline_status"
+}
+
 http_get() {
     case "$FETCHER" in
         wget)
-            wget -T "$METADATA_TIMEOUT_SECONDS" -t 1 -qO- "$1"
+            run_with_deadline "$METADATA_TIMEOUT_SECONDS" wget -T "$CONNECT_TIMEOUT_SECONDS" -qO- "$1"
             ;;
         curl)
             curl --connect-timeout "$CONNECT_TIMEOUT_SECONDS" --max-time "$METADATA_TIMEOUT_SECONDS" -fsSL "$1"
@@ -2497,7 +2519,7 @@ install_json_ucode() {
 download_file_once() {
     case "$FETCHER" in
         wget)
-            wget -T "$DOWNLOAD_TIMEOUT_SECONDS" -t 1 -q -O "$2" "$1"
+            run_with_deadline "$DOWNLOAD_TIMEOUT_SECONDS" wget -T "$CONNECT_TIMEOUT_SECONDS" -q -O "$2" "$1"
             ;;
         curl)
             curl --connect-timeout "$CONNECT_TIMEOUT_SECONDS" --max-time "$DOWNLOAD_TIMEOUT_SECONDS" -fsSL "$1" -o "$2"
