@@ -6,7 +6,8 @@ FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
 RUNTIME_MIGRATION="$FORKOP_LIB/config/migration.uc"
 INSTALLER="$ROOT_DIR/install.sh"
 WORK_DIR="$(mktemp -d)"
-MIGRATION="$WORK_DIR/config-migration.uc"
+MIGRATION="$RUNTIME_MIGRATION"
+MIGRATIONS_DIR="$FORKOP_LIB/config/migrations"
 
 cleanup() {
   rm -rf "$WORK_DIR"
@@ -18,24 +19,23 @@ fail() {
   exit 1
 }
 
-awk '
-  /cat > "\$helper_path" <<'\''FORKOP_CONFIG_MIGRATION_EOF'\''/ { capture = 1; next }
-  capture && /^FORKOP_CONFIG_MIGRATION_EOF$/ { exit }
-  capture { print }
-' "$INSTALLER" > "$MIGRATION"
-[ -s "$MIGRATION" ] || fail "failed to extract config migration from install.sh"
-
-grep -Fq 'Reserved for future Forkop configuration migrations.' "$RUNTIME_MIGRATION" ||
-  fail "runtime config/migration.uc must remain a placeholder"
-if grep -n -E 'require\("core\.uci"\)|function migrate_|migrate_runtime|migrate-fixture' "$RUNTIME_MIGRATION" >/dev/null 2>&1; then
-  fail "runtime config/migration.uc must not contain migration logic"
+if grep -n -E 'FORKOP_CONFIG_MIGRATION_EOF|installer_config_migration_path' "$INSTALLER" >/dev/null 2>&1; then
+  fail "install.sh must not embed configuration migration logic"
 fi
+[ -s "$MIGRATION" ] || fail "runtime configuration migration module is missing"
+[ ! -e "$MIGRATIONS_DIR" ] || fail "configuration migrations must stay in one migration.uc file"
 
 if grep -n -E 'require\("uci"\)\.cursor|uci -q|uci", "-q"' "$MIGRATION" >/dev/null 2>&1; then
   fail "installer config migration must use core.uci instead of direct UCI cursor or CLI access"
 fi
 grep -Fq 'require("core.uci")' "$MIGRATION" ||
   fail "installer config migration must import core.uci"
+grep -Fq '{ id: "interface_sections", run: migrate_interface_sections }' "$MIGRATION" ||
+  fail "interface section migration must have a stable named marker"
+grep -Fq '{ id: "enable_component_checks", run: migrate_enable_component_checks }' "$MIGRATION" ||
+  fail "component check migration must have a stable named marker"
+grep -Fq 'release_at_most(ctx, "1.0.1")' "$MIGRATION" ||
+  fail "release-specific migrations must use the source release only as a condition"
 
 eval "$(ucode -L "$FORKOP_LIB" "$FORKOP_LIB/core/constants.uc" shell-env)"
 export ZAPRET_LEGACY_DEFAULT_NFQWS_OPT ZAPRET_DEFAULT_NFQWS_OPT
@@ -155,7 +155,7 @@ const fixture = {
 process.stdout.write(`${JSON.stringify(fixture, null, 2)}\n`);
 NODE
 
-FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$MIGRATION" migrate-fixture "$WORK_DIR/fixture.json" >"$WORK_DIR/output.json"
+FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$MIGRATION" migrate-fixture "$WORK_DIR/fixture.json" podkop >"$WORK_DIR/output.json"
 
 node - "$WORK_DIR/output.json" <<'NODE'
 const fs = require('fs');
@@ -164,10 +164,14 @@ const config = out.config;
 const sections = Object.fromEntries(config.section.map(section => [section['.name'], section]));
 const childByType = type => config[type] || [];
 const subscriptionUrls = childByType('subscription_url');
+const interfaces = childByType('section_interface');
 const urltests = childByType('urltest');
 
 assert(JSON.stringify(config.settings.dns_server) === JSON.stringify(['9.9.9.9']), 'legacy main DNS scalar migrated to ordered list');
 assert(JSON.stringify(config.settings.bootstrap_dns_server) === JSON.stringify(['1.1.1.1']), 'legacy Bootstrap DNS scalar migrated to ordered list');
+assert(config.settings.config_version === '1.0.2', 'legacy config should be marked at the current schema version');
+assert(config.settings.component_update_check_enabled === '1', 'component update checks should be enabled during migration');
+assert(JSON.stringify(config.settings.applied_migrations) === JSON.stringify(['interface_sections', 'enable_component_checks']), 'legacy config should record named migrations');
 
 function assert(condition, message) {
   if (!condition) {
@@ -319,9 +323,14 @@ absent(legacyZap, 'cmd_opts', 'legacy-zap');
 
 const legacyVpn = sections['legacy-vpn'];
 assert(legacyVpn.action === 'connection', 'vpn action inferred');
-assert(JSON.stringify(legacyVpn.interfaces) === JSON.stringify(['awg0']), 'vpn interface migrated to section list');
+assert(JSON.stringify(childValues(legacyVpn, interfaces, 'name')) === JSON.stringify(['awg0']), 'vpn interface migrated to interface item');
+const legacyVpnInterface = childObjects(legacyVpn, interfaces)[0];
+assert(legacyVpnInterface.domain_resolver_enabled === '1', 'vpn domain resolver enabled migrated');
+assert(legacyVpnInterface.domain_resolver_dns_type === 'doh', 'vpn domain resolver type migrated');
+assert(legacyVpnInterface.domain_resolver_dns_server === 'https://dns.example/dns-query', 'vpn domain resolver server migrated');
 absent(legacyVpn, 'proxy_config_type', 'legacy-vpn');
 absent(legacyVpn, 'interface', 'legacy-vpn');
+absent(legacyVpn, 'interfaces', 'legacy-vpn');
 absent(legacyVpn, 'interface_items', 'legacy-vpn');
 absent(legacyVpn, 'domain_resolver_enabled', 'legacy-vpn');
 absent(legacyVpn, 'domain_resolver_dns_type', 'legacy-vpn');
@@ -344,6 +353,83 @@ assert(out.removed_caches.includes('/tmp/sing-box/subscriptions/legacy-sub.json'
 assert(out.removed_caches.includes('/var/run/forkop/section-cache/legacy-sub.json'), 'section cache removal');
 NODE
 
+cat >"$WORK_DIR/forkop-1.0.1.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "config_version": "1.0.1",
+    "component_update_check_enabled": "0"
+  },
+  "section": [
+    {
+      ".name": "main",
+      ".type": "section",
+      "action": "connection",
+      "interfaces": [ "awg0", "tun0" ]
+    }
+  ]
+}
+JSON
+
+FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$MIGRATION" migrate-fixture "$WORK_DIR/forkop-1.0.1.json" >"$WORK_DIR/forkop-1.0.2.json"
+
+node - "$WORK_DIR/forkop-1.0.2.json" <<'NODE'
+const fs = require('fs');
+const out = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const section = out.config.section[0];
+const interfaces = out.config.section_interface || [];
+
+function assert(condition, message) {
+  if (!condition) {
+    console.error(message);
+    process.exit(1);
+  }
+}
+
+assert(out.changed === true, '1.0.1 config should require migration');
+assert(out.config.settings.config_version === '1.0.2', 'config schema version should advance to 1.0.2');
+assert(out.config.settings.component_update_check_enabled === '1', 'updates from 1.0.1 and below should enable component update checks');
+assert(JSON.stringify(out.config.settings.applied_migrations) === JSON.stringify(['interface_sections', 'enable_component_checks']), 'named migrations should be recorded');
+assert(!Object.prototype.hasOwnProperty.call(section, 'interfaces'), 'parent interface list should be removed');
+assert(JSON.stringify(interfaces.map(item => item.name)) === JSON.stringify(['awg0', 'tun0']), 'interfaces should keep their order');
+for (const item of interfaces) {
+  assert(item.section === 'main', 'interface child should reference its parent');
+  assert(item.domain_resolver_enabled === '0', 'resolver should default to disabled');
+  assert(item.domain_resolver_dns_type === 'udp', 'resolver protocol default');
+  assert(item.domain_resolver_dns_server === '8.8.8.8', 'resolver server default');
+}
+NODE
+
+cat >"$WORK_DIR/forkop-1.0.2-disabled.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "config_version": "1.0.2",
+    "component_update_check_enabled": "0"
+  },
+  "section": []
+}
+JSON
+
+FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$MIGRATION" migrate-fixture "$WORK_DIR/forkop-1.0.2-disabled.json" >"$WORK_DIR/forkop-1.0.2-disabled-output.json"
+
+node - "$WORK_DIR/forkop-1.0.2-disabled-output.json" <<'NODE'
+const fs = require('fs');
+const out = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+
+function assert(condition, message) {
+  if (!condition) {
+    console.error(message);
+    process.exit(1);
+  }
+}
+
+assert(out.config.settings.component_update_check_enabled === '0', '1.0.2 config must preserve an explicitly disabled component check');
+assert(JSON.stringify(out.config.settings.applied_migrations) === JSON.stringify(['interface_sections', 'enable_component_checks']), 'newer configs should mark skipped migrations');
+NODE
+
 cat >"$WORK_DIR/runtime-migrate.state" <<'EOF_UCI'
 forkop.settings=settings
 forkop.settings.routing_excluded_ips=192.0.2.0/24
@@ -355,6 +441,13 @@ forkop.legacy.proxy_string=vless://one
 forkop.old_direct=section
 forkop.old_direct.enabled=1
 forkop.old_direct.action=direct
+forkop.vpn=section
+forkop.vpn.enabled=1
+forkop.vpn.connection_type=vpn
+forkop.vpn.interface=awg0
+forkop.vpn.domain_resolver_enabled=1
+forkop.vpn.domain_resolver_dns_type=doh
+forkop.vpn.domain_resolver_dns_server=https://dns.example/dns-query
 EOF_UCI
 mkdir -p "$WORK_DIR/runtime" "$WORK_DIR/persistent-cache"
 : >"$WORK_DIR/runtime-migrate.log"
@@ -365,7 +458,7 @@ TMP_SUBSCRIPTION_FOLDER="$WORK_DIR/tmp-subscriptions" \
 FORKOP_RUNTIME_STATE_DIR="$WORK_DIR/runtime" \
 FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR="$WORK_DIR/persistent-cache" \
 FORKOP_INTERNAL_CONFIG_TRIGGER_GUARD="$WORK_DIR/internal-config-change" \
-ucode -L "$FORKOP_LIB" "$MIGRATION" migrate
+ucode -L "$FORKOP_LIB" "$MIGRATION" migrate-podkop
 
 grep -Fxq 'forkop.legacy=section' "$WORK_DIR/runtime-migrate.state" ||
   fail "runtime migration must convert legacy rule type through core.uci"
@@ -379,6 +472,12 @@ grep -Fxq 'forkop.legacy.selector_proxy_links=vless://one' "$WORK_DIR/runtime-mi
 if grep -Fq '=connection_url' "$WORK_DIR/runtime-migrate.state"; then
   fail "runtime migration must not create connection_url child sections"
 fi
+grep -Eq '^forkop\.cfg[0-9a-f]+=section_interface$' "$WORK_DIR/runtime-migrate.state" ||
+  fail "runtime migration must create an anonymous interface settings section"
+grep -Eq '^forkop\.cfg[0-9a-f]+\.section=vpn$' "$WORK_DIR/runtime-migrate.state" ||
+  fail "runtime interface settings section must reference its parent"
+grep -Eq '^forkop\.cfg[0-9a-f]+\.name=' "$WORK_DIR/runtime-migrate.state" ||
+  fail "runtime interface settings section must store the interface name"
 if grep -Fq 'forkop.legacy.urltest_enabled=' "$WORK_DIR/runtime-migrate.state"; then
   fail "runtime migration must delete migrated urltest_enabled through core.uci"
 fi
@@ -390,6 +489,44 @@ if grep -Fq 'forkop.legacy.proxy_string=' "$WORK_DIR/runtime-migrate.state"; the
 fi
 grep -Fxq 'commit forkop' "$WORK_DIR/runtime-migrate.log" ||
   fail "runtime migration must commit through core.uci"
+
+cat >"$WORK_DIR/runtime-version.state" <<'EOF_UCI'
+forkop.settings=settings
+forkop.settings.config_version=1.0.1
+forkop.settings.component_update_check_enabled=0
+forkop.main=section
+forkop.main.enabled=1
+forkop.main.action=connection
+forkop.main.interfaces=awg0
+EOF_UCI
+: >"$WORK_DIR/runtime-version.log"
+FORKOP_UCI_STATE_FILE="$WORK_DIR/runtime-version.state" \
+FORKOP_UCI_LOG_FILE="$WORK_DIR/runtime-version.log" \
+FORKOP_CONFIG_NAME="forkop" \
+FORKOP_INTERNAL_CONFIG_TRIGGER_GUARD="$WORK_DIR/internal-config-change" \
+ucode -L "$FORKOP_LIB" "$MIGRATION" migrate
+
+grep -Fxq 'forkop.settings.config_version=1.0.2' "$WORK_DIR/runtime-version.state" ||
+  fail "runtime version migration must advance config_version"
+grep -Fxq 'forkop.settings.component_update_check_enabled=1' "$WORK_DIR/runtime-version.state" ||
+  fail "runtime version migration must enable component update checks"
+grep -Fq 'forkop.settings.applied_migrations=interface_sections enable_component_checks' "$WORK_DIR/runtime-version.state" ||
+  fail "runtime migration must record stable migration names"
+grep -Eq '^forkop\.cfg[0-9a-f]+=section_interface$' "$WORK_DIR/runtime-version.state" ||
+  fail "runtime version migration must create interface child settings"
+if grep -Fq 'forkop.main.interfaces=' "$WORK_DIR/runtime-version.state"; then
+  fail "runtime version migration must remove the parent interface list"
+fi
+
+: >"$WORK_DIR/runtime-version.log"
+FORKOP_UCI_STATE_FILE="$WORK_DIR/runtime-version.state" \
+FORKOP_UCI_LOG_FILE="$WORK_DIR/runtime-version.log" \
+FORKOP_CONFIG_NAME="forkop" \
+FORKOP_INTERNAL_CONFIG_TRIGGER_GUARD="$WORK_DIR/internal-config-change" \
+ucode -L "$FORKOP_LIB" "$MIGRATION" migrate
+if grep -Fq 'commit forkop' "$WORK_DIR/runtime-version.log"; then
+  fail "completed named migrations must be idempotent"
+fi
 
 : >"$WORK_DIR/uci-commit.log"
 : >"$WORK_DIR/uci-commit.state"

@@ -936,7 +936,16 @@ function subscription_urls_signature(section) {
 }
 
 function interfaces_signature(section) {
-    return sprintf("%J", connections.interfaces(section));
+    let result = [];
+    for (let entry in connections.interfaces(section)) {
+        push(result, {
+            name: entry,
+            domain_resolver_enabled: connections.interface_domain_resolver_enabled(section, entry) ? "1" : "0",
+            domain_resolver_dns_type: connections.interface_domain_resolver_dns_type(section, entry),
+            domain_resolver_dns_server: connections.interface_domain_resolver_dns_server(section, entry)
+        });
+    }
+    return sprintf("%J", result);
 }
 
 function urltests_signature(section) {

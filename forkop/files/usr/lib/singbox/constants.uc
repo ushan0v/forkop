@@ -68,6 +68,10 @@ function outbound_tag(section_name) {
     return tag(section_name, "out");
 }
 
+function domain_resolver_tag(section_name) {
+    return tag(section_name, "domain-resolver");
+}
+
 function server_inbound_tag(section_name) {
     return tag("server-" + as_string(section_name), "in");
 }
@@ -113,6 +117,7 @@ return {
     tag,
     inbound_tag,
     outbound_tag,
+    domain_resolver_tag,
     server_inbound_tag,
     tailscale_dns_server_tag
 };

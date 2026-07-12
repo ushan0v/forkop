@@ -86,10 +86,11 @@ grep -Fq 'install_json_ucode installer-cleanup-legacy' "$INSTALLER" ||
   fail "install.sh cleanup must delegate to embedded ucode"
 grep -Fq 'install_json_ucode installer-post-install' "$INSTALLER" ||
   fail "install.sh post-install must delegate to embedded ucode"
-grep -Fq 'installer_config_migration_path()' "$INSTALLER" ||
-  fail "install.sh must embed the one-time configuration migration"
-grep -Fq 'ucode -L /usr/lib/forkop "$(installer_config_migration_path)" migrate' "$INSTALLER" ||
-  fail "install.sh must execute the embedded migration only during the legacy transition"
+if grep -Fq 'installer_config_migration_path()' "$INSTALLER"; then
+  fail "install.sh must not embed configuration migration logic"
+fi
+grep -Fq 'ucode -L /usr/lib/forkop /usr/lib/forkop/config/migration.uc migrate-podkop' "$INSTALLER" ||
+  fail "install.sh must delegate the legacy transition to the installed migration module"
 
 if grep -n -E 'restore_forkop_dnsmasq_failsafe|remember_service_state|stop_conflicting_services|deactivate_original_forkop_if_present|remove_conflicting_dns_proxy|pkg_remove_if_installed|pkg_remove_matching_prefix|pkg_list_installed_names' "$INSTALLER" >/dev/null 2>&1; then
   fail "install.sh must not keep shell cleanup/remove service owners"

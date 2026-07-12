@@ -9,6 +9,7 @@ let object_or_empty = common.object_or_empty;
 const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
 const ITEM_TYPES = [
     "subscription_url",
+    "section_interface",
     "urltest",
     "priority_group",
     "priority_level"
@@ -316,6 +317,10 @@ function subscription_urls(section) {
 }
 
 function interfaces(section) {
+    let items = child_values(section, "section_interface", "name", "");
+    if (length(items) > 0)
+        return items;
+
     let result = list_value(section, "interfaces");
     if (length(result) == 0) {
         let value = option(section, "interface", "");
@@ -439,6 +444,35 @@ function has_connection_sources(section) {
 function subscription_url_settings(section, value) {
     let child = child_item_by_value(section, "subscription_url", "url", value);
     return child != null ? child : item_settings(section, "subscription_url_settings", value);
+}
+
+function interface_settings(section, value) {
+    let child = child_item_by_value(section, "section_interface", "name", value);
+    return child != null ? child : item_settings(section, "interface_settings", value);
+}
+
+function interface_domain_resolver_enabled(section, value) {
+    let child = child_item_by_value(section, "section_interface", "name", value);
+    if (child != null)
+        return child_bool(child, "domain_resolver_enabled", false);
+    return item_bool(section, "interface_settings", value, "domain_resolver_enabled",
+        bool_option(section, "domain_resolver_enabled", false));
+}
+
+function interface_domain_resolver_dns_type(section, value) {
+    let child = child_item_by_value(section, "section_interface", "name", value);
+    if (child != null)
+        return child_option(child, "domain_resolver_dns_type", "udp");
+    return item_option(section, "interface_settings", value, "domain_resolver_dns_type",
+        option(section, "domain_resolver_dns_type", "udp") || "udp");
+}
+
+function interface_domain_resolver_dns_server(section, value) {
+    let child = child_item_by_value(section, "section_interface", "name", value);
+    if (child != null)
+        return child_option(child, "domain_resolver_dns_server", "8.8.8.8");
+    return item_option(section, "interface_settings", value, "domain_resolver_dns_server",
+        option(section, "domain_resolver_dns_server", "8.8.8.8") || "8.8.8.8");
 }
 
 function urltest_child(section, value) {
@@ -893,6 +927,7 @@ return {
     rule_sets_with_subnets_value,
     has_connection_sources,
     subscription_url_settings,
+    interface_settings,
     urltest_settings,
     subscription_update_enabled,
     subscription_update_interval,
@@ -907,6 +942,9 @@ return {
     subscription_user_agent,
     subscription_hwid,
     subscription_download_section,
+    interface_domain_resolver_enabled,
+    interface_domain_resolver_dns_type,
+    interface_domain_resolver_dns_server,
     urltest_check_interval,
     urltest_tolerance,
     urltest_testing_url,

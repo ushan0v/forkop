@@ -409,8 +409,18 @@ cat >"$WORK_DIR/vpn-interface-fixture.json" <<'JSON'
       ".type": "section",
       "enabled": "1",
       "action": "connection",
-      "interfaces": [ "tun0" ],
       "domain_suffix": [ "vpn.example" ]
+    }
+  ],
+  "section_interface": [
+    {
+      ".name": "vpn-interface",
+      ".type": "section_interface",
+      "section": "renamed_awg",
+      "name": "tun0",
+      "domain_resolver_enabled": "1",
+      "domain_resolver_dns_type": "doh",
+      "domain_resolver_dns_server": "https://dns.example/dns-query"
     }
   ]
 }
@@ -1105,6 +1115,8 @@ assert(outbound(manual, "proxy-3-out").type == "shadowsocks", "manual Shadowsock
 
 let vpn = cfg("vpn");
 assert(outbound(vpn, "renamed_awg-interface-1-out").bind_interface == "tun0", "renamed VPN interface outbound");
+assert(outbound(vpn, "renamed_awg-interface-1-out").domain_resolver == "renamed_awg-interface-1-domain-resolver", "renamed VPN domain resolver tag");
+assert(dns_server(vpn, r => r.tag == "renamed_awg-interface-1-domain-resolver") != null, "renamed VPN domain resolver DNS server");
 assert(outbound(vpn, "renamed_awg-interface-1-out").detour == null, "interface outbound must not receive a detour");
 assert(route_rule(vpn, r => r.outbound == "renamed_awg-out" && contains(r.domain_suffix, "vpn.example")) != null, "renamed VPN custom domain route");
 assert(dns_rule(vpn, r => contains(r.domain_suffix, "vpn.example")) != null, "renamed VPN custom domain DNS rule");

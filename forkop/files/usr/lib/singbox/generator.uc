@@ -104,7 +104,7 @@ function fixture_get_section(section_name) {
     if (section_name == "settings" && type(fixture.settings) == "object")
         return fixture.settings;
 
-    for (let type_name in [ "settings", "server", "section", "subscription_url", "urltest", "priority_group", "priority_level" ]) {
+    for (let type_name in [ "settings", "server", "section", "subscription_url", "section_interface", "urltest", "priority_group", "priority_level" ]) {
         for (let section in fixture_section_list(type_name)) {
             if (as_string(section[".name"]) == section_name)
                 return section;
@@ -1967,12 +1967,29 @@ function add_interface_connection_outbound(config, state, section, interface_ind
         tag_name = unique_tag(tag_name, taken);
     taken[tag_name] = true;
 
+    let domain_resolver = "";
+    if (connections.interface_domain_resolver_enabled(section, interface_name)) {
+        domain_resolver = runtime_constants.domain_resolver_tag(section_name + "-interface-" + interface_index);
+        let dns_server = runtime_dns.server_from_options(
+            domain_resolver,
+            connections.interface_domain_resolver_dns_type(section, interface_name),
+            connections.interface_domain_resolver_dns_server(section, interface_name),
+            tag_name
+        );
+        if (dns_server.unsupported)
+            runtime_generate_unsupported(dns_server.unsupported);
+        push(config.dns.servers, dns_server);
+    }
+
     let outbound = {
         type: "direct",
         tag: tag_name,
         bind_interface: interface_name,
+        domain_resolver,
         routing_mark: runtime_constants.OUTBOUND_MARK
     };
+    if (domain_resolver == "")
+        delete outbound.domain_resolver;
 
     push(config.outbounds, outbound);
     push(selector_tags, tag_name);

@@ -401,6 +401,17 @@ cat >"$WORK_DIR/sing-box-signature.json" <<'JSON'
       "resolve_real_ip_for_routing": "yes"
     }
   ],
+  "section_interface": [
+    {
+      ".name": "vpn-interface",
+      ".type": "section_interface",
+      "section": "vpn1",
+      "name": "wg0",
+      "domain_resolver_enabled": "1",
+      "domain_resolver_dns_type": "doh",
+      "domain_resolver_dns_server": "https://dns.example/dns-query"
+    }
+  ],
   "server": [
     {
       ".name": "srv_disabled",
@@ -665,7 +676,7 @@ vpn
 [rule.vpn1.subscription_urls]
 [ ]
 [rule.vpn1.interfaces]
-[ "wg0" ]
+[ { "name": "wg0", "domain_resolver_enabled": "1", "domain_resolver_dns_type": "doh", "domain_resolver_dns_server": "https://dns.example/dns-query" } ]
 [rule.vpn1.outbound_jsons]
 
 [rule.vpn1.legacy_interface]
