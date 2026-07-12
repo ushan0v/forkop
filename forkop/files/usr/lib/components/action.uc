@@ -371,7 +371,7 @@ function opkg_package_version_from_list(package_name, output) {
 function available_package_version(package_name) {
     package_name = as_string(package_name);
     if (is_apk())
-        return trim(helper_output_input(command_output_from_args([ "apk", "policy", package_name ]), "updates-apk-policy-version", []));
+        return trim(module_output([ LIB_DIR + "/core/packages.uc", "apk-available-version", package_name ]));
     return opkg_package_version_from_list(package_name, command_output_from_args([ "opkg", "list", package_name ]));
 }
 
@@ -384,12 +384,16 @@ function pkg_install_name_command(package_name) {
         command_from_args([ "opkg", "install", package_name ]) + " </dev/null";
 }
 
-function pkg_install_name_downgrade(package_name) {
+function pkg_install_name_downgrade(package_name, package_version) {
     package_name = as_string(package_name);
     if (is_apk()) {
+        package_version = as_string(package_version);
+        if (package_version == "")
+            return false;
+        let package_spec = package_name + "=" + package_version;
         if (pkg_is_installed(package_name))
-            return command_success(command_from_args([ "apk", "fix", "--reinstall", "--upgrade", package_name ]) + " </dev/null");
-        return command_success(command_from_args([ "apk", "add", package_name ]) + " </dev/null");
+            return command_success(command_from_args([ "apk", "fix", "--reinstall", "--upgrade", package_spec ]) + " </dev/null");
+        return command_success(command_from_args([ "apk", "add", package_spec ]) + " </dev/null");
     }
 
     return command_success(command_from_args([ "opkg", "install", "--force-overwrite", "--force-reinstall", "--force-downgrade", package_name ]) + " </dev/null") ||
@@ -1150,7 +1154,8 @@ function restore_file_backup(target_path, backup_path) {
 }
 
 function restore_sing_box_service_from_marker(marker) {
-    if (as_string(marker) == "extended-compressed")
+    if (as_string(marker) == "extended-compressed" ||
+        (!file_exists("/etc/init.d/sing-box") && file_nonempty("/usr/bin/sing-box")))
         return install_managed_sing_box_service_script();
     remove_managed_sing_box_service_script();
     return true;
@@ -1265,24 +1270,24 @@ function restore_sing_box_extended_package_variant() {
     return true;
 }
 
-function replace_sing_box_package_variant(target_package, conflict_package) {
+function replace_sing_box_package_variant(target_package, conflict_package, target_version) {
     prepare_sing_box_package_service_install();
     if ((as_string(conflict_package) == "" || !pkg_is_installed(conflict_package)) &&
         (target_package == "sing-box-extended" || !pkg_is_installed("sing-box-extended")))
-        return pkg_install_name_downgrade(target_package);
+        return pkg_install_name_downgrade(target_package, target_version);
 
     if (target_package != "sing-box-extended" && !pkg_remove_sing_box_conflict("sing-box-extended"))
         return false;
     if (as_string(conflict_package) != "" && !pkg_remove_sing_box_conflict(conflict_package))
         return false;
-    return pkg_install_name_downgrade(target_package);
+    return pkg_install_name_downgrade(target_package, target_version);
 }
 
 function restore_sing_box_package_variant(previous_variant) {
     if (previous_variant == "tiny")
-        return replace_sing_box_package_variant("sing-box-tiny", "sing-box");
+        return replace_sing_box_package_variant("sing-box-tiny", "sing-box", available_package_version("sing-box-tiny"));
     if (previous_variant == "stable")
-        return replace_sing_box_package_variant("sing-box", "sing-box-tiny");
+        return replace_sing_box_package_variant("sing-box", "sing-box-tiny", available_package_version("sing-box"));
     if (previous_variant == "extended")
         return restore_sing_box_extended_package_variant();
     if (previous_variant == "not-installed") {
@@ -1304,8 +1309,10 @@ function restore_sing_box_install_backup(previous_variant, backup_binary) {
     if (sing_box_variant_is_package_managed(previous_variant)) {
         if (restore_sing_box_package_variant(previous_variant))
             return true;
-        if (as_string(backup_binary) != "")
-            restore_sing_box_backup(backup_binary);
+        if (as_string(backup_binary) != "" && restore_sing_box_backup(backup_binary)) {
+            updates_log("Package rollback failed; restored the previous sing-box binary backup", "warn");
+            return true;
+        }
         return false;
     }
 
@@ -1708,7 +1715,7 @@ function install_package_sing_box(action, tiny) {
     }
 
     if (!run_logged("Installing " + label + " package", "sh -c " + shell_quote("exit 0")) ||
-        !replace_sing_box_package_variant(package_name, conflict))
+        !replace_sing_box_package_variant(package_name, conflict, latest_version))
         fail_package_sing_box_install(action, tiny, "package installation failed", current_version, latest_version,
             package_name, previous_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, cronet_touched);
 

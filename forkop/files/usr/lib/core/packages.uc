@@ -102,6 +102,16 @@ function apk_version(package_name) {
     return apk_info_version(package_name, command_output([ "apk", "info", "-v", package_name ]));
 }
 
+function apk_available_version(package_name) {
+    package_name = as_string(package_name);
+    if (!command_exists("apk"))
+        return "";
+    return apk_manifest_version(
+        package_name,
+        command_output([ "apk", "list", "--available", "--manifest", package_name ])
+    );
+}
+
 function opkg_version(package_name) {
     package_name = as_string(package_name);
     if (!command_exists("opkg"))
@@ -133,9 +143,11 @@ else if (mode == "version")
     print(version(ARGV[1]), "\n");
 else if (mode == "apk-version")
     print(apk_version(ARGV[1]), "\n");
+else if (mode == "apk-available-version")
+    print(apk_available_version(ARGV[1]), "\n");
 else if (mode == "opkg-version")
     print(opkg_version(ARGV[1]), "\n");
 else {
-    warn("Usage: core/packages.uc <installed|apk-installed|opkg-installed|version|apk-version|opkg-version> <package>\n");
+    warn("Usage: core/packages.uc <installed|apk-installed|opkg-installed|version|apk-version|apk-available-version|opkg-version> <package>\n");
     exit(1);
 }

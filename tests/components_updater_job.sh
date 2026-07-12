@@ -101,6 +101,12 @@ grep -Fq 'forkop_status_running_with_timeout()' "$ACTION_UC" ||
   fail "components/action.uc must use bounded Forkop status checks for component actions"
 grep -Fq 'restore_sing_box_after_failed_package_install' "$ACTION_UC" ||
   fail "stable and tiny sing-box package installs must restore the previous variant after validation failures"
+grep -Fq 'let package_spec = package_name + "=" + package_version;' "$ACTION_UC" ||
+  fail "APK sing-box installs must pin the concrete package version instead of selecting a provider"
+grep -Fq 'Package rollback failed; restored the previous sing-box binary backup' "$ACTION_UC" ||
+  fail "package rollback must accept a successfully restored binary backup"
+grep -Fq '!file_exists("/etc/init.d/sing-box") && file_nonempty("/usr/bin/sing-box")' "$ACTION_UC" ||
+  fail "binary rollback must restore a managed sing-box service when the package script is missing"
 grep -Fq 'fail_package_sing_box_install(action, tiny, "package was installed, but sing-box binary is not available"' "$ACTION_UC" ||
   fail "stable and tiny sing-box binary validation failures must use transactional rollback"
 grep -Fq 'fail_package_sing_box_install(action, tiny, "was installed, but Forkop did not start cleanly"' "$ACTION_UC" ||
@@ -184,6 +190,12 @@ if (mode == "opkg-version")
   exit(0);
 if (mode == "opkg-installed")
   exit(1);
+if (mode == "apk-available-version") {
+  print("1.2.3-r1\n");
+  exit(0);
+}
+if (mode == "apk-version")
+  exit(0);
 exit(1);
 UCODE
 cat >"$package_runtime_lib/singbox/runtime.uc" <<'UCODE'
@@ -252,6 +264,38 @@ if (update <= firstList) fail('package list update must happen after empty initi
 if (secondList <= update) fail('stable sing-box version must be resolved again after package list update');
 if (install <= secondList) fail('stable sing-box install must happen after post-update version resolve');
 NODE
+
+cat >"$package_runtime_bin/apk" <<'SH'
+#!/usr/bin/env sh
+set -eu
+printf 'apk %s\n' "$*" >>"${FAKE_APK_LOG:?}"
+case "${1:-}" in
+  info)
+    exit 1
+    ;;
+  update|add|fix|del)
+    exit 0
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+SH
+chmod +x "$package_runtime_bin/apk"
+set +e
+PATH="$package_runtime_bin:$PATH" \
+FORKOP_LIB="$package_runtime_lib" \
+FORKOP_RUNTIME_STATE_DIR="$WORK_DIR/apk-package-runtime" \
+FORKOP_BIN="$WORK_DIR/missing-forkop" \
+FORKOP_SERVICE_INIT="$WORK_DIR/missing-init" \
+FAKE_APK_LOG="$WORK_DIR/apk.log" \
+ucode -L "$package_runtime_lib" "$ACTION_UC" component-action sing_box install_stable >/dev/null
+set -e
+grep -Fxq 'apk add sing-box=1.2.3-r1' "$WORK_DIR/apk.log" ||
+  fail "APK stable action must request the exact sing-box package version"
+if grep -Fxq 'apk add sing-box' "$WORK_DIR/apk.log"; then
+  fail "APK stable action must not use the provider-selecting unversioned package name"
+fi
 
 release_json="$(cat <<'JSON'
 {
