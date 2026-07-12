@@ -3255,6 +3255,7 @@ function compactSettingsMap(settings) {
 }
 function hydrateConfigSections(configSections) {
   const subscriptionUrls = childSections(configSections, "subscription_url");
+  const interfaces = childSections(configSections, "section_interface");
   const urltests = childSections(configSections, "urltest");
   const priorityGroups = childSections(configSections, "priority_group");
   const priorityLevels = childSections(configSections, "priority_level");
@@ -3264,6 +3265,7 @@ function hydrateConfigSections(configSections) {
     }
     const next = { ...section };
     const subscriptionUrlItems = ownedChildSections(next, subscriptionUrls);
+    const interfaceItems = ownedChildSections(next, interfaces);
     const urltestItems = ownedChildSections(next, urltests);
     const priorityGroupItems = ownedChildSections(next, priorityGroups);
     if (subscriptionUrlItems.length) {
@@ -3291,6 +3293,9 @@ function hydrateConfigSections(configSections) {
         };
       });
       next.subscription_url_settings = compactSettingsMap(settings);
+    }
+    if (interfaceItems.length) {
+      next.interfaces = interfaceItems.map((item) => item.name || "").filter(Boolean);
     }
     if (urltestItems.length) {
       const settings = {};

@@ -125,6 +125,7 @@ type PriorityConfig = {
 
 type ChildType =
   | 'subscription_url'
+  | 'section_interface'
   | 'urltest'
   | 'priority_group'
   | 'priority_level';
@@ -222,6 +223,7 @@ function compactSettingsMap(settings: Record<string, ItemSettings>) {
 
 function hydrateConfigSections(configSections: Forkop.ConfigSection[]) {
   const subscriptionUrls = childSections(configSections, 'subscription_url');
+  const interfaces = childSections(configSections, 'section_interface');
   const urltests = childSections(configSections, 'urltest');
   const priorityGroups = childSections(configSections, 'priority_group');
   const priorityLevels = childSections(configSections, 'priority_level');
@@ -233,6 +235,7 @@ function hydrateConfigSections(configSections: Forkop.ConfigSection[]) {
 
     const next: Forkop.ConfigSection = { ...section };
     const subscriptionUrlItems = ownedChildSections(next, subscriptionUrls);
+    const interfaceItems = ownedChildSections(next, interfaces);
     const urltestItems = ownedChildSections(next, urltests);
     const priorityGroupItems = ownedChildSections(next, priorityGroups);
 
@@ -263,6 +266,12 @@ function hydrateConfigSections(configSections: Forkop.ConfigSection[]) {
         };
       });
       next.subscription_url_settings = compactSettingsMap(settings);
+    }
+
+    if (interfaceItems.length) {
+      next.interfaces = interfaceItems
+        .map((item) => item.name || '')
+        .filter(Boolean);
     }
 
     if (urltestItems.length) {

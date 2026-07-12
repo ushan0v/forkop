@@ -238,6 +238,7 @@ export namespace Forkop {
       | 'section'
       | 'server'
       | 'subscription_url'
+      | 'section_interface'
       | 'urltest'
       | 'priority_group'
       | 'priority_level';

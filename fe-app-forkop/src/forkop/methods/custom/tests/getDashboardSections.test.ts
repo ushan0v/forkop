@@ -1125,6 +1125,52 @@ describe('getDashboardSections', () => {
     });
   });
 
+  it('hydrates migrated interface children into the Connection selector group', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      {
+        '.name': 'AWG',
+        '.type': 'section',
+        enabled: '1',
+        action: 'connection',
+      },
+      {
+        '.name': 'cfg01',
+        '.type': 'section_interface',
+        section: 'AWG',
+        name: 'awg1',
+      },
+    ]);
+    mocks.getClashApiProxies.mockResolvedValue({
+      success: true,
+      data: {
+        proxies: {
+          'AWG-out': proxy('Selector', {
+            name: 'AWG-out',
+            now: 'AWG-interface-1-out',
+            all: ['AWG-interface-1-out'],
+          }),
+          'AWG-interface-1-out': proxy('Direct', {
+            name: 'awg1',
+            history: [{ time: '2026-07-13T00:00:00Z', delay: 445 }],
+          }),
+        },
+      },
+    });
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(section.code).toBe('AWG-out');
+    expect(section.withTagSelect).toBe(true);
+    expect(section.proxyConfigType).toBe('interface');
+    expect(section.outbounds[0]).toMatchObject({
+      code: 'AWG-interface-1-out',
+      displayName: 'awg1',
+      selected: true,
+    });
+  });
+
   it('does not expose ByeDPI sections on the dashboard', async () => {
     mocks.getConfigSections.mockResolvedValue([
       proxySection(),
