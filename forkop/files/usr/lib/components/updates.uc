@@ -126,6 +126,15 @@ function command_output(command) {
     return as_string(data);
 }
 
+function file_md5(path) {
+    path = as_string(path);
+    if (path == "" || fs.stat(path) == null)
+        return "";
+
+    let fields = split(trim(command_output(command_from_args([ "md5sum", path ]))), /[ \t\r\n]+/);
+    return length(fields) > 0 ? as_string(fields[0]) : "";
+}
+
 function command_output_from_args(args) {
     return command_output(command_from_args(args));
 }
@@ -2664,6 +2673,9 @@ function subscription_update_common_locked(force, target_section, target_source_
 
     if (!singbox_runtime_success([ "configure-service" ]))
         return false;
+    let sing_box_config_path = option(uci_settings(), "config_path", "");
+    let sing_box_config_hash_before = file_md5(sing_box_config_path);
+    let sing_box_pid_before = trim(module_output([ LIB_DIR + "/service/state.uc", "sing-box-service-runtime-pid" ]));
     module_success([ DNS_FAILOVER_UC, "stop-runtime" ]);
     if (!singbox_runtime_success([ "init-config", "0", "1", "1" ])) {
         module_success([ DNS_FAILOVER_UC, "start-runtime" ]);
@@ -2671,7 +2683,12 @@ function subscription_update_common_locked(force, target_section, target_source_
         return false;
     }
     module_success([ PRIORITY_UC, "stop-runtime" ]);
-    if (!service_state_success([ "reload-sing-box-runtime" ])) {
+    if (!service_state_success([
+        "reload-sing-box-runtime",
+        sing_box_pid_before,
+        sing_box_config_hash_before,
+        file_md5(sing_box_config_path)
+    ])) {
         module_success([ PRIORITY_UC, "start-runtime" ]);
         module_success([ DNS_FAILOVER_UC, "start-runtime" ]);
         return false;

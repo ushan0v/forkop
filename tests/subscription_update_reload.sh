@@ -59,6 +59,10 @@ exit(64);
 write_stub "$FAKE_LIB/service/state.uc" "$stub_header"'
 let mode = as_string(ARGV[0]);
 record("service/state:" + mode);
+if (mode == "sing-box-service-runtime-pid") {
+    print("3285\n");
+    exit(0);
+}
 if (mode == "acquire-runtime-dir-lock" ||
     mode == "acquire-runtime-dir-lock-wait" ||
     mode == "release-runtime-dir-lock" ||
@@ -144,6 +148,7 @@ const expected = [
   "server/service:prepare-all-defaults",
   "config/validator:validate-runtime",
   "singbox/runtime:configure-service",
+  "service/state:sing-box-service-runtime-pid",
   "singbox/dns_failover:stop-runtime",
   "singbox/runtime:init-config:0:1:1",
   "singbox/priority:stop-runtime",

@@ -339,15 +339,6 @@ function release_runtime_dir_lock(lock_dir) {
     command_success_from_args([ "rmdir", lock_dir ]);
 }
 
-function reload_sing_box_runtime() {
-    command_success_from_args([ "logger", "-t", "forkop", "[info] Reloading sing-box runtime" ]);
-    if (command_success_from_args([ "/etc/init.d/sing-box", "reload" ]))
-        return;
-
-    command_success_from_args([ "logger", "-t", "forkop", "[fatal] Failed to reload sing-box. Aborted." ]);
-    exit(1);
-}
-
 function write_reload_state(path, values) {
     if (!ensure_parent_dir(path))
         exit(1);
@@ -499,6 +490,52 @@ function process_age_seconds(pid) {
         return null;
 
     return int(uptime_seconds) - int(int(start_ticks) / 100);
+}
+
+function sing_box_pid_replaced(previous_pid, current_pid, current_is_sing_box) {
+    previous_pid = int(previous_pid || 0);
+    current_pid = int(current_pid || 0);
+    current_is_sing_box = lc(as_string(current_is_sing_box));
+    let executable_matches = current_is_sing_box == "1" || current_is_sing_box == "true" ||
+        current_is_sing_box == "yes" || current_is_sing_box == "on";
+    return current_pid > 0 && executable_matches &&
+        (previous_pid <= 0 || current_pid != previous_pid);
+}
+
+function wait_sing_box_pid_replacement(previous_pid, timeout) {
+    timeout = int(timeout || 15);
+    while (timeout > 0) {
+        let current_pid = sing_box_service_pid_runtime();
+        if (sing_box_pid_replaced(previous_pid, current_pid, pid_is_sing_box(current_pid)))
+            return true;
+
+        command_success_from_args([ "sleep", "1" ]);
+        timeout--;
+    }
+    return false;
+}
+
+function sing_box_reload_previous_pid(previous_pid, config_hash_before, config_hash_after) {
+    previous_pid = as_string(previous_pid);
+    if (as_string(config_hash_before) == as_string(config_hash_after) ||
+        match(previous_pid, /^[0-9]+$/) == null || int(previous_pid) <= 0)
+        return 0;
+    return int(previous_pid);
+}
+
+function reload_sing_box_runtime(previous_pid, config_hash_before, config_hash_after) {
+    previous_pid = sing_box_reload_previous_pid(previous_pid, config_hash_before, config_hash_after);
+    command_success_from_args([ "logger", "-t", "forkop", "[info] Reloading sing-box runtime" ]);
+    if (!command_success_from_args([ "/etc/init.d/sing-box", "reload" ])) {
+        command_success_from_args([ "logger", "-t", "forkop", "[fatal] Failed to reload sing-box. Aborted." ]);
+        exit(1);
+    }
+
+    let timeout = getenv("FORKOP_SING_BOX_RELOAD_PID_TIMEOUT") || "15";
+    if (previous_pid > 0 && !wait_sing_box_pid_replacement(previous_pid, timeout)) {
+        command_success_from_args([ "logger", "-t", "forkop", "[fatal] sing-box reload did not replace the running process. Aborted." ]);
+        exit(1);
+    }
 }
 
 function sing_box_service_running() {
@@ -1683,7 +1720,7 @@ else if (mode == "acquire-runtime-dir-lock-wait")
 else if (mode == "release-runtime-dir-lock")
     release_runtime_dir_lock(ARGV[1]);
 else if (mode == "reload-sing-box-runtime")
-    reload_sing_box_runtime();
+    reload_sing_box_runtime(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "hup-sing-box-runtime")
     hup_sing_box_runtime();
 else if (mode == "clear-reload-state")
@@ -1710,10 +1747,20 @@ else if (mode == "stdin-first-field")
     stdin_first_field();
 else if (mode == "sing-box-service-pid")
     sing_box_service_pid();
+else if (mode == "sing-box-service-runtime-pid") {
+    let pid = sing_box_service_pid_runtime();
+    if (pid <= 0)
+        exit(1);
+    print(pid, "\n");
+}
 else if (mode == "sing-box-service-running")
     exit(sing_box_service_running() ? 0 : 1);
 else if (mode == "sing-box-service-stable")
     exit(sing_box_service_stable(ARGV[1]) ? 0 : 1);
+else if (mode == "sing-box-pid-replaced-fixture")
+    exit(sing_box_pid_replaced(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
+else if (mode == "sing-box-reload-previous-pid-fixture")
+    print(sing_box_reload_previous_pid(ARGV[1], ARGV[2], ARGV[3]), "\n");
 else if (mode == "forkop-running")
     exit(forkop_running(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
 else if (mode == "forkop-stably-running")

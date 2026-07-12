@@ -96,6 +96,27 @@ if state_ucode time-sync-needed 2024 >/dev/null 2>&1; then
   fail "time sync should not be needed for current clock"
 fi
 
+if state_ucode sing-box-pid-replaced-fixture 3285 3285 1 >/dev/null 2>&1; then
+  fail "sing-box reload must not accept the old stable PID"
+fi
+if state_ucode sing-box-pid-replaced-fixture 3285 0 0 >/dev/null 2>&1; then
+  fail "sing-box reload must not accept a missing replacement process"
+fi
+state_ucode sing-box-pid-replaced-fixture 3285 4127 1 >/dev/null ||
+  fail "sing-box reload should accept a different live sing-box PID"
+if state_ucode sing-box-pid-replaced-fixture 3285 4127 0 >/dev/null 2>&1; then
+  fail "sing-box reload must reject a replacement PID owned by another executable"
+fi
+assert_eq "3285" \
+  "$(state_ucode sing-box-reload-previous-pid-fixture 3285 old new)" \
+  "changed sing-box config replacement PID"
+assert_eq "0" \
+  "$(state_ucode sing-box-reload-previous-pid-fixture 3285 same same)" \
+  "unchanged sing-box config replacement PID"
+assert_eq "0" \
+  "$(state_ucode sing-box-reload-previous-pid-fixture missing old new)" \
+  "missing sing-box PID replacement constraint"
+
 PENDING_RELOAD_FILE="$WORK_DIR/reload.pending"
 state_ucode mark-pending-reload "$PENDING_RELOAD_FILE" "reload_busy"
 grep -Fxq "reason=reload_busy" "$PENDING_RELOAD_FILE" ||

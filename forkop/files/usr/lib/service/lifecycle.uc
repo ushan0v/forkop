@@ -453,13 +453,18 @@ function config_set(path, value) {
     return uci_core.set(path, value);
 }
 
-function current_config_hash() {
-    if (fs.stat(CONFIG_FILE) == null)
+function file_md5(path) {
+    path = as_string(path);
+    if (path == "" || fs.stat(path) == null)
         return "";
 
-    let output = command_output("md5sum " + shell_quote(CONFIG_FILE) + " 2>/dev/null");
+    let output = command_output("md5sum " + shell_quote(path) + " 2>/dev/null");
     let fields = split(trim(output), /[ \t\r\n]+/);
     return length(fields) > 0 ? as_string(fields[0]) : "";
+}
+
+function current_config_hash() {
+    return file_md5(CONFIG_FILE);
 }
 
 function mark_internal_config_guard() {
@@ -1031,6 +1036,11 @@ function release_reload_lock() {
     module_success(STATE_UC, [ "release-runtime-dir-lock", RELOAD_LOCK_DIR ]);
 }
 
+function sing_box_runtime_pid() {
+    let result = module_capture(STATE_UC, [ "sing-box-service-runtime-pid" ]);
+    return result.status == 0 ? trim(result.output) : "";
+}
+
 function wait_dns_failover_state(candidate_state_path, attempts) {
     attempts = int(attempts || 1);
     for (let i = 0; i < attempts; i++) {
@@ -1063,13 +1073,14 @@ function dns_failover_apply(candidate_state_path) {
     let status = 0;
 
     if (changed) {
+        let sing_box_pid_before = sing_box_runtime_pid();
         status = module_status(STATE_UC, [ "hup-sing-box-runtime" ]);
         if (status == 0)
             status = wait_dns_failover_state(candidate_state_path, 5);
 
         if (status != 0) {
             log_message("sing-box SIGHUP DNS reload did not become ready; trying service reload", "warn");
-            status = module_status(STATE_UC, [ "reload-sing-box-runtime" ]);
+            status = module_status(STATE_UC, [ "reload-sing-box-runtime", sing_box_pid_before, "dns-before", "dns-after" ]);
             if (status == 0)
                 status = wait_dns_failover_state(candidate_state_path, 8);
         }
@@ -1080,8 +1091,10 @@ function dns_failover_apply(candidate_state_path) {
 
     if (status != 0 && backup_path != "") {
         log_message("DNS failover apply failed; restoring the previous sing-box configuration", "error");
-        if (module_success(SINGBOX_UC, [ "restore-dns-config", backup_path ]))
-            module_success(STATE_UC, [ "reload-sing-box-runtime" ]);
+        if (module_success(SINGBOX_UC, [ "restore-dns-config", backup_path ])) {
+            let sing_box_pid_before_restore = sing_box_runtime_pid();
+            module_success(STATE_UC, [ "reload-sing-box-runtime", sing_box_pid_before_restore, "dns-failed", "dns-restored" ]);
+        }
     }
 
     if (backup_path != "")
@@ -1208,12 +1221,21 @@ function reload(reason) {
         status = module_status(SINGBOX_UC, [ "configure-service" ]);
         if (status != 0)
             return abort_reload(status, true);
+        let sing_box_config_path = config_get(CONFIG_NAME + ".settings.config_path", "");
+        let sing_box_config_hash_before = file_md5(sing_box_config_path);
+        let sing_box_pid_result = module_capture(STATE_UC, [ "sing-box-service-runtime-pid" ]);
+        let sing_box_pid_before = sing_box_pid_result.status == 0 ? trim(sing_box_pid_result.output) : "";
         nft_populate_enabled = plan.needs_nft_rebuild == 1 ? 1 : 0;
         status = singbox_init_config();
         if (status != 0)
             return abort_reload(status, true);
         nft_populate_enabled = NFT_POPULATE_ENABLED_DEFAULT;
-        status = module_status(STATE_UC, [ "reload-sing-box-runtime" ]);
+        status = module_status(STATE_UC, [
+            "reload-sing-box-runtime",
+            sing_box_pid_before,
+            sing_box_config_hash_before,
+            file_md5(sing_box_config_path)
+        ]);
         if (status != 0)
             return abort_reload(status, true);
         status = module_status(STATE_UC, [
