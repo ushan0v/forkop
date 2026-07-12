@@ -114,6 +114,15 @@ fi
 grep -Fq 'Generated sing-box configuration is invalid: " + check_result.reason' "$SINGBOX_RUNTIME_UC" ||
   fail "generated config failure must include the captured sing-box check diagnostic"
 
+cat >"$WORK_DIR/generator-failure.log" <<'EOF_GENERATOR_FAILURE'
+skipped incompatible subscription outbound for rule 'only_xhttp': Only XHTTP node (XHTTP requires sing-box-extended)
+connection section has no usable outbounds
+EOF_GENERATOR_FAILURE
+generator_reason="$(ucode -L "$FORKOP_LIB" "$SINGBOX_RUNTIME_UC" generator-failure-reason-fixture \
+  "$WORK_DIR/generator-failure.log" 2)"
+[ "$generator_reason" = 'connection section has no usable outbounds' ] ||
+  fail "singbox/runtime.uc must report the terminal generator error instead of an earlier warning"
+
 mkdir -p "$WORK_DIR/etc" "$WORK_DIR/tmp"
 printf 'old config\n' >"$WORK_DIR/etc/config.json"
 printf 'new config\n' >"$WORK_DIR/tmp/config.json"
@@ -991,6 +1000,8 @@ if generate_config_with_subscription_cache "$WORK_DIR/subscription-only-xhttp-fi
 fi
 grep -Fq "Only XHTTP node (XHTTP requires sing-box-extended)" "$WORK_DIR/subscription-only-xhttp.stderr" ||
   fail "all-XHTTP subscription failure should identify the incompatible outbound"
+[ "$(tail -n 1 "$WORK_DIR/subscription-only-xhttp.stderr")" = 'connection section has no usable outbounds' ] ||
+  fail "all-XHTTP subscription failure should end with the actionable generator error"
 
 for fixture in manual-xhttp json-xhttp; do
   if ucode -L "$FORKOP_LIB" "$SINGBOX_GENERATOR_UC" generate-config-fixture \

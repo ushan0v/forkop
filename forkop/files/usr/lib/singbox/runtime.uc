@@ -637,6 +637,20 @@ function first_nonblank_line(path) {
     return "";
 }
 
+function last_nonblank_line(path) {
+    let result = "";
+    let data = as_string(fs.readfile(path) || "");
+    for (let line in split(data, "\n"))
+        if (trim(as_string(line)) != "")
+            result = as_string(line);
+    return result;
+}
+
+function generator_failure_reason(path, status) {
+    let reason = last_nonblank_line(path);
+    return reason != "" ? reason : "exit status " + status;
+}
+
 function log_file_lines(path, level, prefix) {
     log_lines(fs.readfile(path), level, prefix);
 }
@@ -791,9 +805,7 @@ function init_config(populate_nft, caches_prepared, no_refresh) {
         ]) + " >" + shell_quote(runtime_log) + " 2>&1"
     );
     if (generate_status != 0) {
-        let reason = first_nonblank_line(runtime_log);
-        if (reason == "")
-            reason = "exit status " + generate_status;
+        let reason = generator_failure_reason(runtime_log, generate_status);
         log_message("Failed to generate sing-box configuration: " + reason, "fatal");
         remove_files([ temp_config, runtime_log ]);
         exit(1);
@@ -850,6 +862,8 @@ else if (mode == "check-config-fixture") {
         print(result.reason, "\n");
     exit(result.status);
 }
+else if (mode == "generator-failure-reason-fixture")
+    print(generator_failure_reason(ARGV[1] || "", int(ARGV[2] || "1")), "\n");
 else if (mode == "patch-dns-config")
     patch_dns_config(ARGV[1] || "");
 else if (mode == "restore-dns-config")
