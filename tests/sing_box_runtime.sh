@@ -308,6 +308,7 @@ cat >"$WORK_DIR/runtime-matchers-fixture.json" <<'JSON'
       "enabled": "1",
       "action": "connection",
       "selector_proxy_links": [ "socks5://127.0.0.1:1080" ],
+      "domain": "commented.example # ignored.example\nfull:exact-comment.example // ignored-full.example\nkeyword:clip",
       "domain_suffix": [ "proxy.example.org", "сайт.рф", "full:пример.испытание", "keyword:пример", "regex:^сайт[.]рф$" ],
       "source_ip_cidr": [ "10.0.0.2/32", "2001:db8::2/128" ],
       "outbound_detour_enabled": "1",
@@ -1063,6 +1064,10 @@ assert(dns_rule(matchers, r => contains(r.domain_suffix, "xn--80aswg.xn--p1ai"))
 assert(dns_rule(matchers, r => contains(r.domain, "xn--e1afmkfd.xn--80akhbyknj4f")).server == "fakeip-server", "IDN full domain converted for DNS rule");
 assert(dns_rule(matchers, r => contains(r.domain_keyword, "xn--e1afmkfd")).server == "fakeip-server", "IDN keyword converted for DNS rule");
 assert(dns_rule(matchers, r => contains(r.domain_regex, "^xn--80aswg[.]xn--p1ai$")).server == "fakeip-server", "IDN regex converted for DNS rule");
+assert(dns_rule(matchers, r => contains(r.domain_suffix, "commented.example")).server == "fakeip-server", "commented domain value generated");
+assert(dns_rule(matchers, r => contains(r.domain, "exact-comment.example")).server == "fakeip-server", "commented full domain generated");
+assert(dns_rule(matchers, r => contains(r.domain_keyword, "clip")).server == "fakeip-server", "commented keyword generated");
+assert(index(sprintf("%J", matchers), "ignored.example") < 0 && index(sprintf("%J", matchers), "ignored-full.example") < 0, "domain comments excluded from generated config");
 assert(route_rule(matchers, r => r.outbound == "bypass-out" && contains(r.domain_suffix, "example.org") && contains(r.source_ip_cidr, "10.0.0.3/32")) != null, "bypass fallback route");
 assert(route_rule(matchers, r => r.outbound == "proxy-out" && contains(r.domain_suffix, "xn--80aswg.xn--p1ai")) != null, "IDN suffix converted for route rule");
 assert(route_rule(matchers, r => r.outbound == "proxy-out" && contains(r.domain, "xn--e1afmkfd.xn--80akhbyknj4f")) != null, "IDN full domain converted for route rule");

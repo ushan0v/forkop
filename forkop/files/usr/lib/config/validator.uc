@@ -350,26 +350,6 @@ function regex_valid(pattern) {
     }
 }
 
-function strip_list_comment(line) {
-    line = replace(as_string(line), /[[:space:]]*\/\/.*$/, "");
-    return replace(line, /[[:space:]]*#.*$/, "");
-}
-
-function text_list_values(value) {
-    let result = [];
-
-    for (let line in split(as_string(value), "\n")) {
-        line = replace(strip_list_comment(line), /[ ,]/g, "\n");
-        for (let item in split(line, "\n")) {
-            item = trim(replace(item, /\r/g, ""));
-            if (item != "")
-                push(result, item);
-        }
-    }
-
-    return result;
-}
-
 function combined_domain_valid(value) {
     value = trim(as_string(value));
     if (value == "")
@@ -383,7 +363,7 @@ function combined_domain_valid(value) {
 }
 
 function combined_domain_text_valid(value) {
-    for (let item in text_list_values(value))
+    for (let item in rule_config.text_list_values(value, "comma-space"))
         if (!combined_domain_valid(item))
             return false;
     return true;

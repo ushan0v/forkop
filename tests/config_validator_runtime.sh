@@ -97,6 +97,7 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
       "urltest_include_countries": [ "US" ],
       "urltest_exclude_regex": [ "bad.*" ],
       "detect_server_country": "flag_emoji",
+      "domain": "commented.example # keep this note\nfull:exact-comment.example // and this note\nkeyword:clip",
       "domain_suffix": [ "example.org", "сайт.рф", "full:exact.example", "full:full:legacy.example", "full:пример.испытание", "keyword:video", "keyword:пример", "regex:^api[.]example$", "regex:^сайт[.]рф$" ],
       "domain_suffix_text": "text.example\nmünich.example\nkeyword:stream",
       "community_lists": [ "discord" ],

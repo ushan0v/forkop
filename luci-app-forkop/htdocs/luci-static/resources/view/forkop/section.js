@@ -4489,12 +4489,34 @@ function uniqueDomainTextValues(values) {
   });
 }
 
+function appendUniqueDomainTextValues(textValue, values) {
+  const originalText = typeof textValue === "string" ? textValue : "";
+  const seen = new Set(
+    main.parseValueList(originalText).map((value) => `${value}`.toLowerCase()),
+  );
+  const additions = uniqueDomainTextValues(values).filter((value) => {
+    const key = `${value}`.toLowerCase();
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+
+  if (!additions.length) {
+    return originalText;
+  }
+
+  const base = originalText.replace(/\s+$/, "");
+  return [base, ...additions].filter(Boolean).join("\n");
+}
+
 function loadCombinedDomainText(section_id) {
   const textValue =
     uci.get(UCI_PACKAGE, section_id, "domain") ||
     uci.get(UCI_PACKAGE, section_id, "domain_suffix_text");
-  const values = uniqueDomainTextValues([
-    ...(textValue ? main.parseValueList(textValue) : []),
+  const values = [
     ...domainValuesWithPrefix(section_id, "domain_suffix", ""),
     ...domainValuesWithPrefix(section_id, "domain_keyword", "keyword"),
     ...domainValuesWithPrefix(section_id, "domain_regex", "regex"),
@@ -4502,9 +4524,9 @@ function loadCombinedDomainText(section_id) {
     ...domainTextValuesWithPrefix(section_id, "domain", "full"),
     ...domainTextValuesWithPrefix(section_id, "domain_keyword", "keyword"),
     ...domainTextValuesWithPrefix(section_id, "domain_regex", "regex"),
-  ]);
+  ];
 
-  return valuesToText(values);
+  return appendUniqueDomainTextValues(textValue, values);
 }
 
 function analyzeIpCidrText(value) {

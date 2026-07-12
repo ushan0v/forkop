@@ -320,6 +320,7 @@ function has_community_subnet_list(value) {
 }
 
 return {
+    text_list_values,
     normalize_port_number_value,
     normalize_port_condition_value,
     normalize_port_range_value,

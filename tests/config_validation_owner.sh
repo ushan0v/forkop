@@ -7,6 +7,9 @@ FORKOP_BIN="$FORKOP_FILES/usr/bin/forkop"
 FORKOP_LIB="$FORKOP_FILES/usr/lib"
 CLI_UC="$FORKOP_BIN"
 VALIDATOR="$FORKOP_LIB/config/validator.uc"
+RULE_CONFIG="$FORKOP_LIB/config/rule.uc"
+GENERATOR="$FORKOP_LIB/singbox/generator.uc"
+SECTION_JS="$ROOT_DIR/luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js"
 LIFECYCLE="$FORKOP_LIB/service/lifecycle.uc"
 
 fail() {
@@ -32,6 +35,14 @@ grep -Fq 'mode == "mwan3-is-active"' "$VALIDATOR" ||
   fail "config validator must own mwan3 runtime predicate"
 grep -Fq 'require("core.uci")' "$VALIDATOR" ||
   fail "config validator must use core.uci for runtime UCI access"
+grep -Fq 'text_list_values,' "$RULE_CONFIG" ||
+  fail "config.rule must export the shared comment-aware text parser"
+grep -Fq 'rule_config.text_list_values(value, "comma-space")' "$VALIDATOR" ||
+  fail "domain validation must use the shared comment-aware text parser"
+grep -Fq 'rule_config.text_list_values(option(section, "domain", ""), "comma-space")' "$GENERATOR" ||
+  fail "sing-box domain generation must use the shared comment-aware text parser"
+grep -Fq 'return appendUniqueDomainTextValues(textValue, values);' "$SECTION_JS" ||
+  fail "Domains field loading must preserve the original combined text"
 if grep -n -E 'require\("uci"\)\.cursor|uci -q|uci", "-q"|command_output\("uci' "$VALIDATOR" >/dev/null 2>&1; then
   fail "config validator must not own direct UCI cursor or CLI access"
 fi

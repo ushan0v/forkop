@@ -2303,13 +2303,20 @@ function split_condition_text(value) {
 
 function legacy_condition_values(section, key) {
     let raw_values = object_or_empty(section)[key];
+    let domain_key = key == "domain" || key == "domain_suffix" ||
+        key == "domain_keyword" || key == "domain_regex";
     let list_values = type(raw_values) == "array"
         ? raw_values
         : [];
-    let option_text_values = type(raw_values) == "array"
+    let option_text_values = type(raw_values) == "array" || key == "domain"
         ? []
-        : split_condition_text(raw_values);
-    let text_values = split_condition_text(option(section, key + "_text", ""));
+        : (domain_key
+            ? rule_config.text_list_values(raw_values, "comma-space")
+            : split_condition_text(raw_values));
+    let text_value = option(section, key + "_text", "");
+    let text_values = domain_key
+        ? rule_config.text_list_values(text_value, "comma-space")
+        : split_condition_text(text_value);
 
     if (bool_option(section, key + "_text_mode", false) || bool_option(section, "conditions_text_mode", false))
         return text_values;
@@ -2323,11 +2330,11 @@ function legacy_condition_values(section, key) {
 function combined_domain_source_values(section) {
     let values = [];
     if (type(object_or_empty(section)["domain"]) != "array") {
-        for (let value in split_condition_text(option(section, "domain", "")))
+        for (let value in rule_config.text_list_values(option(section, "domain", ""), "comma-space"))
             if (as_string(value) != "")
                 push(values, as_string(value));
     }
-    for (let value in split_condition_text(option(section, "domain_suffix_text", "")))
+    for (let value in rule_config.text_list_values(option(section, "domain_suffix_text", ""), "comma-space"))
         if (as_string(value) != "")
             push(values, as_string(value));
     for (let value in list_option(section, "domain_suffix"))
