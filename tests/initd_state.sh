@@ -123,6 +123,30 @@ if initd_ucode start-retry-pending "$start_retry_file" >/dev/null 2>&1; then
   fail "cleared start retry marker should not be pending"
 fi
 
+retry_pid_file="$WORK_DIR/start-retry.pid"
+retry_call_file="$WORK_DIR/start-retry.called"
+retry_service="$WORK_DIR/forkop-init"
+cat >"$retry_service" <<EOF
+#!/bin/sh
+printf '%s\n' "\$1" >>"$retry_call_file"
+EOF
+chmod +x "$retry_service"
+FORKOP_SERVICE_INIT="$retry_service" \
+  FORKOP_START_RETRY_PID_FILE="$retry_pid_file" \
+  FORKOP_START_RETRY_DELAY_SECONDS=1 \
+  initd_ucode schedule-start-retry >/dev/null ||
+  fail "failed start should schedule an automatic retry"
+[ -s "$retry_pid_file" ] ||
+  fail "scheduled automatic retry should record its worker pid"
+for _ in 1 2 3 4 5; do
+  [ -s "$retry_call_file" ] && break
+  sleep 1
+done
+grep -Fxq 'retry_start_on_wan_up' "$retry_call_file" ||
+  fail "scheduled automatic retry should call the marker-gated retry action"
+[ ! -e "$retry_pid_file" ] ||
+  fail "automatic retry worker should clear its pid before retrying"
+
 [ "$(initd_ucode retry-start-on-wan-up-action 1 1 1)" = "skip_running" ] ||
   fail "WAN retry should skip when runtime is already running"
 [ "$(initd_ucode retry-start-on-wan-up-action 0 0 1)" = "skip_disabled" ] ||
@@ -215,6 +239,8 @@ grep -Fq 'mode == "retry-start-on-wan-up"' "$INITD_UC" ||
   fail "service/initd.uc must expose the complete WAN retry entrypoint"
 grep -Fq 'mode == "retry-start-on-wan-up-action"' "$INITD_UC" ||
   fail "service/initd.uc must expose the WAN retry decision fixture"
+grep -Fq 'schedule_start_retry(START_RETRY_PID_FILE, START_RETRY_DELAY_SECONDS)' "$INITD_UC" ||
+  fail "failed service start must schedule a retry even if WAN is already up"
 grep -Fq 'start_retry_pending(START_RETRY_FILE)' "$INITD_UC" ||
   fail "WAN retry must be gated by a failed-start marker"
 service_enabled_line="$(grep -nF 'function service_is_enabled()' "$INITD_UC" | head -n1 | cut -d: -f1)"

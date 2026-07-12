@@ -23,6 +23,8 @@ const RELOAD_LOCK_DIR = getenv("FORKOP_RELOAD_LOCK_DIR") || "/var/run/forkop.rel
 const RUNTIME_STATE_DIR = getenv("FORKOP_RUNTIME_STATE_DIR") || "/var/run/forkop";
 const PENDING_RELOAD_FILE = getenv("FORKOP_PENDING_RELOAD_FILE") || RUNTIME_STATE_DIR + "/reload.pending";
 const START_RETRY_FILE = getenv("FORKOP_START_RETRY_FILE") || RUNTIME_STATE_DIR + "/start.retry";
+const START_RETRY_PID_FILE = getenv("FORKOP_START_RETRY_PID_FILE") || RUNTIME_STATE_DIR + "/start-retry.pid";
+const START_RETRY_DELAY_SECONDS = getenv("FORKOP_START_RETRY_DELAY_SECONDS") || "30";
 const SERVICE_TRIGGER_SYNC_FILE = getenv("FORKOP_SERVICE_TRIGGER_SYNC_FILE") || RUNTIME_STATE_DIR + "/service-triggers.sync";
 const INTERNAL_CONFIG_TRIGGER_GUARD = getenv("FORKOP_INTERNAL_CONFIG_TRIGGER_GUARD") || "/var/run/forkop.internal-config-change";
 const CONFIG_CHANGE_REASON = getenv("FORKOP_CONFIG_CHANGE_REASON") || "on_config_change";
@@ -245,6 +247,40 @@ function clear_start_retry(path) {
 
 function start_retry_pending(path) {
     return file_exists(as_string(path || START_RETRY_FILE));
+}
+
+function cancel_scheduled_start_retry(path) {
+    path = as_string(path || START_RETRY_PID_FILE);
+    let pid = first_line_value(path);
+    if (pid_alive(pid))
+        command_success_from_args([ "kill", pid ]);
+    if (file_exists(path))
+        unlink_file(path);
+}
+
+function schedule_start_retry(path, delay_seconds) {
+    path = as_string(path || START_RETRY_PID_FILE);
+    delay_seconds = as_string(delay_seconds || START_RETRY_DELAY_SECONDS);
+    if (!numeric_text(delay_seconds))
+        delay_seconds = "30";
+
+    let scheduled_pid = first_line_value(path);
+    if (pid_alive(scheduled_pid))
+        return true;
+    if (file_exists(path))
+        unlink_file(path);
+    if (!ensure_parent_dir(path))
+        return false;
+
+    let worker = command_from_args([ "sleep", delay_seconds ]) +
+        "; " + command_from_args([ "rm", "-f", path ]) +
+        "; exec " + command_from_args([ SERVICE_INIT, "retry_start_on_wan_up" ]);
+    let result = command_capture(command_from_args([ "sh", "-c", worker ]) + " >/dev/null 2>&1 & echo $!");
+    let pid = trim(result.output);
+    if (result.status != 0 || !numeric_text(pid))
+        return false;
+
+    return write_text_file(path, pid + "\n");
 }
 
 function consume_pending_reload(path) {
@@ -492,11 +528,14 @@ function start_service(reason, owner_pid) {
         return 1;
 
     let status = command_status_from_args([ BIN_PATH, "start" ]);
-    if (status == 0)
+    if (status == 0) {
         clear_start_retry(START_RETRY_FILE);
+        cancel_scheduled_start_retry(START_RETRY_PID_FILE);
+    }
     else {
         mark_start_retry(START_RETRY_FILE, as_string(reason) == "triggered" ? "wan_retry_failed" : "start_failed");
-        command_success_from_args([ "logger", "-t", SERVICE_NAME, "[warn] Forkop start failed; will retry after WAN comes up" ]);
+        schedule_start_retry(START_RETRY_PID_FILE, START_RETRY_DELAY_SECONDS);
+        command_success_from_args([ "logger", "-t", SERVICE_NAME, "[warn] Forkop start failed; scheduled an automatic retry" ]);
     }
     finish_external_service_action("start", plan.job_id, status);
     return status;
@@ -525,6 +564,7 @@ function stop_finish(job_id, status) {
 
 function stop_service(owner_pid) {
     clear_start_retry(START_RETRY_FILE);
+    cancel_scheduled_start_retry(START_RETRY_PID_FILE);
     let job_id = begin_external_service_action("stop", "initd", owner_pid);
     if (!file_executable(BIN_PATH)) {
         restore_dnsmasq_failsafe();
@@ -671,6 +711,10 @@ else if (mode == "clear-start-retry")
     clear_start_retry(ARGV[1]);
 else if (mode == "start-retry-pending")
     exit(start_retry_pending(ARGV[1]) ? 0 : 1);
+else if (mode == "schedule-start-retry")
+    exit(schedule_start_retry(ARGV[1], ARGV[2]) ? 0 : 1);
+else if (mode == "cancel-scheduled-start-retry")
+    cancel_scheduled_start_retry(ARGV[1]);
 else if (mode == "begin-action") {
     let job_id = begin_external_service_action(ARGV[1], ARGV[2] || "initd", ARGV[3]);
     if (job_id != "")
