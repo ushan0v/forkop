@@ -1855,6 +1855,42 @@ function migrate_legacy_outbound_json_detour(ctx, section, legacy_connection_kin
 
 function migrate_outbound_json_list(ctx, section, legacy_connection_kind) {
     migrate_legacy_outbound_json_detour(ctx, section, legacy_connection_kind);
+
+    let outbound_json = option(section, "outbound_json", "");
+    if (outbound_json != "") {
+        let outbound;
+        try {
+            outbound = json(outbound_json);
+        }
+        catch (e) {
+            outbound = null;
+        }
+
+        if (type(outbound) == "object" && trim(as_string(outbound.tag || "")) == "") {
+            let existing = option_list_values(section, "outbound_jsons");
+            let taken = {};
+            for (let value in existing) {
+                try {
+                    let item = json(value);
+                    let tag_name = type(item) == "object" ? trim(as_string(item.tag || "")) : "";
+                    if (tag_name != "")
+                        taken[tag_name] = true;
+                }
+                catch (e) {
+                }
+            }
+
+            let base = singbox_constants_module.outbound_tag(
+                section_name(section) + "-json-" + (length(existing) + 1)
+            );
+            let tag_name = base;
+            for (let suffix = 1; taken[tag_name]; suffix++)
+                tag_name = base + "-" + suffix;
+            outbound.tag = tag_name;
+            set_option(ctx, section, "outbound_json", sprintf("%J", outbound));
+        }
+    }
+
     normalize_connections_list(ctx, section, "outbound_json", "outbound_jsons");
 }
 

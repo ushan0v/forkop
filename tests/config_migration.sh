@@ -141,6 +141,13 @@ const fixture = {
       outbound_json: '{"type":"socks","server":"127.0.0.1","server_port":1080,"version":"5"}',
       outbound_detour_enabled: '1',
       outbound_detour_section: 'legacy-url'
+    },
+    {
+      '.name': 'legacy-outbound-collision',
+      '.type': 'section',
+      action: 'outbound',
+      outbound_jsons: [ '{"type":"direct","tag":"legacy-outbound-collision-json-2-out"}' ],
+      outbound_json: '{"type":"socks","server":"127.0.0.2","server_port":1080}'
     }
   ]
 };
@@ -323,9 +330,15 @@ absent(legacyVpn, 'domain_resolver_dns_server', 'legacy-vpn');
 const legacyOutbound = sections['legacy-outbound'];
 assert(legacyOutbound.action === 'connection', 'outbound action inferred');
 assert(Array.isArray(legacyOutbound.outbound_jsons) && legacyOutbound.outbound_jsons.length === 1, 'legacy JSON outbound migrated to list');
-assert(JSON.parse(legacyOutbound.outbound_jsons[0]).detour === 'legacy-url-out', 'legacy JSON cascade embedded in outbound');
+const migratedLegacyOutbound = JSON.parse(legacyOutbound.outbound_jsons[0]);
+assert(migratedLegacyOutbound.detour === 'legacy-url-out', 'legacy JSON cascade embedded in outbound');
+assert(migratedLegacyOutbound.tag === 'legacy-outbound-json-1-out', 'legacy tagless JSON outbound gets a stable list tag');
 absent(legacyOutbound, 'outbound_detour_enabled', 'legacy-outbound');
 absent(legacyOutbound, 'outbound_detour_section', 'legacy-outbound');
+
+const legacyOutboundCollision = sections['legacy-outbound-collision'];
+assert(legacyOutboundCollision.outbound_jsons.length === 2, 'legacy JSON outbound is appended to an existing list');
+assert(JSON.parse(legacyOutboundCollision.outbound_jsons[1]).tag === 'legacy-outbound-collision-json-2-out-1', 'legacy JSON outbound tag avoids existing list tags');
 
 assert(out.removed_caches.includes('/tmp/sing-box/subscriptions/legacy-sub.json'), 'subscription runtime cache removal');
 assert(out.removed_caches.includes('/var/run/forkop/section-cache/legacy-sub.json'), 'section cache removal');
