@@ -15,6 +15,7 @@ function env(name, fallback) {
 const CONFIG_NAME = env("FORKOP_CONFIG_NAME", "forkop");
 const RT_TABLES_PATH = env("FORKOP_RT_TABLES", "/etc/iproute2/rt_tables");
 const BIN_PATH = env("FORKOP_BIN", "/usr/bin/forkop");
+const INIT_PATH = env("FORKOP_INIT", "/etc/init.d/forkop");
 const DNS_APPLY_UC = env("FORKOP_DNS_APPLY_UC", "/usr/lib/forkop/dns/apply.uc");
 const SING_BOX_INIT = env("FORKOP_SING_BOX_INIT", "/etc/init.d/sing-box");
 const SING_BOX_BIN = env("FORKOP_SING_BOX_BIN", "/usr/bin/sing-box");
@@ -111,13 +112,12 @@ function prerm_cleanup() {
     if (env("IPKG_INSTROOT", "") != "")
         return true;
 
-    remove_rt_tables_entry();
     if (!PACKAGE_TEST_MODE) {
-        command_success_from_args([ "/etc/init.d/forkop", "stop" ]);
+        command_success_from_args([ INIT_PATH, "stop" ]);
         restore_dnsmasq_if_needed();
         remove_managed_sing_box();
     }
-    return true;
+    return remove_rt_tables_entry();
 }
 
 function luci_cache_globs() {

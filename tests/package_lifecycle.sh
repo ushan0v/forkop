@@ -67,6 +67,33 @@ fi
 grep -Fq '200 custom' "$rt_tables" ||
   fail "package prerm must preserve unrelated rt_tables entries"
 
+cat >"$WORK_DIR/forkop-init" <<'SH'
+#!/usr/bin/env bash
+grep -Fq '105 forkop' "${FORKOP_RT_TABLES:?}" || exit 1
+printf '%s\n' 'stop-with-route-table' >>"${FORKOP_STOP_LOG:?}"
+SH
+chmod 0755 "$WORK_DIR/forkop-init"
+cat >"$WORK_DIR/stop-order.state" <<'EOF_UCI'
+forkop.settings=settings
+forkop.settings.dont_touch_dhcp=1
+EOF_UCI
+printf '105 forkop\n' >"$WORK_DIR/rt_tables_stop_order"
+: >"$WORK_DIR/stop-order.log"
+FORKOP_UCI_STATE_FILE="$WORK_DIR/stop-order.state" \
+FORKOP_INIT="$WORK_DIR/forkop-init" \
+FORKOP_STOP_LOG="$WORK_DIR/stop-order.log" \
+FORKOP_BIN="$WORK_DIR/missing-forkop-bin" \
+FORKOP_DNS_APPLY_UC="$WORK_DIR/missing-dns-apply.uc" \
+FORKOP_SING_BOX_INIT="$WORK_DIR/missing-sing-box-init" \
+FORKOP_SING_BOX_BIN="$WORK_DIR/missing-sing-box-bin" \
+FORKOP_SING_BOX_CRONET="$WORK_DIR/missing-cronet" \
+FORKOP_RT_TABLES="$WORK_DIR/rt_tables_stop_order" \
+  ucode -L "$FORKOP_LIB" "$PACKAGE_UC" prerm
+grep -Fxq 'stop-with-route-table' "$WORK_DIR/stop-order.log" ||
+  fail "package prerm must stop Forkop before removing its routing table name"
+[ ! -s "$WORK_DIR/rt_tables_stop_order" ] ||
+  fail "package prerm must remove the routing table name after Forkop stops"
+
 touch "$WORK_DIR/luci-indexcache.one" "$WORK_DIR/luci-indexcache.two"
 FORKOP_PACKAGE_TEST_MODE=1 FORKOP_LUCI_CACHE_GLOBS="$WORK_DIR/luci-indexcache*" \
   ucode -L "$FORKOP_LIB" "$PACKAGE_UC" luci-postinst
