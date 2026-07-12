@@ -282,19 +282,20 @@ function valid_transport_service_name(value) {
     return regex_matches(value, "^[A-Za-z0-9_.-]+$");
 }
 
-function mtproto_base_secret_from_value(value) {
+function mtproto_base_secret_value(value) {
     value = lc(as_string(value));
-    if (regex_matches(value, "^[0-9a-f]{32}$")) {
-        print(value, "\n");
-        return;
-    }
+    if (regex_matches(value, "^[0-9a-f]{32}$"))
+        return value;
+    if (regex_matches(value, "^ee[0-9a-f]{32}([0-9a-f]{2})+$"))
+        return substr(value, 2, 32);
+    return "";
+}
 
-    if (regex_matches(value, "^ee[0-9a-f]{32}([0-9a-f]{2})+$")) {
-        print(substr(value, 2, 32), "\n");
-        return;
-    }
-
-    exit(1);
+function mtproto_base_secret_from_value(value) {
+    let result = mtproto_base_secret_value(value);
+    if (result == "")
+        exit(1);
+    print(result, "\n");
 }
 
 function hex_digit_value(value) {
@@ -306,18 +307,20 @@ function hex_digit_value(value) {
     return -1;
 }
 
-function hex_to_string(value) {
+function hex_to_string_value(value) {
     value = as_string(value);
     if (length(value) == 0 || length(value) % 2 != 0 || !regex_matches(value, "^([0-9a-fA-F]{2})+$"))
-        exit(1);
+        return null;
 
+    let result = "";
     for (let i = 0; i < length(value); i += 2) {
         let high = hex_digit_value(substr(value, i, 1));
         let low = hex_digit_value(substr(value, i + 1, 1));
         if (high < 0 || low < 0)
-            exit(1);
-        print(chr(high * 16 + low));
+            return null;
+        result += chr(high * 16 + low);
     }
+    return result;
 }
 
 function string_to_hex(value) {
@@ -326,11 +329,19 @@ function string_to_hex(value) {
         print(sprintf("%02x", ord(substr(value, i, 1))));
 }
 
-function mtproto_faketls_from_secret(value) {
+function mtproto_faketls_value(value) {
     value = lc(as_string(value));
     if (!regex_matches(value, "^ee[0-9a-f]{32}([0-9a-f]{2})+$"))
+        return "";
+    let result = hex_to_string_value(substr(value, 34));
+    return result == null ? "" : result;
+}
+
+function mtproto_faketls_from_secret(value) {
+    let result = mtproto_faketls_value(value);
+    if (result == "")
         exit(1);
-    hex_to_string(substr(value, 34));
+    print(result);
 }
 
 function mtproto_build_secret(base, faketls, padding) {
@@ -823,21 +834,8 @@ function server_prepare_legacy_user_defaults(section, protocol) {
     else if (protocol == "shadowsocks" || protocol == "socks" || protocol == "trojan" || protocol == "hysteria2")
         server_default_set_option(section, "server_password", credential);
     else if (protocol == "mtproto") {
-        let mtproto_faketls = "";
-        try {
-            let capture = output("ucode " + shell_quote(getenv("FORKOP_SERVER_RUNTIME_UC") || "/usr/lib/forkop/server/service.uc") + " mtproto-faketls-from-secret " + shell_quote(credential) + " 2>/dev/null");
-            mtproto_faketls = capture;
-        }
-        catch (e) {
-            mtproto_faketls = "";
-        }
-        let base_secret = "";
-        try {
-            base_secret = output("ucode " + shell_quote(getenv("FORKOP_SERVER_RUNTIME_UC") || "/usr/lib/forkop/server/service.uc") + " mtproto-base-secret " + shell_quote(credential) + " 2>/dev/null");
-        }
-        catch (e) {
-            base_secret = "";
-        }
+        let mtproto_faketls = mtproto_faketls_value(credential);
+        let base_secret = mtproto_base_secret_value(credential);
         server_default_set_option(section, "mtproto_secret", base_secret != "" ? base_secret : credential);
         server_default_set_option(section, "mtproto_faketls", mtproto_faketls != "" ? mtproto_faketls : "google.com");
         server_default_set_option(section, "mtproto_padding", "1");
@@ -940,8 +938,8 @@ function prepare_server_defaults(section) {
         let mtproto_faketls = "";
         let mtproto_base_secret = "";
         if (mtproto_secret != "") {
-            mtproto_faketls = output("ucode " + shell_quote(getenv("FORKOP_SERVER_RUNTIME_UC") || "/usr/lib/forkop/server/service.uc") + " mtproto-faketls-from-secret " + shell_quote(mtproto_secret) + " 2>/dev/null");
-            mtproto_base_secret = output("ucode " + shell_quote(getenv("FORKOP_SERVER_RUNTIME_UC") || "/usr/lib/forkop/server/service.uc") + " mtproto-base-secret " + shell_quote(mtproto_secret) + " 2>/dev/null");
+            mtproto_faketls = mtproto_faketls_value(mtproto_secret);
+            mtproto_base_secret = mtproto_base_secret_value(mtproto_secret);
         }
         if (mtproto_base_secret == "")
             mtproto_base_secret = server_generate_mtproto_secret();

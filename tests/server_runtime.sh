@@ -67,6 +67,9 @@ export FORKOP_SERVER_RUNTIME_UC="$SERVER_RUNTIME"
 if grep -E 'uci -q|command -v uci' "$SERVER_RUNTIME" >/dev/null; then
   fail "server/service.uc must use ucode UCI access instead of shelling out to uci"
 fi
+if grep -F 'output("ucode "' "$SERVER_RUNTIME" >/dev/null; then
+  fail "server defaults must not spawn service.uc without the Forkop module path"
+fi
 
 cat >"$STATE" <<'EOF_STATE'
 forkop.vless=server
@@ -79,6 +82,12 @@ forkop.tailscale=server
 forkop.tailscale.protocol=tailscale
 forkop.json=server
 forkop.json.protocol=json_inbound
+forkop.mtproto=server
+forkop.mtproto.protocol=mtproto
+forkop.mtproto.mtproto_secret=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+forkop.mtproto_legacy=server
+forkop.mtproto_legacy.protocol=mtproto
+forkop.mtproto_legacy.server_users=client|eebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb676f6f676c652e636f6d
 EOF_STATE
 
 ucode -L "$UCODE_LIB" "$SERVER_RUNTIME" prepare-all-defaults
@@ -109,6 +118,13 @@ assert_value forkop.tailscale.tailscale_control_url https://controlplane.tailsca
 assert_value forkop.tailscale.tailscale_hostname forkop-tailscale
 assert_value forkop.tailscale.tailscale_advertise_exit_node 1
 assert_value forkop.json.security none
+assert_value forkop.mtproto.mtproto_secret aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+assert_value forkop.mtproto_legacy.mtproto_secret bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+assert_value forkop.mtproto_legacy.mtproto_faketls google.com
 grep -Fxq 'commit forkop' "$LOG" || fail 'expected config commit'
+
+: >"$LOG"
+ucode -L "$UCODE_LIB" "$SERVER_RUNTIME" prepare-all-defaults
+[ ! -s "$LOG" ] || fail 'unchanged MTProto defaults must not rewrite or commit configuration on every reload'
 
 printf 'server runtime checks passed\n'
