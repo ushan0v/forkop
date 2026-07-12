@@ -1269,6 +1269,9 @@ function append_sing_box_server_signature_body(body, server) {
     if (enabled != "1")
         return body;
 
+    if (option(server, "protocol", "vless") == "socks")
+        body = signature_add_value(body, prefix + ".socks_auth_enabled", bool_option_value(server, "socks_auth_enabled", true));
+
     let fields = [
         [ "label", name ],
         [ "protocol", "vless" ],

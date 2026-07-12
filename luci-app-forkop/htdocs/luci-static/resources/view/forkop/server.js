@@ -606,6 +606,14 @@ function getSocksUsername(sectionId) {
   );
 }
 
+function isSocksAuthenticationEnabled(sectionId) {
+  const value = `${
+    uci.get(UCI_PACKAGE, sectionId, "socks_auth_enabled") ?? "1"
+  }`.toLowerCase();
+
+  return !["0", "false", "no", "off"].includes(value);
+}
+
 function getDefaultSecurity(protocol) {
   if (protocol === "vless") {
     return "reality";
@@ -1043,6 +1051,7 @@ function ensureProtocolDefaults(sectionId, protocol, forceProtocolDefaults) {
   }
 
   if (protocol === "socks") {
+    setDefault(sectionId, "socks_auth_enabled", "1");
     setDefault(sectionId, "server_username", getServerName(sectionId));
   }
 
@@ -1321,8 +1330,11 @@ function buildSocksLink(sectionId, identity) {
   const uriHost = formatHostForUri(host);
   const port = uci.get(UCI_PACKAGE, sectionId, "listen_port") || "";
   const username = identity.username || identity.name || sectionId;
+  const userInfo = isSocksAuthenticationEnabled(sectionId)
+    ? `${encodeURIComponent(username)}:${encodeURIComponent(identity.password)}@`
+    : "";
 
-  return `socks5://${encodeURIComponent(username)}:${encodeURIComponent(identity.password)}@${uriHost}:${port}#${encodeURIComponent(identity.name || sectionId)}`;
+  return `socks5://${userInfo}${uriHost}:${port}#${encodeURIComponent(identity.name || sectionId)}`;
 }
 
 function normalizeSha256(value) {
@@ -2822,6 +2834,16 @@ function createServerContent(section, options = {}) {
   o.validate = validateRequired;
   o.depends("protocol", "shadowsocks");
 
+  o = section.option(
+    form.Flag,
+    "socks_auth_enabled",
+    _("Enable authentication"),
+  );
+  o.default = "1";
+  o.rmempty = false;
+  o.modalonly = true;
+  o.depends("protocol", "socks");
+
   o = section.option(form.Value, "server_username", _("Username"));
   o.modalonly = true;
   o.rmempty = false;
@@ -2836,7 +2858,7 @@ function createServerContent(section, options = {}) {
     uci.set(UCI_PACKAGE, sectionId, "server_username", value);
     return value;
   };
-  o.depends("protocol", "socks");
+  o.depends({ protocol: "socks", socks_auth_enabled: "1" });
 
   o = section.option(form.Value, "server_password", _("Password"));
   o.modalonly = true;
@@ -2852,7 +2874,7 @@ function createServerContent(section, options = {}) {
     uci.set(UCI_PACKAGE, sectionId, "server_password", value);
     return value;
   };
-  o.depends("protocol", "socks");
+  o.depends({ protocol: "socks", socks_auth_enabled: "1" });
 
   o = section.option(form.Value, "vmess_alter_id", _("Alter ID"));
   o.default = "0";

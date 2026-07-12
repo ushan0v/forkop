@@ -78,6 +78,10 @@ forkop.vless.server_users=client|22222222-2222-4222-8222-222222222222|xtls-rprx-
 forkop.socks=server
 forkop.socks.protocol=socks
 forkop.socks.label=desk
+forkop.socks_open=server
+forkop.socks_open.protocol=socks
+forkop.socks_open.label=guest
+forkop.socks_open.socks_auth_enabled=0
 forkop.tailscale=server
 forkop.tailscale.protocol=tailscale
 forkop.json=server
@@ -111,8 +115,12 @@ assert_value forkop.vless.reality_short_id abcd1234
 assert_value forkop.vless.reality_private_key private-key
 assert_value forkop.vless.reality_public_key public-key
 assert_value forkop.socks.security none
+assert_value forkop.socks.socks_auth_enabled 1
 assert_value forkop.socks.server_username desk
 assert_value forkop.socks.server_password generated-password
+assert_value forkop.socks_open.socks_auth_enabled 0
+assert_value forkop.socks_open.server_username guest
+assert_value forkop.socks_open.server_password generated-password
 assert_value forkop.tailscale.security none
 assert_value forkop.tailscale.tailscale_control_url https://controlplane.tailscale.com
 assert_value forkop.tailscale.tailscale_hostname forkop-tailscale

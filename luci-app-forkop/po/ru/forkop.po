@@ -551,6 +551,9 @@ msgstr "Изменить"
 msgid "Enable"
 msgstr "Включить"
 
+msgid "Enable authentication"
+msgstr "Включить авторизацию"
+
 msgid "Enable automatic updates for remote lists and rule sets"
 msgstr "Включить автоматическое обновление удалённых списков и наборов правил"
 

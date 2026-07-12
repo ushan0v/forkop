@@ -1316,6 +1316,13 @@
     ]
   },
   {
+    "call": "Enable authentication",
+    "key": "Enable authentication",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/server.js:2840"
+    ]
+  },
+  {
     "call": "Enable automatic updates for remote lists and rule sets",
     "key": "Enable automatic updates for remote lists and rule sets",
     "places": [

@@ -954,8 +954,11 @@ function prepare_server_defaults(section) {
         server_default_set_option(section, "mtproto_handshake_timeout", "10s");
     }
 
-    if (protocol == "socks" && uci_get(config_path(section, "server_username")) == "")
-        server_default_set_option(section, "server_username", config_get(section, "label", section));
+    if (protocol == "socks") {
+        server_default_set_option(section, "socks_auth_enabled", "1");
+        if (uci_get(config_path(section, "server_username")) == "")
+            server_default_set_option(section, "server_username", config_get(section, "label", section));
+    }
     if (protocol == "vless")
         server_default_set_option(section, "vless_flow", "none");
     if (protocol == "vmess")

@@ -202,9 +202,11 @@ function add_standard_inbound(config, section, protocol, tag_name) {
         inbound.password = option(section, "server_password", "");
     }
     else if (protocol == "socks") {
-        let server_users = users(section, protocol);
-        if (length(server_users) > 0)
-            inbound.users = server_users;
+        if (bool_option(section, "socks_auth_enabled", true)) {
+            let server_users = users(section, protocol);
+            if (length(server_users) > 0)
+                inbound.users = server_users;
+        }
     }
     else if (protocol == "hysteria2") {
         inbound.users = users(section, protocol);

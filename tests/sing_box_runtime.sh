@@ -278,6 +278,18 @@ cat >"$WORK_DIR/server-inbound-fixture.json" <<'JSON'
       "server_username": "tester",
       "server_password": "secret",
       "routing_mode": "direct"
+    },
+    {
+      ".name": "open",
+      ".type": "server",
+      "enabled": "1",
+      "protocol": "socks",
+      "listen": "0.0.0.0",
+      "listen_port": "18081",
+      "socks_auth_enabled": "0",
+      "server_username": "ignored",
+      "server_password": "ignored",
+      "routing_mode": "direct"
     }
   ]
 }
@@ -1136,7 +1148,10 @@ assert(defaults.dns.strategy == "prefer_ipv4", "missing DNS strategy keeps the p
 let server = cfg("server");
 let socks = inbound(server, "server-edge-in");
 assert(socks && socks.type == "socks" && socks.listen_port == 18080, "server socks inbound");
-assert(socks.users && socks.users[0].username == "tester", "server socks auth");
+assert(socks.users && socks.users[0].username == "tester", "legacy server socks auth defaults to enabled");
+let open_socks = inbound(server, "server-open-in");
+assert(open_socks && open_socks.type == "socks" && open_socks.listen_port == 18081, "server open socks inbound");
+assert(open_socks.users == null, "disabled server socks auth omits users");
 assert(route_rule(server, r => r.inbound == "server-edge-in" && r.outbound == "direct-out") != null, "server direct route");
 
 let matchers = cfg("matchers");

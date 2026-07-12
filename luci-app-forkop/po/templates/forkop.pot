@@ -798,6 +798,10 @@ msgstr ""
 msgid "Enable"
 msgstr ""
 
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/server.js:2840
+msgid "Enable authentication"
+msgstr ""
+
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:457
 msgid "Enable automatic updates for remote lists and rule sets"
 msgstr ""
