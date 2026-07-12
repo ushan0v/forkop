@@ -2313,29 +2313,16 @@ function add_domain_ip_list_ruleset(config, section_name, rule_set_tags, dns_rul
         push(dns_rule_set_tags, tag_name);
 }
 
-function split_condition_text(value) {
-    value = replace(as_string(value), /[\t\r\n,]+/g, " ");
-    value = replace(value, / +/g, " ");
-    value = trim(value);
-    return value == "" ? [] : split(value, " ");
-}
-
 function legacy_condition_values(section, key) {
     let raw_values = object_or_empty(section)[key];
-    let domain_key = key == "domain" || key == "domain_suffix" ||
-        key == "domain_keyword" || key == "domain_regex";
     let list_values = type(raw_values) == "array"
         ? raw_values
         : [];
     let option_text_values = type(raw_values) == "array" || key == "domain"
         ? []
-        : (domain_key
-            ? rule_config.text_list_values(raw_values, "comma-space")
-            : split_condition_text(raw_values));
+        : rule_config.text_list_values(raw_values, "comma-space");
     let text_value = option(section, key + "_text", "");
-    let text_values = domain_key
-        ? rule_config.text_list_values(text_value, "comma-space")
-        : split_condition_text(text_value);
+    let text_values = rule_config.text_list_values(text_value, "comma-space");
 
     if (bool_option(section, key + "_text_mode", false) || bool_option(section, "conditions_text_mode", false))
         return text_values;
@@ -2498,7 +2485,7 @@ function add_port_matchers(rule, section) {
     let values = [];
     for (let value in list_option(section, "ports"))
         push(values, value);
-    for (let value in split_condition_text(option(section, "ports_text", "")))
+    for (let value in rule_config.text_list_values(option(section, "ports_text", ""), "comma-space"))
         push(values, value);
 
     let ports = [];
