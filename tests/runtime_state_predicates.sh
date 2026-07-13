@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
 STATE_UC="$ROOT_DIR/forkop/files/usr/lib/service/state.uc"
 NFT_UC="$ROOT_DIR/forkop/files/usr/lib/nft/apply.uc"
+UCODE_BIN="$(command -v ucode)"
 WORK_DIR="$(mktemp -d)"
 export ZAPRET_DEFAULT_NFQWS_OPT="--default-zapret"
 export ZAPRET2_DEFAULT_NFQWS2_OPT="--default-zapret2"
@@ -124,6 +125,62 @@ assert_eq "0" \
 assert_eq "0" \
   "$(state_ucode sing-box-reload-previous-pid-fixture missing old new)" \
   "missing sing-box PID replacement constraint"
+
+mkdir -p "$WORK_DIR/stable-start-bin"
+cp "$(command -v sleep)" "$WORK_DIR/stable-start-bin/sing-box"
+cat >"$WORK_DIR/stable-start-bin/ubus" <<'SH'
+#!/usr/bin/env bash
+set -eo pipefail
+
+pid="$(cat "${SING_BOX_TEST_PID_FILE:?}")"
+if [ -r "/proc/$pid/exe" ] && [ "$(basename "$(readlink "/proc/$pid/exe")")" = "sing-box" ]; then
+  printf '{"sing-box":{"instances":{"instance1":{"running":true,"pid":%s}}}}\n' "$pid"
+else
+  printf '{"sing-box":{"instances":{}}}\n'
+fi
+SH
+cat >"$WORK_DIR/stable-start-bin/nft" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+cat >"$WORK_DIR/stable-start-bin/ucode" <<'SH'
+#!/usr/bin/env bash
+if [ "$#" -ge 4 ] && [ "$1" = "-L" ] && [ "${3##*/}" = "apply.uc" ] && [ "$4" = "tproxy-route-rule-present" ]; then
+  exit 0
+fi
+exec "${REAL_UCODE:?}" "$@"
+SH
+chmod 0755 "$WORK_DIR/stable-start-bin/ubus" "$WORK_DIR/stable-start-bin/nft" "$WORK_DIR/stable-start-bin/ucode"
+
+"$WORK_DIR/stable-start-bin/sing-box" 30 &
+sing_box_pid=$!
+printf '%s\n' "$sing_box_pid" >"$WORK_DIR/sing-box.pid"
+if ! PATH="$WORK_DIR/stable-start-bin:$PATH" \
+  REAL_UCODE="$UCODE_BIN" \
+  SING_BOX_TEST_PID_FILE="$WORK_DIR/sing-box.pid" \
+  state_ucode sing-box-service-running; then
+  kill "$sing_box_pid" >/dev/null 2>&1 || true
+  wait "$sing_box_pid" 2>/dev/null || true
+  fail "stable-start fixture must expose a running sing-box process"
+fi
+if ! PATH="$WORK_DIR/stable-start-bin:$PATH" \
+  REAL_UCODE="$UCODE_BIN" \
+  SING_BOX_TEST_PID_FILE="$WORK_DIR/sing-box.pid" \
+  state_ucode forkop-running forkop ForkopTable 0x00100000; then
+  kill "$sing_box_pid" >/dev/null 2>&1 || true
+  wait "$sing_box_pid" 2>/dev/null || true
+  fail "stable-start fixture must expose configured Forkop networking"
+fi
+if ! PATH="$WORK_DIR/stable-start-bin:$PATH" \
+  REAL_UCODE="$UCODE_BIN" \
+  SING_BOX_TEST_PID_FILE="$WORK_DIR/sing-box.pid" \
+  state_ucode wait-forkop-stable-start forkop ForkopTable 0x00100000 2 2; then
+  kill "$sing_box_pid" >/dev/null 2>&1 || true
+  wait "$sing_box_pid" 2>/dev/null || true
+  fail "stable-start wait must check runtime state after its final sleep"
+fi
+kill "$sing_box_pid" >/dev/null 2>&1 || true
+wait "$sing_box_pid" 2>/dev/null || true
 
 PENDING_RELOAD_FILE="$WORK_DIR/reload.pending"
 state_ucode mark-pending-reload "$PENDING_RELOAD_FILE" "reload_busy"

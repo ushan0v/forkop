@@ -577,7 +577,7 @@ function wait_forkop_stable_start(rt_table, nft_table, mark, min_age, timeout) {
         timeout--;
     }
 
-    return false;
+    return forkop_stably_running(rt_table, nft_table, mark, min_age);
 }
 
 function whitespace_fields(value) {

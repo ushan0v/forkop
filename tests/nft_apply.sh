@@ -107,11 +107,19 @@ set -eo pipefail
 } >> "${IP_LOG:?}"
 
 if [ "$#" -eq 4 ] && [ "$1" = "route" ] && [ "$2" = "list" ] && [ "$3" = "table" ]; then
+  if [ "${IP_ROUTE_LIST_FAIL:-0}" = "1" ]; then
+    printf 'Error: ipv4: FIB table does not exist\nDump terminated\n' >&2
+    exit 2
+  fi
   printf '%s\n' "${IP_ROUTE_OUTPUT:-}"
   exit 0
 fi
 
 if [ "$#" -eq 5 ] && [ "$1" = "-6" ] && [ "$2" = "route" ] && [ "$3" = "list" ] && [ "$4" = "table" ]; then
+  if [ "${IP_ROUTE6_LIST_FAIL:-0}" = "1" ]; then
+    printf 'Error: ipv6: FIB table does not exist\nDump terminated\n' >&2
+    exit 2
+  fi
   printf '%s\n' "${IP_ROUTE6_OUTPUT:-}"
   exit 0
 fi
@@ -329,7 +337,10 @@ assert_line_before "$NFT_LOG" \
 : > "$IP_LOG"
 : > "$LOGGER_LOG"
 rt_tables="$WORK_DIR/rt_tables"
-IP_ROUTE_OUTPUT='' IP_ROUTE6_OUTPUT='' IP_RULE_OUTPUT='' IP_RULE6_OUTPUT='' nft_ucode ensure-tproxy-route-rule forkop 0x00100000 "$rt_tables"
+IP_ROUTE_LIST_FAIL=1 IP_ROUTE6_LIST_FAIL=1 IP_RULE_OUTPUT='' IP_RULE6_OUTPUT='' \
+  nft_ucode ensure-tproxy-route-rule forkop 0x00100000 "$rt_tables" 2>"$WORK_DIR/tproxy-route-check.err"
+[ ! -s "$WORK_DIR/tproxy-route-check.err" ] ||
+  fail "missing tproxy route table predicates must suppress ip stderr"
 assert_contains "$rt_tables" "105 forkop" "tproxy route table registry"
 assert_contains "$IP_LOG" $'ip\troute\tadd\tlocal\t0.0.0.0/0\tdev\tlo\ttable\tforkop' "tproxy route add"
 assert_contains "$IP_LOG" $'ip\t-6\troute\tadd\tlocal\t::/0\tdev\tlo\ttable\tforkop' "tproxy route6 add"

@@ -133,6 +133,19 @@ function command_output_from_args(args) {
     return as_string(data);
 }
 
+function command_output_quiet_from_args(args) {
+    let pipe = fs.popen(command_from_args(args) + " 2>/dev/null", "r");
+    if (!pipe)
+        return "";
+
+    let data = pipe.read("all");
+    let status = pipe.close();
+    if (status != 0 || data == null)
+        return "";
+
+    return as_string(data);
+}
+
 function log_debug(message) {
     run_args([ "logger", "-t", "forkop", "[debug] " + as_string(message) ]);
 }
@@ -1341,11 +1354,11 @@ function ensure_rt_table_entry(path, table_id, table_name) {
 }
 
 function tproxy_route4_present(table) {
-    return has_local_default_route_text(command_output_from_args([ "ip", "route", "list", "table", table ]), 4);
+    return has_local_default_route_text(command_output_quiet_from_args([ "ip", "route", "list", "table", table ]), 4);
 }
 
 function tproxy_route6_present(table) {
-    return has_local_default_route_text(command_output_from_args([ "ip", "-6", "route", "list", "table", table ]), 6);
+    return has_local_default_route_text(command_output_quiet_from_args([ "ip", "-6", "route", "list", "table", table ]), 6);
 }
 
 function tproxy_route_present(table) {
