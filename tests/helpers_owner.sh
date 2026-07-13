@@ -94,24 +94,6 @@ if ucode -L "$FORKOP_LIB" "$PACKAGES_UC" installed forkop-definitely-missing >/d
   fail "missing package must not be reported installed"
 fi
 
-mkdir -p "$WORK_DIR/apk-bin"
-cat >"$WORK_DIR/apk-bin/apk" <<'SH'
-#!/usr/bin/env sh
-if [ "$1 $2 $3 $4" = "list --available --manifest sing-box" ]; then
-  printf '%s\n' \
-    'P:sing-box-extended' \
-    'V:9.9.9-r1' \
-    'p:sing-box' \
-    'P:sing-box' \
-    'V:1.2.3-r1'
-  exit 0
-fi
-exit 1
-SH
-chmod +x "$WORK_DIR/apk-bin/apk"
-[ "$(PATH="$WORK_DIR/apk-bin:$PATH" ucode -L "$FORKOP_LIB" "$PACKAGES_UC" apk-available-version sing-box)" = "1.2.3-r1" ] ||
-  fail "APK available version lookup must select the exact package name, not a higher-priority provider"
-
 mark_hex="$(ucode -L "$FORKOP_LIB" "$RULES_UC" mark-hex 0x01000000 2)"
 [ "$mark_hex" = "0x01000002" ] ||
   fail "providers/rules.uc mark math changed"

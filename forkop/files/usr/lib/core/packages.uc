@@ -105,6 +105,31 @@ function apk_list_version(package_name, output) {
     return "";
 }
 
+function apk_query_version(package_name, output) {
+    package_name = as_string(package_name);
+    let packages;
+
+    try {
+        packages = json(as_string(output));
+    }
+    catch (e) {
+        return "";
+    }
+
+    if (type(packages) != "array")
+        return "";
+
+    for (let package in packages) {
+        if (type(package) != "object" || as_string(package.name) != package_name)
+            continue;
+
+        let version = as_string(package.version);
+        if (version != "")
+            return version;
+    }
+    return "";
+}
+
 function apk_version(package_name) {
     package_name = as_string(package_name);
     if (!apk_installed(package_name))
@@ -129,9 +154,9 @@ function apk_available_version(package_name) {
     package_name = as_string(package_name);
     if (!command_exists("apk"))
         return "";
-    return apk_manifest_version(
+    return apk_query_version(
         package_name,
-        command_output([ "apk", "list", "--available", "--manifest", package_name ])
+        command_output([ "apk", "query", "--from", "repositories", "--available", "--format", "json", "--fields", "name,version", package_name ])
     );
 }
 
