@@ -1033,6 +1033,13 @@ function validate_urltest_filter_mode_value(value, section) {
     fail_validation("Invalid URLTest filter mode '" + value + "' in rule '" + section + "'. Aborted.");
 }
 
+function validate_dashboard_filter_mode_value(value, section) {
+    if (as_string(value) == "" || contains([ "disabled", "exclude", "include", "mixed" ], value))
+        return;
+
+    fail_validation("Invalid dashboard filter mode '" + value + "' in rule '" + section + "'. Aborted.");
+}
+
 function validate_priority_filter_mode_value(value, section, group_id, level_id) {
     if (contains([ "disabled", "exclude", "include", "mixed" ], value))
         return;
@@ -1163,6 +1170,56 @@ function validate_priority_group(section, group_id) {
                     name
                 );
         }
+    }
+}
+
+function validate_dashboard_group_references(section, values) {
+    let available = {};
+    for (let group_id in connections.urltests(section))
+        available[connections.urltest_display_name(section, group_id)] = true;
+    for (let group_id in connections.priority_groups(section))
+        available[connections.priority_group_display_name(section, group_id)] = true;
+
+    for (let group_name in values)
+        if (!available[group_name])
+            fail_validation("Unknown dashboard URLTest/Priority group '" + group_name + "' in rule '" + section_name(section) + "'. Aborted.");
+}
+
+function validate_dashboard_filter(section) {
+    let name = section_name(section);
+    let filter_mode = connections.dashboard_filter_mode(section);
+    validate_dashboard_filter_mode_value(filter_mode, name);
+    if (filter_mode == "disabled")
+        return;
+
+    validate_detect_server_country_value(connections.dashboard_detect_server_country(section), name);
+    if (filter_mode == "include" || filter_mode == "mixed") {
+        for (let value in connections.dashboard_include_countries(section))
+            validate_country_code_value(value, name);
+        for (let value in connections.dashboard_include_regex(section))
+            validate_urltest_regex_value(value, name);
+        validate_dashboard_group_references(section, connections.dashboard_include_groups(section));
+        if (connections.dashboard_include_proxy_parameters(section))
+            validate_proxy_parameter_filters(
+                connections.dashboard_include_protocols(section),
+                connections.dashboard_include_transports(section),
+                connections.dashboard_include_securities(section),
+                name
+            );
+    }
+    if (filter_mode == "exclude" || filter_mode == "mixed") {
+        for (let value in connections.dashboard_exclude_countries(section))
+            validate_country_code_value(value, name);
+        for (let value in connections.dashboard_exclude_regex(section))
+            validate_urltest_regex_value(value, name);
+        validate_dashboard_group_references(section, connections.dashboard_exclude_groups(section));
+        if (connections.dashboard_exclude_proxy_parameters(section))
+            validate_proxy_parameter_filters(
+                connections.dashboard_exclude_protocols(section),
+                connections.dashboard_exclude_transports(section),
+                connections.dashboard_exclude_securities(section),
+                name
+            );
     }
 }
 
@@ -1397,6 +1454,8 @@ function validate_rule(section, sections, context) {
     }
 
     if (connections.is_connections_action(action)) {
+        validate_dashboard_filter(section);
+
         for (let urltest_id in connections.urltests(section)) {
             validate_urltest_identifier_value(urltest_id, name);
 

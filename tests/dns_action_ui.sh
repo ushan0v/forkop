@@ -52,14 +52,16 @@ const ruleSetOption = requiredIndex("const ruleSetOption = section.taboption(");
 const dnsRuleSetOption = requiredIndex("const dnsRuleSetOption = section.taboption(", ruleSetOption);
 const domainLists = requiredIndex("const domainIpListsOption", dnsRuleSetOption);
 if (!source.slice(ruleSetOption, dnsRuleSetOption).includes("SettingsDynamicList") ||
-    !source.slice(ruleSetOption, dnsRuleSetOption).includes("dependsOnRoutingAction(ruleSetOption)")) {
-  fail("routing rule sets must keep their settings DynamicList");
+    !source.slice(ruleSetOption, dnsRuleSetOption).includes("dependsOnRoutingAction(ruleSetOption)") ||
+    !source.slice(ruleSetOption, dnsRuleSetOption).includes("ruleSetOption.retain = true")) {
+  fail("routing rule sets must keep their retained settings DynamicList");
 }
 if (!source.slice(dnsRuleSetOption, domainLists).includes("form.DynamicList") ||
     !source.slice(dnsRuleSetOption, domainLists).includes('"_dns_rule_set"') ||
     !source.slice(dnsRuleSetOption, domainLists).includes('dnsRuleSetOption.depends("action", "dns")') ||
+    !source.slice(dnsRuleSetOption, domainLists).includes("dnsRuleSetOption.retain = true") ||
     !source.slice(dnsRuleSetOption, domainLists).includes("writeDnsRulesetReferences")) {
-  fail("DNS rule sets must use a dedicated classic DynamicList");
+  fail("DNS rule sets must use a retained classic DynamicList");
 }
 NODE
 

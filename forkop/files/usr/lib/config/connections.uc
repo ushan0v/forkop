@@ -363,6 +363,78 @@ function priority_groups(section) {
     return result;
 }
 
+function dashboard_filter_mode(section) {
+    return option(section, "dashboard_filter_mode", "disabled") || "disabled";
+}
+
+function dashboard_detect_server_country(section) {
+    return option(section, "dashboard_detect_server_country", "flag_emoji") || "flag_emoji";
+}
+
+function dashboard_include_countries(section) {
+    return list_value(section, "dashboard_include_countries");
+}
+
+function dashboard_include_outbounds(section) {
+    return list_value(section, "dashboard_include_outbounds");
+}
+
+function dashboard_include_regex(section) {
+    return list_value(section, "dashboard_include_regex");
+}
+
+function dashboard_include_proxy_parameters(section) {
+    return bool_option(section, "dashboard_include_proxy_parameters", false);
+}
+
+function dashboard_include_protocols(section) {
+    return list_value(section, "dashboard_include_protocols");
+}
+
+function dashboard_include_transports(section) {
+    return list_value(section, "dashboard_include_transports");
+}
+
+function dashboard_include_securities(section) {
+    return list_value(section, "dashboard_include_securities");
+}
+
+function dashboard_include_groups(section) {
+    return list_value(section, "dashboard_include_groups");
+}
+
+function dashboard_exclude_countries(section) {
+    return list_value(section, "dashboard_exclude_countries");
+}
+
+function dashboard_exclude_outbounds(section) {
+    return list_value(section, "dashboard_exclude_outbounds");
+}
+
+function dashboard_exclude_regex(section) {
+    return list_value(section, "dashboard_exclude_regex");
+}
+
+function dashboard_exclude_proxy_parameters(section) {
+    return bool_option(section, "dashboard_exclude_proxy_parameters", false);
+}
+
+function dashboard_exclude_protocols(section) {
+    return list_value(section, "dashboard_exclude_protocols");
+}
+
+function dashboard_exclude_transports(section) {
+    return list_value(section, "dashboard_exclude_transports");
+}
+
+function dashboard_exclude_securities(section) {
+    return list_value(section, "dashboard_exclude_securities");
+}
+
+function dashboard_exclude_groups(section) {
+    return list_value(section, "dashboard_exclude_groups");
+}
+
 function priority_group_child(section, value) {
     return owned_child_section(section, "priority_group", value);
 }
@@ -677,13 +749,6 @@ function urltest_detect_server_country(section, value) {
         option(section, "detect_server_country", "flag_emoji") || "flag_emoji");
 }
 
-function urltest_hide_added_outbounds(section, value) {
-    let child = urltest_child(section, value);
-    if (child != null)
-        return child_bool(child, "hide_added_outbounds", false);
-    return item_bool(section, "urltest_settings", value, "hide_added_outbounds", false);
-}
-
 function urltest_pin_dashboard(section, value) {
     let child = urltest_child(section, value);
     if (child != null)
@@ -822,11 +887,6 @@ function priority_group_fastest_check_interval(section, value) {
 function priority_group_interrupt_exist_connections(section, value) {
     let child = priority_group_child(section, value);
     return child != null ? child_bool(child, "interrupt_exist_connections", true) : true;
-}
-
-function priority_group_hide_added_outbounds(section, value) {
-    let child = priority_group_child(section, value);
-    return child != null ? child_bool(child, "hide_added_outbounds", false) : false;
 }
 
 function priority_group_pin_dashboard(section, value) {
@@ -999,6 +1059,24 @@ return {
     interfaces,
     outbound_jsons,
     urltests,
+    dashboard_filter_mode,
+    dashboard_detect_server_country,
+    dashboard_include_countries,
+    dashboard_include_outbounds,
+    dashboard_include_regex,
+    dashboard_include_proxy_parameters,
+    dashboard_include_protocols,
+    dashboard_include_transports,
+    dashboard_include_securities,
+    dashboard_include_groups,
+    dashboard_exclude_countries,
+    dashboard_exclude_outbounds,
+    dashboard_exclude_regex,
+    dashboard_exclude_proxy_parameters,
+    dashboard_exclude_protocols,
+    dashboard_exclude_transports,
+    dashboard_exclude_securities,
+    dashboard_exclude_groups,
     community_lists,
     rule_sets,
     rule_sets_with_subnets,
@@ -1033,7 +1111,6 @@ return {
     urltest_interrupt_exist_connections,
     urltest_filter_mode,
     urltest_detect_server_country,
-    urltest_hide_added_outbounds,
     urltest_pin_dashboard,
     urltest_include_countries,
     urltest_include_outbounds,
@@ -1061,7 +1138,6 @@ return {
     priority_group_switch_to_faster_same_priority,
     priority_group_fastest_check_interval,
     priority_group_interrupt_exist_connections,
-    priority_group_hide_added_outbounds,
     priority_group_pin_dashboard,
     priority_level_display_name,
     priority_level_order,

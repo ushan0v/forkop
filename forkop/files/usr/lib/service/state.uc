@@ -959,6 +959,29 @@ function interfaces_signature(section) {
     return sprintf("%J", result);
 }
 
+function dashboard_filter_signature(section) {
+    return sprintf("%J", {
+        filter_mode: connections.dashboard_filter_mode(section),
+        detect_server_country: connections.dashboard_detect_server_country(section),
+        include_countries: connections.dashboard_include_countries(section),
+        include_outbounds: connections.dashboard_include_outbounds(section),
+        include_regex: connections.dashboard_include_regex(section),
+        include_proxy_parameters: connections.dashboard_include_proxy_parameters(section) ? "1" : "0",
+        include_protocols: connections.dashboard_include_protocols(section),
+        include_transports: connections.dashboard_include_transports(section),
+        include_securities: connections.dashboard_include_securities(section),
+        include_groups: connections.dashboard_include_groups(section),
+        exclude_countries: connections.dashboard_exclude_countries(section),
+        exclude_outbounds: connections.dashboard_exclude_outbounds(section),
+        exclude_regex: connections.dashboard_exclude_regex(section),
+        exclude_proxy_parameters: connections.dashboard_exclude_proxy_parameters(section) ? "1" : "0",
+        exclude_protocols: connections.dashboard_exclude_protocols(section),
+        exclude_transports: connections.dashboard_exclude_transports(section),
+        exclude_securities: connections.dashboard_exclude_securities(section),
+        exclude_groups: connections.dashboard_exclude_groups(section)
+    });
+}
+
 function urltests_signature(section) {
     let result = [];
     for (let entry in connections.urltests(section)) {
@@ -971,7 +994,6 @@ function urltests_signature(section) {
             idle_timeout: connections.urltest_idle_timeout(section, entry),
             interrupt_exist_connections: connections.urltest_interrupt_exist_connections(section, entry) ? "1" : "0",
             pin_dashboard: connections.urltest_pin_dashboard(section, entry) ? "1" : "0",
-            hide_added_outbounds: connections.urltest_hide_added_outbounds(section, entry) ? "1" : "0",
             filter_mode: connections.urltest_filter_mode(section, entry),
             detect_server_country: connections.urltest_detect_server_country(section, entry),
             include_countries: connections.urltest_include_countries(section, entry),
@@ -1018,7 +1040,6 @@ function priority_groups_signature(section) {
             fastest_check_interval: connections.priority_group_fastest_check_interval(section, group_id),
             interrupt_exist_connections: connections.priority_group_interrupt_exist_connections(section, group_id) ? "1" : "0",
             pin_dashboard: connections.priority_group_pin_dashboard(section, group_id) ? "1" : "0",
-            hide_added_outbounds: connections.priority_group_hide_added_outbounds(section, group_id) ? "1" : "0",
             levels
         });
     }
@@ -1205,6 +1226,7 @@ function append_sing_box_rule_signature_body(body, section, sections) {
         body = signature_add_value(body, prefix + ".legacy_outbound_json", option(section, "outbound_json", ""));
         body = signature_add_value(body, prefix + ".urltests", urltests_signature(section));
         body = signature_add_value(body, prefix + ".priority_groups", priority_groups_signature(section));
+        body = signature_add_value(body, prefix + ".dashboard_filter", dashboard_filter_signature(section));
         body = signature_add_value(body, prefix + ".urltest_enabled", bool_option_value(section, "urltest_enabled", false));
         body = signature_add_value(body, prefix + ".detect_server_country", normalize_detect_server_country_method(option(section, "detect_server_country", "flag_emoji")));
         body = signature_add_value(body, prefix + ".urltest_check_interval", section_urltest_check_interval(section));

@@ -89,8 +89,7 @@ cat >"$WORK_DIR/fixture.json" <<'JSON'
       "pick_fastest": "1",
       "switch_to_faster_same_priority": "1",
       "fastest_check_interval": "3m",
-      "pin_dashboard": "1",
-      "hide_added_outbounds": "1"
+      "pin_dashboard": "1"
     },
     {
       ".name": "pg_backup",
@@ -189,8 +188,8 @@ if (main.default != "proxy-2-out")
     fail("main priority selector should default to the first upper-level outbound");
 if (!selector || selector.default != "proxy-priority-pg_main-out")
     fail("section selector should default to the first priority group when URLTest is absent");
-if (contains(selector.outbounds, "proxy-2-out") || contains(selector.outbounds, "proxy-3-out"))
-    fail("priority-added outbounds should be hidden from selector when hide_added_outbounds=1");
+if (!contains(selector.outbounds, "proxy-2-out") || !contains(selector.outbounds, "proxy-3-out"))
+    fail("section selector should keep individual priority members by default");
 if (selector.outbounds[length(selector.outbounds || []) - 2] != "proxy-priority-pg_main-out" ||
     selector.outbounds[length(selector.outbounds || []) - 1] != "proxy-priority-pg_backup-out")
     fail("section selector should include priority groups in order");
@@ -205,7 +204,7 @@ if (cached.check_timeout != "2s" || cached.fastest_check_interval != "3m")
     fail("priority group timing metadata was not cached");
 if (cached.pick_fastest !== true || cached.switch_to_faster_same_priority !== true)
     fail("priority boolean metadata was not cached");
-if (cached.interrupt_exist_connections !== true || cached.pin_dashboard !== true || cached.hide_added_outbounds !== true)
+if (cached.interrupt_exist_connections !== true || cached.pin_dashboard !== true)
     fail("priority dashboard/default metadata was not cached");
 assert_array(cached.outbounds, [ "proxy-2-out", "proxy-3-out" ], "cached priority outbounds");
 if (length(cached.levels || []) != 2 || cached.levels[0].id != "pl_upper" || cached.levels[1].id != "pl_lower")

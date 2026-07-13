@@ -70,7 +70,6 @@ type PriorityCacheGroup = {
   fastest_check_interval?: string;
   interrupt_exist_connections?: boolean;
   pin_dashboard?: boolean;
-  hide_added_outbounds?: boolean;
   outbounds?: string[];
   levels?: PriorityCacheLevel[];
 };
@@ -100,7 +99,6 @@ type UrlTestConfig = {
   displayName: string;
   settings: ItemSettings;
   pinDashboard: boolean;
-  hideAddedOutbounds: boolean;
   showDetectedCountries: boolean;
 };
 
@@ -110,7 +108,6 @@ type PriorityConfig = {
   displayName: string;
   settings: ItemSettings;
   pinDashboard: boolean;
-  hideAddedOutbounds: boolean;
   healthUrl: string;
   activeCheckInterval: string;
   checkTimeout: string;
@@ -286,7 +283,6 @@ function hydrateConfigSections(configSections: Forkop.ConfigSection[]) {
           idle_timeout: item.idle_timeout,
           interrupt_exist_connections: item.interrupt_exist_connections,
           pin_dashboard: item.pin_dashboard,
-          hide_added_outbounds: item.hide_added_outbounds,
           urltest_filter_mode: item.filter_mode,
           detect_server_country: item.detect_server_country,
           urltest_include_countries: item.include_countries,
@@ -339,7 +335,6 @@ function hydrateConfigSections(configSections: Forkop.ConfigSection[]) {
           fastest_check_interval: item.fastest_check_interval,
           interrupt_exist_connections: item.interrupt_exist_connections,
           pin_dashboard: item.pin_dashboard,
-          hide_added_outbounds: item.hide_added_outbounds,
           levels,
         };
       });
@@ -661,11 +656,6 @@ function getUrlTestConfigs(section: Forkop.ConfigSection): UrlTestConfig[] {
       displayName: getUrlTestDisplayName(section, id, settings),
       settings,
       pinDashboard: itemSettingBoolean(settings, 'pin_dashboard', true),
-      hideAddedOutbounds: itemSettingBoolean(
-        settings,
-        'hide_added_outbounds',
-        false,
-      ),
       showDetectedCountries:
         filteringEnabled &&
         itemSettingString(settings, 'detect_server_country', 'flag_emoji') ===
@@ -748,11 +738,6 @@ function getPriorityConfigs(section: Forkop.ConfigSection): PriorityConfig[] {
       displayName: itemSettingString(settings, 'name', id),
       settings,
       pinDashboard: itemSettingBoolean(settings, 'pin_dashboard', true),
-      hideAddedOutbounds: itemSettingBoolean(
-        settings,
-        'hide_added_outbounds',
-        false,
-      ),
       healthUrl: itemSettingString(
         settings,
         'health_url',
@@ -1108,31 +1093,6 @@ function buildProxyGroupOutbounds(
   const selectorCodes = selector?.value?.all ?? [];
   const urlTestCodes = urlTestConfigs.map((config) => config.code);
   const priorityCodes = priorityConfigs.map((config) => config.code);
-  const urlTestCodeSet = new Set(urlTestCodes);
-  const priorityCodeSet = new Set(priorityCodes);
-  const hideAddedCodeSet = new Set<string>();
-  urlTestEntries.forEach(({ config, entry }) => {
-    if (!config.hideAddedOutbounds) {
-      return;
-    }
-
-    const childCodes = urltestGroups[config.code]?.outbounds?.length
-      ? urltestGroups[config.code].outbounds || []
-      : entry?.value.all || [];
-
-    childCodes.forEach((code) => hideAddedCodeSet.add(code));
-  });
-  priorityEntries.forEach(({ config, entry }) => {
-    if (!config.hideAddedOutbounds) {
-      return;
-    }
-
-    const childCodes = priorityGroups[config.code]?.outbounds?.length
-      ? priorityGroups[config.code].outbounds || []
-      : entry?.value.all || [];
-
-    childCodes.forEach((code) => hideAddedCodeSet.add(code));
-  });
   const showDetectedCountries =
     urlTestConfigs.some((config) => config.showDetectedCountries) ||
     priorityConfigs.some((config) => config.showDetectedCountries);
@@ -1147,17 +1107,7 @@ function buildProxyGroupOutbounds(
     ...(selectorCodes.length ? selectorCodes : fallbackCodes),
     ...urlTestCodes,
     ...priorityCodes,
-  ]).filter((code) => {
-    if (!hideAddedCodeSet.has(code)) {
-      return true;
-    }
-
-    return (
-      urlTestCodeSet.has(code) ||
-      priorityCodeSet.has(code) ||
-      isUrlTestProxyEntry(proxyByCode.get(code))
-    );
-  });
+  ]);
 
   const outbounds = uniqueCodes(groupCodes).flatMap((code) => {
     const item = proxyByCode.get(code);

@@ -3309,7 +3309,6 @@ function hydrateConfigSections(configSections) {
           idle_timeout: item.idle_timeout,
           interrupt_exist_connections: item.interrupt_exist_connections,
           pin_dashboard: item.pin_dashboard,
-          hide_added_outbounds: item.hide_added_outbounds,
           urltest_filter_mode: item.filter_mode,
           detect_server_country: item.detect_server_country,
           urltest_include_countries: item.include_countries,
@@ -3356,7 +3355,6 @@ function hydrateConfigSections(configSections) {
           fastest_check_interval: item.fastest_check_interval,
           interrupt_exist_connections: item.interrupt_exist_connections,
           pin_dashboard: item.pin_dashboard,
-          hide_added_outbounds: item.hide_added_outbounds,
           levels
         };
       });
@@ -3572,11 +3570,6 @@ function getUrlTestConfigs(section) {
       displayName: getUrlTestDisplayName(section, id, settings),
       settings,
       pinDashboard: itemSettingBoolean(settings, "pin_dashboard", true),
-      hideAddedOutbounds: itemSettingBoolean(
-        settings,
-        "hide_added_outbounds",
-        false
-      ),
       showDetectedCountries: filteringEnabled && itemSettingString(settings, "detect_server_country", "flag_emoji") === "country_is"
     };
   });
@@ -3635,11 +3628,6 @@ function getPriorityConfigs(section) {
       displayName: itemSettingString(settings, "name", id),
       settings,
       pinDashboard: itemSettingBoolean(settings, "pin_dashboard", true),
-      hideAddedOutbounds: itemSettingBoolean(
-        settings,
-        "hide_added_outbounds",
-        false
-      ),
       healthUrl: itemSettingString(
         settings,
         "health_url",
@@ -3884,23 +3872,6 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGro
   const selectorCodes = selector?.value?.all ?? [];
   const urlTestCodes = urlTestConfigs.map((config) => config.code);
   const priorityCodes = priorityConfigs.map((config) => config.code);
-  const urlTestCodeSet = new Set(urlTestCodes);
-  const priorityCodeSet = new Set(priorityCodes);
-  const hideAddedCodeSet = /* @__PURE__ */ new Set();
-  urlTestEntries.forEach(({ config, entry }) => {
-    if (!config.hideAddedOutbounds) {
-      return;
-    }
-    const childCodes = urltestGroups[config.code]?.outbounds?.length ? urltestGroups[config.code].outbounds || [] : entry?.value.all || [];
-    childCodes.forEach((code) => hideAddedCodeSet.add(code));
-  });
-  priorityEntries.forEach(({ config, entry }) => {
-    if (!config.hideAddedOutbounds) {
-      return;
-    }
-    const childCodes = priorityGroups[config.code]?.outbounds?.length ? priorityGroups[config.code].outbounds || [] : entry?.value.all || [];
-    childCodes.forEach((code) => hideAddedCodeSet.add(code));
-  });
   const showDetectedCountries = urlTestConfigs.some((config) => config.showDetectedCountries) || priorityConfigs.some((config) => config.showDetectedCountries);
   const builtInUrltestCode = urlTestCodes[0] || "";
   const fallbackCodes = uniqueCodes([
@@ -3913,12 +3884,7 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGro
     ...selectorCodes.length ? selectorCodes : fallbackCodes,
     ...urlTestCodes,
     ...priorityCodes
-  ]).filter((code) => {
-    if (!hideAddedCodeSet.has(code)) {
-      return true;
-    }
-    return urlTestCodeSet.has(code) || priorityCodeSet.has(code) || isUrlTestProxyEntry(proxyByCode.get(code));
-  });
+  ]);
   const outbounds = uniqueCodes(groupCodes).flatMap((code) => {
     const item = proxyByCode.get(code);
     const urlTestConfig = urlTestConfigByCode.get(code);

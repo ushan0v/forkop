@@ -408,6 +408,24 @@ cat >"$WORK_DIR/sing-box-signature.json" <<'JSON'
       "enabled": "1",
       "action": "proxy",
       "selector_proxy_links": [ "vless://one", "vless://two" ],
+      "dashboard_filter_mode": "mixed",
+      "dashboard_detect_server_country": "country_is",
+      "dashboard_include_countries": [ "NL" ],
+      "dashboard_include_outbounds": [ "node-a" ],
+      "dashboard_include_regex": [ "^A" ],
+      "dashboard_include_proxy_parameters": "1",
+      "dashboard_include_protocols": [ "vless" ],
+      "dashboard_include_transports": [ "ws" ],
+      "dashboard_include_securities": [ "reality" ],
+      "dashboard_include_groups": [ "urltest" ],
+      "dashboard_exclude_countries": [ "RU" ],
+      "dashboard_exclude_outbounds": [ "node-b" ],
+      "dashboard_exclude_regex": [ "backup" ],
+      "dashboard_exclude_proxy_parameters": "1",
+      "dashboard_exclude_protocols": [ "http" ],
+      "dashboard_exclude_transports": [ "tcp" ],
+      "dashboard_exclude_securities": [ "none" ],
+      "dashboard_exclude_groups": [ "urltest" ],
       "subscription_urls": [ "https://example.com/sub.txt" ],
       "subscription_url_settings": "{\"https://example.com/sub.txt\":{\"prefix_nodes\":\"1\",\"node_prefix\":\"Example\"}}",
       "urltest_enabled": "1",
@@ -559,9 +577,11 @@ proxy
 [rule.proxy1.legacy_outbound_json]
 
 [rule.proxy1.urltests]
-[ { "id": "urltest", "display_name": "Fastest", "check_interval": "3m", "tolerance": "75", "testing_url": "https://www.gstatic.com/generate_204", "idle_timeout": "", "interrupt_exist_connections": "1", "pin_dashboard": "1", "hide_added_outbounds": "0", "filter_mode": "exclude", "detect_server_country": "1", "include_countries": [ ], "include_outbounds": [ "node-a" ], "include_regex": [ ], "exclude_countries": [ "RU" ], "exclude_outbounds": [ ], "exclude_regex": [ ] } ]
+[ { "id": "urltest", "display_name": "Fastest", "check_interval": "3m", "tolerance": "75", "testing_url": "https://www.gstatic.com/generate_204", "idle_timeout": "", "interrupt_exist_connections": "1", "pin_dashboard": "1", "filter_mode": "exclude", "detect_server_country": "1", "include_countries": [ ], "include_outbounds": [ "node-a" ], "include_regex": [ ], "exclude_countries": [ "RU" ], "exclude_outbounds": [ ], "exclude_regex": [ ] } ]
 [rule.proxy1.priority_groups]
 [ ]
+[rule.proxy1.dashboard_filter]
+{ "filter_mode": "mixed", "detect_server_country": "country_is", "include_countries": [ "NL" ], "include_outbounds": [ "node-a" ], "include_regex": [ "^A" ], "include_proxy_parameters": "1", "include_protocols": [ "vless" ], "include_transports": [ "ws" ], "include_securities": [ "reality" ], "include_groups": [ "urltest" ], "exclude_countries": [ "RU" ], "exclude_outbounds": [ "node-b" ], "exclude_regex": [ "backup" ], "exclude_proxy_parameters": "1", "exclude_protocols": [ "http" ], "exclude_transports": [ "tcp" ], "exclude_securities": [ "none" ], "exclude_groups": [ "urltest" ] }
 [rule.proxy1.urltest_enabled]
 1
 [rule.proxy1.detect_server_country]
@@ -646,6 +666,8 @@ outbound
 [ ]
 [rule.out1.priority_groups]
 [ ]
+[rule.out1.dashboard_filter]
+{ "filter_mode": "disabled", "detect_server_country": "flag_emoji", "include_countries": [ ], "include_outbounds": [ ], "include_regex": [ ], "include_proxy_parameters": "0", "include_protocols": [ ], "include_transports": [ ], "include_securities": [ ], "include_groups": [ ], "exclude_countries": [ ], "exclude_outbounds": [ ], "exclude_regex": [ ], "exclude_proxy_parameters": "0", "exclude_protocols": [ ], "exclude_transports": [ ], "exclude_securities": [ ], "exclude_groups": [ ] }
 [rule.out1.urltest_enabled]
 0
 [rule.out1.detect_server_country]
@@ -752,6 +774,8 @@ wg0
 [ ]
 [rule.vpn1.priority_groups]
 [ ]
+[rule.vpn1.dashboard_filter]
+{ "filter_mode": "disabled", "detect_server_country": "flag_emoji", "include_countries": [ ], "include_outbounds": [ ], "include_regex": [ ], "include_proxy_parameters": "0", "include_protocols": [ ], "include_transports": [ ], "include_securities": [ ], "include_groups": [ ], "exclude_countries": [ ], "exclude_outbounds": [ ], "exclude_regex": [ ], "exclude_proxy_parameters": "0", "exclude_protocols": [ ], "exclude_transports": [ ], "exclude_securities": [ ], "exclude_groups": [ ] }
 [rule.vpn1.urltest_enabled]
 0
 [rule.vpn1.detect_server_country]

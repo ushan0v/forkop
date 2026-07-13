@@ -87,7 +87,6 @@ function priorityGroup(
     fastest_check_interval: '3m',
     interrupt_exist_connections: '1',
     pin_dashboard: '1',
-    hide_added_outbounds: '0',
     ...options,
   };
 }
@@ -423,59 +422,6 @@ describe('getDashboardSections', () => {
     ]);
   });
 
-  it('hides servers already added to the Priority group when enabled', async () => {
-    mocks.getConfigSections.mockResolvedValue([
-      proxySection({ urltests: [], urltest_settings: undefined }),
-      priorityGroup('pg_main', { hide_added_outbounds: '1' }),
-      priorityLevel('pl_de'),
-    ]);
-    mocks.getClashApiProxies.mockResolvedValue({
-      success: true,
-      data: {
-        proxies: {
-          ...clashProxies,
-          'main-out': proxy('Selector', {
-            name: 'main-out',
-            now: 'main-priority-pg_main-out',
-            all: ['main-1-out', 'main-2-out', 'main-priority-pg_main-out'],
-          }),
-          'main-priority-pg_main-out': proxy('Selector', {
-            name: 'main-priority-pg_main-out',
-            now: 'main-1-out',
-            all: ['main-1-out', 'main-2-out'],
-          }),
-        },
-      },
-    });
-    mocks.fsRead.mockResolvedValue(
-      JSON.stringify({
-        priorityGroups: {
-          'main-priority-pg_main-out': {
-            displayName: 'Codex Priority',
-            outbounds: ['main-1-out', 'main-2-out'],
-            levels: [
-              {
-                id: 'pl_de',
-                displayName: 'Germany',
-                order: 0,
-                outbounds: ['main-1-out', 'main-2-out'],
-              },
-            ],
-          },
-        },
-      }),
-    );
-
-    const result = await getDashboardSections();
-    const [section] = result.data;
-
-    expect(result.success).toBe(true);
-    expect(section.outbounds.map((item) => item.code)).toEqual([
-      'main-priority-pg_main-out',
-    ]);
-    expect(section.latencyTestCodes).toBeUndefined();
-  });
-
   it('keeps an empty Priority group visible when sing-box skipped the selector', async () => {
     mocks.getConfigSections.mockResolvedValue([
       proxySection({
@@ -520,31 +466,6 @@ describe('getDashboardSections', () => {
     });
     expect(priority?.priorityInfo?.selectedName).toBeUndefined();
     expect(priority?.priorityInfo?.outbounds).toEqual([]);
-  });
-
-  it('hides servers already added to the URLTest group when enabled', async () => {
-    mocks.getConfigSections.mockResolvedValue([
-      proxySection({
-        urltest_settings: urlTestSettings('urltest', {
-          display_name: 'Fastest',
-          hide_added_outbounds: '1',
-        }),
-      }),
-    ]);
-
-    const result = await getDashboardSections();
-    const [section] = result.data;
-
-    expect(result.success).toBe(true);
-    expect(section.latencyTestCode).toBe('main-out');
-    expect(section.latencyTestCodes).toEqual([
-      'main-urltest-out',
-      'main-2-out',
-    ]);
-    expect(section.outbounds.map((item) => item.code)).toEqual([
-      'main-urltest-out',
-      'main-2-out',
-    ]);
   });
 
   it('keeps legacy URLTest sections compatible before migration', async () => {
@@ -635,31 +556,6 @@ describe('getDashboardSections', () => {
       'Filtered 2',
     ]);
   });
-
-  it.each(['exclude', 'include', 'mixed', 'disabled'] as const)(
-    'hides added URLTest members independently from %s filter mode',
-    async (urltest_filter_mode) => {
-      mocks.getConfigSections.mockResolvedValue([
-        proxySection({
-          urltest_settings: urlTestSettings('urltest', {
-            display_name: 'Fastest',
-            urltest_filter_mode,
-            hide_added_outbounds: '1',
-          }),
-        }),
-      ]);
-
-      const result = await getDashboardSections();
-      const [section] = result.data;
-
-      expect(result.success).toBe(true);
-      expect(section.latencyTestCode).toBe('main-out');
-      expect(section.latencyTestCodes).toEqual([
-        'main-urltest-out',
-        'main-2-out',
-      ]);
-    },
-  );
 
   it('keeps non-built-in URLTest groups in selector order when latency sorting is disabled', async () => {
     mocks.getConfigSections.mockResolvedValue([proxySection()]);
@@ -818,72 +714,6 @@ describe('getDashboardSections', () => {
     expect(section.outbounds.map((item) => item.code)).toEqual([
       'main-1-out',
       'main-urltest-out',
-      'main-2-out',
-    ]);
-  });
-
-  it('keeps visible URLTest groups when added leaf servers are hidden', async () => {
-    mocks.getConfigSections.mockResolvedValue([
-      proxySection({
-        urltest_settings: urlTestSettings('urltest', {
-          display_name: 'Fastest',
-          hide_added_outbounds: '1',
-        }),
-      }),
-    ]);
-    mocks.getClashApiProxies.mockResolvedValue({
-      success: true,
-      data: {
-        proxies: {
-          'main-out': proxy('Selector', {
-            name: 'main-out',
-            now: 'main-1-out',
-            all: [
-              'main-1-out',
-              'main-provider-urltest-out',
-              'main-2-out',
-              'main-3-out',
-              'main-urltest-out',
-            ],
-          }),
-          'main-urltest-out': proxy('URLTest', {
-            name: 'main-urltest-out',
-            history: [{ time: '2026-06-11T00:00:00Z', delay: 10 }],
-            all: ['main-1-out', 'main-3-out'],
-          }),
-          'main-provider-urltest-out': proxy('URLTest', {
-            name: 'Provider URLTest',
-            history: [{ time: '2026-06-11T00:00:00Z', delay: 150 }],
-            all: ['provider-hidden-1-out'],
-          }),
-          'main-1-out': proxy('VLESS', {
-            name: 'Included 1',
-            history: [{ time: '2026-06-11T00:00:00Z', delay: 100 }],
-          }),
-          'main-2-out': proxy('VLESS', {
-            name: 'Filtered 2',
-            history: [{ time: '2026-06-11T00:00:00Z', delay: 200 }],
-          }),
-          'main-3-out': proxy('VLESS', {
-            name: 'Included 3',
-            history: [{ time: '2026-06-11T00:00:00Z', delay: 300 }],
-          }),
-        },
-      },
-    });
-
-    const result = await getDashboardSections();
-    const [section] = result.data;
-
-    expect(result.success).toBe(true);
-    expect(section.latencyTestCodes).toEqual([
-      'main-urltest-out',
-      'main-provider-urltest-out',
-      'main-2-out',
-    ]);
-    expect(section.outbounds.map((item) => item.code)).toEqual([
-      'main-urltest-out',
-      'main-provider-urltest-out',
       'main-2-out',
     ]);
   });
