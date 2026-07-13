@@ -37,6 +37,15 @@ for po in "$SOURCE_PO" "$PACKAGE_PO"; do
   ' "$po"; then
     fail "Dismiss must not override LuCI alert closing with Отмена in $po"
   fi
+
+  awk '
+    $0 == "msgid \"Cannot save settings\"" {
+      getline
+      if ($0 == "msgstr \"Не удалось сохранить настройки\"")
+        found = 1
+    }
+    END { exit found ? 0 : 1 }
+  ' "$po" || fail "Cannot save settings must have a Russian translation in $po"
 done
 
 cmp -s "$SOURCE_PO" "$PACKAGE_PO" ||

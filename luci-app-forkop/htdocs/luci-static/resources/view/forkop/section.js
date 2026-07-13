@@ -3391,6 +3391,39 @@ function renderStackedJsonSettingsModal(title, map, onSave) {
     const originalButtonNodes = Array.from(buttonRow.childNodes);
     let closed = false;
     let saveButton;
+    let validationSummary;
+
+    const clearValidationSummary = () => {
+      if (validationSummary && validationSummary.parentNode) {
+        validationSummary.parentNode.removeChild(validationSummary);
+      }
+      validationSummary = null;
+    };
+
+    const showValidationSummary = (error) => {
+      clearValidationSummary();
+
+      const message = error?.message || "";
+      validationSummary = E(
+        "div",
+        {
+          class:
+            "alert-message warning fkp-stacked-settings-validation-summary",
+        },
+        [
+          E("strong", {}, _("Cannot save settings")),
+          E("div", {}, _("Fix the highlighted fields and save again.")),
+          message ? E("small", {}, message) : "",
+        ],
+      );
+      buttonRow.parentNode.insertBefore(validationSummary, buttonRow);
+
+      const invalidInput = nodes.querySelector(".cbi-input-invalid");
+      if (invalidInput) {
+        invalidInput.scrollIntoView({ block: "center", behavior: "smooth" });
+        invalidInput.focus({ preventScroll: true });
+      }
+    };
 
     const restoreButtonRow = () => {
       buttonRow.textContent = "";
@@ -3404,6 +3437,7 @@ function renderStackedJsonSettingsModal(title, map, onSave) {
       }
 
       closed = true;
+      clearValidationSummary();
 
       if (nodes.parentNode) {
         nodes.parentNode.removeChild(nodes);
@@ -3420,6 +3454,7 @@ function renderStackedJsonSettingsModal(title, map, onSave) {
       if (saveButton) {
         saveButton.disabled = true;
       }
+      clearValidationSummary();
 
       return map
         .parse()
@@ -3427,10 +3462,11 @@ function renderStackedJsonSettingsModal(title, map, onSave) {
           onSave(cleanFormSectionData(map.data.get(map.config, "settings")));
           close();
         })
-        .catch(() => {
+        .catch((error) => {
           if (saveButton) {
             saveButton.disabled = false;
           }
+          showValidationSummary(error);
         });
     };
 

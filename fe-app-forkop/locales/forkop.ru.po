@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: FORKOP\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-13 00:06+0300\n"
-"PO-Revision-Date: 2026-07-13 00:06+0300\n"
+"POT-Creation-Date: 2026-07-13 01:05+0300\n"
+"PO-Revision-Date: 2026-07-13 01:05+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -247,6 +247,9 @@ msgstr "Не удалось получить результаты проверк
 
 msgid "Cannot save server"
 msgstr "Не удалось сохранить сервер"
+
+msgid "Cannot save settings"
+msgstr "Не удалось сохранить настройки"
 
 msgid "Cascade connection"
 msgstr "Каскадное подключение"
