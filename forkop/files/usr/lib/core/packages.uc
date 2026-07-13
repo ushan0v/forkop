@@ -81,7 +81,26 @@ function apk_info_version(package_name, output) {
         line = trim(as_string(line));
         if (line == "")
             continue;
-        return substr(line, 0, length(prefix)) == prefix ? substr(line, length(prefix)) : line;
+        if (substr(line, 0, length(prefix)) == prefix)
+            return substr(line, length(prefix));
+    }
+    return "";
+}
+
+function apk_list_version(package_name, output) {
+    package_name = as_string(package_name);
+    let prefix = package_name + "-";
+
+    for (let line in split(as_string(output), "\n")) {
+        for (let field in split(trim(as_string(line)), /[ \t]+/)) {
+            field = as_string(field);
+            if (substr(field, 0, length(prefix)) != prefix)
+                continue;
+
+            let version = substr(field, length(prefix));
+            if (version != "")
+                return version;
+        }
     }
     return "";
 }
@@ -91,7 +110,11 @@ function apk_version(package_name) {
     if (!apk_installed(package_name))
         return "";
 
-    let version = apk_manifest_version(package_name, command_output([ "apk", "list", "--installed", "--manifest", package_name ]));
+    let version = apk_list_version(package_name, command_output([ "apk", "list", "--installed", package_name ]));
+    if (version != "")
+        return version;
+
+    version = apk_manifest_version(package_name, command_output([ "apk", "list", "--installed", "--manifest", package_name ]));
     if (version != "")
         return version;
 
