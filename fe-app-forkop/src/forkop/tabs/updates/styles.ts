@@ -48,7 +48,6 @@ export const styles = `
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background-color: var(--background-color-high, #fff);
     min-width: max-content;
 }
 
