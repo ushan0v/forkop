@@ -1708,6 +1708,91 @@ function serverCountryDetectionChoices() {
   ];
 }
 
+function proxyProtocolChoices() {
+  return [
+    ["vless", "VLESS"],
+    ["vmess", "VMess"],
+    ["trojan", "Trojan"],
+    ["shadowsocks", "Shadowsocks"],
+    ["socks", "SOCKS"],
+    ["http", "HTTP"],
+    ["hysteria2", "Hysteria2"],
+    ["direct", "Direct"],
+  ];
+}
+
+function proxyTransportChoices() {
+  return [
+    ["tcp", "TCP"],
+    ["ws", "WebSocket"],
+    ["grpc", "gRPC"],
+    ["http", "HTTP"],
+    ["httpupgrade", "HTTPUpgrade"],
+    ["xhttp", "XHTTP"],
+  ];
+}
+
+function proxySecurityChoices() {
+  return [
+    ["none", "None"],
+    ["tls", "TLS"],
+    ["reality", "Reality"],
+  ];
+}
+
+function addProxyParameterFilterOptions(itemSection, options) {
+  const prefix = options.prefix;
+  const dependencies = options.dependencies;
+
+  let o = itemSection.option(
+    form.Flag,
+    `${prefix}_proxy_parameters`,
+    options.toggleLabel,
+    options.toggleDescription,
+  );
+  dependencies.forEach((dependency) => o.depends(dependency));
+  o.default = "0";
+  o.rmempty = false;
+
+  [
+    [
+      "protocols",
+      _("Protocol"),
+      options.protocolDescription,
+      proxyProtocolChoices(),
+    ],
+    [
+      "transports",
+      _("Transport"),
+      options.transportDescription,
+      proxyTransportChoices(),
+    ],
+    [
+      "securities",
+      _("Security"),
+      options.securityDescription,
+      proxySecurityChoices(),
+    ],
+  ].forEach(([suffix, label, description, choices]) => {
+    const list = itemSection.option(
+      form.DynamicList,
+      `${prefix}_${suffix}`,
+      label,
+      description,
+    );
+    dependencies.forEach((dependency) =>
+      list.depends(
+        Object.assign({}, dependency, {
+          [`${prefix}_proxy_parameters`]: "1",
+        }),
+      ),
+    );
+    list.rmempty = true;
+    choices.forEach(([value, choiceLabel]) => list.value(value, choiceLabel));
+    list.placeholder = _("-- Select --");
+  });
+}
+
 function urlTestUrlChoices() {
   return Array.isArray(main.LATENCY_TEST_URL_OPTIONS)
     ? main.LATENCY_TEST_URL_OPTIONS
@@ -1837,9 +1922,17 @@ function urlTestSettingsKeys() {
     "include_countries",
     "include_outbounds",
     "include_regex",
+    "include_proxy_parameters",
+    "include_protocols",
+    "include_transports",
+    "include_securities",
     "exclude_countries",
     "exclude_outbounds",
     "exclude_regex",
+    "exclude_proxy_parameters",
+    "exclude_protocols",
+    "exclude_transports",
+    "exclude_securities",
   ];
 }
 
@@ -1929,9 +2022,17 @@ function priorityLevelSettingsKeys() {
     "country",
     "server_name",
     "regex",
+    "include_proxy_parameters",
+    "include_protocols",
+    "include_transports",
+    "include_securities",
     "exclude_countries",
     "exclude_outbounds",
     "exclude_regex",
+    "exclude_proxy_parameters",
+    "exclude_protocols",
+    "exclude_transports",
+    "exclude_securities",
   ];
 }
 
@@ -2300,6 +2401,41 @@ function addUrlTestItemOptions(itemSection, options = {}) {
   );
   o.default = "flag_emoji";
 
+  const includeProxyParameterOptions = {
+    prefix: "include",
+    toggleLabel: _("Include by proxy parameters"),
+    toggleDescription: _(
+      "Additionally filter servers by protocol, transport, and security. Add only servers matching the specified parameters.",
+    ),
+    dependencies: [{ filter_mode: "include" }, { filter_mode: "mixed" }],
+    protocolDescription: _(
+      "Test only servers with one of the selected protocols.",
+    ),
+    transportDescription: _(
+      "Test only servers with one of the selected transports.",
+    ),
+    securityDescription: _(
+      "Test only servers with one of the selected security types.",
+    ),
+  };
+  const excludeProxyParameterOptions = {
+    prefix: "exclude",
+    toggleLabel: _("Exclude by proxy parameters"),
+    toggleDescription: _(
+      "Additionally exclude servers by protocol, transport, and security. Exclude only servers matching the specified parameters.",
+    ),
+    dependencies: [{ filter_mode: "exclude" }, { filter_mode: "mixed" }],
+    protocolDescription: _(
+      "Do not test servers with one of the selected protocols.",
+    ),
+    transportDescription: _(
+      "Do not test servers with one of the selected transports.",
+    ),
+    securityDescription: _(
+      "Do not test servers with one of the selected security types.",
+    ),
+  };
+
   [
     [
       "include_countries",
@@ -2376,6 +2512,11 @@ function addUrlTestItemOptions(itemSection, options = {}) {
       list.validate = function (_itemId, value) {
         return validator(null, value);
       };
+    }
+    if (key === "include_regex") {
+      addProxyParameterFilterOptions(itemSection, includeProxyParameterOptions);
+    } else if (key === "exclude_regex") {
+      addProxyParameterFilterOptions(itemSection, excludeProxyParameterOptions);
     }
   });
 }
@@ -2466,6 +2607,45 @@ function addPriorityLevelItemOptions(itemSection, options = {}) {
   );
   o.default = "flag_emoji";
 
+  const includeProxyParameterOptions = {
+    prefix: "include",
+    toggleLabel: _("Include by proxy parameters"),
+    toggleDescription: _(
+      "Additionally filter servers by protocol, transport, and security. Add only servers matching the specified parameters.",
+    ),
+    dependencies: [
+      { direct: "0", filter_mode: "include" },
+      { direct: "0", filter_mode: "mixed" },
+    ],
+    protocolDescription: _("Only servers with one of the selected protocols."),
+    transportDescription: _(
+      "Only servers with one of the selected transports.",
+    ),
+    securityDescription: _(
+      "Only servers with one of the selected security types.",
+    ),
+  };
+  const excludeProxyParameterOptions = {
+    prefix: "exclude",
+    toggleLabel: _("Exclude by proxy parameters"),
+    toggleDescription: _(
+      "Additionally exclude servers by protocol, transport, and security. Exclude only servers matching the specified parameters.",
+    ),
+    dependencies: [
+      { direct: "0", filter_mode: "exclude" },
+      { direct: "0", filter_mode: "mixed" },
+    ],
+    protocolDescription: _(
+      "Exclude servers with one of the selected protocols from this level.",
+    ),
+    transportDescription: _(
+      "Exclude servers with one of the selected transports from this level.",
+    ),
+    securityDescription: _(
+      "Exclude servers with one of the selected security types from this level.",
+    ),
+  };
+
   [
     [
       "country",
@@ -2542,6 +2722,11 @@ function addPriorityLevelItemOptions(itemSection, options = {}) {
       list.validate = function (_itemId, value) {
         return validator(null, value);
       };
+    }
+    if (key === "regex") {
+      addProxyParameterFilterOptions(itemSection, includeProxyParameterOptions);
+    } else if (key === "exclude_regex") {
+      addProxyParameterFilterOptions(itemSection, excludeProxyParameterOptions);
     }
   });
 }

@@ -199,6 +199,25 @@ function remember_outbound_metadata(state, tag_name, display_name, outbound) {
     if (type(state) != "object")
         return;
     state.outboundMetadata.names[tag_name] = display_name;
+    let protocol = lc(as_string(outbound.type || ""));
+    if (protocol != "")
+        state.outboundMetadata.protocols[tag_name] = protocol;
+
+    let transport = lc(as_string(object_or_empty(outbound.transport).type || ""));
+    if (transport == "" || transport == "raw")
+        transport = "tcp";
+    else if (transport == "h2")
+        transport = "http";
+    state.outboundMetadata.transports[tag_name] = transport;
+
+    let tls = type(outbound.tls) == "object" ? outbound.tls : null;
+    let security = "none";
+    if (tls != null && tls.enabled !== false) {
+        let reality = type(tls.reality) == "object" ? tls.reality : null;
+        security = reality != null && reality.enabled !== false ? "reality" : "tls";
+    }
+    state.outboundMetadata.securities[tag_name] = security;
+
     let server = as_string(outbound.server || "");
     if (server != "")
         state.servers[tag_name] = server;
@@ -337,7 +356,10 @@ function new_section_state(section_name) {
         linkRefs: {},
         outboundMetadata: {
             names: {},
-            countries: {}
+            countries: {},
+            protocols: {},
+            transports: {},
+            securities: {}
         },
         servers: {},
         urltestCandidateTags: [],
