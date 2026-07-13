@@ -126,6 +126,16 @@ assert_eq "0" \
   "$(state_ucode sing-box-reload-previous-pid-fixture missing old new)" \
   "missing sing-box PID replacement constraint"
 
+assert_eq "8" \
+  "$(state_ucode process-age-seconds-fixture 786161359 786162159)" \
+  "process age on a shared kernel tick scale"
+if state_ucode process-age-seconds-fixture 786162159 786161359 >/dev/null 2>&1; then
+  fail "process age must reject a current tick value older than the process"
+fi
+if sed -n '/^function process_age_seconds(pid) {$/,/^}$/p' "$STATE_UC" | grep -Fq '/proc/uptime'; then
+  fail "process age must not mix process start ticks with virtualized /proc/uptime"
+fi
+
 mkdir -p "$WORK_DIR/stable-start-bin"
 cp "$(command -v sleep)" "$WORK_DIR/stable-start-bin/sing-box"
 cat >"$WORK_DIR/stable-start-bin/ubus" <<'SH'

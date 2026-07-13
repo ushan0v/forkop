@@ -460,15 +460,8 @@ function hup_sing_box_runtime() {
         exit(1);
 }
 
-function process_age_seconds(pid) {
-    pid = as_string(pid);
-    if (match(pid, /^[0-9]+$/) == null)
-        return null;
-
-    let stat = fs.readfile("/proc/" + pid + "/stat");
-    if (stat == null)
-        return null;
-
+function process_start_ticks(stat) {
+    stat = as_string(stat);
     let marker = index(stat, ") ");
     if (marker < 0)
         return null;
@@ -481,15 +474,34 @@ function process_age_seconds(pid) {
     if (match(start_ticks, /^[0-9]+$/) == null)
         return null;
 
-    let uptime = fs.readfile("/proc/uptime");
-    if (uptime == null)
+    return int(start_ticks);
+}
+
+function process_age_seconds_from_ticks(start_ticks, current_ticks) {
+    start_ticks = as_string(start_ticks);
+    current_ticks = as_string(current_ticks);
+    if (match(start_ticks, /^[0-9]+$/) == null || match(current_ticks, /^[0-9]+$/) == null)
         return null;
 
-    let uptime_seconds = split(trim(as_string(uptime)), /[ \t\r\n.]+/)[0];
-    if (match(uptime_seconds, /^[0-9]+$/) == null)
+    start_ticks = int(start_ticks);
+    current_ticks = int(current_ticks);
+    if (current_ticks < start_ticks)
         return null;
 
-    return int(uptime_seconds) - int(int(start_ticks) / 100);
+    return int((current_ticks - start_ticks) / 100);
+}
+
+function process_age_seconds(pid) {
+    pid = as_string(pid);
+    if (match(pid, /^[0-9]+$/) == null)
+        return null;
+
+    let start_ticks = process_start_ticks(fs.readfile("/proc/" + pid + "/stat"));
+    if (start_ticks == null)
+        return null;
+
+    let current_ticks = process_start_ticks(command_output_from_args([ "cat", "/proc/self/stat" ]));
+    return process_age_seconds_from_ticks(start_ticks, current_ticks);
 }
 
 function sing_box_pid_replaced(previous_pid, current_pid, current_is_sing_box) {
@@ -1821,6 +1833,12 @@ else if (mode == "sing-box-service-running")
     exit(sing_box_service_running() ? 0 : 1);
 else if (mode == "sing-box-service-stable")
     exit(sing_box_service_stable(ARGV[1]) ? 0 : 1);
+else if (mode == "process-age-seconds-fixture") {
+    let age = process_age_seconds_from_ticks(ARGV[1], ARGV[2]);
+    if (age == null)
+        exit(1);
+    print(age, "\n");
+}
 else if (mode == "sing-box-pid-replaced-fixture")
     exit(sing_box_pid_replaced(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
 else if (mode == "sing-box-reload-previous-pid-fixture")
