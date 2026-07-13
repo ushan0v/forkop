@@ -13,6 +13,15 @@
 sh <(wget -O - https://raw.githubusercontent.com/ushan0v/forkop/main/install.sh)
 ```
 
+<details>
+<summary><sub>Альтернативный способ установки</sub></summary>
+
+```sh
+sh <(wget -O - https://forkop.sourceforge.io/install.sh)
+```
+
+</details>
+
 ### Что нового в этом форке
 
 * Поддержка подписок.
