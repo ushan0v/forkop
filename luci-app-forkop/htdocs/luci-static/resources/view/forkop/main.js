@@ -3159,6 +3159,7 @@ var ForkopShellMethods = {
 
 // src/forkop/methods/custom/getDashboardSections.ts
 var DASHBOARD_SECTION_CACHE_DIR = "/var/run/forkop/section-cache";
+var CLASH_API_FETCH_TIMEOUT_MS = 5e3;
 function getDisplayName(section) {
   return section.label || section[".name"];
 }
@@ -3174,9 +3175,15 @@ function canFetchClashApiDirectly() {
 async function getClashApiProxies(configSections) {
   if (canFetchClashApiDirectly()) {
     const secret = getClashApiSecret(configSections);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      CLASH_API_FETCH_TIMEOUT_MS
+    );
     try {
       const response = await fetch(`${getClashHttpUrl()}/proxies`, {
-        headers: secret ? { Authorization: `Bearer ${secret}` } : void 0
+        headers: secret ? { Authorization: `Bearer ${secret}` } : void 0,
+        signal: controller.signal
       });
       if (response.ok) {
         return {
@@ -3185,6 +3192,8 @@ async function getClashApiProxies(configSections) {
         };
       }
     } catch (_error) {
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
   return ForkopShellMethods.getClashApiProxies();
@@ -8037,7 +8046,7 @@ async function runNftCheck() {
         value: ""
       },
       {
-        state: data.rules_mangle_counters ? "success" : "error",
+        state: data.rules_mangle_counters ? "success" : "warning",
         key: _("Rules mangle counters"),
         value: ""
       },
