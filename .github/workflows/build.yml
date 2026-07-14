@@ -245,7 +245,22 @@ jobs:
             exit 1
           fi
 
+      - name: Check SourceForge project
+        id: sourceforge
+        shell: bash
+        run: |
+          if sftp -i "$HOME/.ssh/sourceforge" -b - ushan0v@frs.sourceforge.net <<'EOF'
+          ls /home/frs/project/forkop
+          EOF
+          then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SourceForge project is unavailable; skipping mirror publication"
+          fi
+
       - name: Upload SourceForge packages
+        if: ${{ steps.sourceforge.outputs.available == 'true' }}
         shell: bash
         env:
           VERSION: ${{ needs.preparation.outputs.version }}
@@ -259,6 +274,7 @@ jobs:
           EOF
 
       - name: Verify SourceForge package downloads
+        if: ${{ steps.sourceforge.outputs.available == 'true' }}
         shell: bash
         env:
           VERSION: ${{ needs.preparation.outputs.version }}
@@ -287,6 +303,7 @@ jobs:
           done
 
       - name: Publish SourceForge installer metadata
+        if: ${{ steps.sourceforge.outputs.available == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -301,6 +318,7 @@ jobs:
           EOF
 
       - name: Verify SourceForge installer metadata
+        if: ${{ steps.sourceforge.outputs.available == 'true' }}
         shell: bash
         env:
           VERSION: ${{ needs.preparation.outputs.version }}
