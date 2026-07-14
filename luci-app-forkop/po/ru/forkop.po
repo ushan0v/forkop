@@ -932,14 +932,14 @@ msgstr "Задержка при мониторинге интерфейсов"
 msgid "Interface monitoring for Bad WAN"
 msgstr "Мониторинг интерфейса для Bad WAN"
 
-msgid "Interrupt existing connections"
-msgstr "Прерывать существующие соединения"
+msgid "Interrupt connections"
+msgstr "Прерывать соединения"
 
-msgid "Interrupt existing connections when priority failover switches server"
-msgstr "Разрывать существующие соединения при переключении сервера приоритетом"
+msgid "Interrupt connections when priority failover switches server"
+msgstr "Разрывать соединения при переключении сервера приоритетом"
 
-msgid "Interrupt existing connections when URLTest switches the selected server"
-msgstr "Прерывать существующие соединения, когда URLTest переключает выбранный сервер"
+msgid "Interrupt connections when URLTest switches the selected server"
+msgstr "Прерывать соединения, когда URLTest переключает выбранный сервер"
 
 msgid "Interval"
 msgstr "Интервал"

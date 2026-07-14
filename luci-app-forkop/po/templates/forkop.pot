@@ -1358,15 +1358,15 @@ msgstr ""
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:3005
 #: src/forkop/tabs/dashboard/initController.ts:918
 #: src/forkop/tabs/dashboard/initController.ts:1167
-msgid "Interrupt existing connections"
+msgid "Interrupt connections"
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:3006
-msgid "Interrupt existing connections when priority failover switches server"
+msgid "Interrupt connections when priority failover switches server"
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2518
-msgid "Interrupt existing connections when URLTest switches the selected server"
+msgid "Interrupt connections when URLTest switches the selected server"
 msgstr ""
 
 #: src/forkop/tabs/dashboard/initController.ts:914

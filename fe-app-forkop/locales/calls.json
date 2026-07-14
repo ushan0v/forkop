@@ -2253,8 +2253,8 @@
     ]
   },
   {
-    "call": "Interrupt existing connections",
-    "key": "Interrupt existing connections",
+    "call": "Interrupt connections",
+    "key": "Interrupt connections",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2517",
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:3005",
@@ -2263,15 +2263,15 @@
     ]
   },
   {
-    "call": "Interrupt existing connections when priority failover switches server",
-    "key": "Interrupt existing connections when priority failover switches server",
+    "call": "Interrupt connections when priority failover switches server",
+    "key": "Interrupt connections when priority failover switches server",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:3006"
     ]
   },
   {
-    "call": "Interrupt existing connections when URLTest switches the selected server",
-    "key": "Interrupt existing connections when URLTest switches the selected server",
+    "call": "Interrupt connections when URLTest switches the selected server",
+    "key": "Interrupt connections when URLTest switches the selected server",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2518"
     ]

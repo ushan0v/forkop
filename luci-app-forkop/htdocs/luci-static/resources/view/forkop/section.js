@@ -2514,9 +2514,9 @@ function addUrlTestItemOptions(itemSection, options = {}) {
   o = itemSection.option(
     form.Flag,
     "interrupt_exist_connections",
-    _("Interrupt existing connections"),
+    _("Interrupt connections"),
     _(
-      "Interrupt existing connections when URLTest switches the selected server",
+      "Interrupt connections when URLTest switches the selected server",
     ),
   );
   o.default = "1";
@@ -3002,8 +3002,8 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   o = itemSection.option(
     form.Flag,
     "interrupt_exist_connections",
-    _("Interrupt existing connections"),
-    _("Interrupt existing connections when priority failover switches server"),
+    _("Interrupt connections"),
+    _("Interrupt connections when priority failover switches server"),
   );
   o.default = "1";
   o.rmempty = false;

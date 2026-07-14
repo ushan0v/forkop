@@ -6188,7 +6188,7 @@ function renderUrlTestInfoModal(outbound) {
     { label: _("Tolerance"), value: info.tolerance },
     { label: _("Idle timeout"), value: info.idleTimeout },
     {
-      label: _("Interrupt existing connections"),
+      label: _("Interrupt connections"),
       value: info.interruptExistConnections
     }
   ];
@@ -6391,7 +6391,7 @@ function renderPriorityInfoModal(outbound) {
       }
     ] : [],
     {
-      label: _("Interrupt existing connections"),
+      label: _("Interrupt connections"),
       value: info.interruptExistConnections
     }
   ];

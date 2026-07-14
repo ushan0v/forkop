@@ -899,7 +899,7 @@ function renderUrlTestInfoModal(outbound: Forkop.Outbound) {
     { label: _('Tolerance'), value: info.tolerance },
     { label: _('Idle timeout'), value: info.idleTimeout },
     {
-      label: _('Interrupt existing connections'),
+      label: _('Interrupt connections'),
       value: info.interruptExistConnections,
     },
   ];
@@ -1142,7 +1142,7 @@ function renderPriorityInfoModal(outbound: Forkop.Outbound) {
         ]
       : []),
     {
-      label: _('Interrupt existing connections'),
+      label: _('Interrupt connections'),
       value: info.interruptExistConnections,
     },
   ];
