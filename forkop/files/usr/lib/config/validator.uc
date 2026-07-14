@@ -137,10 +137,6 @@ function bool_option(section, key, fallback) {
     return value == "1" || value == "true" || value == "yes" || value == "on";
 }
 
-function file_exists(path) {
-    return fs.stat(as_string(path)) != null;
-}
-
 function file_executable(path) {
     let stat = fs.stat(as_string(path));
     if (stat == null || stat.mode == null)
@@ -190,10 +186,6 @@ function command_output(command) {
 
 function command_output_from_args(args) {
     return command_output(command_from_args(args));
-}
-
-function command_trimmed_output_from_args(args) {
-    return replace(command_output_from_args(args), /[\r\n]+$/g, "");
 }
 
 function command_exists(name) {
@@ -1559,11 +1551,6 @@ function download_via_proxy_section(settings, purpose) {
 function download_via_proxy_enabled(settings, purpose) {
     let enabled_option = download_via_proxy_option_for_purpose(purpose);
     return enabled_option != "" && bool_option(settings, enabled_option, false);
-}
-
-function download_via_proxy_any_enabled(settings) {
-    return download_via_proxy_enabled(settings, "lists") ||
-        download_via_proxy_enabled(settings, "components");
 }
 
 function basic_rows_from_sections(sections) {

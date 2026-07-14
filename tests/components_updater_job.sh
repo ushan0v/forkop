@@ -123,7 +123,11 @@ tmp_file_line="$(grep -n '^function make_tmp_file' "$ACTION_UC" | cut -d: -f1)"
 [ -n "$init_line" ] && [ -n "$tmp_file_line" ] && [ "$init_line" -lt "$tmp_file_line" ] ||
   fail "components/action.uc must declare init_tmp_dir before make_tmp_file for OpenWrt ucode"
 
-sed -n '26,64p' "$ACTION_UC" >"$WORK_DIR/action-command-success.uc"
+awk '
+/^function as_string\(value\)/ { capture = 1 }
+/^function command_output\(command\)/ { capture = 0 }
+capture { print }
+' "$ACTION_UC" >"$WORK_DIR/action-command-success.uc"
 cat >>"$WORK_DIR/action-command-success.uc" <<'UCODE'
 let output_path = ARGV[0] || "";
 if (output_path == "" ||

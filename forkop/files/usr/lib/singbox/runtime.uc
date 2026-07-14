@@ -82,10 +82,6 @@ function command_status(command) {
     return status > 255 ? int(status / 256) : status;
 }
 
-function command_success(command) {
-    return command_status(command + " >/dev/null 2>&1") == 0;
-}
-
 function command_success_from_args(args) {
     return system(command_from_args(args) + " >/dev/null 2>&1") == 0;
 }

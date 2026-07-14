@@ -27,9 +27,7 @@ let read_json_file = common.read_json_file;
 let read_stdin = common.read_stdin;
 let read_stdin_json = common.read_stdin_json;
 let write_json = common.write_json;
-let write_compact_string_array = common.write_compact_string_array;
 let csv_to_json_array = common.csv_to_json_array;
-let write_file_json = common.write_json_file;
 let write_json_file = common.write_json_file;
 let strip_internal_fields = common.strip_internal_fields;
 let array_or_empty = common.array_or_empty;
@@ -489,14 +487,6 @@ function base_config(settings, service_address, runtime_context) {
             clash_api: clash_api_config(settings, service_address)
         }
     };
-}
-
-function unsupported_setting(settings, key) {
-    let value = option(settings, key, "");
-    return value != "" && value != "0";
-}
-
-function check_supported_settings(settings) {
 }
 
 function supported_subscription_outbound(outbound) {
@@ -2275,43 +2265,6 @@ function add_connections_outbound(config, section, taken) {
         runtime_generate_unsupported("failed to write section cache for " + section_name);
 }
 
-function add_proxy_outbound(config, section, taken) {
-    add_connections_outbound(config, section, taken);
-}
-
-function add_json_outbound(config, section) {
-    let outbound_json = option(section, "outbound_json", "");
-    if (outbound_json == "")
-        runtime_generate_unsupported("JSON outbound is not set");
-
-    let outbound;
-    try {
-        outbound = json(outbound_json);
-    }
-    catch (e) {
-        runtime_generate_unsupported("JSON outbound is invalid");
-    }
-
-    if (type(outbound) != "object")
-        runtime_generate_unsupported("JSON outbound is not an object");
-
-    outbound.tag = outbound_tag(section[".name"]);
-    push(config.outbounds, outbound);
-}
-
-function add_vpn_outbound(config, section) {
-    let interface_name = option(section, "interface", "");
-    if (interface_name == "")
-        runtime_generate_unsupported("VPN interface is not set");
-
-    push(config.outbounds, {
-        type: "direct",
-        tag: outbound_tag(section[".name"]),
-        bind_interface: interface_name,
-        routing_mark: runtime_constants.OUTBOUND_MARK
-    });
-}
-
 function enabled_action_index(sections, target_section, action_name) {
     let index = 0;
     for (let section in sections) {
@@ -2389,11 +2342,6 @@ function domain_ip_list_ruleset_tag(section_name) {
 
 function domain_ip_list_ruleset_path(section_name) {
     return runtime_ruleset_folder + "/" + domain_ip_list_ruleset_tag(section_name) + ".json";
-}
-
-function reference_is_remote(reference) {
-    reference = as_string(reference);
-    return substr(reference, 0, 7) == "http://" || substr(reference, 0, 8) == "https://";
 }
 
 function reference_is_local(reference) {
@@ -2502,28 +2450,26 @@ function domain_suffix_condition_value_kind(value) {
     return rule_config.prefixed_domain_kind_value(value);
 }
 
-function domain_condition_values(section, key) {
-    let result = [];
+function domain_conditions(section) {
+    let result = {
+        domain: [],
+        domain_suffix: [],
+        domain_keyword: [],
+        domain_regex: []
+    };
 
-    if (key == "domain_suffix") {
-        for (let value in combined_domain_source_values(section)) {
-            let normalized = domain_suffix_condition_value_kind(value);
-            if (normalized != null && normalized.kind == "domain_suffix")
-                push(result, normalized.value);
+    for (let key in [ "domain", "domain_keyword", "domain_regex" ]) {
+        for (let value in legacy_condition_values(section, key)) {
+            let normalized = rule_config.domain_value_for_key(value, key);
+            if (normalized != null)
+                push(result[key], normalized);
         }
-        return result;
-    }
-
-    for (let value in legacy_condition_values(section, key)) {
-        let normalized = rule_config.domain_value_for_key(value, key);
-        if (normalized != null)
-            push(result, normalized);
     }
 
     for (let value in combined_domain_source_values(section)) {
         let normalized = domain_suffix_condition_value_kind(value);
-        if (normalized != null && normalized.kind == key)
-            push(result, normalized.value);
+        if (normalized != null)
+            push(result[normalized.kind], normalized.value);
     }
 
     return result;
@@ -2572,10 +2518,11 @@ function add_dns_server_for_section(config, section) {
 }
 
 function add_dns_action_rules_for_section(config, section) {
-    let domain = domain_condition_values(section, "domain");
-    let domain_suffix = domain_condition_values(section, "domain_suffix");
-    let domain_keyword = domain_condition_values(section, "domain_keyword");
-    let domain_regex = domain_condition_values(section, "domain_regex");
+    let domains = domain_conditions(section);
+    let domain = domains.domain;
+    let domain_suffix = domains.domain_suffix;
+    let domain_keyword = domains.domain_keyword;
+    let domain_regex = domains.domain_regex;
     let rule_set_tags = [];
     let section_name = section[".name"];
 
@@ -2686,10 +2633,11 @@ function add_fully_routed_ips_rule(config, section) {
 }
 
 function add_combined_route_for_section(config, section) {
-    let domain = domain_condition_values(section, "domain");
-    let domain_suffix = domain_condition_values(section, "domain_suffix");
-    let domain_keyword = domain_condition_values(section, "domain_keyword");
-    let domain_regex = domain_condition_values(section, "domain_regex");
+    let domains = domain_conditions(section);
+    let domain = domains.domain;
+    let domain_suffix = domains.domain_suffix;
+    let domain_keyword = domains.domain_keyword;
+    let domain_regex = domains.domain_regex;
     let ip_cidr = legacy_condition_values(section, "ip_cidr");
     let source_ip_cidr = legacy_condition_values(section, "source_ip_cidr");
     let rule_set_tags = [];
@@ -2954,7 +2902,6 @@ function generate_config(output_path, service_address, mwan3_active, supports_xh
     cursor.load(CONFIG_NAME);
     runtime_settings_cache = object_or_empty(cursor.get_all(CONFIG_NAME, "settings"));
     let settings = runtime_settings_cache;
-    check_supported_settings(settings);
 
     let sections = enabled_sections();
     let servers = enabled_servers();
@@ -2991,13 +2938,6 @@ function generate_config_fixture(fixture_path, output_path, service_address, mwa
     generate_config(output_path, service_address, mwan3_active, supports_xhttp);
 }
 
-function merge_object_values(target, source) {
-    target = object_or_empty(target);
-    for (let key, value in object_or_empty(source))
-        target[key] = value;
-    return target;
-}
-
 function stdin_length() {
     let value = read_stdin_json();
     if (type(value) == "array" || type(value) == "object")
@@ -3021,22 +2961,6 @@ function stdin_regex_matches(pattern) {
     catch (e) {
         return false;
     }
-}
-
-function file_line_count(path) {
-    let data = fs.readfile(path);
-    let count = 0;
-
-    if (data == null) {
-        print("0\n");
-        return;
-    }
-
-    for (let i = 0; i < length(data); i++)
-        if (substr(data, i, 1) == "\n")
-            count++;
-
-    print(count, "\n");
 }
 
 function ip_addr_first_inet4() {
@@ -3085,11 +3009,6 @@ function stdin_first_nslookup_address() {
     }
 }
 
-function valid_ipv6_literal(value) {
-    value = as_string(value);
-    return index(value, ":") >= 0 && match(value, /^[0-9A-Fa-f:.]+$/) != null;
-}
-
 function stdin_first_field() {
     let data = read_stdin();
     let newline = index(data, "\n");
@@ -3100,75 +3019,14 @@ function stdin_first_field() {
         print(fields[0], "\n");
 }
 
-function normalize_country_server_key(value) {
-    print(lc(trim(as_string(value))), "\n");
-}
-
-function array_item(index) {
-    let value = read_stdin_json();
-    index = int(index || 0);
-    if (type(value) == "array" && index >= 0 && index < length(value) && value[index] != null)
-        print(as_string(value[index]), "\n");
-}
-
 function array_append_string(value) {
     let result = array_or_empty(read_stdin_json());
     push(result, as_string(value));
     write_json(result);
 }
 
-function merge_proxy_group_subscription_state(tags_path, link_refs_path, names_path, servers_path,
-    subscription_tags_path, subscription_link_refs_path, subscription_names_path, subscription_servers_path) {
-    let tags = array_or_empty(read_json_file(tags_path));
-    for (let tag in array_or_empty(read_json_file(subscription_tags_path)))
-        push(tags, tag);
-
-    if (!write_file_json(tags_path, tags) ||
-        !write_file_json(link_refs_path, merge_object_values(read_json_file(link_refs_path), read_json_file(subscription_link_refs_path))) ||
-        !write_file_json(names_path, merge_object_values(read_json_file(names_path), read_json_file(subscription_names_path))) ||
-        !write_file_json(servers_path, merge_object_values(read_json_file(servers_path), read_json_file(subscription_servers_path))))
-        exit(1);
-}
-
-function append_proxy_group_outbound_state(tags_path, links_path, names_path, servers_path, tag, link, display_name, server) {
-    tag = as_string(tag);
-    link = as_string(link);
-    display_name = as_string(display_name);
-    server = as_string(server);
-
-    let tags = array_or_empty(read_json_file(tags_path));
-    let links = object_or_empty(read_json_file(links_path));
-    let names = object_or_empty(read_json_file(names_path));
-    let servers = object_or_empty(read_json_file(servers_path));
-
-    push(tags, tag);
-    names[tag] = display_name;
-    if (link != "")
-        links[tag] = link;
-    if (server != "")
-        servers[tag] = server;
-
-    if (!write_file_json(tags_path, tags) ||
-        !write_file_json(links_path, links) ||
-        !write_file_json(names_path, names) ||
-        !write_file_json(servers_path, servers))
-        exit(1);
-}
-
 function normalized_country_list() {
     write_json(runtime_urltest.normalized_country_list(read_stdin_json()));
-}
-
-function countries_from_flag_names(path) {
-    write_json(runtime_urltest.countries_from_flag_names(read_json_file(path)));
-}
-
-function urltest_regex_matching_tags(tags_path, names_path, regex_path) {
-    write_json(runtime_urltest.regex_matching_tag_array(
-        read_json_file(tags_path),
-        read_json_file(names_path),
-        read_json_file(regex_path)
-    ));
 }
 
 function urltest_filter(mode, tags_path, names_path, countries_path, names_filter_path, regex_tags_path, countries_filter_path) {
@@ -3183,220 +3041,9 @@ function urltest_filter(mode, tags_path, names_path, countries_path, names_filte
     ));
 }
 
-function urltest_filter_mode(mode, tags_path, names_path, countries_path, include_names_path, include_regex_path, include_countries_path, exclude_names_path, exclude_regex_path, exclude_countries_path) {
-    write_json(runtime_urltest.filter_mode(
-        mode,
-        read_json_file(tags_path),
-        read_json_file(names_path),
-        read_json_file(countries_path),
-        read_json_file(include_names_path),
-        read_json_file(include_regex_path),
-        read_json_file(include_countries_path),
-        read_json_file(exclude_names_path),
-        read_json_file(exclude_regex_path),
-        read_json_file(exclude_countries_path)
-    ));
-}
-
-function final_urltest_outbounds(config_path, tags_path) {
-    let config = object_or_empty(read_json_file(config_path));
-    let tags = array_or_empty(read_json_file(tags_path));
-    let outbounds_by_tag = {};
-    let skipped_types = {
-        selector: true,
-        urltest: true,
-        direct: true,
-        dns: true,
-        block: true
-    };
-    let result = [];
-
-    for (let outbound in array_or_empty(config.outbounds)) {
-        if (type(outbound) != "object")
-            continue;
-
-        let tag = as_string(outbound.tag || "");
-        if (tag != "")
-            outbounds_by_tag[tag] = outbound;
-    }
-
-    for (let tag in tags) {
-        tag = as_string(tag);
-        let outbound = outbounds_by_tag[tag];
-        if (type(outbound) != "object")
-            continue;
-
-        let proxy_type = lc(as_string(outbound.type || ""));
-        if (skipped_types[proxy_type])
-            continue;
-
-        push(result, tag);
-    }
-
-    write_json(result);
-}
-
-function section_countries(path) {
-    let cache = object_or_empty(read_json_file(path));
-    write_json(object_or_empty(cache.outboundMetadata && cache.outboundMetadata.countries));
-}
-
-function cached_country_object_for_servers(servers_path, cache_path) {
-    let servers = object_or_empty(read_json_file(servers_path));
-    let cache = object_or_empty(read_json_file(cache_path));
-    let result = {};
-
-    for (let tag, _ in servers) {
-        let country = as_string(cache[tag] || "");
-        if (country != "")
-            result[tag] = country;
-    }
-
-    return result;
-}
-
-function cached_countries_for_servers(servers_path, cache_path) {
-    write_json(cached_country_object_for_servers(servers_path, cache_path));
-}
-
-function missing_servers_tsv(servers_path, cache_path) {
-    let servers = object_or_empty(read_json_file(servers_path));
-    let cache = object_or_empty(read_json_file(cache_path));
-
-    for (let tag, server in servers) {
-        server = as_string(server);
-        if (server != "" && as_string(cache[tag] || "") == "")
-            print(tag, "\t", server, "\n");
-    }
-}
-
-function body_error(path) {
-    let body = read_json_file(path);
-    let result = "";
-
-    if (type(body) == "object")
-        result = as_string((body.error && body.error.code) || body.code || body.error || "");
-
-    print(result, "\n");
-}
-
-function ip_country_tsv(path) {
-    for (let item in array_or_empty(read_json_file(path))) {
-        if (type(item) != "object")
-            continue;
-        let ip = as_string(item.ip || "");
-        let country = as_string(item.country || "");
-        if (ip != "" && country != "")
-            print(ip, "\t", country, "\n");
-    }
-}
-
-function tsv_to_object(path) {
-    let result = {};
-    let data = fs.readfile(path);
-    if (data != null) {
-        for (let line in split(data, "\n")) {
-            if (line == "")
-                continue;
-            let parts = split(line, "\t");
-            if (length(parts) >= 2)
-                result[parts[0]] = parts[1];
-        }
-    }
-    write_json(result);
-}
-
-function tsv_second_column_array(path) {
-    let seen = {};
-    let result = [];
-    let data = fs.readfile(path);
-
-    if (data != null) {
-        for (let line in split(data, "\n")) {
-            if (line == "")
-                continue;
-            let parts = split(line, "\t");
-            if (length(parts) >= 2 && parts[1] != "" && !seen[parts[1]]) {
-                seen[parts[1]] = true;
-                push(result, parts[1]);
-            }
-        }
-    }
-
-    sort(result, function(first, second) {
-        return first == second ? 0 : (first < second ? -1 : 1);
-    });
-    write_json(result);
-}
-
-function array_slice_file(path, start, end) {
-    write_json(slice(array_or_empty(read_json_file(path)), int(start || 0), int(end || 0)));
-}
-
 function object_nonempty_stdin() {
     let value = read_stdin_json();
     return (type(value) == "array" || type(value) == "object") && length(value) > 0;
-}
-
-function resolved_country_object_from_tsv(resolved_path, ip_country_path) {
-    let ip_country = object_or_empty(read_json_file(ip_country_path));
-    let result = {};
-    let data = fs.readfile(resolved_path);
-
-    if (data != null) {
-        for (let line in split(data, "\n")) {
-            if (line == "")
-                continue;
-            let parts = split(line, "\t");
-            if (length(parts) < 2)
-                continue;
-            let country = as_string(ip_country[parts[1]] || "");
-            if (country != "")
-                result[parts[0]] = country;
-        }
-    }
-
-    return result;
-}
-
-function server_countries_result(servers_path, cache_path, resolved_path, ip_country_path) {
-    let result = cached_country_object_for_servers(servers_path, cache_path);
-
-    for (let tag, country in resolved_country_object_from_tsv(resolved_path, ip_country_path))
-        result[tag] = country;
-
-    write_json(result);
-}
-
-function outbound_server_by_tag(tag) {
-    let config = object_or_empty(read_stdin_json());
-    for (let outbound in array_or_empty(config.outbounds)) {
-        if (type(outbound) == "object" && outbound.tag == tag) {
-            print(as_string(outbound.server || ""), "\n");
-            return;
-        }
-    }
-}
-
-function dns_route_rule_exists(service_tag, tag) {
-    let config = object_or_empty(read_stdin_json());
-    for (let rule in array_or_empty(config.dns && config.dns.rules)) {
-        if (type(rule) == "object" && rule[service_tag] == tag)
-            return true;
-    }
-    return false;
-}
-
-function route_rule_has_resolve_matchers(service_tag, tag) {
-    let config = object_or_empty(read_stdin_json());
-    for (let rule in array_or_empty(config.route && config.route.rules)) {
-        if (type(rule) != "object" || rule[service_tag] != tag)
-            continue;
-        if (rule.domain != null || rule.domain_suffix != null || rule.domain_keyword != null ||
-            rule.domain_regex != null || rule.rule_set != null)
-            return true;
-    }
-    return false;
 }
 
 let mode = ARGV[0] || "";

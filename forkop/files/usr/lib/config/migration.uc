@@ -229,10 +229,6 @@ function set_list_option_if_not_empty(ctx, section, key, values) {
         set_list_option(ctx, section, key, values);
 }
 
-function set_option_json(ctx, section, key, value) {
-    set_option(ctx, section, key, sprintf("%J", value));
-}
-
 function delete_option(ctx, section, key) {
     if (!option_exists(section, key))
         return;
@@ -304,21 +300,6 @@ function whitespace_list_values(section, key) {
     return list_option(section, key);
 }
 
-function parse_json_object(value) {
-    value = as_string(value);
-    if (value == "")
-        return {};
-
-    try {
-        value = json(value);
-    }
-    catch (e) {
-        return {};
-    }
-
-    return object_or_empty(value);
-}
-
 function str_last_index(value, needle) {
     value = as_string(value);
     needle = as_string(needle);
@@ -330,50 +311,6 @@ function str_last_index(value, needle) {
             return i;
 
     return -1;
-}
-
-function settings_entry(map, item) {
-    item = as_string(item);
-    let entry = object_or_empty(map[item]);
-    map[item] = entry;
-    return entry;
-}
-
-function settings_entry_set_if_missing(map, item, key, value) {
-    let entry = settings_entry(map, item);
-    if (entry[key] == null)
-        entry[key] = as_string(value);
-}
-
-function settings_entry_set_value_if_missing(map, item, key, value) {
-    let entry = settings_entry(map, item);
-    if (entry[key] == null)
-        entry[key] = value;
-}
-
-function settings_entry_set_bool_if_missing(map, item, key, value) {
-    settings_entry_set_if_missing(map, item, key, value ? "1" : "0");
-}
-
-function settings_entry_set_list_if_not_empty(map, item, key, value) {
-    value = option_list_values({ value }, "value");
-    if (length(value) > 0)
-        settings_entry_set_value_if_missing(map, item, key, value);
-}
-
-function settings_entry_move_if_needed(map, from_item, to_item) {
-    from_item = as_string(from_item);
-    to_item = as_string(to_item);
-    if (from_item == "" || to_item == "" || from_item == to_item || map[from_item] == null)
-        return;
-
-    let from_entry = object_or_empty(map[from_item]);
-    let to_entry = settings_entry(map, to_item);
-    for (let key in keys(from_entry))
-        if (to_entry[key] == null)
-            to_entry[key] = from_entry[key];
-
-    delete map[from_item];
 }
 
 function subscription_url_entry_profile(value) {

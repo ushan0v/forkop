@@ -4,7 +4,6 @@ let fs = require("fs");
 let constants = require("core.constants");
 let uci_core = require("core.uci");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || constants.FORKOP_CONFIG_NAME || "forkop";
 const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
 const BIN_PATH = getenv("FORKOP_BIN") || constants.FORKOP_BIN || "/usr/bin/forkop";
 const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || constants.FORKOP_SERVICE_INIT || "/etc/init.d/forkop";
@@ -12,7 +11,6 @@ const FORKOP_VERSION = getenv("FORKOP_VERSION") || constants.FORKOP_VERSION || "
 const FORKOP_RELEASE_REPO = getenv("FORKOP_RELEASE_REPO") || constants.FORKOP_RELEASE_REPO || "ushan0v/forkop";
 const RUNTIME_STATE_DIR = getenv("FORKOP_RUNTIME_STATE_DIR") || "/var/run/forkop";
 const SYSTEM_INFO_CACHE_FILE = getenv("FORKOP_SYSTEM_INFO_CACHE_FILE") || RUNTIME_STATE_DIR + "/system-info.json";
-const COMPONENT_JOB_DIR = getenv("UPDATES_JOB_DIR") || getenv("FORKOP_UI_COMPONENT_ACTION_DIR") || RUNTIME_STATE_DIR + "/component-actions";
 const COMPONENT_LOCK_DIR = getenv("UPDATES_LOCK_DIR") || RUNTIME_STATE_DIR + "/component-action.lock";
 const TMP_STALE_TTL_MINUTES = getenv("UPDATES_TMP_STALE_TTL_MINUTES") || "30";
 const TMP_FILE_STALE_TTL_MINUTES = getenv("UPDATES_TMP_FILE_STALE_TTL_MINUTES") || "10";
@@ -25,11 +23,6 @@ let forkop_stopped_for_sing_box_change = false;
 
 function as_string(value) {
     return value == null ? "" : "" + value;
-}
-
-function arg_bool(value) {
-    value = lc(as_string(value));
-    return value == "1" || value == "true" || value == "yes" || value == "on";
 }
 
 function shell_quote(value) {
@@ -120,17 +113,6 @@ function file_nonempty(path) {
 function path_basename(path) {
     let parts = split(as_string(path), "/");
     return length(parts) > 0 ? as_string(parts[length(parts) - 1]) : "";
-}
-
-function parent_dir(path) {
-    path = as_string(path);
-    let slash = rindex(path, "/");
-    return slash >= 0 ? substr(path, 0, slash) : "";
-}
-
-function ensure_parent_dir(path) {
-    let dir = parent_dir(path);
-    return dir == "" || dir == "." || ensure_dir(dir);
 }
 
 function now_seconds() {
@@ -409,15 +391,6 @@ function pkg_install_files_command(files) {
 
 function pkg_install_files(files) {
     return command_success(pkg_install_files_command(files));
-}
-
-function pkg_remove_name(package_name) {
-    package_name = as_string(package_name);
-    if (!pkg_is_installed(package_name))
-        return true;
-    if (is_apk())
-        return command_success(command_from_args([ "apk", "del", package_name ]) + " </dev/null");
-    return command_success(command_from_args([ "opkg", "remove", "--force-depends", package_name ]) + " </dev/null");
 }
 
 function pkg_remove_sing_box_conflict(package_name) {

@@ -2009,14 +2009,6 @@ function strip_metadata_preamble_data(data) {
     return join("\n", result);
 }
 
-function content_has_share_links(data) {
-    for (let line in split(data, "\n")) {
-        if (match(line, /^[ \t]*(ss|vmess|vless|trojan|hysteria2|hy2|socks|socks4|socks4a|socks5):\/\//))
-            return true;
-    }
-    return false;
-}
-
 function content_is_clash_yaml(data) {
     for (let line in split(data, "\n")) {
         if (match(line, /^[ \t]*proxies:[ \t]*(#.*)?$/))
@@ -2337,19 +2329,6 @@ function xray_outbound_detour(outbound) {
 
     sockopt = object_or_empty(outbound.sockopt);
     return as_string(sockopt.dialerProxy || "");
-}
-
-function xray_outbound_by_source_tag(source_outbounds, tag) {
-    tag = as_string(tag);
-    if (tag == "")
-        return null;
-
-    for (let outbound in source_outbounds) {
-        if (type(outbound) == "object" && xray_source_tag(outbound, "") == tag)
-            return outbound;
-    }
-
-    return null;
 }
 
 function xray_supported_source_tags(source_outbounds) {
@@ -2902,19 +2881,6 @@ function normalized_skipped_warning(path) {
         print(message, "\n");
 
     return true;
-}
-
-function str_last_index(value, needle) {
-    value = as_string(value);
-    needle = as_string(needle);
-    if (needle == "")
-        return length(value);
-
-    for (let i = length(value) - length(needle); i >= 0; i--)
-        if (substr(value, i, length(needle)) == needle)
-            return i;
-
-    return -1;
 }
 
 function subscription_source_entry_result(valid, url, user_agent, error) {

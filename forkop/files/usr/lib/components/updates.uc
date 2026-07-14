@@ -391,10 +391,6 @@ function module_output(args) {
     return command_output(module_command(args));
 }
 
-function module_env_status(env, args) {
-    return command_status(command_env(env) + " " + module_command(args));
-}
-
 function nft_module_success(args) {
     let command_args = [ LIB_DIR + "/nft/apply.uc" ];
     for (let arg in args)

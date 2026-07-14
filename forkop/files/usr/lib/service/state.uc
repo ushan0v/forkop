@@ -206,11 +206,6 @@ function current_epoch() {
     return numeric_text(value) ? value : "0";
 }
 
-function config_file_hash(path) {
-    let hash_line = trim(command_output_from_args([ "md5sum", as_string(path) ]));
-    return length(hash_line) >= 32 ? substr(hash_line, 0, 32) : "";
-}
-
 function current_year() {
     let value = command_trimmed_output_from_args([ "date", "+%Y" ]);
     return numeric_text(value) ? int(value) : null;
@@ -535,7 +530,21 @@ function sing_box_reload_previous_pid(previous_pid, config_hash_before, config_h
     return int(previous_pid);
 }
 
-function reload_sing_box_runtime(previous_pid, config_hash_before, config_hash_after) {
+function arg_bool(value) {
+    value = lc(as_string(value));
+    return value == "1" || value == "true" || value == "yes" || value == "on";
+}
+
+function sing_box_runtime_reload_needed(config_hash_before, config_hash_after, force) {
+    return arg_bool(force) || as_string(config_hash_before) != as_string(config_hash_after);
+}
+
+function reload_sing_box_runtime(previous_pid, config_hash_before, config_hash_after, force) {
+    if (!sing_box_runtime_reload_needed(config_hash_before, config_hash_after, force)) {
+        command_success_from_args([ "logger", "-t", "forkop", "[info] sing-box reload skipped: configuration is unchanged" ]);
+        return;
+    }
+
     previous_pid = sing_box_reload_previous_pid(previous_pid, config_hash_before, config_hash_after);
     command_success_from_args([ "logger", "-t", "forkop", "[info] Reloading sing-box runtime" ]);
     if (!command_success_from_args([ "/etc/init.d/sing-box", "reload" ])) {
@@ -599,11 +608,6 @@ function whitespace_fields(value) {
         if (item != "")
             push(result, item);
     return result;
-}
-
-function arg_bool(value) {
-    value = lc(as_string(value));
-    return value == "1" || value == "true" || value == "yes" || value == "on";
 }
 
 function option(section, key, fallback) {
@@ -747,23 +751,9 @@ function download_via_proxy_option_for_purpose(purpose) {
     return "";
 }
 
-function download_via_proxy_section_option_for_purpose(purpose) {
-    purpose = as_string(purpose || "lists");
-    if (purpose == "lists")
-        return "download_lists_via_proxy_section";
-    if (purpose == "components")
-        return "download_components_via_proxy_section";
-    return "";
-}
-
 function download_via_proxy_enabled(settings, purpose) {
     let enabled_option = download_via_proxy_option_for_purpose(purpose);
     return enabled_option != "" && bool_option(settings, enabled_option, false);
-}
-
-function download_via_proxy_any_enabled(settings) {
-    return download_via_proxy_enabled(settings, "lists") ||
-        download_via_proxy_enabled(settings, "components");
 }
 
 function signature_add_value(body, key, value) {
@@ -1796,7 +1786,7 @@ else if (mode == "acquire-runtime-dir-lock-wait")
 else if (mode == "release-runtime-dir-lock")
     release_runtime_dir_lock(ARGV[1]);
 else if (mode == "reload-sing-box-runtime")
-    reload_sing_box_runtime(ARGV[1], ARGV[2], ARGV[3]);
+    reload_sing_box_runtime(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "hup-sing-box-runtime")
     hup_sing_box_runtime();
 else if (mode == "clear-reload-state")
@@ -1843,6 +1833,8 @@ else if (mode == "sing-box-pid-replaced-fixture")
     exit(sing_box_pid_replaced(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
 else if (mode == "sing-box-reload-previous-pid-fixture")
     print(sing_box_reload_previous_pid(ARGV[1], ARGV[2], ARGV[3]), "\n");
+else if (mode == "sing-box-runtime-reload-needed-fixture")
+    exit(sing_box_runtime_reload_needed(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
 else if (mode == "forkop-running")
     exit(forkop_running(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
 else if (mode == "forkop-stably-running")

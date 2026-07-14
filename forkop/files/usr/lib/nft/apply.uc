@@ -51,10 +51,6 @@ function uci_settings() {
     return uci_section("settings");
 }
 
-function write_json(value) {
-    print(sprintf("%J", value), "\n");
-}
-
 function write_compact_string_array(values) {
     print("[");
     for (let i = 0; i < length(values); i++) {
@@ -63,15 +59,6 @@ function write_compact_string_array(values) {
         print(sprintf("%J", as_string(values[i])));
     }
     print("]\n");
-}
-
-function read_stdin() {
-    let input = fs.open("/dev/stdin", "r");
-    if (!input)
-        return "";
-    let data = input.read("all");
-    input.close();
-    return data == null ? "" : data;
 }
 
 function write_text_file(path, text) {
@@ -244,14 +231,6 @@ function valid_ipv4_cidr(value) {
     return core_ip.valid_ipv4_cidr(value, false);
 }
 
-function nft_ipv4(value, allow_trailing_dot) {
-    return core_ip.valid_ipv4(value, allow_trailing_dot, true);
-}
-
-function nft_ipv4_cidr(value) {
-    return core_ip.valid_ipv4_cidr(value, true);
-}
-
 function nft_ip_or_cidr(value) {
     return core_ip.nft_ip_or_cidr(value);
 }
@@ -266,16 +245,6 @@ function domain_subnet_line_values(data) {
     }
 
     return result;
-}
-
-function domain_subnet_value_valid(value, kind) {
-    kind = as_string(kind);
-    if (kind == "domains")
-        return domain_config.valid_suffix(value);
-    if (kind == "subnets")
-        return core_ip.valid_ip_or_cidr(value);
-
-    exit(1);
 }
 
 function normalize_domain_subnet_value(value, kind) {
@@ -1250,10 +1219,6 @@ function nft_ensure_fully_routed_ip_rules_from_chain(source_ip, table, interface
 
     inserted[source_ip] = true;
     return true;
-}
-
-function nft_ensure_fully_routed_ip_rules(source_ip, table, interface_set, localv4_set, mark, localv6_set) {
-    return nft_ensure_fully_routed_ip_rules_from_chain(source_ip, table, interface_set, localv4_set, localv6_set, mark, read_stdin(), {});
 }
 
 function normalized_fields(line) {

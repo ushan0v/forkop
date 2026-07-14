@@ -277,11 +277,6 @@ function remember_priority_group(state, tag_name, group) {
     state.priorityGroups[tag_name] = object_or_empty(group);
 }
 
-function remember_visible_outbound(state, tag_name, source_section, source_index, source_outbound_index, display_name, outbound) {
-    remember_source_outbound(state, tag_name, source_section, source_index, source_outbound_index, display_name, outbound);
-    remember_urltest_group(state, tag_name, display_name, outbound);
-}
-
 function source_hwid_path(source_section) {
     return TMP_SUBSCRIPTION_FOLDER + "/" + source_section + ".hwid";
 }
@@ -355,7 +350,6 @@ return {
     remember_urltest_group,
     remember_urltest_group_config,
     remember_priority_group,
-    remember_visible_outbound,
     source_cache_is_current,
     read_source_outbounds,
     new_section_state

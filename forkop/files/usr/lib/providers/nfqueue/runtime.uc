@@ -63,10 +63,6 @@ function command_success_from_args(args) {
     return system(command_from_args(args) + " >/dev/null 2>&1") == 0;
 }
 
-function command_exists(name) {
-    return command_success_from_args([ "command", "-v", name ]);
-}
-
 function module_command(args) {
     let command_args = [ "ucode", "-L", LIB_DIR ];
     for (let arg in args)
@@ -154,16 +150,6 @@ function enabled_sections(cfg) {
         if (bool_option(section, "enabled", true) && option(section, "action", "") == cfg.action)
             push(result, section);
     return result;
-}
-
-function rule_index(name, sections) {
-    let index_value = 0;
-    for (let section in array_or_empty(sections)) {
-        index_value++;
-        if (section_name(section) == as_string(name))
-            return index_value;
-    }
-    return 0;
 }
 
 function hex_digit_value(value) {

@@ -125,6 +125,13 @@ assert_eq "0" \
 assert_eq "0" \
   "$(state_ucode sing-box-reload-previous-pid-fixture missing old new)" \
   "missing sing-box PID replacement constraint"
+if state_ucode sing-box-runtime-reload-needed-fixture same same 0 >/dev/null 2>&1; then
+  fail "unchanged sing-box config must skip an ordinary runtime reload"
+fi
+state_ucode sing-box-runtime-reload-needed-fixture old new 0 >/dev/null ||
+  fail "changed sing-box config must reload the runtime"
+state_ucode sing-box-runtime-reload-needed-fixture same same 1 >/dev/null ||
+  fail "forced runtime reload must reload unchanged sing-box config"
 
 assert_eq "8" \
   "$(state_ucode process-age-seconds-fixture 786161359 786162159)" \

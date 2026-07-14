@@ -826,15 +826,6 @@ function uci_named_section(section_name_value) {
     return object_or_empty(uci_core.get_all(CONFIG_NAME, section_name_value));
 }
 
-function list_option(section, key) {
-    let value = object_or_empty(section)[key];
-    if (type(value) == "array")
-        return value;
-    if (as_string(value) != "")
-        return [ as_string(value) ];
-    return [];
-}
-
 function find_section(sections, name) {
     name = as_string(name);
     for (let section in sections) {

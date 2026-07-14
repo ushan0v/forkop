@@ -29,7 +29,6 @@ const RELOAD_STATE_SNAPSHOT_FILE = getenv("FORKOP_RELOAD_STATE_SNAPSHOT_FILE") |
 const PENDING_RELOAD_FILE = getenv("FORKOP_PENDING_RELOAD_FILE") || RUNTIME_STATE_DIR + "/reload.pending";
 const SERVICE_TRIGGER_SYNC_FILE = getenv("FORKOP_SERVICE_TRIGGER_SYNC_FILE") || RUNTIME_STATE_DIR + "/service-triggers.sync";
 const SUBSCRIPTION_UPDATE_STATE_DIR = getenv("FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR") || RUNTIME_STATE_DIR + "/subscription-update";
-const SUBSCRIPTION_UPDATE_JOB_DIR = getenv("FORKOP_SUBSCRIPTION_UPDATE_JOB_DIR") || RUNTIME_STATE_DIR + "/subscription-update-jobs";
 const SUBSCRIPTION_LINKS_DIR = getenv("FORKOP_SUBSCRIPTION_LINKS_DIR") || RUNTIME_STATE_DIR + "/subscription-links";
 const SUBSCRIPTION_METADATA_DIR = getenv("FORKOP_SUBSCRIPTION_METADATA_DIR") || RUNTIME_STATE_DIR + "/subscription-metadata";
 const OUTBOUND_METADATA_DIR = getenv("FORKOP_OUTBOUND_METADATA_DIR") || RUNTIME_STATE_DIR + "/outbound-metadata";
@@ -208,10 +207,6 @@ function trim(value) {
 function owner_pid() {
     let pid = trim(command_output_from_args([ "sh", "-c", "echo $PPID" ]));
     return match(pid, /^[0-9]+$/) != null ? pid : "0";
-}
-
-function now_seconds() {
-    return int(clock()[0]);
 }
 
 function bool_text(value) {
@@ -1236,7 +1231,8 @@ function reload(reason) {
             "reload-sing-box-runtime",
             sing_box_pid_before,
             sing_box_config_hash_before,
-            file_md5(sing_box_config_path)
+            file_md5(sing_box_config_path),
+            as_string(force_runtime_reload)
         ]);
         if (status != 0)
             return abort_reload(status, true);

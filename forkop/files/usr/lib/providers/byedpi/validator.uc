@@ -4,11 +4,6 @@ function as_string(value) {
     return value == null ? "" : "" + value;
 }
 
-function bool_arg(value) {
-    value = as_string(value);
-    return value == "1" || value == "true";
-}
-
 function write_json(value) {
     print(sprintf("%J", value), "\n");
 }

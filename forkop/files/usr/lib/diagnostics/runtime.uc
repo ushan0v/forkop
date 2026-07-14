@@ -19,8 +19,6 @@ const SYSTEM_INFO_CACHE_TTL = int(getenv("FORKOP_SYSTEM_INFO_CACHE_TTL") || "360
 const TMP_SING_BOX_FOLDER = getenv("TMP_SING_BOX_FOLDER") || constants.TMP_SING_BOX_FOLDER || "/tmp/sing-box";
 const TMP_RULESET_FOLDER = getenv("TMP_RULESET_FOLDER") || constants.TMP_RULESET_FOLDER || TMP_SING_BOX_FOLDER + "/rulesets";
 const TMP_SUBSCRIPTION_FOLDER = getenv("TMP_SUBSCRIPTION_FOLDER") || constants.TMP_SUBSCRIPTION_FOLDER || TMP_SING_BOX_FOLDER + "/subscriptions";
-const SUBSCRIPTION_METADATA_DIR = getenv("FORKOP_SUBSCRIPTION_METADATA_DIR") || RUNTIME_STATE_DIR + "/subscription-metadata";
-const OUTBOUND_METADATA_DIR = getenv("FORKOP_OUTBOUND_METADATA_DIR") || RUNTIME_STATE_DIR + "/outbound-metadata";
 const SECTION_CACHE_DIR = getenv("FORKOP_SECTION_CACHE_DIR") || RUNTIME_STATE_DIR + "/section-cache";
 const CHECK_PROXY_IP_DOMAIN = getenv("CHECK_PROXY_IP_DOMAIN") || constants.CHECK_PROXY_IP_DOMAIN || "ip.podkop.fyi";
 const FAKEIP_TEST_DOMAIN = getenv("FAKEIP_TEST_DOMAIN") || constants.FAKEIP_TEST_DOMAIN || "fakeip.podkop.fyi";
@@ -221,10 +219,6 @@ function parse_json_or_null(value) {
 
 function object_or_empty(value) {
     return type(value) == "object" ? value : {};
-}
-
-function array_or_empty(value) {
-    return type(value) == "array" ? value : [];
 }
 
 function option(section, key, fallback) {
@@ -1241,14 +1235,6 @@ function url_host(value) {
     return helper_output("url-get-host", [ value ]);
 }
 
-function url_port(value) {
-    return helper_output("url-get-port", [ value ]);
-}
-
-function url_path(value) {
-    return helper_output("url-get-path", [ value ]);
-}
-
 function dns_check_resolve_host(host, resolver, timeout_seconds) {
     host = as_string(host);
     resolver = as_string(resolver);
@@ -1268,71 +1254,6 @@ function dns_check_resolve_host(host, resolver, timeout_seconds) {
             return line;
     }
     return "";
-}
-
-function dns_check_dig_server_available(dns_type, dns_server, bootstrap_dns_server, domain) {
-    let dns_host = url_host(dns_server);
-    if (dns_host == "")
-        dns_host = as_string(dns_server);
-    let server_port = url_port(dns_server);
-    let probe_server = "";
-    let tls_hostname = "";
-
-    if (valid_ipv4(dns_host))
-        probe_server = dns_host;
-    else {
-        probe_server = dns_check_resolve_host(dns_host, bootstrap_dns_server);
-        if (probe_server == "")
-            return false;
-        tls_hostname = dns_host;
-    }
-
-    let args = [ "dig" ];
-    if (server_port != "") {
-        push(args, "-p");
-        push(args, server_port);
-    }
-    push(args, "@" + probe_server);
-    push(args, domain);
-    if (dns_type == "dot") {
-        push(args, "+tls");
-        if (tls_hostname != "")
-            push(args, "+tls-hostname=" + tls_hostname);
-    }
-    else if (dns_type != "udp")
-        return false;
-    push(args, "+timeout=2");
-    push(args, "+tries=1");
-    return command_success_from_args(args);
-}
-
-function dns_check_doh_server_available(dns_server, bootstrap_dns_server) {
-    let dns_host = url_host(dns_server);
-    if (dns_host == "")
-        dns_host = as_string(dns_server);
-    if (dns_host == "")
-        return false;
-
-    let server_port = url_port(dns_server);
-    if (server_port == "")
-        server_port = "443";
-
-    let doh_path = url_path(dns_server);
-    if (doh_path == "" || doh_path == "/")
-        doh_path = "/dns-query";
-
-    let doh_query = "AAABAAABAAAAAAAABmdvb2dsZQNjb20AAAEAAQ";
-    let url = "https://" + dns_host + ":" + server_port + doh_path + "?dns=" + doh_query;
-    let args = [ "curl", "-sS", "--max-time", "3", "-o", "/dev/null", "-w", "%{http_code}", "-H", "accept: application/dns-message" ];
-    if (!valid_ipv4(dns_host)) {
-        let resolved_ip = dns_check_resolve_host(dns_host, bootstrap_dns_server);
-        if (resolved_ip == "")
-            return false;
-        push(args, "--resolve");
-        push(args, dns_host + ":" + server_port + ":" + resolved_ip);
-    }
-    push(args, url);
-    return replace(command_output(command_from_args(args) + " 2>/dev/null"), /[\r\n]+$/g, "") == "200";
 }
 
 function device_ipv4_address(interface) {

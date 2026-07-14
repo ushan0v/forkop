@@ -65,10 +65,6 @@ function command_status(command) {
     return status > 255 ? int(status / 256) : status;
 }
 
-function command_success(command) {
-    return command_status(command + " >/dev/null 2>&1") == 0;
-}
-
 function command_success_from_args(args) {
     return system(command_from_args(args) + " >/dev/null 2>&1") == 0;
 }
@@ -147,16 +143,6 @@ function enabled_byedpi_sections() {
 
 function enabled_rule_count() {
     return length(enabled_byedpi_sections());
-}
-
-function rule_index(section_name_value, sections) {
-    let index_value = 0;
-    for (let section in array_or_empty(sections)) {
-        index_value++;
-        if (section_name(section) == as_string(section_name_value))
-            return index_value;
-    }
-    return 0;
 }
 
 function rule_port(index_value) {

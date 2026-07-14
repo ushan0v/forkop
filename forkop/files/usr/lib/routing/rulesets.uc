@@ -146,15 +146,6 @@ function normalize_plain_ruleset_value(value, kind) {
     return null;
 }
 
-function is_plain_ruleset_value(value, kind) {
-    if (kind == "domains")
-        return domain_config.valid_suffix(value);
-    if (kind == "subnets")
-        return ip.nft_ip_or_cidr(value);
-
-    return false;
-}
-
 function write_optional_lines(path, lines) {
     if (path == null || path == "")
         return;
