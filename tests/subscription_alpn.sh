@@ -63,6 +63,18 @@ assert_alpn() {
 UUID='00000000-0000-4000-8000-000000000001'
 BASE_QUERY='encryption=none&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&sni=example.com'
 
+cat >"$WORK_DIR/valid-reality.json" <<'JSON'
+{"outbounds":[{"type":"vless","tag":"valid-reality","tls":{"enabled":true,"reality":{"enabled":true,"public_key":"jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0"}}}]}
+JSON
+ucode "$PARSER" validate-subscription "$WORK_DIR/valid-reality.json" ||
+  fail "valid REALITY public key must pass subscription validation"
+cat >"$WORK_DIR/invalid-reality.json" <<'JSON'
+{"outbounds":[{"type":"vless","tag":"invalid-reality","tls":{"enabled":true,"reality":{"enabled":true,"public_key":"abc"}}}]}
+JSON
+if ucode "$PARSER" validate-subscription "$WORK_DIR/invalid-reality.json"; then
+  fail "invalid REALITY public key must fail before cache promotion"
+fi
+
 ws_output="$(normalize_link "vless-ws" "vless://$UUID@example.com:443?type=ws&$BASE_QUERY&path=%2Fws#vless-ws")"
 assert_contains "$ws_output" '"transport": { "type": "ws"' "vless-ws"
 assert_contains "$ws_output" '"alpn": [ "http/1.1" ]' "vless-ws"
