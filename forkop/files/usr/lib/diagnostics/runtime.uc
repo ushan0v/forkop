@@ -1620,7 +1620,7 @@ function clash_proxy_type_map(base_url, auth) {
 
 function clash_latency_endpoint(base_url, proxy_tag, proxy_type) {
     proxy_type = as_string(proxy_type);
-    if (proxy_type == "URLTest" || proxy_type == "urltest")
+    if (lc(proxy_type) == "urltest")
         return base_url + "/group/" + clash_urlencode(proxy_tag) + "/delay";
     return base_url + "/proxies/" + clash_urlencode(proxy_tag) + "/delay";
 }
@@ -1685,7 +1685,15 @@ function clash_api(action, arg1, arg2, arg3) {
             module_success(SERVICE_UI_UC, [ "latency-progress-state", progress_path, count, total, failed ]);
 
         let proxy_types = clash_proxy_type_map(base_url, auth);
-        for (let proxy_tag in proxy_tags) {
+        let ordered_proxy_tags = [];
+        for (let proxy_tag in proxy_tags)
+            if (lc(as_string(proxy_types[proxy_tag])) != "urltest")
+                push(ordered_proxy_tags, proxy_tag);
+        for (let proxy_tag in proxy_tags)
+            if (lc(as_string(proxy_types[proxy_tag])) == "urltest")
+                push(ordered_proxy_tags, proxy_tag);
+
+        for (let proxy_tag in ordered_proxy_tags) {
             let args = [ "curl", "-G", "-s", clash_latency_endpoint(base_url, proxy_tag, proxy_types[proxy_tag]) ];
             for (let item in auth) push(args, item);
             push(args, "--data-urlencode");
