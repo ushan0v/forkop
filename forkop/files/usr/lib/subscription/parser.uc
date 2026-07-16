@@ -746,12 +746,16 @@ function normalize_vless_encryption(value) {
     return value != "" && value != "none" ? value : "";
 }
 
+function vless_flow_supported(flow) {
+    return flow == null || flow == "" || flow == "xtls-rprx-vision";
+}
+
 function process_vless(raw, url) {
     if (url.host == "" || !valid_port(url.port) || url.userinfo == "")
         return null;
 
     let flow = url.query.flow || "";
-    if (flow != "" && flow != "xtls-rprx-vision")
+    if (!vless_flow_supported(flow))
         return null;
 
     let packet_encoding = url.query.packetEncoding || "";
@@ -1330,10 +1334,6 @@ function normalize_packet_encoding(value) {
     return value == "xudp" || value == "packetaddr" ? value : "";
 }
 
-function clash_vless_flow_supported(flow) {
-    return flow == null || flow == "" || flow == "xtls-rprx-vision";
-}
-
 function normalized_clash_alpn(value) {
     return replace(replace(replace(as_string(value), /^\[/g, ""), /\]$/g, ""), /\s+/g, "");
 }
@@ -1440,7 +1440,7 @@ function parse_clash_record(record) {
         let flow = as_string(record.flow);
         let packet_encoding = normalize_packet_encoding(record["packet-encoding"] || record.packetEncoding || "");
         let encryption = normalize_vless_encryption(record.encryption || "");
-        if (uuid == "" || !clash_vless_flow_supported(flow))
+        if (uuid == "" || !vless_flow_supported(flow))
             return null;
         let outbound = { type: "vless", tag: name, server: server, server_port: port, uuid: uuid };
         if (encryption != "")
@@ -2216,11 +2216,6 @@ function xray_tag_base(original_tag, config_index, config_count) {
     return original_tag;
 }
 
-function xray_protocol_supported(protocol) {
-    protocol = lc(as_string(protocol));
-    return protocol == "vless" || protocol == "socks" || protocol == "hysteria";
-}
-
 function convert_xray_vless(outbound, tag) {
     let vnext = xray_first_array_object(object_or_empty(outbound.settings).vnext);
     let user = xray_first_array_object(vnext.users);
@@ -2239,6 +2234,8 @@ function convert_xray_vless(outbound, tag) {
     };
 
     let flow = as_string(user.flow || "");
+    if (!vless_flow_supported(flow))
+        return null;
     if (flow != "")
         result.flow = flow;
     let encryption = normalize_vless_encryption(user.encryption || "");
@@ -2327,6 +2324,10 @@ function convert_xray_outbound(outbound, tag) {
     return null;
 }
 
+function xray_outbound_supported(outbound) {
+    return convert_xray_outbound(outbound, "probe") != null;
+}
+
 function xray_outbound_detour(outbound) {
     let stream = object_or_empty(outbound.streamSettings);
     let sockopt = object_or_empty(stream.sockopt);
@@ -2341,7 +2342,7 @@ function xray_supported_source_tags(source_outbounds) {
     let result = {};
     for (let i = 0; i < length(source_outbounds); i++) {
         let outbound = source_outbounds[i];
-        if (type(outbound) != "object" || !xray_protocol_supported(outbound.protocol))
+        if (type(outbound) != "object" || !xray_outbound_supported(outbound))
             continue;
 
         let tag = xray_source_tag(outbound, lc(as_string(outbound.protocol || "server")) + "-" + (i + 1));
@@ -2364,7 +2365,7 @@ function xray_primary_source_tag(config, source_outbounds) {
 
     for (let i = 0; i < length(source_outbounds); i++) {
         let outbound = source_outbounds[i];
-        if (type(outbound) != "object" || !xray_protocol_supported(outbound.protocol))
+        if (type(outbound) != "object" || !xray_outbound_supported(outbound))
             continue;
 
         let tag = xray_source_tag(outbound, lc(as_string(outbound.protocol || "server")) + "-" + (i + 1));
@@ -2476,7 +2477,7 @@ function xray_plan_config_outbounds(config, config_index, config_count, taken) {
 
     for (let i = 0; i < length(source_outbounds); i++) {
         let outbound = source_outbounds[i];
-        if (type(outbound) != "object" || !xray_protocol_supported(outbound.protocol))
+        if (type(outbound) != "object" || !xray_outbound_supported(outbound))
             continue;
 
         let original_tag = xray_source_tag(outbound, lc(as_string(outbound.protocol || "server")) + "-" + (i + 1));

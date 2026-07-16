@@ -271,4 +271,42 @@ if (outbounds[0].remark != "germany" || outbounds[1].remark != "germany")
     die("Xray runtime suffix leaked into user-visible names\n");
 ' "$WORK_DIR/xray-normalized.json" || fail "Xray duplicate display names"
 
+cat >"$WORK_DIR/xray-unsupported-flow.json" <<'JSON'
+{
+  "outbounds": [
+    { "protocol": "vless", "tag": "proxy-bad", "settings": { "vnext": [ {
+      "address": "bad.example.com", "port": 443, "users": [ {
+        "id": "11111111-1111-4111-8111-111111111111", "flow": "xtls-rprx-vision-udp443"
+      } ]
+    } ] } },
+    { "protocol": "socks", "tag": "proxy-good", "settings": {
+      "servers": [ { "address": "127.0.0.1", "port": 1080 } ]
+    } }
+  ],
+  "routing": {
+    "balancers": [ { "tag": "auto", "selector": [ "proxy-" ] } ]
+  }
+}
+JSON
+
+ucode -L "$FORKOP_LIB" "$PARSER_UC" normalize-content \
+  "$WORK_DIR/xray-unsupported-flow.json" "$WORK_DIR/xray-supported.json"
+ucode -e '
+let fs = require("fs");
+let outbounds = json(fs.readfile(ARGV[0])).outbounds || [];
+let good = false;
+for (let outbound in outbounds) {
+    if (outbound.flow == "xtls-rprx-vision-udp443" || outbound.tag == "proxy-bad")
+        die("unsupported Xray VLESS flow was retained\n");
+    if (outbound.type == "urltest")
+        for (let tag in outbound.outbounds || [])
+            if (tag == "proxy-bad")
+                die("URLTest retained a reference to an unsupported Xray VLESS outbound\n");
+            else if (tag == "proxy-good")
+                good = true;
+}
+if (!good)
+    die("supported Xray outbound was removed with the unsupported flow\n");
+' "$WORK_DIR/xray-supported.json" || fail "Xray unsupported VLESS flow filtering"
+
 printf 'outbound tag checks passed\n'
