@@ -2,6 +2,7 @@
 
 let fs = require("fs");
 let uci_core = require("core.uci");
+let netstat = require("core.netstat");
 let rule_config = require("config.rule");
 let connections = require("config.connections");
 let zapret_validator = require("providers.zapret.validator");
@@ -14,6 +15,9 @@ const DEFAULT_SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || "/etc/init.d/forko
 const ZAPRET_DEFAULT_NFQWS_OPT = getenv("ZAPRET_DEFAULT_NFQWS_OPT") || "";
 const ZAPRET2_DEFAULT_NFQWS2_OPT = getenv("ZAPRET2_DEFAULT_NFQWS2_OPT") || "";
 const BYEDPI_DEFAULT_CMD_OPTS = getenv("BYEDPI_DEFAULT_CMD_OPTS") || "";
+const SB_DNS_INBOUND_ADDRESS = getenv("SB_DNS_INBOUND_ADDRESS") || "127.0.0.42";
+const SB_TPROXY_INBOUND_PORT = getenv("SB_TPROXY_INBOUND_PORT") || "1602";
+const SB_TPROXY_INBOUND6_ADDRESS = getenv("SB_TPROXY_INBOUND6_ADDRESS") || "::1";
 
 function as_string(value) {
     return value == null ? "" : "" + value;
@@ -580,12 +584,23 @@ function forkop_runtime_network_configured(rt_table, nft_table, mark) {
         command_success_from_args([ "ucode", "-L", LIB_DIR, LIB_DIR + "/nft/apply.uc", "tproxy-route-rule-present", rt_table, mark ]);
 }
 
+function sing_box_runtime_ports_ready() {
+    return netstat.sing_box_standard_ports_listening(
+        command_output_from_args([ "netstat", "-ln" ]),
+        SB_DNS_INBOUND_ADDRESS,
+        SB_TPROXY_INBOUND_PORT,
+        SB_TPROXY_INBOUND6_ADDRESS
+    );
+}
+
 function forkop_running(rt_table, nft_table, mark) {
-    return sing_box_service_running() && forkop_runtime_network_configured(rt_table, nft_table, mark);
+    return sing_box_service_running() && sing_box_runtime_ports_ready() &&
+        forkop_runtime_network_configured(rt_table, nft_table, mark);
 }
 
 function forkop_stably_running(rt_table, nft_table, mark, min_age) {
-    return sing_box_service_stable(min_age) && forkop_runtime_network_configured(rt_table, nft_table, mark);
+    return sing_box_service_stable(min_age) && sing_box_runtime_ports_ready() &&
+        forkop_runtime_network_configured(rt_table, nft_table, mark);
 }
 
 function wait_forkop_stable_start(rt_table, nft_table, mark, min_age, timeout) {

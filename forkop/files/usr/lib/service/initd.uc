@@ -480,6 +480,50 @@ function retry_start_on_wan_up(owner_pid) {
     return command_status_from_args([ SERVICE_INIT, "restart", "triggered" ]);
 }
 
+function badwan_interface_monitored(settings, interface_name) {
+    settings = object_or_empty(settings);
+    if (option(settings, "enable_badwan_interface_monitoring", "") != "1")
+        return false;
+
+    let interfaces = split(replace(trim(option(settings, "badwan_monitored_interfaces", "")), /[ \t\r\n]+/g, " "), " ");
+    for (let iface in interfaces)
+        if (trim(iface) == interface_name)
+            return true;
+    return false;
+}
+
+function wan_up_action(runtime_running_value, service_enabled_value, retry_pending_value, monitoring_value) {
+    if (bool_text(runtime_running_value))
+        return bool_text(monitoring_value) ? "reload" : "skip_running";
+    return retry_start_on_wan_up_action(runtime_running_value, service_enabled_value, retry_pending_value);
+}
+
+function handle_wan_up(owner_pid) {
+    let settings = uci_settings();
+    let running = runtime_is_running() ? "1" : "0";
+    let action = wan_up_action(
+        running,
+        service_is_enabled() ? "1" : "0",
+        start_retry_pending(START_RETRY_FILE) ? "1" : "0",
+        badwan_interface_monitored(settings, "wan") ? "1" : "0"
+    );
+
+    if (action == "reload") {
+        clear_start_retry(START_RETRY_FILE);
+        cancel_scheduled_start_retry(START_RETRY_PID_FILE);
+        command_success_from_args([ "logger", "-t", SERVICE_NAME, "[info] Reloading Forkop after monitored WAN came up" ]);
+        return command_status_from_args([ SERVICE_INIT, "reload", "badwan_interface_up" ]);
+    }
+
+    if (action == "skip_running") {
+        clear_start_retry(START_RETRY_FILE);
+        cancel_scheduled_start_retry(START_RETRY_PID_FILE);
+        return 0;
+    }
+
+    return retry_start_on_wan_up(owner_pid);
+}
+
 function active_service_action_value() {
     if (!file_exists(UI_UC))
         return "";
@@ -504,13 +548,9 @@ function start_plan_value(reason, owner_pid, settings, bin_ok) {
         restore_dnsmasq_failsafe();
     }
 
-    let badwan_enabled = option(settings, "enable_badwan_interface_monitoring", "") == "1";
-    let badwan_interfaces = option(settings, "badwan_monitored_interfaces", "");
-
     return {
         job_id,
-        bin_ok,
-        badwan_netdev: badwan_enabled ? badwan_interfaces : ""
+        bin_ok
     };
 }
 
@@ -518,7 +558,6 @@ function start_plan(reason, owner_pid, settings, bin_ok) {
     let plan = start_plan_value(reason, owner_pid, settings, bin_ok);
     shell_assignment("INITD_UI_JOB_ID", plan.job_id);
     shell_assignment("INITD_BIN_OK", plan.bin_ok ? "1" : "0");
-    shell_assignment("INITD_BADWAN_NETDEV", plan.badwan_netdev);
 }
 
 function start_service(reason, owner_pid) {
@@ -679,7 +718,7 @@ function trigger_plan(settings) {
 
     print("delay\t", delay, "\n");
     print("config\tconfig.change\t", CONFIG_NAME, "\t", SERVICE_INIT, "\treload\t", CONFIG_CHANGE_REASON, "\n");
-    print("interface\tinterface.*.up\twan\t", SERVICE_INIT, "\tretry_start_on_wan_up\t\n");
+    print("interface\tinterface.*.up\twan\t", SERVICE_INIT, "\thandle_wan_up\t\n");
 
     if (badwan_enabled) {
         for (let iface in badwan_interfaces) {
@@ -701,8 +740,12 @@ else if (mode == "status-service")
     exit(status_service());
 else if (mode == "retry-start-on-wan-up")
     exit(retry_start_on_wan_up(ARGV[1]));
+else if (mode == "handle-wan-up")
+    exit(handle_wan_up(ARGV[1]));
 else if (mode == "retry-start-on-wan-up-action")
     print(retry_start_on_wan_up_action(ARGV[1], ARGV[2], ARGV[3]), "\n");
+else if (mode == "wan-up-action")
+    print(wan_up_action(ARGV[1], ARGV[2], ARGV[3], ARGV[4]), "\n");
 else if (mode == "service-enabled")
     exit(service_is_enabled() ? 0 : 1);
 else if (mode == "mark-start-retry")

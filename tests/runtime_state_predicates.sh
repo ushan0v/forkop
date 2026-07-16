@@ -160,6 +160,10 @@ cat >"$WORK_DIR/stable-start-bin/nft" <<'SH'
 #!/usr/bin/env bash
 exit 0
 SH
+cat >"$WORK_DIR/stable-start-bin/netstat" <<'SH'
+#!/usr/bin/env bash
+cat "${SING_BOX_TEST_NETSTAT_FILE:?}"
+SH
 cat >"$WORK_DIR/stable-start-bin/ucode" <<'SH'
 #!/usr/bin/env bash
 if [ "$#" -ge 4 ] && [ "$1" = "-L" ] && [ "${3##*/}" = "apply.uc" ] && [ "$4" = "tproxy-route-rule-present" ]; then
@@ -167,7 +171,15 @@ if [ "$#" -ge 4 ] && [ "$1" = "-L" ] && [ "${3##*/}" = "apply.uc" ] && [ "$4" = 
 fi
 exec "${REAL_UCODE:?}" "$@"
 SH
-chmod 0755 "$WORK_DIR/stable-start-bin/ubus" "$WORK_DIR/stable-start-bin/nft" "$WORK_DIR/stable-start-bin/ucode"
+chmod 0755 "$WORK_DIR/stable-start-bin/ubus" "$WORK_DIR/stable-start-bin/nft" "$WORK_DIR/stable-start-bin/ucode" "$WORK_DIR/stable-start-bin/netstat"
+cat >"$WORK_DIR/sing-box.netstat" <<'EOF_NETSTAT'
+tcp        0      0 127.0.0.42:53           0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:1602            0.0.0.0:*               LISTEN
+tcp        0      0 ::1:1602                :::*                    LISTEN
+udp        0      0 127.0.0.42:53           0.0.0.0:*
+udp        0      0 0.0.0.0:1602            0.0.0.0:*
+udp        0      0 ::1:1602                :::*
+EOF_NETSTAT
 
 "$WORK_DIR/stable-start-bin/sing-box" 30 &
 sing_box_pid=$!
@@ -175,6 +187,7 @@ printf '%s\n' "$sing_box_pid" >"$WORK_DIR/sing-box.pid"
 if ! PATH="$WORK_DIR/stable-start-bin:$PATH" \
   REAL_UCODE="$UCODE_BIN" \
   SING_BOX_TEST_PID_FILE="$WORK_DIR/sing-box.pid" \
+  SING_BOX_TEST_NETSTAT_FILE="$WORK_DIR/sing-box.netstat" \
   state_ucode sing-box-service-running; then
   kill "$sing_box_pid" >/dev/null 2>&1 || true
   wait "$sing_box_pid" 2>/dev/null || true
@@ -183,14 +196,26 @@ fi
 if ! PATH="$WORK_DIR/stable-start-bin:$PATH" \
   REAL_UCODE="$UCODE_BIN" \
   SING_BOX_TEST_PID_FILE="$WORK_DIR/sing-box.pid" \
+  SING_BOX_TEST_NETSTAT_FILE="$WORK_DIR/sing-box.netstat" \
   state_ucode forkop-running forkop ForkopTable 0x00100000; then
   kill "$sing_box_pid" >/dev/null 2>&1 || true
   wait "$sing_box_pid" 2>/dev/null || true
   fail "stable-start fixture must expose configured Forkop networking"
 fi
+sed '/127.0.0.42:53/d' "$WORK_DIR/sing-box.netstat" >"$WORK_DIR/sing-box.no-dns.netstat"
+if PATH="$WORK_DIR/stable-start-bin:$PATH" \
+  REAL_UCODE="$UCODE_BIN" \
+  SING_BOX_TEST_PID_FILE="$WORK_DIR/sing-box.pid" \
+  SING_BOX_TEST_NETSTAT_FILE="$WORK_DIR/sing-box.no-dns.netstat" \
+  state_ucode forkop-running forkop ForkopTable 0x00100000 >/dev/null 2>&1; then
+  kill "$sing_box_pid" >/dev/null 2>&1 || true
+  wait "$sing_box_pid" 2>/dev/null || true
+  fail "runtime state must reject sing-box without the DNS inbound"
+fi
 if ! PATH="$WORK_DIR/stable-start-bin:$PATH" \
   REAL_UCODE="$UCODE_BIN" \
   SING_BOX_TEST_PID_FILE="$WORK_DIR/sing-box.pid" \
+  SING_BOX_TEST_NETSTAT_FILE="$WORK_DIR/sing-box.netstat" \
   state_ucode wait-forkop-stable-start forkop ForkopTable 0x00100000 2 2; then
   kill "$sing_box_pid" >/dev/null 2>&1 || true
   wait "$sing_box_pid" 2>/dev/null || true

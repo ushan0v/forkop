@@ -170,16 +170,14 @@ case "$start_plan" in
   *"INITD_BIN_OK='1'"* ) ;;
   *) fail "start-plan must expose executable binary state" ;;
 esac
-case "$start_plan" in
-  *"INITD_BADWAN_NETDEV='wan vpn0'"* ) ;;
-  *) fail "start-plan must derive Bad WAN netdev from UCI settings" ;;
-esac
+if printf '%s\n' "$start_plan" | grep -Fq 'INITD_BADWAN_NETDEV'; then
+  fail "start-plan must not emit the unused Bad WAN netdev plan"
+fi
 
 start_plan_triggered="$(initd_ucode start-plan-fixture triggered 0 1 "wan vpn0" 123 1)"
-case "$start_plan_triggered" in
-  *"INITD_BADWAN_NETDEV='wan vpn0'"* ) ;;
-  *) fail "triggered start should keep Bad WAN netdev plan" ;;
-esac
+if printf '%s\n' "$start_plan_triggered" | grep -Fq 'INITD_BADWAN_NETDEV'; then
+  fail "triggered start must not emit the unused Bad WAN netdev plan"
+fi
 
 cat >"$WORK_DIR/settings.json" <<'JSON'
 {
@@ -200,9 +198,16 @@ case "$trigger_plan" in
   *) fail "trigger-plan must include non-wan Bad WAN interface triggers" ;;
 esac
 case "$trigger_plan" in
-  *"interface	interface.*.up	wan	"*"retry_start_on_wan_up"* ) ;;
-  *) fail "trigger-plan must keep WAN cold-start retry trigger" ;;
+  *"interface	interface.*.up	wan	"*"handle_wan_up"* ) ;;
+  *) fail "trigger-plan must route WAN up through the Bad WAN-aware handler" ;;
 esac
+
+[ "$(initd_ucode wan-up-action 1 1 0 1)" = "reload" ] ||
+  fail "monitored WAN up should reload a running service"
+[ "$(initd_ucode wan-up-action 1 1 1 0)" = "skip_running" ] ||
+  fail "unmonitored WAN up should not reload a running service"
+[ "$(initd_ucode wan-up-action 0 1 1 1)" = "restart" ] ||
+  fail "stopped monitored WAN up should keep failed-start retry"
 
 for legacy in \
   service_trigger_sync_requested \
@@ -249,6 +254,8 @@ retry_start_line="$(grep -nF 'function retry_start_on_wan_up(' "$INITD_UC" | hea
   fail "service_is_enabled must be declared before retry_start_on_wan_up for ucode runtime calls"
 grep -Fq 'trigger-plan' "$INITD" ||
   fail "init.d must get procd trigger plan from service/initd.uc"
+grep -Fq 'handle_wan_up' "$INITD" ||
+  fail "init.d must expose the Bad WAN-aware WAN-up handler"
 if grep -Fq 'eval ' "$INITD"; then
   fail "init.d must not eval ucode-generated shell plans"
 fi

@@ -3,8 +3,8 @@
 
 START=99
 USE_PROCD=1
-EXTRA_COMMANDS="retry_start_on_wan_up"
-EXTRA_HELP="        retry_start_on_wan_up Retry failed cold start after WAN comes up\n"
+EXTRA_COMMANDS="retry_start_on_wan_up handle_wan_up"
+EXTRA_HELP="        retry_start_on_wan_up Retry failed cold start after WAN comes up\n        handle_wan_up Reload or retry after monitored WAN comes up\n"
 
 script=$(readlink "$initscript")
 NAME="$(basename ${script:-$initscript})"
@@ -62,6 +62,10 @@ status_service() {
 
 retry_start_on_wan_up() {
     initd_ucode retry-start-on-wan-up "$$"
+}
+
+handle_wan_up() {
+    initd_ucode handle-wan-up "$$"
 }
 
 service_triggers() {

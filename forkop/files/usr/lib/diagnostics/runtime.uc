@@ -5,6 +5,7 @@ let constants = require("core.constants");
 let core_ip = require("core.ip");
 let uci_core = require("core.uci");
 let runtime_dns = require("singbox.dns");
+let netstat = require("core.netstat");
 
 const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || constants.FORKOP_CONFIG_NAME || "forkop";
 const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
@@ -1476,17 +1477,13 @@ function strip_leading_v(value) {
     return substr(value, 0, 1) == "v" ? substr(value, 1) : value;
 }
 
-function sing_box_standard_ports_listening(netstat) {
-    netstat = as_string(netstat);
-    let port_53_ok = index(netstat, "127.0.0.42:53") >= 0;
-    let tproxy_suffix = ":" + SB_TPROXY_INBOUND_PORT;
-    let port_1602_ok = index(netstat, "0.0.0.0" + tproxy_suffix) >= 0 ||
-        index(netstat, "127.0.0.1" + tproxy_suffix) >= 0;
-    let port_1602_v6_ok = index(netstat, SB_TPROXY_INBOUND6_ADDRESS + tproxy_suffix) >= 0 ||
-        index(netstat, "[" + SB_TPROXY_INBOUND6_ADDRESS + "]" + tproxy_suffix) >= 0 ||
-        index(netstat, "0:0:0:0:0:0:0:1" + tproxy_suffix) >= 0 ||
-        index(netstat, ":::" + SB_TPROXY_INBOUND_PORT) >= 0;
-    return port_53_ok && port_1602_ok && port_1602_v6_ok;
+function sing_box_standard_ports_listening(netstat_data) {
+    return netstat.sing_box_standard_ports_listening(
+        netstat_data,
+        SB_DNS_INBOUND_ADDRESS,
+        SB_TPROXY_INBOUND_PORT,
+        SB_TPROXY_INBOUND6_ADDRESS
+    );
 }
 
 function sing_box_standard_ports_listening_fixture() {
