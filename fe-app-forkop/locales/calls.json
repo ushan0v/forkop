@@ -138,8 +138,8 @@
     ]
   },
   {
-    "call": "Add URLs or local paths to .lst lists. Only domain rules are supported.",
-    "key": "Add URLs or local paths to .lst lists. Only domain rules are supported.",
+    "call": "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries.",
+    "key": "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries.",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7915"
     ]
@@ -1233,8 +1233,8 @@
     ]
   },
   {
-    "call": "Domain lists",
-    "key": "Domain lists",
+    "call": "Domain and IP lists",
+    "key": "Domain and IP lists",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7914"
     ]

@@ -101,7 +101,7 @@ msgid "Add prefix to nodes"
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7915
-msgid "Add URLs or local paths to .lst lists. Only domain rules are supported."
+msgid "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries."
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7861
@@ -752,7 +752,7 @@ msgid "Does not resolve"
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7914
-msgid "Domain lists"
+msgid "Domain and IP lists"
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2404

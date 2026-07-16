@@ -7795,9 +7795,9 @@ function createSectionContent(section) {
     "conditions",
     form.DynamicList,
     "domain_ip_lists",
-    _("Domain lists"),
+    _("Domain and IP lists"),
     _(
-      "Add URLs or local paths to .lst lists. Only domain rules are supported.",
+      "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries.",
     ),
   );
   domainIpListsOption.modalonly = true;
