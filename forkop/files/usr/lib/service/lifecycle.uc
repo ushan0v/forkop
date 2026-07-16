@@ -625,7 +625,8 @@ function singbox_init_config() {
         "init-config",
         as_string(nft_populate_enabled),
         subscription_caches_prepared,
-        subscription_runtime_no_refresh
+        subscription_runtime_no_refresh,
+        subscription_deferred_sections
     ]);
     if (result.status == 0) {
         subscription_deferred_sections = trim(result.output);

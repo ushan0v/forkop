@@ -766,7 +766,7 @@ function restore_dns_config(backup_path) {
     return command_success_from_args([ "mv", "-f", backup_path, config_path ]);
 }
 
-function init_config(populate_nft, caches_prepared, no_refresh) {
+function init_config(populate_nft, caches_prepared, no_refresh, prepared_deferred_sections) {
     let settings = uci_settings();
     let config_path = option(settings, "config_path", "");
     if (config_path == "") {
@@ -781,9 +781,12 @@ function init_config(populate_nft, caches_prepared, no_refresh) {
     else if (mwan3_active)
         log_message("mwan3 is active; disabling sing-box auto_detect_interface so mwan3 can control egress routing", "warn");
 
-    let deferred_sections = prepare_subscription_caches(caches_prepared, no_refresh);
-    if (deferred_sections == null)
-        exit(1);
+    let deferred_sections = trim(as_string(prepared_deferred_sections));
+    if (deferred_sections == "") {
+        deferred_sections = prepare_subscription_caches(caches_prepared, no_refresh);
+        if (deferred_sections == null)
+            exit(1);
+    }
 
     let temp_config = temp_path();
     let runtime_log = temp_path();
@@ -799,7 +802,8 @@ function init_config(populate_nft, caches_prepared, no_refresh) {
             temp_config,
             service_listen_address_value(settings),
             mwan3_active ? "1" : "0",
-            sing_box_is_extended(sing_box_version()) ? "1" : "0"
+            sing_box_is_extended(sing_box_version()) ? "1" : "0",
+            deferred_sections
         ]) + " >" + shell_quote(runtime_log) + " 2>&1"
     );
     if (generate_status != 0) {
@@ -851,7 +855,7 @@ let mode = ARGV[0] || "";
 if (mode == "configure-service")
     configure_service();
 else if (mode == "init-config")
-    init_config(arg_bool(ARGV[1] || "1"), arg_bool(ARGV[2] || "0"), arg_bool(ARGV[3] || "0"));
+    init_config(arg_bool(ARGV[1] || "1"), arg_bool(ARGV[2] || "0"), arg_bool(ARGV[3] || "0"), ARGV[4] || "");
 else if (mode == "save-config-file-fixture")
     exit(save_config_file(ARGV[1] || "", ARGV[2] || "") ? 0 : 1);
 else if (mode == "check-config-fixture") {

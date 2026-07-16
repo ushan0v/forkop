@@ -2794,10 +2794,21 @@ function add_service_route_rules(config, sections) {
     });
 }
 
-function enabled_sections() {
+function deferred_section_set(value) {
+    let result = {};
+    for (let name in split(trim(as_string(value)), /[ \t\r\n]+/)) {
+        name = as_string(name);
+        if (name != "")
+            result[name] = true;
+    }
+    return result;
+}
+
+function enabled_sections(deferred_sections) {
+    let deferred = deferred_section_set(deferred_sections);
     let result = [];
     uci_cursor().foreach(CONFIG_NAME, "section", function(section) {
-        if (section_enabled(section))
+        if (section_enabled(section) && !deferred[as_string(section[".name"])])
             push(result, section);
     });
     return result;
@@ -2866,7 +2877,7 @@ function add_server_routes(config, servers, sections) {
     }
 }
 
-function generate_config(output_path, service_address, mwan3_active, supports_xhttp) {
+function generate_config(output_path, service_address, mwan3_active, supports_xhttp, deferred_sections) {
     runtime_supports_xhttp = supports_xhttp == null || as_string(supports_xhttp) == ""
         ? true
         : cli_bool(supports_xhttp);
@@ -2875,9 +2886,9 @@ function generate_config(output_path, service_address, mwan3_active, supports_xh
     runtime_settings_cache = object_or_empty(cursor.get_all(CONFIG_NAME, "settings"));
     let settings = runtime_settings_cache;
 
-    let sections = enabled_sections();
+    let sections = enabled_sections(deferred_sections);
     let servers = enabled_servers();
-    if (length(sections) == 0 && length(servers) == 0)
+    if (length(sections) == 0 && length(servers) == 0 && trim(as_string(deferred_sections)) == "")
         runtime_generate_unsupported("no enabled sections");
 
     let config = base_config(settings, service_address, { mwan3_active: cli_bool(mwan3_active) });
@@ -2903,11 +2914,11 @@ function generate_config(output_path, service_address, mwan3_active, supports_xh
     }
 }
 
-function generate_config_fixture(fixture_path, output_path, service_address, mwan3_active, supports_xhttp) {
+function generate_config_fixture(fixture_path, output_path, service_address, mwan3_active, supports_xhttp, deferred_sections) {
     use_fixture_cursor(fixture_path);
     runtime_subscription.set_section_cache_dir(output_path + ".section-cache");
     runtime_ruleset_folder = output_path + ".rulesets";
-    generate_config(output_path, service_address, mwan3_active, supports_xhttp);
+    generate_config(output_path, service_address, mwan3_active, supports_xhttp, deferred_sections);
 }
 
 function stdin_length() {
@@ -3021,9 +3032,9 @@ function object_nonempty_stdin() {
 let mode = ARGV[0] || "";
 
 if (mode == "generate-config")
-    generate_config(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
+    generate_config(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5] || "");
 else if (mode == "generate-config-fixture")
-    generate_config_fixture(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]);
+    generate_config_fixture(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6] || "");
 else if (mode == "stdin-length")
     stdin_length();
 else if (mode == "stdin-contains")

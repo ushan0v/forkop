@@ -179,6 +179,36 @@ fi
 grep -Fxq 'no enabled sections' "$WORK_DIR/no-enabled.stderr" ||
   fail "generator failure reason should be concise"
 
+cat >"$WORK_DIR/deferred-section-fixture.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "config_path": "/tmp/sing-box/config.json",
+    "dns_server": "1.1.1.1",
+    "service_listen_address": "127.0.0.1"
+  },
+  "section": [
+    {
+      ".name": "subscription_only",
+      ".type": "section",
+      "enabled": "1",
+      "action": "connection",
+      "subscription_urls": [ "https://example.com/sub.json" ]
+    }
+  ]
+}
+JSON
+if ! ucode -L "$FORKOP_LIB" "$SINGBOX_GENERATOR_UC" generate-config-fixture \
+  "$WORK_DIR/deferred-section-fixture.json" "$WORK_DIR/deferred-section.json" "127.0.0.1" "0" "1" "subscription_only"; then
+  fail "generator must skip subscription-only sections deferred until after sing-box starts"
+fi
+if grep -Fq 'subscription_only-out' "$WORK_DIR/deferred-section.json"; then
+  fail "deferred subscription-only section must not be emitted into the initial config"
+fi
+grep -Fq 'deferred_sections' "$SINGBOX_RUNTIME_UC" ||
+  fail "singbox/runtime.uc must preserve deferred sections for generator input"
+
 cat >"$WORK_DIR/generator-uci.state" <<'EOF_UCI'
 forkop.settings=settings
 forkop.settings.dns_server=1.1.1.1
