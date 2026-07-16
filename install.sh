@@ -1833,7 +1833,18 @@ detect_legacy_installation() {
     FORKOP_LEGACY_DETECTED=0
     LEGACY_CONFIG_BACKUP=""
 
-    pkg_is_installed "$LEGACY_BACKEND_PACKAGE" || return 0
+    if ! pkg_is_installed "$LEGACY_BACKEND_PACKAGE"; then
+        legacy_config_present=0
+        for legacy_config_path in \
+            "/etc/config/$LEGACY_BACKEND_PACKAGE" \
+            "/etc/config/$LEGACY_CONFIG_PACKAGE_ALT"; do
+            if [ -r "$legacy_config_path" ]; then
+                legacy_config_present=1
+                break
+            fi
+        done
+        [ "$legacy_config_present" -eq 1 ] || return 0
+    fi
 
     FORKOP_LEGACY_DETECTED=1
     for legacy_config_path in \

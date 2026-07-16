@@ -179,6 +179,18 @@ awk '
 ' "$INSTALLER" > "$helper"
 [ -s "$helper" ] || fail "failed to extract embedded installer ucode helper"
 
+detect_legacy_block="$WORK_DIR/detect-legacy.block"
+awk '
+  /^detect_legacy_installation\(\)/ { capture = 1 }
+  capture { print }
+  capture && /^}/ { exit }
+' "$INSTALLER" > "$detect_legacy_block"
+[ -s "$detect_legacy_block" ] || fail "failed to extract legacy detection helper"
+grep -Fq 'if ! pkg_is_installed "$LEGACY_BACKEND_PACKAGE"; then' "$detect_legacy_block" ||
+  fail "legacy detection must inspect configuration when the package is absent"
+grep -Fq 'legacy_config_present=0' "$detect_legacy_block" ||
+  fail "legacy detection must track a readable config-only legacy installation"
+
 printf '%s\n' '{"tag_name":"0.0.1"}' | ucode "$helper" release-tag | grep -Fxq '0.0.1' ||
   fail "embedded helper release-tag mode must parse release JSON"
 release_json='{"tag_name":"0.0.1","assets":[{"name":"forkop_0.0.1.ipk","browser_download_url":"https://example.com/forkop.ipk"}]}'
