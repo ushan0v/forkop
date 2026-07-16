@@ -79,14 +79,38 @@ cat >"$masked_config" <<'EOF'
 config settings 'main'
         option hwid 'device-secret'
         option proxy_string 'vless://secret@example.com:443'
+config subscription_url 'sub1'
+        option url 'https://user:password@example.com/subscription?token=secret'
 EOF
 masked_output="$(status_ucode forkop-config-masked "$masked_config")"
 case "$masked_output" in
-  *device-secret*|*vless://secret*) fail "masked Forkop config leaked a secret" ;;
+  *device-secret*|*vless://secret*|*token=secret*|*user:password*) fail "masked Forkop config leaked a secret" ;;
 esac
 case "$masked_output" in
   *"option hwid 'MASKED'"*) ;;
   *) fail "masked Forkop config must preserve the HWID option shape" ;;
+esac
+case "$masked_output" in
+  *"option url 'MASKED'"*) ;;
+  *) fail "masked Forkop config must mask subscription section URLs" ;;
+esac
+
+wan_wireguard="$WORK_DIR/network-wireguard"
+cat >"$wan_wireguard" <<'EOF'
+config interface 'wan'
+        option proto 'wireguard'
+        option private_key 'wireguard-private-secret'
+        option addresses '192.0.2.2/32'
+config interface 'lan'
+        option private_key 'not-in-wan'
+EOF
+wan_output="$(status_ucode wan-config-masked "$wan_wireguard")"
+case "$wan_output" in
+  *wireguard-private-secret*) fail "masked WAN config leaked the WireGuard private key" ;;
+esac
+case "$wan_output" in
+  *"option private_key '******'"*) ;;
+  *) fail "masked WAN config must preserve a masked WireGuard private key option" ;;
 esac
 
 legacy_json="$(status_ucode service-status-json 1 0 ignored 1)"

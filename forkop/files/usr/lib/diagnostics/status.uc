@@ -290,6 +290,10 @@ function wan_config_masked(path) {
             (fields[1] == "username" || fields[1] == "password")) {
             print("        option ", fields[1], " '******'\n");
         }
+        else if (proto == "'wireguard'" && length(fields) >= 2 && fields[0] == "option" &&
+            fields[1] == "private_key") {
+            print("        option private_key '******'\n");
+        }
         else {
             print(line, "\n");
         }
@@ -389,6 +393,8 @@ function forkop_config_masked_line(line) {
     line = mask_after_token(line, "list reality_short_id");
     line = mask_after_token_space(line, "option mixed_proxy_username");
     line = mask_after_token_space(line, "option mixed_proxy_password");
+    line = mask_after_token_space(line, "option private_key");
+    line = mask_after_token_space(line, "option url");
     line = mask_option_path(line, "option dns_server '");
     line = mask_option_path(line, "list dns_server '");
     line = mask_after_token(line, "option yacd_secret_key");

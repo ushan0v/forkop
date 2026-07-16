@@ -85,6 +85,8 @@ const FORKOP_MASK_AFTER_TOKEN_SPACE = [
   'option gateway',
   'option username',
   'option password',
+  'option private_key',
+  'option url',
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {

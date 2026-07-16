@@ -9533,7 +9533,9 @@ var FORKOP_MASK_AFTER_TOKEN_SPACE = [
   "option netmask",
   "option gateway",
   "option username",
-  "option password"
+  "option password",
+  "option private_key",
+  "option url"
 ];
 function isRecord2(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
