@@ -560,6 +560,9 @@ function normalize_utls_fingerprint(value) {
     };
 
     value = as_string(value);
+    if (value == "randomizedalpn" || value == "randomizednoalpn")
+        return "randomized";
+
     return allowed[value] ? value : "chrome";
 }
 
@@ -2635,11 +2638,13 @@ function normalize_sing_box_xhttp_transport(outbound) {
 }
 
 function normalize_sing_box_hysteria2_outbound(outbound) {
-    if (type(outbound) == "object" &&
-        lc(as_string(outbound.type || "")) == "hysteria2" &&
-        type(outbound.tls) == "object" &&
-        outbound.tls.utls != null) {
-        delete outbound.tls.utls;
+    if (type(outbound) == "object" && lc(as_string(outbound.type || "")) == "hysteria2") {
+        if (type(outbound.tls) != "object")
+            outbound.tls = { enabled: true };
+        else
+            outbound.tls.enabled = true;
+        if (outbound.tls.utls != null)
+            delete outbound.tls.utls;
     }
     return outbound;
 }
