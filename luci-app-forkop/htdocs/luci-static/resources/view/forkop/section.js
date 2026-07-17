@@ -7871,6 +7871,15 @@ function loadSectionTableOptions(sectionRef) {
 function configureSectionSection(sectionRef, options = {}) {
   setActionProvidersAvailabilityLoader(options.loadActionProvidersAvailability);
 
+  const handleRemove = sectionRef.handleRemove;
+  sectionRef.handleRemove = function (section_id) {
+    cleanupRemovedChildItems(section_id, "subscription_url", []);
+    cleanupRemovedChildItems(section_id, "section_interface", []);
+    cleanupRemovedChildItems(section_id, "urltest", []);
+    cleanupRemovedChildItems(section_id, "priority_group", []);
+    return handleRemove.apply(this, arguments);
+  };
+
   sectionRef.load = function () {
     // The table renders only non-modal fields; the cloned Add/Edit modal loads
     // action/provider details when the user opens it.
