@@ -104,6 +104,18 @@ msgstr ""
 msgid "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries."
 msgstr ""
 
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7775
+msgid "Add URLs or local paths to .lst lists containing domains and subnets."
+msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7797
+msgid "Add URLs or local paths to .lst lists containing domains. IP entries are ignored."
+msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7721
+msgid "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default."
+msgstr ""
+
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7861
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7890
 msgid "Add URLs or local paths to .srs / .json lists. Only domain rules are supported."
@@ -753,6 +765,10 @@ msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7914
 msgid "Domain and IP lists"
+msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7796
+msgid "Domain lists"
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2404

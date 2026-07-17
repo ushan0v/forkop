@@ -145,6 +145,27 @@
     ]
   },
   {
+    "call": "Add URLs or local paths to .lst lists containing domains and subnets.",
+    "key": "Add URLs or local paths to .lst lists containing domains and subnets.",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7775"
+    ]
+  },
+  {
+    "call": "Add URLs or local paths to .lst lists containing domains. IP entries are ignored.",
+    "key": "Add URLs or local paths to .lst lists containing domains. IP entries are ignored.",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7797"
+    ]
+  },
+  {
+    "call": "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default.",
+    "key": "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default.",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7721"
+    ]
+  },
+  {
     "call": "Add URLs or local paths to .srs / .json lists. Only domain rules are supported.",
     "key": "Add URLs or local paths to .srs / .json lists. Only domain rules are supported.",
     "places": [
@@ -1237,6 +1258,13 @@
     "key": "Domain and IP lists",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7914"
+    ]
+  },
+  {
+    "call": "Domain lists",
+    "key": "Domain lists",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7796"
     ]
   },
   {

@@ -823,6 +823,7 @@ function ensureConnectionsDynamicListStyles() {
   justify-content: center;
   line-height: 1;
   min-height: 0;
+  min-width: var(--fkp-dynlist-action-width);
   padding: 0;
   pointer-events: auto;
   position: absolute;
@@ -876,6 +877,7 @@ function ensureConnectionsDynamicListStyles() {
   display: flex;
   margin-top: 4px;
   max-width: 100%;
+  min-width: 0;
   overflow: visible;
   padding: 0;
   width: var(--fkp-button-add-width, 210px);
@@ -887,12 +889,12 @@ function ensureConnectionsDynamicListStyles() {
 
 .fkp-button-add-dynlist > .add-item > .cbi-button-add {
   align-items: center !important;
-  background: linear-gradient(var(--background-color-high) 0%, var(--border-color-low) 100%) !important;
-  border: 1px solid var(--border-color-high) !important;
+  background: linear-gradient(var(--background-color-high, var(--primary, ButtonFace)) 0%, var(--border-color-low, var(--primary, ButtonFace)) 100%) !important;
+  border: 1px solid var(--border-color-high, var(--primary, currentColor)) !important;
   border-radius: 3px !important;
-  box-shadow: inset 0 1px 3px hsla(var(--border-color-low-hsl), .01) !important;
+  box-shadow: inset 0 1px 3px hsla(var(--border-color-low-hsl, 0, 0%, 0%), .01) !important;
   box-sizing: border-box !important;
-  color: var(--text-color-medium) !important;
+  color: var(--text-color-medium, var(--white, ButtonText)) !important;
   cursor: pointer !important;
   display: flex !important;
   font-size: 13px !important;
@@ -913,7 +915,7 @@ function ensureConnectionsDynamicListStyles() {
 .fkp-button-add-dynlist > .add-item > .cbi-button-add:hover,
 .fkp-button-add-dynlist > .add-item > .cbi-button-add:focus {
   border-color: rgba(82, 168, 236, .8) !important;
-  box-shadow: inset 0 1px 3px hsla(var(--border-color-low-hsl), .01), 0 0 8px rgba(82, 168, 236, .6) !important;
+  box-shadow: inset 0 1px 3px hsla(var(--border-color-low-hsl, 0, 0%, 0%), .01), 0 0 8px rgba(82, 168, 236, .6) !important;
   outline: 0;
 }
 
@@ -7716,7 +7718,7 @@ function createSectionContent(section) {
     "rule_set",
     _("Rule sets"),
     _(
-      "Add URLs or local paths to .srs / .json lists. Only domain rules are supported.",
+      "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default.",
     ),
   );
   ruleSetOption.modalonly = true;
@@ -7770,14 +7772,45 @@ function createSectionContent(section) {
     "domain_ip_lists",
     _("Domain and IP lists"),
     _(
-      "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries.",
+      "Add URLs or local paths to .lst lists containing domains and subnets.",
     ),
   );
   domainIpListsOption.modalonly = true;
+  // Both widgets map to domain_ip_lists, so neither inactive view may erase shared storage.
+  domainIpListsOption.retain = true;
+  dependsOnRoutingAction(domainIpListsOption);
   domainIpListsOption.load = function (section_id) {
     return getConfigListValues(section_id, "domain_ip_lists");
   };
+  domainIpListsOption.write = function (section_id, value) {
+    writeListOption(section_id, "domain_ip_lists", value);
+  };
   domainIpListsOption.validate = function (_section_id, value) {
+    return validatePlainListReference(value);
+  };
+
+  const dnsDomainListsOption = section.taboption(
+    "conditions",
+    form.DynamicList,
+    "_dns_domain_ip_lists",
+    _("Domain lists"),
+    _(
+      "Add URLs or local paths to .lst lists containing domains. IP entries are ignored.",
+    ),
+  );
+  dnsDomainListsOption.depends("action", "dns");
+  dnsDomainListsOption.modalonly = true;
+  dnsDomainListsOption.retain = true;
+  dnsDomainListsOption.load = function (section_id) {
+    return getConfigListValues(section_id, "domain_ip_lists");
+  };
+  dnsDomainListsOption.write = function (section_id, value) {
+    writeListOption(section_id, "domain_ip_lists", value);
+  };
+  dnsDomainListsOption.remove = function (section_id) {
+    uci.unset(UCI_PACKAGE, section_id, "domain_ip_lists");
+  };
+  dnsDomainListsOption.validate = function (_section_id, value) {
     return validatePlainListReference(value);
   };
 

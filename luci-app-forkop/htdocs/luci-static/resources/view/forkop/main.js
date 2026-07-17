@@ -12187,13 +12187,13 @@ var styles5 = `
     order: 2;
     border-color: rgba(217, 83, 79, 0.4) !important;
     background: transparent !important;
-    color: #d9534f !important;
+    color: var(--fkp-monitoring-danger-color) !important;
 }
 
 .fkp_monitoring-page #monitoring-close-all.btn.fkp_monitoring-page__icon-button:hover:not(:disabled) {
     border-color: rgba(217, 83, 79, 0.6) !important;
     background: transparent !important;
-    color: #d9534f !important;
+    color: color-mix(in srgb, var(--fkp-monitoring-danger-color) 70%, white) !important;
 }
 
 .fkp_monitoring-page #monitoring-pause-toggle.btn.fkp_monitoring-page__icon-button,
