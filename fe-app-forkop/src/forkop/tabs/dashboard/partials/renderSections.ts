@@ -7,6 +7,7 @@ import {
 import { isCopyableProxyLink, svgEl } from '../../../../helpers';
 import { prettyBytes } from '../../../../helpers/prettyBytes';
 import { Forkop } from '../../../types';
+import { renderFlagEmojis } from './renderFlagEmojis';
 
 interface IRenderSectionsProps {
   loading: boolean;
@@ -348,7 +349,7 @@ function renderDefaultState({
             ]
           : []),
         E('div', { class: 'fkp_dashboard-page__outbound-grid__item__header' }, [
-          E('b', {}, outbound.displayName),
+          E('b', {}, renderFlagEmojis(outbound.displayName)),
           ...(canCopyLink
             ? [
                 E(

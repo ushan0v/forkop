@@ -19,7 +19,12 @@ import {
   store,
   StoreType,
 } from '../../services';
-import { getLatencyTestLabel, renderSections, renderWidget } from './partials';
+import {
+  getLatencyTestLabel,
+  renderFlagEmojis,
+  renderSections,
+  renderWidget,
+} from './partials';
 import { fetchServicesInfo } from '../../fetchers/fetchServicesInfo';
 import { getClashApiSecret } from '../../methods/custom/getClashApiSecret';
 import { Forkop } from '../../types';
@@ -807,7 +812,7 @@ function getDetectedCountryFlag(country?: string) {
 function renderDetailsMemberName(member: Forkop.UrlTestMember) {
   const countryFlag = getDetectedCountryFlag(member.country);
   if (!countryFlag) {
-    return member.displayName;
+    return renderFlagEmojis(member.displayName);
   }
 
   return [
@@ -816,7 +821,7 @@ function renderDetailsMemberName(member: Forkop.UrlTestMember) {
       { class: 'fkp_dashboard-page__urltest-details__country-badge' },
       countryFlag,
     ),
-    member.displayName,
+    ...renderFlagEmojis(member.displayName),
   ];
 }
 

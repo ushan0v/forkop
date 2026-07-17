@@ -856,6 +856,19 @@ function getProxyUrlName(url) {
   }
 }
 
+// src/forkop/tabs/dashboard/partials/renderFlagEmojis.ts
+var FLAG_EMOJI_PATTERN = /([\u{1f1e6}-\u{1f1ff}]{2}|\u{1f3f4}[\u{e0061}-\u{e007a}]+\u{e007f})/gu;
+var EXACT_FLAG_EMOJI_PATTERN = /^([\u{1f1e6}-\u{1f1ff}]{2}|\u{1f3f4}[\u{e0061}-\u{e007a}]+\u{e007f})$/u;
+function renderFlagEmojis(value) {
+  return value.split(FLAG_EMOJI_PATTERN).filter(Boolean).map(
+    (part) => EXACT_FLAG_EMOJI_PATTERN.test(part) ? E(
+      "span",
+      { class: "fkp_dashboard-page__flag-emoji" },
+      part
+    ) : part
+  );
+}
+
 // src/helpers/downloadAsTxt.ts
 function downloadAsTxt(text, filename) {
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
@@ -2001,7 +2014,7 @@ function renderDefaultState({
           )
         ] : [],
         E("div", { class: "fkp_dashboard-page__outbound-grid__item__header" }, [
-          E("b", {}, outbound.displayName),
+          E("b", {}, renderFlagEmojis(outbound.displayName)),
           ...canCopyLink ? [
             E(
               "button",
@@ -6017,7 +6030,7 @@ function getDetectedCountryFlag(country) {
 function renderDetailsMemberName(member) {
   const countryFlag = getDetectedCountryFlag(member.country);
   if (!countryFlag) {
-    return member.displayName;
+    return renderFlagEmojis(member.displayName);
   }
   return [
     E(
@@ -6025,7 +6038,7 @@ function renderDetailsMemberName(member) {
       { class: "fkp_dashboard-page__urltest-details__country-badge" },
       countryFlag
     ),
-    member.displayName
+    ...renderFlagEmojis(member.displayName)
   ];
 }
 function renderUrlTestSelectedValue(info) {
@@ -6832,6 +6845,15 @@ async function initController() {
 
 // src/forkop/tabs/dashboard/styles.ts
 var styles = `
+@font-face {
+    font-family: "Twemoji Country Flags";
+    src: url("/luci-static/resources/view/forkop/fonts/TwemojiCountryFlags.woff2") format("woff2");
+    font-display: swap;
+    font-style: normal;
+    font-weight: normal;
+    unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+}
+
 #cbi-${FORKOP_UCI_PACKAGE}-dashboard-_mount_node > .cbi-value-title {
     display: none;
 }
@@ -7427,6 +7449,13 @@ var styles = `
     border-radius: 4px;
     background: rgba(128, 128, 128, 0.15);
     line-height: 1;
+}
+
+.fkp_dashboard-page__flag-emoji,
+.fkp_dashboard-page__urltest-details__country-badge {
+    font-family: "Twemoji Country Flags";
+    font-style: normal;
+    font-weight: normal;
 }
 
 .fkp_dashboard-page__urltest-details__priority-node {
