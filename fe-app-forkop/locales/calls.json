@@ -3871,13 +3871,6 @@
     ]
   },
   {
-    "call": "Russia inside restrictions",
-    "key": "Russia inside restrictions",
-    "places": [
-      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7824"
-    ]
-  },
-  {
     "call": "Save",
     "key": "Save",
     "places": [
@@ -5401,13 +5394,6 @@
     "key": "Warning: %s cannot be used together with %s. Previous selections have been removed.",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7807"
-    ]
-  },
-  {
-    "call": "Warning: Russia inside can only be used with %s. %s already in Russia inside and have been removed from selection.",
-    "key": "Warning: Russia inside can only be used with %s. %s already in Russia inside and have been removed from selection.",
-    "places": [
-      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7826"
     ]
   },
   {

@@ -958,22 +958,6 @@ var REGIONAL_OPTIONS = [
   "russia_outside",
   "ukraine_inside"
 ];
-var ALLOWED_WITH_RUSSIA_INSIDE = [
-  "russia_inside",
-  "meta",
-  "twitter",
-  "discord",
-  "telegram",
-  "cloudflare",
-  "google_ai",
-  "google_play",
-  "hetzner",
-  "ovh",
-  "hodca",
-  "roblox",
-  "digitalocean",
-  "cloudfront"
-];
 var DOMAIN_LIST_OPTIONS = {
   russia_inside: "Russia inside",
   russia_outside: "Russia outside",
@@ -14114,7 +14098,6 @@ function injectGlobalStyles() {
 if (typeof structuredClone !== "function")
   globalThis.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
 return baseclass.extend({
-  ALLOWED_WITH_RUSSIA_INSIDE,
   BOOTSTRAP_DNS_SERVER_OPTIONS,
   DEFAULT_LATENCY_TEST_URL,
   DNS_SERVER_OPTIONS,

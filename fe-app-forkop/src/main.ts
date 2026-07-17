@@ -30,7 +30,6 @@ export { DiagnosticTab } from './forkop/tabs/diagnostic';
 export { MonitoringTab } from './forkop/tabs/monitoring';
 export { UpdatesTab } from './forkop/tabs/updates';
 export {
-  ALLOWED_WITH_RUSSIA_INSIDE,
   BOOTSTRAP_DNS_SERVER_OPTIONS,
   DEFAULT_LATENCY_TEST_URL,
   DNS_SERVER_OPTIONS,

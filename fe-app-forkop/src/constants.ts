@@ -18,23 +18,6 @@ export const REGIONAL_OPTIONS = [
   'ukraine_inside',
 ];
 
-export const ALLOWED_WITH_RUSSIA_INSIDE = [
-  'russia_inside',
-  'meta',
-  'twitter',
-  'discord',
-  'telegram',
-  'cloudflare',
-  'google_ai',
-  'google_play',
-  'hetzner',
-  'ovh',
-  'hodca',
-  'roblox',
-  'digitalocean',
-  'cloudfront',
-];
-
 export const DOMAIN_LIST_OPTIONS = {
   russia_inside: 'Russia inside',
   russia_outside: 'Russia outside',
