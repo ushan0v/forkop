@@ -41,6 +41,16 @@ describe('LogNotificationDeduper', () => {
     expect(isErrorLogLine('forkop: [error] failed')).toBe(true);
     expect(isErrorLogLine('forkop: [fatal] failed')).toBe(true);
     expect(
+      isErrorLogLine(
+        'daemon.err sing-box[123]: FATAL[0000] start service: initialize rule-set[0]: download failed',
+      ),
+    ).toBe(true);
+    expect(
+      isErrorLogLine(
+        'daemon.err sing-box[123]: ERROR[0000] connection: dial failed',
+      ),
+    ).toBe(false);
+    expect(
       getForkopLogNotification(
         'forkop: [info] [component-update] zapret2 v1.2.3',
       ),

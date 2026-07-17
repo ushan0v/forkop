@@ -2082,7 +2082,8 @@ function import_domain_ip_list_reference_into_rulesets(reference, section, setti
         ok = import_domain_ip_list_file_into_rulesets(tmpfile, section);
     }
     else {
-        log_message("Failed to download remote domain/IP list " + reference + "; skipping it until the next successful update", "warn");
+        log_message("Failed to download remote domain/IP list " + reference + "; skipping it until the next successful update", "error");
+        ok = false;
     }
 
     remove_file(tmpfile);
@@ -2132,7 +2133,8 @@ function import_builtin_subnets_from_rule(section, settings) {
             }
 
             if (!download_to_file(url, tmpfile, service_proxy_address(settings, "lists")) || !file_nonempty(tmpfile)) {
-                log_message("Failed to download built-in " + as_string(service) + " subnet list; skipping it until the next successful update", "warn");
+                log_message("Failed to download built-in " + as_string(service) + " subnet list; skipping it until the next successful update", "error");
+                ok = false;
                 remove_file(tmpfile);
                 continue;
             }
@@ -2200,9 +2202,9 @@ function import_custom_ruleset_subnets_from_remote(url, format, section, label, 
     }
 
     if (!download_to_file(url, remote_tmpfile, service_proxy_address(settings, "lists")) || !file_nonempty(remote_tmpfile)) {
-        log_message("Failed to download remote rule set " + as_string(url) + "; skipping it until the next successful update", "warn");
+        log_message("Failed to download remote rule set " + as_string(url) + "; skipping it until the next successful update", "error");
         remove_files([ remote_tmpfile, json_tmpfile ]);
-        return true;
+        return false;
     }
 
     let ok = true;
@@ -2270,9 +2272,9 @@ function import_domains_from_remote_plain_file(url, section, settings) {
         return false;
 
     if (!download_to_file(url, tmpfile, service_proxy_address(settings, "lists")) || !file_nonempty(tmpfile)) {
-        log_message("Failed to download remote domain list " + as_string(url) + "; skipping it until the next successful update", "warn");
+        log_message("Failed to download remote domain list " + as_string(url) + "; skipping it until the next successful update", "error");
         remove_file(tmpfile);
-        return true;
+        return false;
     }
 
     convert_crlf_to_lf(tmpfile);
@@ -2314,9 +2316,9 @@ function import_subnets_from_remote_json_file(url, section, settings) {
         return false;
 
     if (!download_to_file(url, json_tmpfile, service_proxy_address(settings, "lists")) || !file_nonempty(json_tmpfile)) {
-        log_message("Failed to download remote JSON subnet list " + as_string(url) + "; skipping it until the next successful update", "warn");
+        log_message("Failed to download remote JSON subnet list " + as_string(url) + "; skipping it until the next successful update", "error");
         remove_file(json_tmpfile);
-        return true;
+        return false;
     }
 
     let ok = add_json_ruleset_subnets_to_nft_for_section(section, json_tmpfile, "Remote JSON rule set " + as_string(url));
@@ -2335,9 +2337,9 @@ function import_subnets_from_remote_srs_file(url, section, settings) {
     }
 
     if (!download_to_file(url, binary_tmpfile, service_proxy_address(settings, "lists")) || !file_nonempty(binary_tmpfile)) {
-        log_message("Failed to download remote SRS subnet list " + as_string(url) + "; skipping it until the next successful update", "warn");
+        log_message("Failed to download remote SRS subnet list " + as_string(url) + "; skipping it until the next successful update", "error");
         remove_files([ binary_tmpfile, json_tmpfile ]);
-        return true;
+        return false;
     }
 
     let ok = command_success_from_args([ "sing-box", "rule-set", "decompile", binary_tmpfile, "-o", json_tmpfile ]);
@@ -2358,9 +2360,9 @@ function import_subnets_from_remote_plain_file(url, section, settings) {
         return false;
 
     if (!download_to_file(url, tmpfile, service_proxy_address(settings, "lists")) || !file_nonempty(tmpfile)) {
-        log_message("Failed to download remote plain subnet list " + as_string(url) + "; skipping it until the next successful update", "warn");
+        log_message("Failed to download remote plain subnet list " + as_string(url) + "; skipping it until the next successful update", "error");
         remove_file(tmpfile);
-        return true;
+        return false;
     }
 
     convert_crlf_to_lf(tmpfile);
@@ -2444,7 +2446,7 @@ function dns_probe_passed(proxy_address) {
         attempt++;
     }
 
-    log_message("DNS check failed after 10 attempts; skipping remote lists update until the next attempt", "info");
+    log_message("DNS check failed after 10 attempts; skipping remote lists update until the next attempt", "error");
     return false;
 }
 
@@ -2489,7 +2491,7 @@ function list_update() {
     let proxy_address = service_proxy_address(settings, "lists");
     if (!dns_probe_passed(proxy_address)) {
         list_update_pid_end();
-        exit(0);
+        exit(1);
     }
     github_probe(proxy_address);
 

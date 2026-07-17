@@ -57,7 +57,13 @@ function writeStoredKeys(storage: Storage | null, keys: string[]) {
 
 export function isErrorLogLine(line: string) {
   const lower = line.toLowerCase();
-  return lower.includes('[error]') || lower.includes('[fatal]');
+  return (
+    lower.includes('[error]') ||
+    lower.includes('[fatal]') ||
+    (lower.includes('sing-box') &&
+      lower.includes('rule-set') &&
+      /\b(error|fatal)\b/.test(lower))
+  );
 }
 
 export function getForkopLogNotification(

@@ -4632,7 +4632,7 @@ function writeStoredKeys(storage, keys) {
 }
 function isErrorLogLine(line) {
   const lower = line.toLowerCase();
-  return lower.includes("[error]") || lower.includes("[fatal]");
+  return lower.includes("[error]") || lower.includes("[fatal]") || lower.includes("sing-box") && lower.includes("rule-set") && /\b(error|fatal)\b/.test(lower);
 }
 function getForkopLogNotification(line) {
   if (isErrorLogLine(line)) {
