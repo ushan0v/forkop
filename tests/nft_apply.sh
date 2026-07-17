@@ -227,12 +227,14 @@ assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tForkopTable\tmangle\t{ type 
 assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tForkopTable\tpriority_rules\t{ }' "runtime priority chain"
 assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tForkopTable\tpriority_output_rules\t{ }' "runtime priority output chain"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tpriority_output_rules\tmeta\tmark\t!=\t0\treturn' "runtime priority output preserves provider marks"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle\tiifname\t@forkop_interfaces\tip6\tdaddr\t@localv6\tip6\tdaddr\t!=\tfc00::/18\treturn' "runtime local6 return preserves FakeIP6 capture"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle\tjump\tpriority_rules' "runtime priority jump"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle\tiifname\t@forkop_interfaces\tip\tdaddr\t@forkop_subnets\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "runtime common tcp rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle\tiifname\t@forkop_interfaces\tip6\tdaddr\t@forkop_subnets6\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "runtime common6 tcp rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tproxy\tmeta\tmark\t&\t0x00100000\t==\t0x00100000\tmeta\tl4proto\ttcp\ttproxy\tip\tto\t:1602\tcounter' "runtime proxy tcp rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tproxy\tmeta\tmark\t&\t0x00100000\t==\t0x00100000\tmeta\tl4proto\ttcp\ttproxy\tip6\tto\t[::1]:1602\tcounter' "runtime proxy6 tcp rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\tmeta\tmark\t0x00200000\tcounter\treturn' "runtime outbound return"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\tip6\tdaddr\t@localv6\tip6\tdaddr\t!=\tfc00::/18\treturn' "runtime output local6 return preserves FakeIP6 capture"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\tjump\tpriority_output_rules' "runtime priority output jump"
 assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tForkopTable\tmangle\tudp\tdport\t123\treturn' "runtime ntp exclusion"
 
@@ -303,14 +305,16 @@ cat >"$WORK_DIR/priority-rules.json" <<'JSON'
       ".type": "section",
       "enabled": "1",
       "action": "bypass",
-      "ip_cidr": [ "198.51.100.0/24" ]
+      "ip_cidr": [ "198.51.100.0/24" ],
+      "fully_routed_ips": [ "192.168.1.10/32", "2001:db8::10/128" ]
     },
     {
       ".name": "wide_proxy",
       ".type": "section",
       "enabled": "1",
       "action": "proxy",
-      "ip_cidr": [ "0.0.0.0/0" ]
+      "ip_cidr": [ "0.0.0.0/0" ],
+      "fully_routed_ips": [ "192.168.1.20/32", "2001:db8::20/128" ]
     },
     {
       ".name": "port_bypass",
@@ -327,6 +331,10 @@ JSON
 nft_ucode nft-add-section-priority-rules-fixture "$WORK_DIR/priority-rules.json" ForkopTable forkop_interfaces localv4 localv6 0x00100000
 assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tForkopTable\tforkop_rule_bypass_first_subnets\t{ type ipv4_addr; flags interval; auto-merge; }' "bypass priority subnet set"
 assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tForkopTable\tforkop_rule_wide_proxy_subnets\t{ type ipv4_addr; flags interval; auto-merge; }' "proxy priority subnet set"
+assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tForkopTable\tforkop_rule_bypass_first_fully_sources\t{ type ipv4_addr; flags interval; auto-merge; }' "bypass fully routed source set"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tsaddr\t@forkop_rule_bypass_first_fully_sources\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t!=\t198.18.0.0/15\tcounter\taccept' "bypass fully routed real IP fast path"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip6\tsaddr\t@forkop_rule_bypass_first_fully_sources6\tip6\tdaddr\t!=\t@localv6\tip6\tdaddr\t!=\tfc00::/18\tcounter\taccept' "bypass fully routed6 real IP fast path"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tsaddr\t@forkop_rule_wide_proxy_fully_sources\tip\tdaddr\t!=\t@localv4\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter\taccept' "proxy fully routed capture path"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t@forkop_rule_bypass_first_subnets\tcounter\taccept' "bypass priority accept rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t@forkop_rule_wide_proxy_subnets\tmeta\tmark\tset\t0x00100000\tcounter\taccept' "proxy priority capture rule"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tdaddr\t!=\t@localv4\ttcp\tdport\t@forkop_rule_port_bypass_ports\tcounter\taccept' "port-only bypass priority rule"
@@ -334,6 +342,10 @@ assert_line_before "$NFT_LOG" \
   $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t@forkop_rule_bypass_first_subnets\tcounter\taccept' \
   $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t@forkop_rule_wide_proxy_subnets\tmeta\tmark\tset\t0x00100000\tcounter\taccept' \
   "bypass priority order"
+assert_line_before "$NFT_LOG" \
+  $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tsaddr\t@forkop_rule_bypass_first_fully_sources\tip\tdaddr\t!=\t@localv4\tip\tdaddr\t!=\t198.18.0.0/15\tcounter\taccept' \
+  $'nft\tadd\trule\tinet\tForkopTable\tpriority_rules\tiifname\t@forkop_interfaces\tip\tsaddr\t@forkop_rule_wide_proxy_fully_sources\tip\tdaddr\t!=\t@localv4\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter\taccept' \
+  "fully routed section order"
 
 : > "$IP_LOG"
 : > "$LOGGER_LOG"
@@ -452,7 +464,8 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       ".type": "section",
       "enabled": "1",
       "action": "bypass",
-      "ip_cidr": [ "198.51.100.200", "2001:db8::200" ]
+      "ip_cidr": [ "198.51.100.200", "2001:db8::200" ],
+      "fully_routed_ips": [ "192.168.1.21/32", "2001:db8::21/128" ]
     },
     {
       ".name": "ports_only",
@@ -565,8 +578,12 @@ assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_i
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_no_ports_subnets\t{ 198.51.100.200 }' "populate inline ip without ports"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_no_ports_subnets6\t{ 2001:db8::200 }' "populate inline ip6 without ports"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_ports_only_ports\t{ 53,853,5353 }' "populate ports-only set"
-assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tForkopTable\tmangle\tiifname\t@forkop_interfaces\tip\tsaddr\t192.168.1.20/32\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "populate fully routed tcp"
-assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tForkopTable\tmangle\tiifname\t@forkop_interfaces\tip6\tsaddr\t2001:db8::20/128\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "populate fully routed6 tcp"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_fully_sources\t{ 192.168.1.20/32 }' "populate fully routed source set"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_fully_sources6\t{ 2001:db8::20/128 }' "populate fully routed6 source set"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_no_ports_fully_sources\t{ 192.168.1.21/32 }' "populate bypass fully routed source set"
+if grep -Fq $'nft\tinsert\trule' "$NFT_LOG"; then
+  fail "fully routed sources should use ordered priority sets"
+fi
 if grep -Fq '192.0.2.1' "$NFT_LOG"; then
   fail "disabled section should not populate nft"
 fi
@@ -579,10 +596,6 @@ fi
 if grep -Fq '192.0.2.53' "$NFT_LOG" || grep -Fq '192.168.1.53' "$NFT_LOG" || grep -Fq 'forkop_rule_dns_only' "$NFT_LOG"; then
   fail "DNS action should not populate nft sets or fully routed rules"
 fi
-if [ "$(grep -F $'ip\tsaddr\t192.168.1.20/32' "$NFT_LOG" | wc -l | tr -d ' ')" != "3" ]; then
-  fail "duplicate fully routed source should insert exactly one tcp/udp/local rule set"
-fi
-
 cat >"$WORK_DIR/signature-fixture.json" <<'JSON'
 {
   "settings": {
@@ -739,12 +752,5 @@ assert_eq "$expected_signature" \
 : > "$NFT_LOG"
 nft_ucode nft-populate-runtime-sets-fixture "$WORK_DIR/populate-fixture.json" 0 "" ForkopTable forkop_subnets forkop_ports forkop_ip_ports forkop_interfaces localv4 0x00100000
 [ ! -s "$NFT_LOG" ] || fail "disabled nft population should not call nft"
-
-: > "$NFT_LOG"
-NFT_MANGLE_CHAIN_OUTPUT='ip saddr 192.168.1.20 meta l4proto tcp meta mark set 0x00100000 counter' \
-  nft_ucode nft-populate-runtime-sets-fixture "$WORK_DIR/populate-fixture.json" 1 "disabled deferred inline inline_no_ports ports_only ports_with_domain dns_only" ForkopTable forkop_subnets forkop_ports forkop_ip_ports forkop_interfaces localv4 0x00100000
-if grep -Fq $'nft\tinsert\trule' "$NFT_LOG"; then
-  fail "existing nft-normalized /32 fully routed source should not insert"
-fi
 
 printf 'NFT apply checks passed\n'
