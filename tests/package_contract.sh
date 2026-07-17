@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORKOP_MAKEFILE="$ROOT_DIR/forkop/Makefile"
 FORKOP_CONFIG="$ROOT_DIR/forkop/files/etc/config/forkop"
 BUILD_SCRIPT="$ROOT_DIR/build.sh"
+BUILD_WORKFLOW="$ROOT_DIR/.github/workflows/build.yml"
 FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
 
 fail() {
@@ -44,7 +45,29 @@ require_package_dependency() {
 require_file "$FORKOP_MAKEFILE"
 require_file "$FORKOP_CONFIG"
 require_file "$BUILD_SCRIPT"
+require_file "$BUILD_WORKFLOW"
 require_file "$FORKOP_LIB"
+
+bash "$BUILD_SCRIPT" --help >/dev/null ||
+  fail "build.sh must provide command-line usage"
+if bash "$BUILD_SCRIPT" 1.2 >/dev/null 2>&1; then
+  fail "build.sh must reject invalid release versions before building"
+fi
+if grep -Eq 'WSL_|WINDOWS_ARTIFACTS_DIR|SOURCE_ROOT_DIR|\.wsl-build|apt-get|sudo' "$BUILD_SCRIPT"; then
+  fail "build.sh must remain a portable unprivileged Linux build entrypoint"
+fi
+[ "$(grep -Fc 'fakeroot sh -c' "$BUILD_SCRIPT")" -eq 1 ] ||
+  fail "build.sh must use fakeroot for IPK ownership"
+[ "$(grep -Fc 'unshare -r sh -c' "$BUILD_SCRIPT")" -eq 1 ] ||
+  fail "build.sh must use a user namespace for APK ownership"
+grep -Fq 'sudo apt-get install -y' "$BUILD_WORKFLOW" ||
+  fail "build workflow must own host dependency installation"
+grep -Fq './build.sh "$VERSION"' "$BUILD_WORKFLOW" ||
+  fail "build workflow must invoke the public build entrypoint"
+grep -Fq "replace('\\\\n', '\\n')" "$BUILD_WORKFLOW" ||
+  fail "build workflow must normalize escaped release-note line breaks"
+grep -Fq 'body: ${{ needs.preparation.outputs.release_notes }}' "$BUILD_WORKFLOW" ||
+  fail "release action must receive normalized Markdown notes"
 
 for conflict in https-dns-proxy nextdns luci-app-passwall luci-app-passwall2; do
   grep -E 'CONFLICTS:=' "$FORKOP_MAKEFILE" | grep -Fq "$conflict" ||

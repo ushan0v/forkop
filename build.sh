@@ -1,31 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-ROOT_DIR="$SCRIPT_DIR"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-RELEASE_VERSION="${1:-}"
-OUTPUT_DIR_INPUT="${2:-}"
-SOURCE_ROOT_DIR="${SOURCE_ROOT_DIR:-}"
-WINDOWS_ARTIFACTS_DIR="${WINDOWS_ARTIFACTS_DIR:-}"
-DEFAULT_BUILD_HOME="${HOME}"
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") <version> [output-directory]
 
-if [[ "$DEFAULT_BUILD_HOME" == "/root" ]]; then
-  DEFAULT_BUILD_HOME="$(getent passwd 1000 | cut -d: -f6 || true)"
-  DEFAULT_BUILD_HOME="${DEFAULT_BUILD_HOME:-/root}"
+Build Forkop IPK and APK packages. The version must use x.y.z format.
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
 fi
+
+if (( $# < 1 || $# > 2 )); then
+  usage >&2
+  exit 2
+fi
+
+RELEASE_VERSION="$1"
+OUTPUT_DIR="${2:-$ROOT_DIR/dist/release-final}"
 
 if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "Expected release version in the form x.y.z" >&2
-  exit 1
+  exit 2
 fi
 APK_INTERNAL_VERSION="$RELEASE_VERSION"
 
-WSL_NATIVE_ROOT="${WSL_NATIVE_ROOT:-$DEFAULT_BUILD_HOME/build/forkop}"
-WORK_DIR="${WORK_DIR:-$ROOT_DIR/.wsl-build}"
-SDK_WORK_DIR="${SDK_WORK_DIR:-$WORK_DIR/sdk}"
-SDK_CACHE_DIR="${SDK_CACHE_DIR:-$DEFAULT_BUILD_HOME/.cache/forkop/openwrt-sdk}"
+BUILD_DIR="${BUILD_DIR:-$ROOT_DIR/.build}"
+SDK_DIR="$BUILD_DIR/sdk"
+SDK_CACHE_DIR="${SDK_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/forkop/openwrt-sdk}"
 IPK_SDK_URL="${IPK_SDK_URL:-https://downloads.openwrt.org/releases/24.10.6/targets/x86/64/openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst}"
 APK_SDK_URL="${APK_SDK_URL:-https://downloads.openwrt.org/releases/25.12.3/targets/x86/64/openwrt-sdk-25.12.3-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst}"
 
@@ -40,82 +47,20 @@ BACKEND_CONFLICTS_IPK="https-dns-proxy, nextdns, luci-app-passwall, luci-app-pas
 APP_DEPENDS_IPK="libc, luci-base, forkop"
 APP_DEPENDS_APK="libc luci-base forkop"
 
-APT_PACKAGES=(
-  build-essential
-  curl
-  fakeroot
-  file
-  gawk
-  git
-  patch
-  python3
-  rsync
-  tar
-  unzip
-  util-linux
-  wget
-  xz-utils
-  zstd
-)
-
-copy_to_native_root() {
-  local target_root="${WSL_NATIVE_ROOT%/}"
-  local target_output
-  local source_root="${SOURCE_ROOT_DIR:-$ROOT_DIR}"
-  local windows_output="${WINDOWS_ARTIFACTS_DIR:-$source_root/dist/release-final}"
-
-  mkdir -p "$target_root"
-  rsync -a --delete \
-    --exclude ".git" \
-    --exclude ".wsl-build" \
-    --exclude "dist" \
-    --exclude ".idea" \
-    --exclude "sandbox" \
-    --exclude "fe-app-forkop/node_modules" \
-    --exclude "fe-app-forkop/tests" \
-    "$ROOT_DIR/" "$target_root/"
-  rm -rf \
-    "$target_root/.idea" \
-    "$target_root/sandbox" \
-    "$target_root/fe-app-forkop/node_modules" \
-    "$target_root/fe-app-forkop/tests"
-
-  if [[ -n "$OUTPUT_DIR_INPUT" ]]; then
-    target_output="$OUTPUT_DIR_INPUT"
-  else
-    target_output="$target_root/dist/release-final"
-  fi
-
-  echo "Synced repository to native WSL path: $target_root" >&2
-  export SOURCE_ROOT_DIR="$source_root"
-  export WINDOWS_ARTIFACTS_DIR="$windows_output"
-  exec bash "$target_root/build.sh" "$RELEASE_VERSION" "$target_output"
-}
-
-ensure_native_root() {
-  case "$ROOT_DIR" in
-    /mnt/*)
-      copy_to_native_root
-      ;;
-  esac
-}
-
 ensure_host_deps() {
   local missing=()
   local commands=(
-    ar
     curl
     fakeroot
     file
     gcc
     git
     make
-    python3
-    rsync
+    patch
+    perl
     sha256sum
     tar
     unshare
-    wget
     zstd
   )
 
@@ -125,33 +70,15 @@ ensure_host_deps() {
     fi
   done
 
-  if (( ${#missing[@]} == 0 )); then
-    return 0
+  if (( ${#missing[@]} > 0 )); then
+    echo "Missing build dependencies: ${missing[*]}" >&2
+    exit 1
   fi
 
-  echo "Installing missing host dependencies: ${APT_PACKAGES[*]}" >&2
-  if [[ "$(id -u)" -eq 0 ]]; then
-    apt-get update
-    DEBIAN_FRONTEND=noninteractive apt-get install -y "${APT_PACKAGES[@]}"
-    return 0
+  if ! unshare -r true >/dev/null 2>&1; then
+    echo "Unprivileged user namespaces are required to build APK packages" >&2
+    exit 1
   fi
-
-  if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-    sudo apt-get update
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${APT_PACKAGES[@]}"
-    return 0
-  fi
-
-  echo "Missing build dependencies and no passwordless sudo/root available: ${missing[*]}" >&2
-  exit 1
-}
-
-have_passwordless_sudo() {
-  command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1
-}
-
-have_unshare_root() {
-  command -v unshare >/dev/null 2>&1 && unshare -r true >/dev/null 2>&1
 }
 
 download_sdk_archive() {
@@ -161,7 +88,7 @@ download_sdk_archive() {
   mkdir -p "$SDK_CACHE_DIR"
   if [[ ! -f "$archive_path" ]]; then
     echo "Downloading SDK: $url" >&2
-    wget -O "$archive_path.part" "$url"
+    curl --fail --location --retry 3 --output "$archive_path.part" "$url"
     mv "$archive_path.part" "$archive_path"
   fi
 
@@ -172,19 +99,19 @@ extract_sdk() {
   local kind="$1"
   local archive_path="$2"
   local sdk_url="$3"
-  local destination="$SDK_WORK_DIR/$kind"
+  local destination="$SDK_DIR/$kind"
   local marker_file="$destination/.forkop-sdk-url"
   local temp_dir
   local extracted_root
 
-  mkdir -p "$SDK_WORK_DIR"
+  mkdir -p "$SDK_DIR"
   if [[ -d "$destination" && -f "$marker_file" ]] && [[ "$(cat "$marker_file")" == "$sdk_url" ]]; then
     printf '%s\n' "$destination"
     return 0
   fi
 
   rm -rf "$destination"
-  temp_dir="$(mktemp -d "$SDK_WORK_DIR/.${kind}.XXXXXX")"
+  temp_dir="$(mktemp -d "$SDK_DIR/.${kind}.XXXXXX")"
   tar --zstd -xf "$archive_path" -C "$temp_dir"
   extracted_root="$(find "$temp_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
   mv "$extracted_root" "$destination"
@@ -441,7 +368,7 @@ build_ipk_package() {
   local data_root="$3"
   local control_root="$4"
   local output_file="$5"
-  local build_dir="$WORK_DIR/manual/ipk-${package_name}"
+  local build_dir="$BUILD_DIR/manual/ipk-${package_name}"
   local package_root="$build_dir/pkg"
   local built_file
 
@@ -452,19 +379,10 @@ build_ipk_package() {
   cp -a "$control_root/." "$package_root/CONTROL/"
 
   rm -f "$output_file"
-  if [[ "$(id -u)" -eq 0 ]]; then
-    chown -R 0:0 "$package_root"
-    "$ipkg_build_bin" "$package_root" "$build_dir" >/dev/null
-  elif have_passwordless_sudo; then
-    sudo chown -R 0:0 "$package_root"
-    sudo "$ipkg_build_bin" "$package_root" "$build_dir" >/dev/null
-    sudo chown "$(id -u):$(id -g)" "$build_dir/${package_name}_${RELEASE_VERSION}_all.ipk"
-  else
-    fakeroot sh -c "
-      chown -R 0:0 '$package_root'
-      '$ipkg_build_bin' '$package_root' '$build_dir' >/dev/null
-    "
-  fi
+  fakeroot sh -c '
+    chown -R 0:0 "$1"
+    exec "$2" "$1" "$3"
+  ' sh "$package_root" "$ipkg_build_bin" "$build_dir" >/dev/null
 
   built_file="$build_dir/${package_name}_${RELEASE_VERSION}_all.ipk"
   [ -f "$built_file" ] || {
@@ -502,7 +420,7 @@ if (getenv("IPKG_INSTROOT") == null || getenv("IPKG_INSTROOT") == "")
 exit(0);
 EOF
 
-cat > "$scripts_dir/backend-pre-upgrade.sh" <<'EOF'
+  cat > "$scripts_dir/backend-pre-upgrade.sh" <<'EOF'
 #!/usr/bin/ucode
 if (getenv("IPKG_INSTROOT") == null || getenv("IPKG_INSTROOT") == "")
     exit(system("/usr/bin/forkop package_prerm upgrade >/dev/null 2>&1"));
@@ -632,105 +550,36 @@ build_apk_package() {
   local scripts_dir="$7"
   local script_prefix="$8"
   local output_file="$9"
-  local temp_root="$WORK_DIR/manual/${package_name}.apk-root"
-  local temp_scripts="$WORK_DIR/manual/${package_name}.apk-scripts"
+  local temp_root="$BUILD_DIR/manual/${package_name}.apk-root"
+  local temp_scripts="$BUILD_DIR/manual/${package_name}.apk-scripts"
   local maintainer="${10}"
-  local stderr_file
 
   rm -rf "$temp_root" "$temp_scripts"
   cp -a "$files_root" "$temp_root"
   cp -a "$scripts_dir" "$temp_scripts"
 
-  if [[ "$(id -u)" -eq 0 ]]; then
-    chown -R 0:0 "$temp_root" "$temp_scripts"
+  unshare -r sh -c '
+    chown -R 0:0 "$1" "$2"
+    shift 2
+    exec "$@"
+  ' sh "$temp_root" "$temp_scripts" \
     "$apk_bin" mkpkg \
-      --files "$temp_root" \
-      --output "$output_file" \
-      -I "name:${package_name}" \
-      -I "version:${package_version}" \
-      -I "description:${description}" \
-      -I "arch:noarch" \
-      -I "license:GPL-2.0-or-later" \
-      -I "origin:forkop" \
-      -I "maintainer:${maintainer}" \
-      -I "url:${PROJECT_URL}" \
-      -I "depends:${depends}" \
-      -s "pre-install:${temp_scripts}/${script_prefix}-pre-install.sh" \
-      -s "post-install:${temp_scripts}/${script_prefix}-post-install.sh" \
-      -s "pre-deinstall:${temp_scripts}/${script_prefix}-pre-deinstall.sh" \
-      -s "pre-upgrade:${temp_scripts}/${script_prefix}-pre-upgrade.sh" \
-      -s "post-upgrade:${temp_scripts}/${script_prefix}-post-upgrade.sh"
-  elif have_passwordless_sudo; then
-    sudo chown -R 0:0 "$temp_root" "$temp_scripts"
-    sudo "$apk_bin" mkpkg \
-      --files "$temp_root" \
-      --output "$output_file" \
-      -I "name:${package_name}" \
-      -I "version:${package_version}" \
-      -I "description:${description}" \
-      -I "arch:noarch" \
-      -I "license:GPL-2.0-or-later" \
-      -I "origin:forkop" \
-      -I "maintainer:${maintainer}" \
-      -I "url:${PROJECT_URL}" \
-      -I "depends:${depends}" \
-      -s "pre-install:${temp_scripts}/${script_prefix}-pre-install.sh" \
-      -s "post-install:${temp_scripts}/${script_prefix}-post-install.sh" \
-      -s "pre-deinstall:${temp_scripts}/${script_prefix}-pre-deinstall.sh" \
-      -s "pre-upgrade:${temp_scripts}/${script_prefix}-pre-upgrade.sh" \
-      -s "post-upgrade:${temp_scripts}/${script_prefix}-post-upgrade.sh"
-    sudo chown "$(id -u):$(id -g)" "$output_file"
-    sudo rm -rf "$temp_root" "$temp_scripts"
-  elif have_unshare_root; then
-    unshare -r sh -c "
-      chown -R 0:0 '$temp_root' '$temp_scripts'
-      '$apk_bin' mkpkg \
-        --files '$temp_root' \
-        --output '$output_file' \
-        -I 'name:${package_name}' \
-        -I 'version:${package_version}' \
-        -I 'description:${description}' \
-        -I 'arch:noarch' \
-        -I 'license:GPL-2.0-or-later' \
-        -I 'origin:forkop' \
-        -I 'maintainer:${maintainer}' \
-        -I 'url:${PROJECT_URL}' \
-        -I 'depends:${depends}' \
-        -s pre-install:'$temp_scripts/${script_prefix}-pre-install.sh' \
-        -s post-install:'$temp_scripts/${script_prefix}-post-install.sh' \
-        -s pre-deinstall:'$temp_scripts/${script_prefix}-pre-deinstall.sh' \
-        -s pre-upgrade:'$temp_scripts/${script_prefix}-pre-upgrade.sh' \
-        -s post-upgrade:'$temp_scripts/${script_prefix}-post-upgrade.sh'
-    "
-  else
-    stderr_file="$(mktemp)"
-    if ! fakeroot sh -c "
-      chown -R 0:0 '$temp_root' '$temp_scripts'
-      '$apk_bin' mkpkg \
-        --files '$temp_root' \
-        --output '$output_file' \
-        -I 'name:${package_name}' \
-        -I 'version:${package_version}' \
-        -I 'description:${description}' \
-        -I 'arch:noarch' \
-        -I 'license:GPL-2.0-or-later' \
-        -I 'origin:forkop' \
-        -I 'maintainer:${maintainer}' \
-        -I 'url:${PROJECT_URL}' \
-        -I 'depends:${depends}' \
-        -s pre-install:'$temp_scripts/${script_prefix}-pre-install.sh' \
-        -s post-install:'$temp_scripts/${script_prefix}-post-install.sh' \
-        -s pre-deinstall:'$temp_scripts/${script_prefix}-pre-deinstall.sh' \
-        -s pre-upgrade:'$temp_scripts/${script_prefix}-pre-upgrade.sh' \
-        -s post-upgrade:'$temp_scripts/${script_prefix}-post-upgrade.sh'
-    " 2>"$stderr_file"; then
-      grep -v "object 'libfakeroot-.*so' from LD_PRELOAD cannot be preloaded" "$stderr_file" >&2 || true
-      rm -f "$stderr_file"
-      return 1
-    fi
-    grep -v "object 'libfakeroot-.*so' from LD_PRELOAD cannot be preloaded" "$stderr_file" >&2 || true
-    rm -f "$stderr_file"
-  fi
+    --files "$temp_root" \
+    --output "$output_file" \
+    -I "name:${package_name}" \
+    -I "version:${package_version}" \
+    -I "description:${description}" \
+    -I "arch:noarch" \
+    -I "license:GPL-2.0-or-later" \
+    -I "origin:forkop" \
+    -I "maintainer:${maintainer}" \
+    -I "url:${PROJECT_URL}" \
+    -I "depends:${depends}" \
+    -s "pre-install:${temp_scripts}/${script_prefix}-pre-install.sh" \
+    -s "post-install:${temp_scripts}/${script_prefix}-post-install.sh" \
+    -s "pre-deinstall:${temp_scripts}/${script_prefix}-pre-deinstall.sh" \
+    -s "pre-upgrade:${temp_scripts}/${script_prefix}-pre-upgrade.sh" \
+    -s "post-upgrade:${temp_scripts}/${script_prefix}-post-upgrade.sh"
 }
 
 verify_ipk_metadata() {
@@ -770,53 +619,7 @@ verify_apk_metadata() {
 }
 
 cleanup_work_dir() {
-  rm -rf "$WORK_DIR/manual" 2>/dev/null || {
-    if have_passwordless_sudo; then
-      sudo rm -rf "$WORK_DIR/manual"
-    else
-      return 1
-    fi
-  }
-
-  rm -f "$WORK_DIR/ipk-build.log" 2>/dev/null || {
-    if have_passwordless_sudo; then
-      sudo rm -f "$WORK_DIR/ipk-build.log"
-    else
-      return 1
-    fi
-  }
-}
-
-sync_artifacts_to_windows() {
-  local output_dir="$1"
-  local output_real
-  local windows_real
-
-  [[ -n "$WINDOWS_ARTIFACTS_DIR" ]] || return 0
-
-  mkdir -p "$WINDOWS_ARTIFACTS_DIR"
-  output_real="$(readlink -f "$output_dir")"
-  windows_real="$(readlink -f "$WINDOWS_ARTIFACTS_DIR")"
-
-  if [[ "$output_real" == "$windows_real" ]]; then
-    return 0
-  fi
-
-  rm -f \
-    "$WINDOWS_ARTIFACTS_DIR"/forkop_* \
-    "$WINDOWS_ARTIFACTS_DIR"/luci-app-forkop_* \
-    "$WINDOWS_ARTIFACTS_DIR"/luci-i18n-forkop-ru_*
-
-  cp -f \
-    "$output_dir"/forkop_"${RELEASE_VERSION}".ipk \
-    "$output_dir"/luci-app-forkop_"${RELEASE_VERSION}".ipk \
-    "$output_dir"/luci-i18n-forkop-ru_"${RELEASE_VERSION}".ipk \
-    "$output_dir"/forkop_"${RELEASE_VERSION}".apk \
-    "$output_dir"/luci-app-forkop_"${RELEASE_VERSION}".apk \
-    "$output_dir"/luci-i18n-forkop-ru_"${RELEASE_VERSION}".apk \
-    "$WINDOWS_ARTIFACTS_DIR"/
-
-  echo "Synced artifacts to Windows path: $WINDOWS_ARTIFACTS_DIR" >&2
+  rm -rf "$BUILD_DIR/manual" "$BUILD_DIR/ipk-build.log"
 }
 
 print_summary() {
@@ -824,9 +627,6 @@ print_summary() {
 
   echo "Build root: $ROOT_DIR"
   echo "Output dir: $output_dir"
-  if [[ -n "$WINDOWS_ARTIFACTS_DIR" ]]; then
-    echo "Windows artifacts dir: $WINDOWS_ARTIFACTS_DIR"
-  fi
   echo "Artifacts:"
   find "$output_dir" -maxdepth 1 -type f \( -name '*.ipk' -o -name '*.apk' \) | sort
 }
@@ -840,7 +640,7 @@ main() {
   local po2lmo_bin
   local ipkg_build_bin
   local apk_bin
-  local manual_root="$WORK_DIR/manual"
+  local manual_root="$BUILD_DIR/manual"
   local backend_root="$manual_root/backend-root"
   local app_root="$manual_root/app-root"
   local i18n_root="$manual_root/i18n-root"
@@ -852,11 +652,10 @@ main() {
   local app_size
   local i18n_size
 
-  ensure_native_root
   ensure_host_deps
 
-  mkdir -p "$WORK_DIR"
-  output_dir="${OUTPUT_DIR_INPUT:-$ROOT_DIR/dist/release-final}"
+  mkdir -p "$BUILD_DIR"
+  output_dir="$OUTPUT_DIR"
   mkdir -p "$output_dir"
   rm -f "$output_dir"/forkop_* "$output_dir"/luci-app-forkop_* "$output_dir"/luci-i18n-forkop-ru_*
 
@@ -955,7 +754,6 @@ main() {
   verify_apk_metadata "$apk_bin" "$output_dir/luci-i18n-forkop-ru_${RELEASE_VERSION}.apk" "luci-i18n-forkop-ru" "$APK_INTERNAL_VERSION"
 
   cleanup_work_dir
-  sync_artifacts_to_windows "$output_dir"
   print_summary "$output_dir"
 }
 

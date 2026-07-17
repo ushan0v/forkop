@@ -39,7 +39,7 @@ fi
 grep -Fq 'core/constants.uc' "$FORKOP_MAKEFILE" ||
   fail "forkop/Makefile must patch core/constants.uc"
 grep -Fq 'core/constants.uc' "$BUILD_SCRIPT" ||
-  fail "manual WSL build must patch core/constants.uc"
+  fail "release build must patch core/constants.uc"
 
 config_name="$(ucode -L "$FORKOP_LIB" "$CONSTANTS_UC" get FORKOP_CONFIG_NAME)"
 [ "$config_name" = "forkop" ] ||

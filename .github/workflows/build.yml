@@ -10,28 +10,31 @@ on:
         required: true
         type: string
       release_notes:
-        description: Optional release notes/comment
+        description: 'Optional release notes/comment (use \n for line breaks; Markdown is preserved)'
         required: false
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   preparation:
     name: Setup build version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
       commitish: ${{ steps.version.outputs.commitish }}
+      release_notes: ${{ steps.version.outputs.release_notes }}
     steps:
       - uses: actions/checkout@v5.0.0
         with:
           fetch-depth: 0
       - id: version
         shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.release_tag || '' }}
+          INPUT_RELEASE_NOTES: ${{ inputs.release_notes || '' }}
         run: |
-          INPUT_VERSION="${{ inputs.release_tag || '' }}"
           if [ -n "$INPUT_VERSION" ]; then
             VERSION="$INPUT_VERSION"
           else
@@ -43,22 +46,34 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "commitish=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import os
+          import uuid
+
+          notes = os.environ['INPUT_RELEASE_NOTES']
+          notes = notes.replace('\r\n', '\n').replace('\r', '\n').replace('\\n', '\n')
+          delimiter = f'ghadelimiter_{uuid.uuid4().hex}'
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'release_notes<<{delimiter}\n{notes}\n{delimiter}\n')
+          PY
 
   build:
     name: Build Forkop release packages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: preparation
     steps:
       - uses: actions/checkout@v5.0.0
-        with:
-          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl fakeroot file gawk git patch perl tar unzip util-linux xz-utils zstd
 
       - name: Build release artifacts
         shell: bash
         run: |
           VERSION="${{ needs.preparation.outputs.version }}"
-          bash ./build.sh "$VERSION" "$PWD/filtered-bin/release"
-          ls -la "$PWD/filtered-bin/release"
+          ./build.sh "$VERSION" "$PWD/filtered-bin/release"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4.6.2
@@ -70,7 +85,9 @@ jobs:
 
   release:
     name: Create Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     needs:
       - preparation
       - build
@@ -86,7 +103,6 @@ jobs:
           path: ./filtered-bin/release
 
       - name: Release
-        if: ${{ inputs.release_notes == '' }}
         uses: softprops/action-gh-release@v2.4.0
         with:
           files: ./filtered-bin/release/*.*
@@ -96,19 +112,7 @@ jobs:
           name: ${{ needs.preparation.outputs.version }}
           tag_name: ${{ needs.preparation.outputs.version }}
           target_commitish: ${{ needs.preparation.outputs.commitish }}
-
-      - name: Release with notes
-        if: ${{ inputs.release_notes != '' }}
-        uses: softprops/action-gh-release@v2.4.0
-        with:
-          files: ./filtered-bin/release/*.*
-          draft: false
-          prerelease: false
-          make_latest: true
-          name: ${{ needs.preparation.outputs.version }}
-          tag_name: ${{ needs.preparation.outputs.version }}
-          target_commitish: ${{ needs.preparation.outputs.commitish }}
-          body: ${{ inputs.release_notes }}
+          body: ${{ needs.preparation.outputs.release_notes }}
 
       - name: Prepare SourceForge release
         shell: bash
@@ -245,22 +249,7 @@ jobs:
             exit 1
           fi
 
-      - name: Check SourceForge project
-        id: sourceforge
-        shell: bash
-        run: |
-          if sftp -i "$HOME/.ssh/sourceforge" -b - ushan0v@frs.sourceforge.net <<'EOF'
-          ls /home/frs/project/forkop
-          EOF
-          then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::SourceForge project is unavailable; skipping mirror publication"
-          fi
-
       - name: Upload SourceForge packages
-        if: ${{ steps.sourceforge.outputs.available == 'true' }}
         shell: bash
         env:
           VERSION: ${{ needs.preparation.outputs.version }}
@@ -274,7 +263,6 @@ jobs:
           EOF
 
       - name: Verify SourceForge package downloads
-        if: ${{ steps.sourceforge.outputs.available == 'true' }}
         shell: bash
         env:
           VERSION: ${{ needs.preparation.outputs.version }}
@@ -303,7 +291,6 @@ jobs:
           done
 
       - name: Publish SourceForge installer metadata
-        if: ${{ steps.sourceforge.outputs.available == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -318,7 +305,6 @@ jobs:
           EOF
 
       - name: Verify SourceForge installer metadata
-        if: ${{ steps.sourceforge.outputs.available == 'true' }}
         shell: bash
         env:
           VERSION: ${{ needs.preparation.outputs.version }}

@@ -5,5 +5,5 @@ fe-app-forkop/.env
 .DS_Store
 
 sandbox/
-.wsl-build/
+.build/
 dist/
