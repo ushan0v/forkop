@@ -31,8 +31,8 @@ fi
 APK_INTERNAL_VERSION="$RELEASE_VERSION"
 
 BUILD_DIR="${BUILD_DIR:-$ROOT_DIR/.build}"
-SDK_DIR="$BUILD_DIR/sdk"
 SDK_CACHE_DIR="${SDK_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/forkop/openwrt-sdk}"
+SDK_DIR="${SDK_DIR:-$SDK_CACHE_DIR/extracted}"
 IPK_SDK_URL="${IPK_SDK_URL:-https://downloads.openwrt.org/releases/24.10.6/targets/x86/64/openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst}"
 APK_SDK_URL="${APK_SDK_URL:-https://downloads.openwrt.org/releases/25.12.3/targets/x86/64/openwrt-sdk-25.12.3-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst}"
 
@@ -53,6 +53,7 @@ ensure_host_deps() {
     curl
     fakeroot
     file
+    flock
     gcc
     git
     make
@@ -112,11 +113,13 @@ extract_sdk() {
 
   rm -rf "$destination"
   temp_dir="$(mktemp -d "$SDK_DIR/.${kind}.XXXXXX")"
+  trap 'rm -rf -- "$temp_dir"' EXIT
   tar --zstd -xf "$archive_path" -C "$temp_dir"
   extracted_root="$(find "$temp_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
   mv "$extracted_root" "$destination"
   printf '%s\n' "$sdk_url" > "$marker_file"
   rmdir "$temp_dir" 2>/dev/null || true
+  trap - EXIT
 
   printf '%s\n' "$destination"
 }
@@ -133,7 +136,8 @@ ensure_po2lmo() {
 
   (
     cd "$ipk_sdk_dir"
-    if [[ ! -d feeds/luci ]]; then
+    if [[ ! -f "$luci_src_dir/po2lmo.c" ]]; then
+      rm -rf feeds/luci
       ./scripts/feeds update luci >&2
     fi
   )
@@ -654,7 +658,12 @@ main() {
 
   ensure_host_deps
 
-  mkdir -p "$BUILD_DIR"
+  mkdir -p "$BUILD_DIR" "$SDK_CACHE_DIR"
+  exec 9>"$SDK_CACHE_DIR/.build.lock"
+  if ! flock -n 9; then
+    echo "Another Forkop package build is already running" >&2
+    exit 1
+  fi
   output_dir="$OUTPUT_DIR"
   mkdir -p "$output_dir"
   rm -f "$output_dir"/forkop_* "$output_dir"/luci-app-forkop_* "$output_dir"/luci-i18n-forkop-ru_*
