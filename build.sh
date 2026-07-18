@@ -314,10 +314,6 @@ EOF
 default_postinst $0 $@
 EOF
 
-  cat > "$control_dir/postinst-pkg" <<'EOF'
-[ -n "${IPKG_INSTROOT}" ] || /usr/bin/forkop luci_postinst >/dev/null 2>&1 || true
-EOF
-
   cat > "$control_dir/prerm" <<'EOF'
 #!/bin/sh
 [ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
@@ -460,7 +456,6 @@ export root="${IPKG_INSTROOT}"
 export pkgname="luci-app-forkop"
 add_group_and_user
 default_postinst
-[ -n "${IPKG_INSTROOT}" ] || /usr/bin/forkop luci_postinst >/dev/null 2>&1 || true
 EOF
 
   cat > "$scripts_dir/app-pre-deinstall.sh" <<'EOF'
@@ -488,7 +483,6 @@ export root="${IPKG_INSTROOT}"
 export pkgname="luci-app-forkop"
 add_group_and_user
 default_postinst
-[ -n "${IPKG_INSTROOT}" ] || /usr/bin/forkop luci_postinst >/dev/null 2>&1 || true
 EOF
 
   chmod 0755 "$scripts_dir"/app-*.sh

@@ -55,8 +55,9 @@ grep -Fq '/usr/bin/forkop package_prerm upgrade' "$BUILD_SCRIPT" ||
   fail "manual APK pre-upgrade must record and stop the running service"
 grep -Fq '/usr/bin/forkop package_postinst' "$BUILD_SCRIPT" ||
   fail "manual packages must restore a service that was running before upgrade"
-grep -Fq '/usr/bin/forkop luci_postinst' "$BUILD_SCRIPT" ||
-  fail "manual package builder must delegate LuCI cache/rpcd handling to luci_postinst"
+if grep -Fq '/usr/bin/forkop luci_postinst' "$BUILD_SCRIPT"; then
+  fail "manual package hooks must let default_postinst run luci_postinst exactly once through uci-defaults"
+fi
 if grep -n -E 'Package/forkop/preinst|copy_legacy_config|FORKOP_LEGACY_CONFIG|mode == "preinst"' \
   "$FORKOP_MAKEFILE" "$BUILD_SCRIPT" "$PACKAGE_UC" >/dev/null 2>&1; then
   fail "package hooks and runtime service must not own configuration migration"
