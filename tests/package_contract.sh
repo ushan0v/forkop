@@ -68,6 +68,8 @@ grep -Fq '[[ ! -f "$luci_src_dir/po2lmo.c" ]]' "$BUILD_SCRIPT" ||
   fail "build.sh must use a user namespace for APK ownership"
 grep -Fq 'sudo apt-get install -y' "$BUILD_WORKFLOW" ||
   fail "build workflow must own host dependency installation"
+grep -Fq 'sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0' "$BUILD_WORKFLOW" ||
+  fail "Ubuntu 24.04 build workflow must allow unprivileged user namespaces"
 grep -Fq './build.sh "$VERSION"' "$BUILD_WORKFLOW" ||
   fail "build workflow must invoke the public build entrypoint"
 grep -Fq "replace('\\\\n', '\\n')" "$BUILD_WORKFLOW" ||
