@@ -159,17 +159,7 @@ function provider_available() {
 }
 
 function package_installed() {
-    if (command_exists("apk") && command_success_from_args([ "apk", "info", "-e", "byedpi" ]))
-        return true;
-    if (!command_exists("opkg"))
-        return false;
-
-    for (let line in split(command_output_from_args([ "opkg", "list-installed" ]), "\n")) {
-        let matched = match(trim(as_string(line)), /^byedpi[ \t]+-/);
-        if (matched)
-            return true;
-    }
-    return false;
+    return command_success_from_args([ "ucode", "-L", LIB_DIR, LIB_DIR + "/core/packages.uc", "installed", "byedpi" ]);
 }
 
 function first_nonempty_field(value) {
@@ -184,37 +174,9 @@ function first_nonempty_field(value) {
 }
 
 function package_version() {
-    let output = "";
-
-    if (command_exists("apk") && command_success_from_args([ "apk", "info", "-e", "byedpi" ])) {
-        output = command_output_from_args([ "apk", "list", "--installed", "--manifest", "byedpi" ]);
-        for (let line in split(output, "\n")) {
-            let matched = match(trim(as_string(line)), /^P:byedpi$/);
-            if (!matched)
-                continue;
-            for (let manifest_line in split(output, "\n")) {
-                let version_match = match(trim(as_string(manifest_line)), /^V:(.+)$/);
-                if (version_match)
-                    return as_string(version_match[1]);
-            }
-        }
-
-        output = command_output_from_args([ "apk", "info", "-v", "byedpi" ]);
-        for (let line in split(output, "\n")) {
-            line = trim(as_string(line));
-            if (line != "")
-                return replace(line, /^byedpi-/, "");
-        }
-    }
-
-    if (command_exists("opkg")) {
-        output = command_output_from_args([ "opkg", "list-installed" ]);
-        for (let line in split(output, "\n")) {
-            let matched = match(trim(as_string(line)), /^byedpi[ \t]+-[ \t]*(.+)$/);
-            if (matched)
-                return as_string(matched[1]);
-        }
-    }
+    let version = trim(command_output_from_args([ "ucode", "-L", LIB_DIR, LIB_DIR + "/core/packages.uc", "version", "byedpi" ]));
+    if (version != "")
+        return version;
 
     if (provider_available())
         return first_nonempty_field(command_output_from_args([ BYEDPI_BIN, "--version" ]));

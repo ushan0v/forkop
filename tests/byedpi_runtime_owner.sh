@@ -8,6 +8,12 @@ CLI_UC="$FORKOP_BIN"
 BYEDPI_RUNTIME_SH="$FORKOP_LIB/byedpi.sh"
 LIFECYCLE_UC="$FORKOP_LIB/service/lifecycle.uc"
 BYEDPI_RUNTIME_UC="$FORKOP_LIB/providers/byedpi/runtime.uc"
+WORK_DIR="$(mktemp -d)"
+
+cleanup() {
+  rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -47,7 +53,28 @@ grep -Fq 'mode == "status"' "$BYEDPI_RUNTIME_UC" ||
 grep -Fq 'mode == "check"' "$BYEDPI_RUNTIME_UC" ||
   fail "providers/byedpi/runtime.uc must own ByeDPI check"
 
-BYEDPI_BIN="$ROOT_DIR/tests/missing-ciadpi" \
+cat >"$WORK_DIR/apk" <<'SH'
+#!/usr/bin/env sh
+set -eu
+
+case "$*" in
+  "info -e byedpi") exit 0 ;;
+  "list --installed byedpi")
+    printf '<byedpi> byedpi-0.17.3-r1 aarch64_cortex-a53 {feeds/base/byedpi} [installed]\n'
+    ;;
+  "list --installed --manifest byedpi"|"info -v byedpi")
+    printf 'byedpi: Local SOCKS proxy server to bypass DPI (Deep Packet Inspection)\n'
+    ;;
+  *) exit 1 ;;
+esac
+SH
+chmod +x "$WORK_DIR/apk"
+
+version="$(FORKOP_LIB="$FORKOP_LIB" PATH="$WORK_DIR:$PATH" ucode -L "$FORKOP_LIB" "$BYEDPI_RUNTIME_UC" package-version)"
+[ "$version" = "0.17.3-r1" ] ||
+  fail "ByeDPI APK version was parsed as '$version'"
+
+FORKOP_LIB="$FORKOP_LIB" BYEDPI_BIN="$ROOT_DIR/tests/missing-ciadpi" \
   ucode -L "$FORKOP_LIB" "$BYEDPI_RUNTIME_UC" check |
   node -e '
 const fs = require("fs");
