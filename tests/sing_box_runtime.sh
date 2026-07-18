@@ -437,7 +437,8 @@ cat >"$WORK_DIR/dns-action-fixture.json" <<JSON
       "enabled": "1",
       "action": "dns",
       "dns_server": "8.8.8.8",
-      "domain_suffix": [ "proxy-first.example" ]
+      "domain_suffix": [ "proxy-first.example" ],
+      "fully_routed_ips": [ "192.0.2.3/32" ]
     },
     {
       ".name": "detour",
@@ -1333,12 +1334,21 @@ assert(route_rule(dns_action, r => contains(r.domain_suffix, "list-dns.example")
 let dns_first_index = dns_rule_index(dns_action, r => contains(r.domain_suffix, "dns-first.example") && r.server == "dns_first-dns-server");
 let proxy_after_dns_index = dns_rule_index(dns_action, r => contains(r.domain_suffix, "dns-first.example") && r.server == "fakeip-server");
 assert(dns_first_index >= 0 && proxy_after_dns_index > dns_first_index, "higher DNS action wins over lower proxy DNS rule");
+let dns_first_rule = dns_rule(dns_action, r => contains(r.domain_suffix, "dns-first.example") && r.server == "dns_first-dns-server");
+assert(contains(dns_first_rule.inbound, "source-dns-in") && contains(dns_first_rule.source_ip_cidr, "192.0.2.1/32"), "DNS action device filter keeps the client source");
+let dns_first_forced_index = dns_rule_index(dns_action, r => r.server == "dns_first-dns-server" && r.domain == null && r.domain_suffix == null && contains(r.source_ip_cidr, "192.0.2.2/32"));
+assert(dns_first_forced_index >= 0 && dns_first_forced_index < proxy_after_dns_index, "higher forced DNS action wins over lower proxy rules");
 let proxy_first_index = dns_rule_index(dns_action, r => contains(r.domain_suffix, "proxy-first.example") && r.server == "fakeip-server");
 let dns_after_proxy_index = dns_rule_index(dns_action, r => contains(r.domain_suffix, "proxy-first.example") && r.server == "dns_second-dns-server");
 assert(proxy_first_index >= 0 && dns_after_proxy_index > proxy_first_index, "higher proxy DNS rule wins over lower DNS action");
-assert(dns_rule(dns_action, r => contains(r.rule_set, "dns_first-youtube-community-ruleset") && r.server == "dns_first-dns-server") != null, "DNS action built-in domain rule set");
+let dns_second_forced_index = dns_rule_index(dns_action, r => r.server == "dns_second-dns-server" && r.domain == null && r.domain_suffix == null && contains(r.source_ip_cidr, "192.0.2.3/32"));
+assert(dns_second_forced_index > proxy_first_index, "lower forced DNS action preserves higher proxy priority");
+assert(dns_rule(dns_action, r => contains(r.rule_set, "dns_first-youtube-community-ruleset") && r.server == "dns_first-dns-server" && contains(r.source_ip_cidr, "192.0.2.1/32")) != null, "DNS action device filter covers built-in domain rule sets");
 let dns_custom_ruleset = ruleset_url(dns_action, "https://example.com/domain-only.srs");
-assert(dns_custom_ruleset && dns_rule(dns_action, r => contains(r.rule_set, dns_custom_ruleset.tag) && r.server == "dns_first-dns-server") != null, "DNS action custom domain rule set");
+assert(dns_custom_ruleset && dns_rule(dns_action, r => contains(r.rule_set, dns_custom_ruleset.tag) && r.server == "dns_first-dns-server" && contains(r.source_ip_cidr, "192.0.2.1/32")) != null, "DNS action device filter covers custom domain rule sets");
+let dns_action_fallback = dns_rule(dns_action, r => r.server == "dnsmasq-server" && r.domain == null && r.domain_suffix == null && r.rule_set == null);
+assert(dns_action_fallback && contains(dns_action_fallback.source_ip_cidr, "192.0.2.1/32") && contains(dns_action_fallback.source_ip_cidr, "192.0.2.2/32") && contains(dns_action_fallback.source_ip_cidr, "192.0.2.3/32"), "unmatched device-aware DNS actions return through dnsmasq");
+assert(route_rule(dns_action, r => contains(r.source_ip_cidr, "192.0.2.2/32")) == null, "forced DNS action does not route device traffic");
 let dns_list = json(fs.readfile(dir + "/dns-action.json.rulesets/dns_first-lists-ruleset.json"));
 assert(index(sprintf("%J", dns_list), "list-dns.example") >= 0, "DNS action imports domains from plain lists");
 assert(index(sprintf("%J", dns_list), "198.51.100.0/24") < 0, "DNS action drops subnets from plain lists");

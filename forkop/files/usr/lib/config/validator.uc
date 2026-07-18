@@ -1379,7 +1379,7 @@ function validate_dns_action(section, sections, context) {
         fail_validation("DNS rule '" + name + "' has an invalid DNS server '" + dns_server + "'. Aborted.");
     if (length(connections.rule_sets_with_subnets(section)) > 0)
         fail_validation("DNS rule '" + name + "' can use domain-only rule sets, but subnet extraction is enabled. Disable 'Include IP addresses and subnets'. Aborted.");
-    if (!dns_action_has_domain_matchers(section))
+    if (!dns_action_has_domain_matchers(section) && length(list_option(section, "fully_routed_ips")) == 0)
         fail_validation("DNS rule '" + name + "' must contain at least one domain condition or domain rule set. Aborted.");
     if (!bool_option(section, "dns_detour_enabled", false))
         return;

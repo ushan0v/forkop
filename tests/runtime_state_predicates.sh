@@ -1412,9 +1412,24 @@ cat >"$WORK_DIR/dns-action-signature-dot.json" <<'JSON'
   ]
 }
 JSON
+cat >"$WORK_DIR/dns-action-signature-device.json" <<'JSON'
+{
+  "section": [
+    { ".name": "dns", ".type": "section", "enabled": "1", "action": "dns", "dns_type": "udp", "dns_server": "9.9.9.9", "domain_suffix": [ "example.org" ], "source_ip_cidr": [ "192.0.2.1/32" ], "fully_routed_ips": [ "192.0.2.2/32" ] }
+  ]
+}
+JSON
 if [ "$(state_ucode sing-box-signature-fixture "$WORK_DIR/dns-action-signature-udp.json")" = \
   "$(state_ucode sing-box-signature-fixture "$WORK_DIR/dns-action-signature-dot.json")" ]; then
   fail "DNS action protocol should change the sing-box signature"
+fi
+if [ "$(state_ucode sing-box-signature-fixture "$WORK_DIR/dns-action-signature-udp.json")" = \
+  "$(state_ucode sing-box-signature-fixture "$WORK_DIR/dns-action-signature-device.json")" ]; then
+  fail "DNS action devices should change the sing-box signature"
+fi
+if [ "$(nft_ucode nft-runtime-signature-fixture "$WORK_DIR/dns-action-signature-udp.json")" = \
+  "$(nft_ucode nft-runtime-signature-fixture "$WORK_DIR/dns-action-signature-device.json")" ]; then
+  fail "DNS action devices should change the nft signature"
 fi
 
 cat >"$WORK_DIR/reload-state.expected" <<EOF_RELOAD_STATE

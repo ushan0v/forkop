@@ -2531,14 +2531,12 @@ function source_aware_dns_sources(sections) {
     let values = [];
 
     for (let section in sections) {
-        if (option(section, "action", "") == "dns")
-            continue;
-
+        let action = option(section, "action", "");
         let candidates = [];
         if (connections.has_dns_matchers(section))
             for (let value in legacy_condition_values(section, "source_ip_cidr"))
                 push(candidates, value);
-        if (option(section, "action", "") == "bypass")
+        if (action == "bypass" || action == "dns")
             for (let value in list_option(section, "fully_routed_ips"))
                 push(candidates, value);
 
@@ -2610,6 +2608,8 @@ function add_dns_action_rules_for_section(config, section) {
     let domain_regex = domains.domain_regex;
     let rule_set_tags = [];
     let section_name = section[".name"];
+    let source_ip_cidr = legacy_condition_values(section, "source_ip_cidr");
+    let fully_routed_ips = list_option(section, "fully_routed_ips");
 
     for (let community in connections.community_lists(section)) {
         let ensured = ensure_community_ruleset(config, section_name, as_string(community));
@@ -2634,6 +2634,15 @@ function add_dns_action_rules_for_section(config, section) {
     let has_inline_domains = length(domain) > 0 || length(domain_suffix) > 0 ||
         length(domain_keyword) > 0 || length(domain_regex) > 0;
 
+    if (length(fully_routed_ips) > 0) {
+        let dns_rule = {
+            action: "route",
+            server: server_tag,
+            rewrite_ttl
+        };
+        add_source_dns_matchers(dns_rule, fully_routed_ips);
+        push_dns_matcher_rule(config, dns_rule);
+    }
     if (has_inline_domains) {
         let dns_rule = {
             action: "route",
@@ -2644,17 +2653,20 @@ function add_dns_action_rules_for_section(config, section) {
         add_domain_array(dns_rule, "domain_suffix", domain_suffix);
         add_domain_array(dns_rule, "domain_keyword", domain_keyword);
         add_domain_array(dns_rule, "domain_regex", domain_regex);
+        add_source_dns_matchers(dns_rule, source_ip_cidr);
         push_dns_matcher_rule(config, dns_rule);
     }
     if (length(rule_set_tags) > 0) {
-        push_dns_matcher_rule(config, {
+        let dns_rule = {
             action: "route",
             server: server_tag,
             rewrite_ttl,
             rule_set: single_or_array(rule_set_tags)
-        });
+        };
+        add_source_dns_matchers(dns_rule, source_ip_cidr);
+        push_dns_matcher_rule(config, dns_rule);
     }
-    if (!has_inline_domains && length(rule_set_tags) == 0)
+    if (!has_inline_domains && length(rule_set_tags) == 0 && length(fully_routed_ips) == 0)
         runtime_generate_unsupported("DNS action '" + section_name + "' has no domain matchers");
 }
 

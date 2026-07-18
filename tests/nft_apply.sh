@@ -500,6 +500,7 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       "action": "dns",
       "domain_suffix": [ "dns-only.example" ],
       "ip_cidr": [ "192.0.2.53" ],
+      "source_ip_cidr": [ "192.168.1.54/32" ],
       "ports": [ "5353" ],
       "fully_routed_ips": [ "192.168.1.53/32" ]
     }
@@ -591,7 +592,7 @@ assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_p
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_fully_sources\t{ 192.168.1.20/32 }' "populate fully routed source set"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_fully_sources6\t{ 2001:db8::20/128 }' "populate fully routed6 source set"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_no_ports_fully_sources\t{ 192.168.1.21/32 }' "populate bypass fully routed source set"
-assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_dns_sources\t{ 192.168.1.21/32,192.168.1.22/32 }' "populate source-aware DNS IPv4 sources"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_dns_sources\t{ 192.168.1.21/32,192.168.1.22/32,192.168.1.54/32,192.168.1.53/32 }' "populate source-aware DNS IPv4 sources"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_dns_sources6\t{ 2001:db8::21/128,2001:db8::22/128 }' "populate source-aware DNS IPv6 sources"
 if grep -F $'ForkopTable\tforkop_dns_sources\t' "$NFT_LOG" | grep -Fq '192.168.1.60/32'; then
   fail "IP-only source filter should not intercept DNS"
@@ -608,8 +609,8 @@ fi
 if grep -Fq $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_ports_with_domain_ports\t{ 8443 }' "$NFT_LOG"; then
   fail "ports with destination matchers should not populate global port set"
 fi
-if grep -Fq '192.0.2.53' "$NFT_LOG" || grep -Fq '192.168.1.53' "$NFT_LOG" || grep -Fq 'forkop_rule_dns_only' "$NFT_LOG"; then
-  fail "DNS action should not populate nft sets or fully routed rules"
+if grep -Fq '192.0.2.53' "$NFT_LOG" || grep -Fq 'forkop_rule_dns_only' "$NFT_LOG"; then
+  fail "DNS action should only populate the shared source-aware DNS set"
 fi
 cat >"$WORK_DIR/signature-fixture.json" <<'JSON'
 {

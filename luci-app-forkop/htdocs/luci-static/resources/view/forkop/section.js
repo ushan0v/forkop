@@ -7822,6 +7822,7 @@ function createSectionContent(section) {
     ),
   });
   dependsOnRoutingAction(sourceIpOption);
+  sourceIpOption.depends("action", "dns");
 
   const fullyRoutedOption = addLocalDeviceSubnetDynamicField(section, {
     key: "fully_routed_ips",
@@ -7831,6 +7832,7 @@ function createSectionContent(section) {
     ),
   });
   dependsOnRoutingAction(fullyRoutedOption);
+  fullyRoutedOption.depends("action", "dns");
 
   const portsOption = addDynamicConditionField(section, {
     key: "ports",

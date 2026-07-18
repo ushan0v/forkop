@@ -900,8 +900,12 @@ function nft_runtime_signature_body(settings, sections) {
 
         let action = option(section, "action", "");
         body = signature_add_value(body, "rule." + name + ".action", action);
-        if (action == "dns")
+        if (action == "dns") {
+            body = signature_add_value(body, "rule." + name + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
+            body = signature_add_value(body, "rule." + name + ".source_aware_dns", connections.has_dns_matchers(section) ? "1" : "0");
+            body = signature_add_value(body, "rule." + name + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
             continue;
+        }
         body = signature_add_value(body, "rule." + name + ".ip_cidr", section_rule_condition_csv(section, "ip_cidr", "subnets"));
         body = signature_add_value(body, "rule." + name + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
         body = signature_add_value(body, "rule." + name + ".source_aware_dns", connections.has_dns_matchers(section) ? "1" : "0");
@@ -1282,12 +1286,12 @@ function append_sing_box_rule_signature_body(body, section, sections) {
     body = signature_add_value(body, prefix + ".domain_suffix", section_rule_condition_csv(section, "domain_suffix", "domains"));
     body = signature_add_value(body, prefix + ".domain_keyword", section_rule_condition_csv(section, "domain_keyword", "generic"));
     body = signature_add_value(body, prefix + ".domain_regex", section_rule_condition_csv(section, "domain_regex", "generic"));
-    if (action != "dns") {
+    if (action != "dns")
         body = signature_add_value(body, prefix + ".ip_cidr", section_rule_condition_csv(section, "ip_cidr", "subnets"));
-        body = signature_add_value(body, prefix + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
+    body = signature_add_value(body, prefix + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
+    if (action != "dns")
         body = signature_add_value(body, prefix + ".ports", section_rule_ports_csv(section));
-        body = signature_add_value(body, prefix + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
-    }
+    body = signature_add_value(body, prefix + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
     body = signature_add_value(body, prefix + ".community_lists", connections.community_lists_value(section));
     body = signature_add_value(body, prefix + ".rule_set", connections.rule_sets_value(section));
     if (action != "dns")

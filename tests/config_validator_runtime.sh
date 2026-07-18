@@ -133,6 +133,14 @@ cat >"$WORK_DIR/valid.json" <<'JSON'
       "domain_suffix": [ "dns.example" ],
       "rule_set": [ "https://example.com/domain-only.srs" ],
       "domain_ip_lists": [ "https://example.com/domains.lst" ]
+    },
+    {
+      ".name": "device_dns",
+      ".type": "section",
+      "enabled": "1",
+      "action": "dns",
+      "dns_server": "1.1.1.1",
+      "fully_routed_ips": [ "192.0.2.2/32" ]
     }
   ],
   "server": [

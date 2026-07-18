@@ -1427,8 +1427,12 @@ function nft_rule_signature_body(body, section) {
 
     let action = option(section, "action", "");
     body = signature_add_value(body, "rule." + section_name + ".action", action);
-    if (action == "dns")
+    if (action == "dns") {
+        body = signature_add_value(body, "rule." + section_name + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
+        body = signature_add_value(body, "rule." + section_name + ".source_aware_dns", connections.has_dns_matchers(section) ? "1" : "0");
+        body = signature_add_value(body, "rule." + section_name + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
         return body;
+    }
     body = signature_add_value(body, "rule." + section_name + ".ip_cidr", section_rule_condition_csv(section, "ip_cidr", "subnets"));
     body = signature_add_value(body, "rule." + section_name + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
     body = signature_add_value(body, "rule." + section_name + ".source_aware_dns", connections.has_dns_matchers(section) ? "1" : "0");
@@ -1586,9 +1590,10 @@ function source_aware_dns_values(sections, deferred_sections) {
 
     for (let section in sections) {
         if (!bool_option(section, "enabled", true) ||
-            section_action(section) == "dns" ||
             deferred_sections[as_string(section[".name"])])
             continue;
+
+        let action = section_action(section);
 
         if (connections.has_dns_matchers(section)) {
             for (let value in nft_csv_values(section_source_ip_values(section))) {
@@ -1599,7 +1604,7 @@ function source_aware_dns_values(sections, deferred_sections) {
             }
         }
 
-        if (section_action(section) == "bypass") {
+        if (action == "bypass" || action == "dns") {
             for (let value in list_option(section, "fully_routed_ips")) {
                 value = trim(as_string(value));
                 if (value != "" && !seen[value]) {
