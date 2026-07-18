@@ -209,6 +209,14 @@ function createLocalDeviceDynamicListWidget(option, section_id, cfgvalue) {
       disabled: option.readonly != null ? option.readonly : option.map.readonly,
     });
     const node = widget.render();
+    if (typeof option.onDeviceWidgetReady === "function") {
+      option.onDeviceWidgetReady(section_id, widget);
+    }
+    if (typeof option.onDeviceListChange === "function") {
+      node.addEventListener("cbi-dynlist-change", () => {
+        option.onDeviceListChange(section_id, widget.getValue());
+      });
+    }
     let choicesLoaded = Boolean(localDeviceChoicesCache);
     let choicesLoading = false;
 

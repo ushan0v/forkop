@@ -152,6 +152,26 @@ function dependsOnRoutingAction(option) {
   return option;
 }
 
+function dependsOnRuleConditions(option) {
+  const routingConditions = [
+    "domain",
+    "ip_cidr",
+    "community_lists",
+    "rule_set",
+    "domain_ip_lists",
+    "ports",
+  ];
+  ROUTING_ACTIONS.forEach((action) =>
+    routingConditions.forEach((condition) =>
+      option.depends({ action, [condition]: /\S/ }),
+    ),
+  );
+  ["domain", "community_lists", "_dns_rule_set", "_dns_domain_ip_lists"].forEach(
+    (condition) => option.depends({ action: "dns", [condition]: /\S/ }),
+  );
+  return option;
+}
+
 const ZAPRET_LEGACY_DEFAULT_NFQWS_OPT =
   "--filter-tcp=80 <HOSTLIST> --dpi-desync=fake,fakedsplit --dpi-desync-autottl=2 --dpi-desync-fooling=badsum --new --filter-tcp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake,multidisorder --dpi-desync-split-pos=1,midsld --dpi-desync-repeats=11 --dpi-desync-fooling=badsum --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new --filter-udp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=/opt/zapret/files/fake/quic_initial_www_google_com.bin --new --filter-udp=443 <HOSTLIST_NOAUTO> --dpi-desync=fake --dpi-desync-repeats=11 --new --filter-tcp=443 <HOSTLIST> --dpi-desync=multidisorder --dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1";
 
@@ -4125,6 +4145,54 @@ function writeListOption(section_id, key, values) {
   }
 }
 
+function makeDeviceOptionsExclusive(firstOption, secondOption) {
+  let changing = false;
+  const firstWidgets = {};
+  const secondWidgets = {};
+
+  function removeMatches(section_id, value, otherWidgets) {
+    if (changing) {
+      return;
+    }
+
+    const selected = new Set(normalizeOptionValues(value));
+    if (!selected.size) {
+      return;
+    }
+
+    const widget = otherWidgets[section_id];
+    if (!widget) {
+      return;
+    }
+
+    const current = normalizeOptionValues(widget.getValue());
+    const filtered = current.filter((item) => !selected.has(item));
+    if (stringArraysEqual(current, filtered)) {
+      return;
+    }
+
+    changing = true;
+    try {
+      widget.setValue(filtered);
+    } finally {
+      changing = false;
+    }
+  }
+
+  firstOption.onDeviceWidgetReady = function (section_id, widget) {
+    firstWidgets[section_id] = widget;
+  };
+  secondOption.onDeviceWidgetReady = function (section_id, widget) {
+    secondWidgets[section_id] = widget;
+  };
+  firstOption.onDeviceListChange = function (section_id, value) {
+    removeMatches(section_id, value, secondWidgets);
+  };
+  secondOption.onDeviceListChange = function (section_id, value) {
+    removeMatches(section_id, value, firstWidgets);
+  };
+}
+
 function childOwnerOption(ownerOption) {
   return ownerOption || "section";
 }
@@ -6484,6 +6552,9 @@ function configureTextareaOption(option, analyzer, remoteValidationAttacher) {
 
     if (textarea) {
       applyTextareaInputAttributes(textarea);
+      textarea.addEventListener("input", () => {
+        node.dispatchEvent(new CustomEvent("widget-change", { bubbles: true }));
+      });
       if (typeof analyzer === "function") {
         attachAnnotatedTextarea(textarea, analyzer);
       }
@@ -7821,8 +7892,7 @@ function createSectionContent(section) {
       "Apply section rules only to the specified local IP addresses",
     ),
   });
-  dependsOnRoutingAction(sourceIpOption);
-  sourceIpOption.depends("action", "dns");
+  dependsOnRuleConditions(sourceIpOption);
 
   const fullyRoutedOption = addLocalDeviceSubnetDynamicField(section, {
     key: "fully_routed_ips",
@@ -7833,6 +7903,7 @@ function createSectionContent(section) {
   });
   dependsOnRoutingAction(fullyRoutedOption);
   fullyRoutedOption.depends("action", "dns");
+  makeDeviceOptionsExclusive(sourceIpOption, fullyRoutedOption);
 
   const portsOption = addDynamicConditionField(section, {
     key: "ports",
