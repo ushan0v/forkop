@@ -13,6 +13,15 @@
 sh <(wget -O - https://raw.githubusercontent.com/ushan0v/forkop/main/install.sh)
 ```
 
+<details>
+<summary><sub>Альтернативный способ установки</sub></summary>
+
+```sh
+sh <(wget -O - https://forkop.sourceforge.io/install.sh)
+```
+
+</details>
+
 ### Что нового в этом форке
 
 * Поддержка подписок.
@@ -30,6 +39,7 @@ sh <(wget -O - https://raw.githubusercontent.com/ushan0v/forkop/main/install.sh)
 * Резервные DNS-серверы.
 * Отдельные DNS-серверы для выбранных доменов.
 * Поддержка IPv6.
+* Действие Bypass с полным обходом sing-box.
 * Интеграция Zapret, Zapret2 и ByeDPI как отдельных действий секции.
 * Служба полностью переписана на ucode.
 * Другие исправления и улучшения.
