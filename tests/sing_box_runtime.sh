@@ -359,7 +359,7 @@ cat >"$WORK_DIR/runtime-matchers-fixture.json" <<'JSON'
       "enabled": "1",
       "action": "connection",
       "selector_proxy_links": [ "socks5://127.0.0.1:1080" ],
-      "domain": "commented.example # ignored.example\nfull:exact-comment.example // ignored-full.example\nkeyword:clip",
+      "domain": "commented.example # ignored.example\nfull:exact-comment.example // ignored-full.example\nfull:source-priority.test\nkeyword:clip",
       "domain_suffix": [ "proxy.example.org", "сайт.рф", "full:пример.испытание", "keyword:пример", "regex:^сайт[.]рф$" ],
       "ip_cidr": "77.111.247.0/24 #77.111.247.19\n198.51.100.0/24 //203.0.113.0/24",
       "source_ip_cidr": "10.0.0.2/32 #10.0.0.99\n2001:db8::2/128 //2001:db8::99/128",
@@ -371,6 +371,21 @@ cat >"$WORK_DIR/runtime-matchers-fixture.json" <<'JSON'
       "mixed_proxy_auth_enabled": "1",
       "mixed_proxy_username": "user",
       "mixed_proxy_password": "pass"
+    },
+    {
+      ".name": "proxy_global",
+      ".type": "section",
+      "enabled": "1",
+      "action": "outbound",
+      "outbound_json": "{\"type\":\"direct\"}",
+      "domain_suffix": [ "example.org" ]
+    },
+    {
+      ".name": "bypass_global",
+      ".type": "section",
+      "enabled": "1",
+      "action": "bypass",
+      "domain": [ "source-priority.test" ]
     }
   ]
 }
@@ -606,13 +621,29 @@ cat >"$WORK_DIR/fully-routed-fixture.json" <<'JSON'
   },
   "section": [
     {
+      ".name": "proxy_high",
+      ".type": "section",
+      "enabled": "1",
+      "action": "outbound",
+      "outbound_json": "{\"type\":\"direct\"}",
+      "domain_suffix": [ "forced-higher.test" ]
+    },
+    {
+      ".name": "bypass",
+      ".type": "section",
+      "enabled": "1",
+      "action": "bypass",
+      "fully_routed_ips": [ "192.168.1.20/32", "192.168.1.30/32", "2001:db8::20/128" ],
+      "domain_suffix": [ "example.org" ]
+    },
+    {
       ".name": "proxy",
       ".type": "section",
       "enabled": "1",
       "action": "outbound",
       "outbound_json": "{\"type\":\"direct\"}",
-      "fully_routed_ips": [ "192.168.1.20/32", "192.168.1.30/32", "2001:db8::20/128" ],
-      "domain_suffix": [ "example.org" ]
+      "fully_routed_ips": [ "192.168.1.40/32" ],
+      "domain_suffix": [ "proxy.example.org", "forced-lower.test" ]
     }
   ]
 }
@@ -1176,6 +1207,14 @@ function route_rule(config, predicate) {
     return null;
 }
 
+function route_rule_index(config, predicate) {
+    let rules = config.route.rules || [];
+    for (let i = 0; i < length(rules); i++)
+        if (rules[i] && predicate(rules[i]))
+            return i;
+    return -1;
+}
+
 function dns_rule(config, predicate) {
     for (let rule in config.dns.rules || [])
         if (rule && predicate(rule))
@@ -1205,6 +1244,7 @@ assert(route_rule(disabled, r => r.action == "resolve" && r.server == "dns-serve
 let defaults = cfg("default");
 assert(first_remote_ruleset(defaults).update_interval == "1d", "default list update interval");
 assert(defaults.dns.strategy == "prefer_ipv4", "missing DNS strategy keeps the prefer_ipv4 default");
+assert(dns_server(defaults, r => r.tag == "dnsmasq-server") == null, "source-aware DNS server is omitted without device filters");
 
 let server = cfg("server");
 let socks = inbound(server, "server-edge-in");
@@ -1226,8 +1266,39 @@ assert(outbound(matchers, "proxy-1-out").detour == "detour-out", "connection URL
 let mixed = inbound(matchers, "proxy-mixed-in");
 assert(mixed && mixed.listen_port == 19090 && mixed.users[0].username == "user", "mixed inbound auth");
 assert(route_rule(matchers, r => r.inbound == "proxy-mixed-in" && r.outbound == "proxy-out") != null, "mixed inbound route");
-assert(dns_rule(matchers, r => contains(r.domain_suffix, "example.org")).server == "dns-server", "bypass domain real DNS rule");
-assert(dns_rule(matchers, r => contains(r.domain_suffix, "proxy.example.org")).server == "fakeip-server", "proxy domain FakeIP DNS rule");
+let source_dns_in = inbound(matchers, "source-dns-in");
+assert(source_dns_in && source_dns_in.type == "direct" && source_dns_in.listen == "::" && source_dns_in.listen_port == 1603, "source-aware DNS uses one dual-stack inbound");
+assert(route_rule(matchers, r => r.action == "sniff" && contains(r.inbound, "source-dns-in")) != null, "source-aware DNS inbound is sniffed before hijacking");
+assert(dns_server(matchers, r => r.tag == "dnsmasq-server" && r.type == "udp" && r.server == "127.0.0.1" && r.server_port == 53) != null, "source-aware DNS uses the existing dnsmasq instance");
+let bypass_dnsmasq = dns_rule(matchers, r =>
+    r.type == "logical" && r.server == "dnsmasq-server" &&
+    length(r.rules || []) == 2 && contains(r.rules[0].domain_suffix, "example.org"));
+assert(bypass_dnsmasq != null, "filtered bypass probes dnsmasq before real DNS fallback");
+assert(contains(bypass_dnsmasq.rules[0].inbound, "source-dns-in"), "filtered bypass DNS is limited to source-aware DNS clients");
+assert(contains(bypass_dnsmasq.rules[0].source_ip_cidr, "10.0.0.3/32"), "filtered bypass DNS keeps the client source");
+assert(bypass_dnsmasq.rules[1].invert === true && contains(bypass_dnsmasq.rules[1].ip_cidr, "198.18.0.0/15") && contains(bypass_dnsmasq.rules[1].ip_cidr, "fc00::/18"), "filtered bypass rejects nested FakeIP answers");
+let bypass_real = dns_rule(matchers, r =>
+    r.server == "dns-server" && contains(r.domain_suffix, "example.org") &&
+    contains(r.source_ip_cidr, "10.0.0.3/32"));
+assert(bypass_real != null && contains(bypass_real.query_type, "A") && contains(bypass_real.query_type, "AAAA"), "filtered bypass falls back to real address resolution");
+assert(dns_rule(matchers, r => r.server == "dns-server" && contains(r.domain_suffix, "example.org") && r.source_ip_cidr == null) == null, "filtered bypass no longer changes DNS for every device");
+assert(dns_rule(matchers, r => r.server == "fakeip-server" && contains(r.domain_suffix, "example.org") && r.source_ip_cidr == null) != null, "lower global proxy still gives FakeIP to other devices");
+let scoped_proxy_dns = dns_rule(matchers, r => r.server == "fakeip-server" && contains(r.domain_suffix, "proxy.example.org"));
+assert(scoped_proxy_dns != null && contains(scoped_proxy_dns.source_ip_cidr, "10.0.0.2/32") && contains(scoped_proxy_dns.inbound, "source-dns-in"), "filtered proxy gives FakeIP only to its devices");
+let source_dns_fallback = dns_rule(matchers, r =>
+    r.server == "dnsmasq-server" && r.type == null && r.domain == null &&
+    r.domain_suffix == null && r.rule_set == null);
+assert(source_dns_fallback != null && contains(source_dns_fallback.source_ip_cidr, "10.0.0.3/32") && contains(source_dns_fallback.source_ip_cidr, "10.0.0.2/32") && contains(source_dns_fallback.source_ip_cidr, "2001:db8::2/128"), "unmatched source-aware DNS returns through dnsmasq");
+let bypass_probe_index = dns_rule_index(matchers, r => r.type == "logical" && r.server == "dnsmasq-server" && length(r.rules || []) > 0 && contains(r.rules[0].domain_suffix, "example.org"));
+let bypass_real_index = dns_rule_index(matchers, r => r.server == "dns-server" && contains(r.domain_suffix, "example.org") && contains(r.source_ip_cidr, "10.0.0.3/32"));
+let proxy_below_bypass_index = dns_rule_index(matchers, r => r.server == "fakeip-server" && contains(r.domain_suffix, "example.org") && r.source_ip_cidr == null);
+assert(bypass_probe_index >= 0 && bypass_real_index > bypass_probe_index && proxy_below_bypass_index > bypass_real_index, "source-aware bypass keeps its section priority over lower proxy DNS");
+let scoped_proxy_index = dns_rule_index(matchers, r => r.server == "fakeip-server" && contains(r.domain, "source-priority.test") && contains(r.source_ip_cidr, "10.0.0.2/32"));
+let bypass_below_proxy_index = dns_rule_index(matchers, r => r.server == "dns-server" && contains(r.domain, "source-priority.test") && r.source_ip_cidr == null);
+assert(scoped_proxy_index >= 0 && bypass_below_proxy_index > scoped_proxy_index, "source-aware proxy keeps its section priority over lower bypass DNS");
+let scoped_proxy_route_index = route_rule_index(matchers, r => r.outbound == "proxy-out" && contains(r.domain, "source-priority.test") && contains(r.source_ip_cidr, "10.0.0.2/32"));
+let bypass_below_proxy_route_index = route_rule_index(matchers, r => r.outbound == "bypass-out" && contains(r.domain, "source-priority.test") && r.source_ip_cidr == null);
+assert(scoped_proxy_route_index >= 0 && bypass_below_proxy_route_index > scoped_proxy_route_index, "route and DNS priorities stay aligned for filtered proxy");
 assert(dns_rule(matchers, r => contains(r.domain_suffix, "xn--80aswg.xn--p1ai")).server == "fakeip-server", "IDN suffix converted for DNS rule");
 assert(dns_rule(matchers, r => contains(r.domain, "xn--e1afmkfd.xn--80akhbyknj4f")).server == "fakeip-server", "IDN full domain converted for DNS rule");
 assert(dns_rule(matchers, r => contains(r.domain_keyword, "xn--e1afmkfd")).server == "fakeip-server", "IDN keyword converted for DNS rule");
@@ -1316,7 +1387,23 @@ assert(ruleset(download, "proxy-discord-community-ruleset").download_detour == "
 assert(ruleset_url(download, "https://example.com/rules.srs").download_detour == "proxy-out", "download_detour on custom remote ruleset");
 
 let fully = cfg("fully-routed");
-assert(route_rule(fully, r => contains(r.inbound, "tproxy-in") && contains(r.inbound, "tproxy6-in") && contains(r.source_ip_cidr, "192.168.1.20/32") && contains(r.source_ip_cidr, "192.168.1.30/32") && contains(r.source_ip_cidr, "2001:db8::20/128")) != null, "fully routed IP route");
+assert(route_rule(fully, r => r.outbound == "bypass-out" && contains(r.inbound, "tproxy-in") && contains(r.inbound, "tproxy6-in") && contains(r.source_ip_cidr, "192.168.1.20/32") && contains(r.source_ip_cidr, "192.168.1.30/32") && contains(r.source_ip_cidr, "2001:db8::20/128")) != null, "fully routed bypass IP route");
+assert(route_rule(fully, r => r.outbound == "proxy-out" && contains(r.source_ip_cidr, "192.168.1.40/32")) != null, "fully routed proxy IP route");
+let fully_bypass_dns = dns_rule(fully, r =>
+    r.type == "logical" && r.server == "dnsmasq-server" &&
+    length(r.rules || []) == 2 && contains(r.rules[0].source_ip_cidr, "192.168.1.20/32") &&
+    r.rules[0].domain == null && r.rules[0].domain_suffix == null && r.rules[0].rule_set == null);
+assert(fully_bypass_dns != null, "fully routed bypass rejects FakeIP for every domain");
+assert(dns_rule(fully, r => r.server == "dns-server" && contains(r.source_ip_cidr, "192.168.1.20/32") && contains(r.query_type, "A")) != null, "fully routed bypass falls back to real DNS");
+assert(dns_rule(fully, r => r.type == "logical" && r.server == "dnsmasq-server" && length(r.rules || []) > 0 && contains(r.rules[0].source_ip_cidr, "192.168.1.40/32")) == null, "fully routed proxy keeps normal FakeIP policy");
+let higher_proxy_dns_index = dns_rule_index(fully, r => r.server == "fakeip-server" && contains(r.domain_suffix, "forced-higher.test"));
+let forced_bypass_dns_index = dns_rule_index(fully, r => r.type == "logical" && r.server == "dnsmasq-server" && length(r.rules || []) > 0 && contains(r.rules[0].source_ip_cidr, "192.168.1.20/32"));
+let lower_proxy_dns_index = dns_rule_index(fully, r => r.server == "fakeip-server" && contains(r.domain_suffix, "forced-lower.test"));
+assert(higher_proxy_dns_index >= 0 && forced_bypass_dns_index > higher_proxy_dns_index && lower_proxy_dns_index > forced_bypass_dns_index, "forced bypass stays at its section priority in DNS rules");
+let higher_proxy_route_index = route_rule_index(fully, r => r.outbound == "proxy_high-out" && contains(r.domain_suffix, "forced-higher.test"));
+let forced_bypass_route_index = route_rule_index(fully, r => r.outbound == "bypass-out" && contains(r.source_ip_cidr, "192.168.1.20/32") && r.domain == null && r.domain_suffix == null);
+let lower_proxy_route_index = route_rule_index(fully, r => r.outbound == "proxy-out" && contains(r.domain_suffix, "forced-lower.test"));
+assert(higher_proxy_route_index >= 0 && forced_bypass_route_index > higher_proxy_route_index && lower_proxy_route_index > forced_bypass_route_index, "forced bypass stays at its section priority in route rules");
 
 let mwan3_auto = cfg("mwan3-auto");
 assert(mwan3_auto.route.auto_detect_interface === false, "mwan3 disables auto_detect_interface");

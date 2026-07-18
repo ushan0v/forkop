@@ -410,6 +410,10 @@ function tproxy_inbound_matcher() {
     return [ runtime_constants.TPROXY_INBOUND_TAG, runtime_constants.TPROXY_INBOUND6_TAG ];
 }
 
+function source_dns_inbound_matcher() {
+    return [ runtime_constants.SOURCE_DNS_INBOUND_TAG ];
+}
+
 function base_config(settings, service_address, runtime_context) {
     let log_level = option(settings, "log_level", "warn");
     let rewrite_ttl = int_option(settings, "dns_rewrite_ttl", "60");
@@ -443,15 +447,17 @@ function base_config(settings, service_address, runtime_context) {
         inet6_range: runtime_constants.FAKEIP_INET6_RANGE
     });
 
+    runtime_context = object_or_empty(runtime_context);
     let inbounds = [
         { type: "tproxy", tag: runtime_constants.TPROXY_INBOUND_TAG, listen: runtime_constants.TPROXY_INBOUND_ADDRESS, listen_port: runtime_constants.TPROXY_INBOUND_PORT, tcp_fast_open: true, udp_fragment: true },
         { type: "tproxy", tag: runtime_constants.TPROXY_INBOUND6_TAG, listen: runtime_constants.TPROXY_INBOUND6_ADDRESS, listen_port: runtime_constants.TPROXY_INBOUND_PORT, tcp_fast_open: true, udp_fragment: true },
         { type: "direct", tag: runtime_constants.DNS_INBOUND_TAG, listen: runtime_constants.DNS_INBOUND_ADDRESS, listen_port: runtime_constants.DNS_INBOUND_PORT }
     ];
+    if (runtime_context.source_aware_dns)
+        push(inbounds, { type: "direct", tag: runtime_constants.SOURCE_DNS_INBOUND_TAG, listen: runtime_constants.SOURCE_DNS_INBOUND_ADDRESS, listen_port: runtime_constants.SOURCE_DNS_INBOUND_PORT });
     for (let inbound in dns_config.inbounds)
         push(inbounds, inbound);
 
-    runtime_context = object_or_empty(runtime_context);
     runtime_context.dns_health_inbounds = dns_config.sniff_inbounds;
     runtime_context.default_domain_resolver = runtime_dns.default_domain_resolver(settings);
 
@@ -2466,6 +2472,113 @@ function single_or_array(values) {
     return length(values) == 1 ? values[0] : values;
 }
 
+function copy_dns_matchers(matchers) {
+    let copy = {};
+    for (let key, value in matchers)
+        copy[key] = value;
+    return copy;
+}
+
+function add_source_dns_matchers(rule, source_ip_cidr) {
+    if (length(source_ip_cidr) == 0)
+        return;
+
+    rule.inbound = source_dns_inbound_matcher();
+    rule.source_ip_cidr = single_or_array(source_ip_cidr);
+}
+
+function add_source_aware_bypass_dns_rules(config, matchers, rewrite_ttl) {
+    push_dns_matcher_rule(config, {
+        type: "logical",
+        mode: "and",
+        rules: [
+            copy_dns_matchers(matchers),
+            {
+                ip_cidr: [ runtime_constants.FAKEIP_INET4_RANGE, runtime_constants.FAKEIP_INET6_RANGE ],
+                invert: true
+            }
+        ],
+        action: "route",
+        server: runtime_constants.DNSMASQ_DNS_SERVER_TAG,
+        rewrite_ttl
+    });
+
+    let fallback = copy_dns_matchers(matchers);
+    fallback.action = "route";
+    fallback.server = runtime_constants.DNS_SERVER_TAG;
+    fallback.query_type = [ "A", "AAAA" ];
+    fallback.rewrite_ttl = rewrite_ttl;
+    push_dns_matcher_rule(config, fallback);
+}
+
+function add_section_dns_matcher_rule(config, section, matchers, rewrite_ttl) {
+    let source_ip_cidr = legacy_condition_values(section, "source_ip_cidr");
+    add_source_dns_matchers(matchers, source_ip_cidr);
+
+    if (option(section, "action", "") == "bypass" && length(source_ip_cidr) > 0) {
+        add_source_aware_bypass_dns_rules(config, matchers, rewrite_ttl);
+        return;
+    }
+
+    matchers.action = "route";
+    matchers.server = section_dns_server(section);
+    matchers.rewrite_ttl = rewrite_ttl;
+    push_dns_matcher_rule(config, matchers);
+}
+
+function source_aware_dns_sources(sections) {
+    let seen = {};
+    let values = [];
+
+    for (let section in sections) {
+        if (option(section, "action", "") == "dns")
+            continue;
+
+        let candidates = [];
+        if (connections.has_dns_matchers(section))
+            for (let value in legacy_condition_values(section, "source_ip_cidr"))
+                push(candidates, value);
+        if (option(section, "action", "") == "bypass")
+            for (let value in list_option(section, "fully_routed_ips"))
+                push(candidates, value);
+
+        for (let value in candidates) {
+            value = trim(as_string(value));
+            if (value != "" && !seen[value]) {
+                seen[value] = true;
+                push(values, value);
+            }
+        }
+    }
+
+    return values;
+}
+
+function add_source_aware_dns_support(config, source_ip_cidr) {
+    if (length(source_ip_cidr) == 0)
+        return;
+
+    push(config.dns.servers, {
+        type: "udp",
+        tag: runtime_constants.DNSMASQ_DNS_SERVER_TAG,
+        server: "127.0.0.1",
+        server_port: 53
+    });
+}
+
+function add_source_aware_dns_fallback(config, source_ip_cidr) {
+    if (length(source_ip_cidr) == 0)
+        return;
+
+    let rule = {
+        action: "route",
+        server: runtime_constants.DNSMASQ_DNS_SERVER_TAG,
+        rewrite_ttl: int_option(runtime_settings(), "dns_rewrite_ttl", "60")
+    };
+    add_source_dns_matchers(rule, source_ip_cidr);
+    push_dns_matcher_rule(config, rule);
+}
+
 function dns_action_server_tag(section_name) {
     return runtime_constants.tag(section_name, "dns-server");
 }
@@ -2585,10 +2698,20 @@ function add_port_matchers(rule, section) {
         rule.port_range = port_ranges;
 }
 
-function add_fully_routed_ips_rule(config, section) {
+function add_fully_routed_ips_rules(config, section) {
     let source_ip_cidr = list_option(section, "fully_routed_ips");
     if (length(source_ip_cidr) == 0)
         return;
+
+    if (option(section, "action", "") == "bypass") {
+        let dns_matchers = {};
+        add_source_dns_matchers(dns_matchers, source_ip_cidr);
+        add_source_aware_bypass_dns_rules(
+            config,
+            dns_matchers,
+            int_option(runtime_settings(), "dns_rewrite_ttl", "60")
+        );
+    }
 
     let target = runtime_route.target(section, outbound_tag(section[".name"]));
     if (target.unsupported)
@@ -2616,7 +2739,7 @@ function add_combined_route_for_section(config, section) {
     let dns_rule_set_tags = [];
     let section_name = section[".name"];
 
-    add_fully_routed_ips_rule(config, section);
+    add_fully_routed_ips_rules(config, section);
 
     for (let community in connections.community_lists(section)) {
         let ensured = ensure_community_ruleset(config, section_name, as_string(community));
@@ -2680,24 +2803,17 @@ function add_combined_route_for_section(config, section) {
 
     let rewrite_ttl = int_option(runtime_settings(), "dns_rewrite_ttl", "60");
     if (length(domain) > 0 || length(domain_suffix) > 0 || length(domain_keyword) > 0 || length(domain_regex) > 0) {
-        let dns_rule = {
-            action: "route",
-            server: section_dns_server(section),
-            rewrite_ttl
-        };
+        let dns_rule = {};
         add_domain_array(dns_rule, "domain", domain);
         add_domain_array(dns_rule, "domain_suffix", domain_suffix);
         add_domain_array(dns_rule, "domain_keyword", domain_keyword);
         add_domain_array(dns_rule, "domain_regex", domain_regex);
-        push_dns_matcher_rule(config, dns_rule);
+        add_section_dns_matcher_rule(config, section, dns_rule, rewrite_ttl);
     }
     if (length(dns_rule_set_tags) > 0) {
-        push_dns_matcher_rule(config, {
-            action: "route",
-            server: section_dns_server(section),
-            rewrite_ttl,
+        add_section_dns_matcher_rule(config, section, {
             rule_set: single_or_array(dns_rule_set_tags)
-        });
+        }, rewrite_ttl);
     }
 }
 
@@ -2891,7 +3007,12 @@ function generate_config(output_path, service_address, mwan3_active, supports_xh
     if (length(sections) == 0 && length(servers) == 0 && trim(as_string(deferred_sections)) == "")
         runtime_generate_unsupported("no enabled sections");
 
-    let config = base_config(settings, service_address, { mwan3_active: cli_bool(mwan3_active) });
+    let source_aware_dns = source_aware_dns_sources(sections);
+    let config = base_config(settings, service_address, {
+        mwan3_active: cli_bool(mwan3_active),
+        source_aware_dns: length(source_aware_dns) > 0
+    });
+    add_source_aware_dns_support(config, source_aware_dns);
     let taken = reserved_runtime_tag_set(config.outbounds);
     reserve_section_outbound_tags(sections, taken);
     for (let server in servers)
@@ -2901,6 +3022,7 @@ function generate_config(output_path, service_address, mwan3_active, supports_xh
     add_service_route_rules(config, sections);
     for (let section in sections)
         add_route_for_section(config, section);
+    add_source_aware_dns_fallback(config, source_aware_dns);
     add_server_routes(config, servers, sections);
     add_service_mixed_proxy(config, settings, sections);
     for (let section in sections)

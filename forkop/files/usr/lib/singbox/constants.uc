@@ -3,6 +3,7 @@
 const DNS_SERVER_TAG = "dns-server";
 const FAKEIP_DNS_SERVER_TAG = "fakeip-server";
 const BOOTSTRAP_DNS_SERVER_TAG = "bootstrap-dns-server";
+const DNSMASQ_DNS_SERVER_TAG = "dnsmasq-server";
 const FAKEIP_DNS_RULE_TAG = "fakeip-dns-rule-tag";
 const FAKEIP_RULESET_DNS_RULE_TAG = "fakeip-ruleset-dns-rule-tag";
 const SERVICE_FAKEIP_DNS_RULE_TAG = "service-fakeip-dns-rule-tag";
@@ -15,6 +16,9 @@ const TPROXY_INBOUND_PORT = 1602;
 const DNS_INBOUND_TAG = "dns-in";
 const DNS_INBOUND_ADDRESS = "127.0.0.42";
 const DNS_INBOUND_PORT = 53;
+const SOURCE_DNS_INBOUND_TAG = "source-dns-in";
+const SOURCE_DNS_INBOUND_ADDRESS = "::";
+const SOURCE_DNS_INBOUND_PORT = 1603;
 
 const SERVICE_MIXED_INBOUND_TAG = "service-mixed-in";
 const SERVICE_MIXED_INBOUND_ADDRESS = "127.0.0.1";
@@ -40,12 +44,14 @@ const RESERVED_TAGS = {
     [DNS_SERVER_TAG]: true,
     [FAKEIP_DNS_SERVER_TAG]: true,
     [BOOTSTRAP_DNS_SERVER_TAG]: true,
+    [DNSMASQ_DNS_SERVER_TAG]: true,
     [FAKEIP_DNS_RULE_TAG]: true,
     [FAKEIP_RULESET_DNS_RULE_TAG]: true,
     [SERVICE_FAKEIP_DNS_RULE_TAG]: true,
     [TPROXY_INBOUND_TAG]: true,
     [TPROXY_INBOUND6_TAG]: true,
     [DNS_INBOUND_TAG]: true,
+    [SOURCE_DNS_INBOUND_TAG]: true,
     [SERVICE_MIXED_INBOUND_TAG]: true,
     [DIRECT_OUTBOUND_TAG]: true,
     [BYPASS_OUTBOUND_TAG]: true
@@ -84,6 +90,7 @@ return {
     DNS_SERVER_TAG,
     FAKEIP_DNS_SERVER_TAG,
     BOOTSTRAP_DNS_SERVER_TAG,
+    DNSMASQ_DNS_SERVER_TAG,
     FAKEIP_DNS_RULE_TAG,
     FAKEIP_RULESET_DNS_RULE_TAG,
     SERVICE_FAKEIP_DNS_RULE_TAG,
@@ -95,6 +102,9 @@ return {
     DNS_INBOUND_TAG,
     DNS_INBOUND_ADDRESS,
     DNS_INBOUND_PORT,
+    SOURCE_DNS_INBOUND_TAG,
+    SOURCE_DNS_INBOUND_ADDRESS,
+    SOURCE_DNS_INBOUND_PORT,
     SERVICE_MIXED_INBOUND_TAG,
     SERVICE_MIXED_INBOUND_ADDRESS,
     SERVICE_MIXED_INBOUND_PORT,

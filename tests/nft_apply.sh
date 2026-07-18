@@ -227,6 +227,14 @@ assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tForkopTable\tmangle\t{ type 
 assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tForkopTable\tpriority_rules\t{ }' "runtime priority chain"
 assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tForkopTable\tpriority_output_rules\t{ }' "runtime priority output chain"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tpriority_output_rules\tmeta\tmark\t!=\t0\treturn' "runtime priority output preserves provider marks"
+assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tForkopTable\tforkop_dns_sources\t{ type ipv4_addr; flags interval; auto-merge; }' "runtime source-aware DNS IPv4 set"
+assert_contains "$NFT_LOG" $'nft\tadd\tset\tinet\tForkopTable\tforkop_dns_sources6\t{ type ipv6_addr; flags interval; auto-merge; }' "runtime source-aware DNS IPv6 set"
+assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tForkopTable\tdns_redirect\t{ type nat hook prerouting priority -101; policy accept; }' "runtime source-aware DNS redirect chain"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tdns_redirect\tiifname\t@forkop_interfaces\tip\tsaddr\t@forkop_dns_sources\tudp\tdport\t53\tcounter\tredirect\tto\t:1603' "runtime source-aware DNS IPv4 redirect"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tdns_redirect\tiifname\t@forkop_interfaces\tip6\tsaddr\t@forkop_dns_sources6\ttcp\tdport\t53\tcounter\tredirect\tto\t:1603' "runtime source-aware DNS IPv6 redirect"
+if grep -Fq $'forkop_dns_sources\tudp\tdport\t53\tmeta\tmark' "$NFT_LOG"; then
+  fail "source-aware DNS must not use TPROXY marks"
+fi
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle\tiifname\t@forkop_interfaces\tip6\tdaddr\t@localv6\tip6\tdaddr\t!=\tfc00::/18\treturn' "runtime local6 return preserves FakeIP6 capture"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle\tjump\tpriority_rules' "runtime priority jump"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle\tiifname\t@forkop_interfaces\tip\tdaddr\t@forkop_subnets\tmeta\tl4proto\ttcp\tmeta\tmark\tset\t0x00100000\tcounter' "runtime common tcp rule"
@@ -456,6 +464,7 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       "enabled": "1",
       "action": "proxy",
       "ip_cidr": [ "198.51.100.1", "203.0.113.0/24", "2001:db8::1" ],
+      "source_ip_cidr": [ "192.168.1.60/32" ],
       "ports": [ "80", "443-444" ],
       "fully_routed_ips": [ "192.168.1.20/32", "192.168.1.20/32", "2001:db8::20/128" ]
     },
@@ -481,6 +490,7 @@ cat >"$WORK_DIR/populate-fixture.json" <<'JSON'
       "enabled": "1",
       "action": "proxy",
       "domain_suffix": [ "example.org" ],
+      "source_ip_cidr": [ "192.168.1.22/32", "2001:db8::22/128" ],
       "ports": [ "8443" ]
     },
     {
@@ -581,6 +591,11 @@ assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_p
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_fully_sources\t{ 192.168.1.20/32 }' "populate fully routed source set"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_fully_sources6\t{ 2001:db8::20/128 }' "populate fully routed6 source set"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_rule_inline_no_ports_fully_sources\t{ 192.168.1.21/32 }' "populate bypass fully routed source set"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_dns_sources\t{ 192.168.1.21/32,192.168.1.22/32 }' "populate source-aware DNS IPv4 sources"
+assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_dns_sources6\t{ 2001:db8::21/128,2001:db8::22/128 }' "populate source-aware DNS IPv6 sources"
+if grep -F $'ForkopTable\tforkop_dns_sources\t' "$NFT_LOG" | grep -Fq '192.168.1.60/32'; then
+  fail "IP-only source filter should not intercept DNS"
+fi
 if grep -Fq $'nft\tinsert\trule' "$NFT_LOG"; then
   fail "fully routed sources should use ordered priority sets"
 fi
@@ -651,6 +666,8 @@ bypass
 198.51.100.1,203.0.113.0/24
 [rule.text_rule.source_ip_cidr]
 
+[rule.text_rule.source_aware_dns]
+1
 [rule.text_rule.ports]
 443,80,443-444
 [rule.text_rule.fully_routed_ips]
@@ -669,6 +686,8 @@ proxy
 10.0.0.0/8,192.0.2.1
 [rule.default_enabled.source_ip_cidr]
 
+[rule.default_enabled.source_aware_dns]
+1
 [rule.default_enabled.ports]
 53,853
 [rule.default_enabled.fully_routed_ips]
@@ -717,6 +736,8 @@ bypass
 10.0.0.0/8,192.0.2.1
 [rule.enabled.source_ip_cidr]
 
+[rule.enabled.source_aware_dns]
+1
 [rule.enabled.ports]
 443,80,443-444
 [rule.enabled.fully_routed_ips]

@@ -2,6 +2,7 @@
 
 let common = require("core.common");
 let uci_core = require("core.uci");
+let rule_config = require("config.rule");
 
 let as_string = common.as_string;
 let object_or_empty = common.object_or_empty;
@@ -488,6 +489,40 @@ function rule_sets(section) {
 
 function rule_sets_with_subnets(section) {
     return whitespace_list_value(section, "rule_set_with_subnets");
+}
+
+function combined_domain_condition_text(section) {
+    if (type(raw_option(section, "domain")) != "array") {
+        let value = option(section, "domain", "");
+        if (value != "")
+            return value;
+    }
+
+    return option(section, "domain_suffix_text", "");
+}
+
+function rule_condition_csv(section, key, kind) {
+    return rule_config.rule_condition_csv_value(
+        key,
+        kind,
+        option(section, key + "_text_mode", "0"),
+        option(section, "conditions_text_mode", "0"),
+        option(section, key + "_text", ""),
+        option(section, key, ""),
+        combined_domain_condition_text(section),
+        option(section, "domain_suffix", "")
+    );
+}
+
+function has_dns_matchers(section) {
+    return rule_condition_csv(section, "domain", "domains") != "" ||
+        rule_condition_csv(section, "domain_suffix", "domains") != "" ||
+        rule_condition_csv(section, "domain_keyword", "generic") != "" ||
+        rule_condition_csv(section, "domain_regex", "generic") != "" ||
+        length(community_lists(section)) > 0 ||
+        length(rule_sets(section)) > 0 ||
+        length(rule_sets_with_subnets(section)) > 0 ||
+        option(section, "domain_ip_lists", "") != "";
 }
 
 function list_option_value_from_array(values) {
@@ -1080,6 +1115,7 @@ return {
     community_lists,
     rule_sets,
     rule_sets_with_subnets,
+    has_dns_matchers,
     community_lists_value,
     rule_sets_value,
     rule_sets_with_subnets_value,
