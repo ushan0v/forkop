@@ -356,7 +356,7 @@ component_actions_dir="$WORK_DIR/component-actions"
 fake_lib="$WORK_DIR/lib"
 mkdir -p "$fake_lib/components" "$fake_lib/config" "$fake_lib/core"
 cp "$UPDATES_UC" "$fake_lib/components/updates.uc"
-cp "$FORKOP_LIB/config/connections.uc" "$fake_lib/config/connections.uc"
+printf 'return {};\n' >"$fake_lib/config/connections.uc"
 cp "$FORKOP_LIB/core/uci.uc" "$fake_lib/core/uci.uc"
 cp "$FORKOP_LIB/core/common.uc" "$fake_lib/core/common.uc"
 cat >"$fake_lib/components/action.uc" <<'UCODE'
