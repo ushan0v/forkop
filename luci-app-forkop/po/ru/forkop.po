@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: FORKOP\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-13 01:05+0300\n"
-"PO-Revision-Date: 2026-07-13 01:05+0300\n"
+"POT-Creation-Date: 2026-07-18 07:01+0300\n"
+"PO-Revision-Date: 2026-07-18 07:01+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -1511,9 +1511,6 @@ msgstr "Reality short ID должен содержать 1-8 hex-символо�
 msgid "Refill"
 msgstr "Сброс"
 
-msgid "Regional options cannot be used together"
-msgstr "Нельзя использовать несколько региональных опций одновременно"
-
 msgid "Regular expression must not contain spaces or commas"
 msgstr "Регулярное выражение не должно содержать пробелы или запятые"
 
@@ -2218,9 +2215,6 @@ msgstr "WAN"
 
 msgid "WAN public IP"
 msgstr "Публичный WAN IP"
-
-msgid "Warning: %s cannot be used together with %s. Previous selections have been removed."
-msgstr "Предупреждение: %s нельзя использовать вместе с %s. Предыдущие варианты были удалены."
 
 msgid "What Forkop should do when this section matches"
 msgstr "Что Forkop должен делать при совпадении этой секции"

@@ -15,19 +15,22 @@ function fail(message) {
   process.exit(1);
 }
 
-if (!main.includes('russia_inside: "Russia inside"')) {
-  fail("Russia inside must remain available as a built-in rule set");
+for (const option of ["russia_inside", "russia_outside", "ukraine_inside"]) {
+  if (!main.includes(`${option}:`)) {
+    fail(`${option} must remain available as a built-in rule set`);
+  }
 }
 
 for (const removed of [
-  "ALLOWED_WITH_RUSSIA_INSIDE",
-  "Russia inside restrictions",
-  "Warning: Russia inside can only",
+  "REGIONAL_OPTIONS",
+  "builtInRulesetOption.onchange",
+  "Regional options cannot be used together",
+  "Previous selections have been removed",
 ]) {
   if (section.includes(removed) || main.includes(removed)) {
-    fail(`removed Russia inside restriction remains: ${removed}`);
+    fail(`built-in rule set restriction remains: ${removed}`);
   }
 }
 NODE
 
-printf 'Russia inside UI checks passed\n'
+printf 'Built-in rule set UI checks passed\n'

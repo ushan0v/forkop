@@ -2193,10 +2193,6 @@ msgstr ""
 msgid "Refill"
 msgstr ""
 
-#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7805
-msgid "Regional options cannot be used together"
-msgstr ""
-
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:5153
 msgid "Regular expression must not contain spaces or commas"
 msgstr ""
@@ -3230,10 +3226,6 @@ msgstr ""
 
 #: src/forkop/tabs/diagnostic/checks/runInboundsCheck.ts:198
 msgid "WAN public IP"
-msgstr ""
-
-#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7807
-msgid "Warning: %s cannot be used together with %s. Previous selections have been removed."
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7043

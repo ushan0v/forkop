@@ -7729,59 +7729,6 @@ function createSectionContent(section) {
   builtInRulesetOption.remove = function (section_id) {
     uci.unset(UCI_PACKAGE, section_id, "community_lists");
   };
-  let isProcessingBuiltIns = false;
-  builtInRulesetOption.onchange = function (_ev, section_id, value) {
-    if (isProcessingBuiltIns) {
-      return;
-    }
-
-    isProcessingBuiltIns = true;
-
-    try {
-      const values = Array.isArray(value)
-        ? value.filter(Boolean)
-        : value
-          ? [value]
-          : [];
-      let newValues = [...values];
-      const notifications = [];
-
-      const selectedRegionalOptions = main.REGIONAL_OPTIONS.filter((opt) =>
-        newValues.includes(opt),
-      );
-
-      if (selectedRegionalOptions.length > 1) {
-        const lastSelected =
-          selectedRegionalOptions[selectedRegionalOptions.length - 1];
-        const removedRegions = selectedRegionalOptions.slice(0, -1);
-        newValues = newValues.filter(
-          (v) => v === lastSelected || !main.REGIONAL_OPTIONS.includes(v),
-        );
-        notifications.push(
-          E("p", {}, [
-            E("strong", {}, _("Regional options cannot be used together")),
-            E("br"),
-            _(
-              "Warning: %s cannot be used together with %s. Previous selections have been removed.",
-            ).format(removedRegions.join(", "), lastSelected),
-          ]),
-        );
-      }
-
-      if (
-        JSON.stringify(newValues.slice().sort()) !==
-        JSON.stringify(values.slice().sort())
-      ) {
-        this.getUIElement(section_id).setValue(newValues);
-      }
-
-      notifications.forEach((notification) =>
-        ui.addNotification(null, notification),
-      );
-    } finally {
-      isProcessingBuiltIns = false;
-    }
-  };
 
   const ruleSetOption = section.taboption(
     "conditions",

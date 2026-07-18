@@ -966,11 +966,6 @@ var LATENCY_TEST_URL_OPTIONS = [
   "https://captive.apple.com",
   "https://connectivity-check.ubuntu.com"
 ];
-var REGIONAL_OPTIONS = [
-  "russia_inside",
-  "russia_outside",
-  "ukraine_inside"
-];
 var DOMAIN_LIST_OPTIONS = {
   russia_inside: "Russia inside",
   russia_outside: "Russia outside",
@@ -14138,7 +14133,6 @@ return baseclass.extend({
   ForkopShellMethods,
   LATENCY_TEST_URL_OPTIONS,
   MonitoringTab,
-  REGIONAL_OPTIONS,
   UpdatesTab,
   applyUiStateToStore,
   bulkValidate,

@@ -12,12 +12,6 @@ export const LATENCY_TEST_URL_OPTIONS = [
   'https://connectivity-check.ubuntu.com',
 ];
 
-export const REGIONAL_OPTIONS = [
-  'russia_inside',
-  'russia_outside',
-  'ukraine_inside',
-];
-
 export const DOMAIN_LIST_OPTIONS = {
   russia_inside: 'Russia inside',
   russia_outside: 'Russia outside',

@@ -3671,13 +3671,6 @@
     ]
   },
   {
-    "call": "Regional options cannot be used together",
-    "key": "Regional options cannot be used together",
-    "places": [
-      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7805"
-    ]
-  },
-  {
     "call": "Regular expression must not contain spaces or commas",
     "key": "Regular expression must not contain spaces or commas",
     "places": [
@@ -5415,13 +5408,6 @@
     "key": "WAN public IP",
     "places": [
       "src/forkop/tabs/diagnostic/checks/runInboundsCheck.ts:198"
-    ]
-  },
-  {
-    "call": "Warning: %s cannot be used together with %s. Previous selections have been removed.",
-    "key": "Warning: %s cannot be used together with %s. Previous selections have been removed.",
-    "places": [
-      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7807"
     ]
   },
   {
