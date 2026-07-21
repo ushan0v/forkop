@@ -2024,6 +2024,22 @@ function optionMapValue(option, section_id, key) {
   return value == null ? "" : value;
 }
 
+function generateHwid16() {
+  const bytes = new Uint8Array(8);
+
+  if (window.crypto && window.crypto.getRandomValues) {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function subscriptionUrlSettingsKeys() {
   return [
     "subscription_update_enabled",
@@ -2034,6 +2050,13 @@ function subscriptionUrlSettingsKeys() {
     "user_agent",
     "auto_hwid",
     "hwid",
+    "custom_device_headers",
+    "device_os",
+    "ver_os",
+    "device_model",
+    "device_locale",
+    "app_version",
+    "accept_language",
     "show_dashboard_metadata",
     "prefix_nodes",
     "node_prefix",
@@ -2053,6 +2076,13 @@ function defaultSubscriptionUrlSettings() {
     user_agent: "",
     auto_hwid: "1",
     hwid: "",
+    custom_device_headers: "0",
+    device_os: "",
+    ver_os: "",
+    device_model: "",
+    device_locale: "",
+    app_version: "",
+    accept_language: "",
     show_dashboard_metadata: "1",
     prefix_nodes: "0",
     node_prefix: "",
@@ -2349,20 +2379,61 @@ function addSubscriptionUrlItemOptions(itemSection, options = {}) {
   o.default = "1";
   o.rmempty = false;
 
-  o = itemSection.option(
+  const hwidOption = itemSection.option(
     form.Value,
     "hwid",
     _("HWID"),
     _("Enter the HWID sent with subscription requests"),
   );
-  o.depends("auto_hwid", "0");
-  o.rmempty = false;
-  o.validate = function (itemId, value) {
+  hwidOption.depends("auto_hwid", "0");
+  hwidOption.rmempty = false;
+  hwidOption.validate = function (itemId, value) {
     if (optionMapValue(this, itemId, "auto_hwid") !== "0") {
       return true;
     }
     return `${value || ""}`.trim() ? true : _("Enter HWID");
   };
+
+  o = itemSection.option(
+    form.Button,
+    "_generate_hwid",
+    _("Generate HWID"),
+    _("Generate a random 16-character hexadecimal HWID"),
+  );
+  o.depends("auto_hwid", "0");
+  o.inputstyle = "action";
+  o.inputtitle = _("Generate HWID");
+  o.onclick = function (_event, itemId) {
+    hwidOption.getUIElement(itemId).setValue(generateHwid16());
+  };
+
+  o = itemSection.option(
+    form.Flag,
+    "custom_device_headers",
+    _("Custom device headers"),
+    _("Override the default OpenWrt device headers for this subscription"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  [
+    ["device_os", "X-Device-OS"],
+    ["ver_os", "X-Ver-OS"],
+    ["device_model", "X-Device-Model"],
+    ["device_locale", "X-Device-Locale"],
+    ["app_version", "X-App-Version"],
+    ["accept_language", "Accept-Language"],
+  ].forEach(([key, label]) => {
+    o = itemSection.option(
+      form.Value,
+      key,
+      label,
+      _("Leave empty to omit this header"),
+    );
+    o.depends("custom_device_headers", "1");
+    o.rmempty = true;
+    o.retain = true;
+  });
 
   o = itemSection.option(
     form.Flag,

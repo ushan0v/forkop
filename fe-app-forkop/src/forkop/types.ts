@@ -342,6 +342,13 @@ export namespace Forkop {
     user_agent?: string;
     auto_hwid?: '0' | '1';
     hwid?: string;
+    custom_device_headers?: '0' | '1';
+    device_os?: string;
+    ver_os?: string;
+    device_model?: string;
+    device_locale?: string;
+    app_version?: string;
+    accept_language?: string;
     show_dashboard_metadata?: '0' | '1';
     prefix_nodes?: '0' | '1';
     node_prefix?: string;

@@ -281,6 +281,10 @@ function source_hwid_path(source_section) {
     return TMP_SUBSCRIPTION_FOLDER + "/" + source_section + ".hwid";
 }
 
+function source_device_headers_path(source_section) {
+    return TMP_SUBSCRIPTION_FOLDER + "/" + source_section + ".device_headers";
+}
+
 function hwid_matches_config(configured_hwid, cached_hwid) {
     configured_hwid = as_string(configured_hwid);
     cached_hwid = as_string(cached_hwid);
@@ -290,11 +294,12 @@ function hwid_matches_config(configured_hwid, cached_hwid) {
     return true;
 }
 
-function source_cache_is_current(source_section, source_entry, expected_user_agent, expected_hwid) {
+function source_cache_is_current(source_section, source_entry, expected_user_agent, expected_hwid, expected_device_headers_signature) {
     let parsed = parse_source_entry(source_entry);
     let cached_url = file_first_line(TMP_SUBSCRIPTION_FOLDER + "/" + source_section + ".url");
     let cached_user_agent = file_first_line(TMP_SUBSCRIPTION_FOLDER + "/" + source_section + ".user_agent");
     let cached_hwid = file_first_line(source_hwid_path(source_section));
+    let cached_device_headers = file_first_line(source_device_headers_path(source_section));
     let configured_user_agent = as_string(expected_user_agent || "");
     if (configured_user_agent != "")
         parsed.user_agent = configured_user_agent;
@@ -306,6 +311,9 @@ function source_cache_is_current(source_section, source_entry, expected_user_age
         return false;
 
     if (!hwid_matches_config(expected_hwid, cached_hwid))
+        return false;
+
+    if (cached_device_headers != as_string(expected_device_headers_signature))
         return false;
 
     return true;

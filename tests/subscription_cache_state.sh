@@ -365,6 +365,49 @@ if grep -Fq "left-hand side is not a function" "$WORK_DIR/hwid.err"; then
 fi
 rm -f "$WORK_DIR/runtime-cache/proxy-subscription-1.hwid"
 
+mkdir -p "$WORK_DIR/custom-header-cache"
+cat >"$WORK_DIR/cache-custom-headers.json" <<'JSON'
+{
+  "section": [
+    {
+      ".name": "custom",
+      "subscription_urls": [
+        "https://example.com/custom.txt"
+      ],
+      "subscription_url_settings": "{\"https://example.com/custom.txt\":{\"user_agent\":\"v2rayN\",\"custom_device_headers\":\"1\",\"device_os\":\"iOS\",\"ver_os\":\"26.4\",\"device_model\":\"iPhone 17 Pro Max\",\"device_locale\":\"ru\",\"app_version\":\"4.6.0\",\"accept_language\":\"ru-RU,ru;q=0.9\"}}"
+    }
+  ]
+}
+JSON
+cat >"$WORK_DIR/custom-header-cache/custom-subscription-1.json" <<'JSON'
+{"outbounds":[{"type":"direct","tag":"custom"}]}
+JSON
+printf '%s' 'https://example.com/custom.txt' >"$WORK_DIR/custom-header-cache/custom-subscription-1.url"
+printf '%s' 'v2rayN' >"$WORK_DIR/custom-header-cache/custom-subscription-1.user_agent"
+
+if cache_ucode section-current-usable-cache-fixture \
+  "$WORK_DIR/cache-custom-headers.json" custom "$WORK_DIR/custom-header-cache" "$WORK_DIR/persistent-cache" "sing-box/default" >/dev/null 2>&1; then
+  fail "custom device headers should invalidate a cache without their signature"
+fi
+
+cat >"$WORK_DIR/custom-header-cache/custom-subscription-1.json" <<'JSON'
+{"outbounds":[{"type":"direct","tag":"custom"}]}
+JSON
+printf '%s' 'https://example.com/custom.txt' >"$WORK_DIR/custom-header-cache/custom-subscription-1.url"
+printf '%s' 'v2rayN' >"$WORK_DIR/custom-header-cache/custom-subscription-1.user_agent"
+printf '%s' '{ "enabled": "1", "device_os": "iOS", "ver_os": "26.4", "device_model": "iPhone 17 Pro Max", "device_locale": "ru", "app_version": "4.6.0", "accept_language": "ru-RU,ru;q=0.9" }' >"$WORK_DIR/custom-header-cache/custom-subscription-1.device_headers"
+
+cache_ucode section-current-usable-cache-fixture \
+  "$WORK_DIR/cache-custom-headers.json" custom "$WORK_DIR/custom-header-cache" "$WORK_DIR/persistent-cache" "sing-box/default" >/dev/null ||
+  fail "matching custom device headers signature should keep the cache current"
+
+sed 's/\\"device_os\\":\\"iOS\\"/\\"device_os\\":\\"Android\\"/' \
+  "$WORK_DIR/cache-custom-headers.json" >"$WORK_DIR/cache-custom-headers-changed.json"
+if cache_ucode section-current-usable-cache-fixture \
+  "$WORK_DIR/cache-custom-headers-changed.json" custom "$WORK_DIR/custom-header-cache" "$WORK_DIR/persistent-cache" "sing-box/default" >/dev/null 2>&1; then
+  fail "changing a custom device header should invalidate the cache"
+fi
+
 printf '%s' 'https://example.com/stale.txt' >"$WORK_DIR/runtime-cache/proxy-subscription-1.url"
 if cache_ucode section-current-usable-cache-fixture \
   "$WORK_DIR/cache-current.json" proxy "$WORK_DIR/runtime-cache" "$WORK_DIR/persistent-cache" "sing-box/default" >/dev/null 2>&1; then
