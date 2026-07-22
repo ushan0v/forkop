@@ -194,6 +194,65 @@ function choose_index(kind, state, current_index, timeout_seconds, recovery) {
     return { index: current_index, reason: "all_down", alive: false };
 }
 
+function threshold_value(value) {
+    value = int(value || 3);
+    return value >= 1 && value <= 10 ? value : 3;
+}
+
+function new_threshold_state() {
+    return { failures: 0, recovery_successes: 0, recovery_index: -1 };
+}
+
+function pending_selection(current_index, reason) {
+    return { index: current_index, reason, alive: true };
+}
+
+function qualify_active_selection(current_index, selected, tracker, threshold) {
+    if (selected.alive && int(selected.index) == current_index) {
+        tracker.failures = 0;
+        return selected;
+    }
+
+    tracker.failures++;
+    if (tracker.failures < threshold)
+        return pending_selection(current_index, "failure_pending");
+
+    tracker.failures = threshold;
+    return selected;
+}
+
+function qualify_recovery_selection(current_index, selected, tracker, threshold) {
+    if (!selected.alive || int(selected.index) == current_index) {
+        tracker.recovery_successes = 0;
+        tracker.recovery_index = -1;
+        return selected;
+    }
+
+    if (tracker.recovery_index != int(selected.index)) {
+        tracker.recovery_index = int(selected.index);
+        tracker.recovery_successes = 0;
+    }
+    tracker.recovery_successes++;
+    if (tracker.recovery_successes < threshold)
+        return pending_selection(current_index, "recovery_pending");
+
+    return selected;
+}
+
+function reset_tracker(tracker) {
+    tracker.failures = 0;
+    tracker.recovery_successes = 0;
+    tracker.recovery_index = -1;
+}
+
+function reset_changed_trackers(state, previous, trackers) {
+    for (let kind in [ "bootstrap", "main" ]) {
+        let key = kind + "_index";
+        if (int(state[key]) != int(previous[key]))
+            reset_tracker(trackers[kind]);
+    }
+}
+
 function clone_state(value) {
     return json(sprintf("%J", value));
 }
@@ -245,9 +304,12 @@ function worker() {
     let active_interval = duration_seconds(common.option(cfg, "dns_check_interval", "10s"), 10);
     let recovery_interval = duration_seconds(common.option(cfg, "dns_recovery_check_interval", "60s"), 60);
     let timeout_seconds = probe_timeout(common.option(cfg, "dns_check_timeout", "2s"));
+    let failure_threshold = threshold_value(common.option(cfg, "dns_failure_threshold", "3"));
+    let recovery_threshold = threshold_value(common.option(cfg, "dns_recovery_threshold", "3"));
     let next_active = now_seconds();
     let next_recovery = now_seconds() + recovery_interval;
     let all_down = { main: false, bootstrap: false };
+    let trackers = { main: new_threshold_state(), bootstrap: new_threshold_state() };
 
     while (true) {
         let now = now_seconds();
@@ -256,34 +318,72 @@ function worker() {
             return 0;
 
         if (now >= next_active) {
-            let bootstrap = choose_index("bootstrap", state, int(state.bootstrap_index), timeout_seconds, false);
+            let bootstrap = qualify_active_selection(
+                int(state.bootstrap_index),
+                choose_index("bootstrap", state, int(state.bootstrap_index), timeout_seconds, false),
+                trackers.bootstrap,
+                failure_threshold
+            );
             if (!bootstrap.alive && !all_down.bootstrap)
                 log_message("all configured bootstrap DNS servers are unavailable", "warn");
             all_down.bootstrap = !bootstrap.alive;
 
             if (bootstrap.index != int(state.bootstrap_index)) {
-                let main = choose_index("main", state, int(state.main_index), timeout_seconds, false);
+                let main = qualify_active_selection(
+                    int(state.main_index),
+                    choose_index("main", state, int(state.main_index), timeout_seconds, false),
+                    trackers.main,
+                    failure_threshold
+                );
                 let selections = { bootstrap };
                 if (main.alive)
                     selections.main = main;
+                let previous = { main_index: state.main_index, bootstrap_index: state.bootstrap_index };
                 let applied = apply_selections(state, selections);
+                if (applied)
+                    reset_changed_trackers(state, previous, trackers);
                 next_active = now_seconds() + (applied && !main.alive ? 1 : active_interval);
             }
             else {
-                let main = choose_index("main", state, int(state.main_index), timeout_seconds, false);
+                let main = qualify_active_selection(
+                    int(state.main_index),
+                    choose_index("main", state, int(state.main_index), timeout_seconds, false),
+                    trackers.main,
+                    failure_threshold
+                );
                 if (!main.alive && !all_down.main)
                     log_message("all configured main DNS servers are unavailable", "warn");
                 all_down.main = !main.alive;
-                apply_selections(state, { main });
+                let previous = { main_index: state.main_index, bootstrap_index: state.bootstrap_index };
+                let applied = apply_selections(state, { main });
+                if (applied)
+                    reset_changed_trackers(state, previous, trackers);
                 next_active = now_seconds() + active_interval;
             }
         }
 
         if (now >= next_recovery) {
-            let bootstrap = choose_index("bootstrap", state, int(state.bootstrap_index), timeout_seconds, true);
-            let main = choose_index("main", state, int(state.main_index), timeout_seconds, true);
+            let bootstrap = int(state.bootstrap_index) > 0
+                ? qualify_recovery_selection(
+                    int(state.bootstrap_index),
+                    choose_index("bootstrap", state, int(state.bootstrap_index), timeout_seconds, true),
+                    trackers.bootstrap,
+                    recovery_threshold
+                )
+                : pending_selection(int(state.bootstrap_index), "unchanged");
+            let main = int(state.main_index) > 0
+                ? qualify_recovery_selection(
+                    int(state.main_index),
+                    choose_index("main", state, int(state.main_index), timeout_seconds, true),
+                    trackers.main,
+                    recovery_threshold
+                )
+                : pending_selection(int(state.main_index), "unchanged");
             let has_changes = bootstrap.index != int(state.bootstrap_index) || main.index != int(state.main_index);
+            let previous = { main_index: state.main_index, bootstrap_index: state.bootstrap_index };
             let applied = apply_selections(state, { bootstrap, main });
+            if (applied)
+                reset_changed_trackers(state, previous, trackers);
             let completed = now_seconds();
             if (has_changes && applied)
                 next_active = completed + active_interval;
@@ -357,6 +457,17 @@ function select_fixture(state_path, alive_path, kind, recovery) {
     common.write_json(selected);
 }
 
+function threshold_fixture(path, current_index, threshold, recovery) {
+    let sequence = common.read_json_file(path);
+    let tracker = new_threshold_state();
+    let selected = pending_selection(int(current_index), "unchanged");
+    for (let item in sequence || [])
+        selected = as_string(recovery) == "1"
+            ? qualify_recovery_selection(int(current_index), item, tracker, threshold_value(threshold))
+            : qualify_active_selection(int(current_index), item, tracker, threshold_value(threshold));
+    common.write_json({ selected, tracker });
+}
+
 let mode = ARGV[0] || "";
 
 if (mode == "start-runtime")
@@ -371,9 +482,11 @@ else if (mode == "commit-state")
     exit(commit_state(ARGV[1]) ? 0 : 1);
 else if (mode == "select-fixture")
     select_fixture(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
+else if (mode == "threshold-fixture")
+    threshold_fixture(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "verification-plan-fixture")
     common.write_json(verification_plan(common.read_json_file(ARGV[1]), common.read_json_file(ARGV[2])));
 else {
-    warn("Usage: singbox/dns_failover.uc <start-runtime|stop-runtime|worker|verify-state|commit-state|select-fixture|verification-plan-fixture> ...\n");
+    warn("Usage: singbox/dns_failover.uc <start-runtime|stop-runtime|worker|verify-state|commit-state|select-fixture|threshold-fixture|verification-plan-fixture> ...\n");
     exit(1);
 }

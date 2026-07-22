@@ -921,6 +921,11 @@ function validate_dns_settings(settings, sections, context) {
         validate_required_duration_option(option(settings, "dns_check_interval", "10s"), "settings.dns_check_interval");
         validate_required_duration_option(option(settings, "dns_recovery_check_interval", "60s"), "settings.dns_recovery_check_interval");
         validate_required_duration_option(option(settings, "dns_check_timeout", "2s"), "settings.dns_check_timeout");
+        for (let name in [ "dns_failure_threshold", "dns_recovery_threshold" ]) {
+            let value = trim(option(settings, name, "3"));
+            if (match(value, /^[0-9]+$/) == null || int(value) < 1 || int(value) > 10)
+                fail_validation("Invalid " + name + " value '" + value + "'. Use a number from 1 to 10. Aborted.");
+        }
     }
 
     if (!bool_option(settings, "dns_detour_enabled", false))

@@ -3307,3 +3307,19 @@ msgstr ""
 #: src/forkop/tabs/diagnostic/checks/runZapret2Check.ts:107
 msgid "Zapret2 sing-box outbound is not configured"
 msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:229
+msgid "DNS Failures Before Switching"
+msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:237
+msgid "DNS Successful Checks Before Recovery"
+msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:230
+msgid "Number of consecutive failed checks required before switching DNS servers."
+msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:238
+msgid "Number of consecutive successful checks required before returning to a higher-priority DNS server."
+msgstr ""
