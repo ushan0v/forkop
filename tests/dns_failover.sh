@@ -58,6 +58,8 @@ cat >"$WORK_DIR/multi.json" <<'JSON'
     "dns_check_interval": "10s",
     "dns_recovery_check_interval": "60s",
     "dns_check_timeout": "2s",
+    "dns_failure_threshold": "3",
+    "dns_recovery_threshold": "3",
     "dns_detour_enabled": "1",
     "dns_detour_section": "proxy"
   },
@@ -159,5 +161,62 @@ JSON
 verification="$(ucode -L "$FORKOP_LIB" "$FAILOVER" verification-plan-fixture "$WORK_DIR/verify-previous.json" "$WORK_DIR/verify-bootstrap.json")"
 printf '%s' "$verification" | grep -Eq '"main"[[:space:]]*:[[:space:]]*false' || fail "bootstrap-only switch must not require a dead main DNS to recover"
 printf '%s' "$verification" | grep -Eq '"bootstrap"[[:space:]]*:[[:space:]]*true' || fail "bootstrap-only switch must verify the selected bootstrap DNS"
+
+cat >"$WORK_DIR/two-failures.json" <<'JSON'
+[
+  { "index": 1, "reason": "active_dead", "alive": true },
+  { "index": 1, "reason": "active_dead", "alive": true }
+]
+JSON
+cat >"$WORK_DIR/three-failures.json" <<'JSON'
+[
+  { "index": 1, "reason": "active_dead", "alive": true },
+  { "index": 1, "reason": "active_dead", "alive": true },
+  { "index": 1, "reason": "active_dead", "alive": true }
+]
+JSON
+cat >"$WORK_DIR/reset-failures.json" <<'JSON'
+[
+  { "index": 1, "reason": "active_dead", "alive": true },
+  { "index": 0, "reason": "alive", "alive": true },
+  { "index": 1, "reason": "active_dead", "alive": true },
+  { "index": 1, "reason": "active_dead", "alive": true }
+]
+JSON
+cat >"$WORK_DIR/two-recoveries.json" <<'JSON'
+[
+  { "index": 0, "reason": "recovery", "alive": true },
+  { "index": 0, "reason": "recovery", "alive": true }
+]
+JSON
+cat >"$WORK_DIR/three-recoveries.json" <<'JSON'
+[
+  { "index": 0, "reason": "recovery", "alive": true },
+  { "index": 0, "reason": "recovery", "alive": true },
+  { "index": 0, "reason": "recovery", "alive": true }
+]
+JSON
+cat >"$WORK_DIR/reset-recoveries.json" <<'JSON'
+[
+  { "index": 0, "reason": "recovery", "alive": true },
+  { "index": 1, "reason": "unchanged", "alive": true },
+  { "index": 0, "reason": "recovery", "alive": true },
+  { "index": 0, "reason": "recovery", "alive": true }
+]
+JSON
+
+threshold_result="$(ucode -L "$FORKOP_LIB" "$FAILOVER" threshold-fixture "$WORK_DIR/two-failures.json" 0 3 0)"
+printf '%s' "$threshold_result" | grep -Eq '"index"[[:space:]]*:[[:space:]]*0' || fail "two failures must not switch"
+threshold_result="$(ucode -L "$FORKOP_LIB" "$FAILOVER" threshold-fixture "$WORK_DIR/three-failures.json" 0 3 0)"
+printf '%s' "$threshold_result" | grep -Eq '"index"[[:space:]]*:[[:space:]]*1' || fail "third failure must switch"
+threshold_result="$(ucode -L "$FORKOP_LIB" "$FAILOVER" threshold-fixture "$WORK_DIR/reset-failures.json" 0 3 0)"
+printf '%s' "$threshold_result" | grep -Eq '"index"[[:space:]]*:[[:space:]]*0' || fail "successful check must reset failures"
+
+threshold_result="$(ucode -L "$FORKOP_LIB" "$FAILOVER" threshold-fixture "$WORK_DIR/two-recoveries.json" 1 3 1)"
+printf '%s' "$threshold_result" | grep -Eq '"index"[[:space:]]*:[[:space:]]*1' || fail "two recoveries must not switch"
+threshold_result="$(ucode -L "$FORKOP_LIB" "$FAILOVER" threshold-fixture "$WORK_DIR/three-recoveries.json" 1 3 1)"
+printf '%s' "$threshold_result" | grep -Eq '"index"[[:space:]]*:[[:space:]]*0' || fail "third recovery must switch"
+threshold_result="$(ucode -L "$FORKOP_LIB" "$FAILOVER" threshold-fixture "$WORK_DIR/reset-recoveries.json" 1 3 1)"
+printf '%s' "$threshold_result" | grep -Eq '"index"[[:space:]]*:[[:space:]]*1' || fail "failed recovery must reset successes"
 
 printf 'DNS failover checks passed\n'

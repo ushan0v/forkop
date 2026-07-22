@@ -153,6 +153,13 @@ function configureDnsDuration(
   configureDnsFailoverVisibility(option, dnsOption, bootstrapOption);
 }
 
+function configureDnsThreshold(option, dnsOption, bootstrapOption) {
+  option.default = "3";
+  option.rmempty = false;
+  option.datatype = "range(1,10)";
+  configureDnsFailoverVisibility(option, dnsOption, bootstrapOption);
+}
+
 function createSettingsContent(section, capabilities) {
   let o = section.option(
     form.ListValue,
@@ -215,6 +222,26 @@ function createSettingsContent(section, capabilities) {
     ),
   );
   configureDnsDuration(o, "2s", dnsOption, bootstrapOption);
+
+  o = section.option(
+    form.Value,
+    "dns_failure_threshold",
+    _("DNS Failures Before Switching"),
+    _(
+      "Number of consecutive failed checks required before switching DNS servers.",
+    ),
+  );
+  configureDnsThreshold(o, dnsOption, bootstrapOption);
+
+  o = section.option(
+    form.Value,
+    "dns_recovery_threshold",
+    _("DNS Successful Checks Before Recovery"),
+    _(
+      "Number of consecutive successful checks required before returning to a higher-priority DNS server.",
+    ),
+  );
+  configureDnsThreshold(o, dnsOption, bootstrapOption);
 
   o = section.option(
     form.Value,
