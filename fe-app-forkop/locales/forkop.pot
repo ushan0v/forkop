@@ -564,6 +564,10 @@ msgstr ""
 msgid "Currently unavailable"
 msgstr ""
 
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2413
+msgid "Custom device headers"
+msgstr ""
+
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7367
 msgid "Custom outbound configurations in JSON format"
 msgstr ""
@@ -1173,6 +1177,15 @@ msgstr ""
 msgid "Fuzzing is not supported here because Forkop needs deterministic runtime validation."
 msgstr ""
 
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2401
+msgid "Generate a random 16-character hexadecimal HWID"
+msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2400
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2405
+msgid "Generate HWID"
+msgstr ""
+
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2325
 msgid "Generate HWID from router hardware information for this subscription"
 msgstr ""
@@ -1684,6 +1697,10 @@ msgstr ""
 msgid "Latest version:"
 msgstr ""
 
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2431
+msgid "Leave empty to omit this header"
+msgstr ""
+
 #: src/forkop/tabs/dashboard/initController.ts:1100
 msgid "Level"
 msgstr ""
@@ -2023,6 +2040,10 @@ msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:313
 msgid "Output Network Interface"
+msgstr ""
+
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2414
+msgid "Override the default OpenWrt device headers for this subscription"
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/server.js:2982
