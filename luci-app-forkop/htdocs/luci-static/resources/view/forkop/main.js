@@ -5130,6 +5130,8 @@ var SocketManager = class _SocketManager {
     this.listeners = /* @__PURE__ */ new Map();
     this.connected = /* @__PURE__ */ new Map();
     this.errorListeners = /* @__PURE__ */ new Map();
+    this.reconnectAttempts = /* @__PURE__ */ new Map();
+    this.reconnectTimers = /* @__PURE__ */ new Map();
   }
   static getInstance() {
     if (!_SocketManager.instance) {
@@ -5138,7 +5140,15 @@ var SocketManager = class _SocketManager {
     return _SocketManager.instance;
   }
   resetAll() {
-    for (const [url, ws] of this.sockets.entries()) {
+    const sockets = [...this.sockets.entries()];
+    for (const timer of this.reconnectTimers.values()) clearTimeout(timer);
+    this.sockets.clear();
+    this.listeners.clear();
+    this.errorListeners.clear();
+    this.connected.clear();
+    this.reconnectAttempts.clear();
+    this.reconnectTimers.clear();
+    for (const [url, ws] of sockets) {
       try {
         if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
           ws.close();
@@ -5151,10 +5161,6 @@ var SocketManager = class _SocketManager {
         );
       }
     }
-    this.sockets.clear();
-    this.listeners.clear();
-    this.errorListeners.clear();
-    this.connected.clear();
     logger.info("[SOCKET]", "All connections and state have been reset.");
   }
   connect(url) {
@@ -5169,6 +5175,7 @@ var SocketManager = class _SocketManager {
         err
       );
       this.triggerError(url, err instanceof Event ? err : String(err));
+      this.scheduleReconnect(url);
       return;
     }
     this.sockets.set(url, ws);
@@ -5177,6 +5184,7 @@ var SocketManager = class _SocketManager {
     if (!this.errorListeners.has(url)) this.errorListeners.set(url, /* @__PURE__ */ new Set());
     ws.addEventListener("open", () => {
       this.connected.set(url, true);
+      this.reconnectAttempts.delete(url);
       logger.info("[SOCKET]", "Connected to", url);
     });
     ws.addEventListener("message", (event) => {
@@ -5192,9 +5200,12 @@ var SocketManager = class _SocketManager {
       }
     });
     ws.addEventListener("close", () => {
+      if (this.sockets.get(url) !== ws) return;
+      this.sockets.delete(url);
       this.connected.set(url, false);
       logger.warn("[SOCKET]", `Disconnected: ${url}`);
       this.triggerError(url, "Connection closed");
+      this.scheduleReconnect(url);
     });
     ws.addEventListener("error", (err) => {
       logger.error("[SOCKET]", `Socket error for ${url}:`, err);
@@ -5208,18 +5219,21 @@ var SocketManager = class _SocketManager {
     if (onError) {
       this.errorListeners.get(url)?.add(onError);
     }
-    if (!this.sockets.has(url)) {
-      this.connect(url);
-    }
     if (!this.listeners.has(url)) {
       this.listeners.set(url, /* @__PURE__ */ new Set());
     }
     this.listeners.get(url)?.add(listener);
+    if (!this.sockets.has(url)) {
+      this.connect(url);
+    }
   }
   unsubscribe(url, listener, onError) {
     this.listeners.get(url)?.delete(listener);
     if (onError) {
       this.errorListeners.get(url)?.delete(onError);
+    }
+    if (this.listeners.get(url)?.size === 0) {
+      this.disconnect(url);
     }
   }
   // eslint-disable-next-line
@@ -5234,13 +5248,12 @@ var SocketManager = class _SocketManager {
   }
   disconnect(url) {
     const ws = this.sockets.get(url);
-    if (ws) {
-      ws.close();
-      this.sockets.delete(url);
-      this.listeners.delete(url);
-      this.errorListeners.delete(url);
-      this.connected.delete(url);
-    }
+    this.clearReconnect(url);
+    this.sockets.delete(url);
+    this.listeners.delete(url);
+    this.errorListeners.delete(url);
+    this.connected.delete(url);
+    if (ws) ws.close();
   }
   disconnectAll() {
     for (const url of this.sockets.keys()) {
@@ -5258,6 +5271,28 @@ var SocketManager = class _SocketManager {
         }
       }
     }
+  }
+  scheduleReconnect(url) {
+    if (this.reconnectTimers.has(url) || (this.listeners.get(url)?.size || 0) === 0) {
+      return;
+    }
+    const attempt = this.reconnectAttempts.get(url) || 0;
+    const delays = [1e3, 2e3, 5e3];
+    const delay = delays[Math.min(attempt, delays.length - 1)];
+    this.reconnectAttempts.set(url, attempt + 1);
+    this.reconnectTimers.set(
+      url,
+      setTimeout(() => {
+        this.reconnectTimers.delete(url);
+        if ((this.listeners.get(url)?.size || 0) > 0) this.connect(url);
+      }, delay)
+    );
+  }
+  clearReconnect(url) {
+    const timer = this.reconnectTimers.get(url);
+    if (timer) clearTimeout(timer);
+    this.reconnectTimers.delete(url);
+    this.reconnectAttempts.delete(url);
   }
 };
 var socket = SocketManager.getInstance();
