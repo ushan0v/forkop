@@ -733,7 +733,8 @@ function add_subscription_source_with_state(config, section, source_index, sourc
         source_section,
         source_entry,
         connections.subscription_user_agent(section, source_entry),
-        connections.subscription_hwid(section, source_entry)
+        connections.subscription_hwid(section, source_entry),
+        connections.subscription_device_headers_signature(section, source_entry)
     ))
         return 0;
 

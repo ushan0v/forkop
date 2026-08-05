@@ -914,6 +914,13 @@
     ]
   },
   {
+    "call": "Custom device headers",
+    "key": "Custom device headers",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2413"
+    ]
+  },
+  {
     "call": "Custom outbound configurations in JSON format",
     "key": "Custom outbound configurations in JSON format",
     "places": [
@@ -1946,6 +1953,21 @@
     ]
   },
   {
+    "call": "Generate a random 16-character hexadecimal HWID",
+    "key": "Generate a random 16-character hexadecimal HWID",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2401"
+    ]
+  },
+  {
+    "call": "Generate HWID",
+    "key": "Generate HWID",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2400",
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2405"
+    ]
+  },
+  {
     "call": "Generate HWID from router hardware information for this subscription",
     "key": "Generate HWID from router hardware information for this subscription",
     "places": [
@@ -2817,6 +2839,13 @@
     ]
   },
   {
+    "call": "Leave empty to omit this header",
+    "key": "Leave empty to omit this header",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2431"
+    ]
+  },
+  {
     "call": "Level",
     "key": "Level",
     "places": [
@@ -3383,6 +3412,13 @@
     "key": "Output Network Interface",
     "places": [
       "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:313"
+    ]
+  },
+  {
+    "call": "Override the default OpenWrt device headers for this subscription",
+    "key": "Override the default OpenWrt device headers for this subscription",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2414"
     ]
   },
   {
