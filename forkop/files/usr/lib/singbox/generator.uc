@@ -823,28 +823,34 @@ function add_subscription_source_with_state(config, section, source_index, sourc
 }
 
 function duration_to_seconds(value) {
-    value = as_string(value);
-    if (value == "")
+    let rest = as_string(value);
+    if (rest == "")
         return null;
-    if (match(value, /^[0-9]+$/) != null)
-        return int(value, 10);
+    if (match(rest, /^[0-9]+$/) != null)
+        return int(rest, 10);
 
-    let suffix = substr(value, length(value) - 1);
-    let number = substr(value, 0, length(value) - 1);
-    if (match(number, /^[0-9]+$/) == null)
-        return null;
+    let total = 0.0;
+    let multipliers = {
+        ns: 0.000000001,
+        us: 0.000001,
+        ms: 0.001,
+        s: 1,
+        m: 60,
+        h: 3600,
+        d: 86400
+    };
 
-    let multiplier = null;
-    if (suffix == "s")
-        multiplier = 1;
-    else if (suffix == "m")
-        multiplier = 60;
-    else if (suffix == "h")
-        multiplier = 3600;
-    else if (suffix == "d")
-        multiplier = 86400;
+    while (rest != "") {
+        let matched = match(rest, /^([0-9]+(\.[0-9]+)?)(ns|us|ms|s|m|h|d)/);
+        if (!matched)
+            return null;
 
-    return multiplier == null ? null : int(number, 10) * multiplier;
+        let token = as_string(matched[0]);
+        total += (matched[1] * 1) * multipliers[matched[3]];
+        rest = substr(rest, length(token));
+    }
+
+    return total <= 0 ? null : int(total + 0.5);
 }
 
 function urltest_check_interval(section, urltest_id) {
@@ -852,23 +858,22 @@ function urltest_check_interval(section, urltest_id) {
     return interval != "" ? interval : "3m";
 }
 
-function legacy_urltest_idle_timeout(section, urltest_id) {
-    if (urltest_id != "urltest")
-        return "";
-
-    let settings = connections.urltest_settings(section, urltest_id);
-    if (type(settings) == "object" && as_string(settings[".type"] || "") == "urltest")
-        return "";
-
-    let interval = urltest_check_interval(section, urltest_id);
-    let interval_seconds = duration_to_seconds(interval);
-    let default_idle_seconds = duration_to_seconds(runtime_constants.URLTEST_DEFAULT_IDLE_TIMEOUT);
-    return interval_seconds != null && interval_seconds > default_idle_seconds ? interval : "";
-}
-
 function urltest_idle_timeout(section, urltest_id) {
     let configured = connections.urltest_idle_timeout(section, urltest_id);
-    return configured != "" ? configured : legacy_urltest_idle_timeout(section, urltest_id);
+    let interval = urltest_check_interval(section, urltest_id);
+    let interval_seconds = duration_to_seconds(interval);
+    let idle_seconds = duration_to_seconds(configured != ""
+        ? configured
+        : runtime_constants.URLTEST_DEFAULT_IDLE_TIMEOUT);
+
+    // sing-box refuses to start a URLTest group whose interval exceeds its
+    // idle_timeout, and substitutes URLTEST_DEFAULT_IDLE_TIMEOUT when the
+    // option is omitted. Raise the timeout to the interval instead of emitting
+    // a config that fails with "interval must be less or equal than idle_timeout".
+    if (interval_seconds != null && idle_seconds != null && interval_seconds > idle_seconds)
+        return interval;
+
+    return configured;
 }
 
 function supported_urltest_filter_mode(mode) {
