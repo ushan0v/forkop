@@ -358,10 +358,6 @@ function updates_zapret_bundle_version(bundle_name) {
     updates_bundle_version(bundle_name, ["zapret_v", "zapret_"]);
 }
 
-function updates_zapret2_bundle_version(bundle_name) {
-    updates_bundle_version(bundle_name, ["zapret2_v", "zapret2_", "zapret_v", "zapret_"]);
-}
-
 function first_version_token(value) {
     value = as_string(value);
     for (let i = 0; i < length(value); i++) {
@@ -795,45 +791,6 @@ function byedpi_asset_matches(name, arch, ext) {
         (str_contains(name, "_" + arch + "." + ext) || str_contains(name, "-" + arch + "." + ext));
 }
 
-function release_asset_matches_arch(name, prefix, arch, ext) {
-    return (str_startswith(name, prefix + "_") || str_startswith(name, prefix + "-")) &&
-        str_endswith(name, "." + ext) &&
-        (str_contains(name, "_" + arch + "." + ext) || str_contains(name, "-" + arch + "." + ext));
-}
-
-function named_release_select_asset(release_prefix, asset_prefix, asset_ext, arch_candidates) {
-    let releases = array_or_empty(read_stdin_json());
-
-    for (let release in releases) {
-        if (type(release) != "object")
-            continue;
-        if (release.draft === true)
-            continue;
-
-        let release_name = as_string(release.name || "");
-        if (!str_startswith(release_name, release_prefix))
-            continue;
-
-        for (let arch in split(as_string(arch_candidates), " ")) {
-            if (arch == "")
-                continue;
-
-            for (let asset in array_or_empty(release.assets)) {
-                if (type(asset) != "object")
-                    continue;
-
-                let name = as_string(asset.name || "");
-                let url = as_string(asset.browser_download_url || "");
-                if (url != "" && release_asset_matches_arch(name, asset_prefix, arch, asset_ext)) {
-                    print(arch, "\t", name, "\t", url, "\t",
-                        as_string(release.html_url || ""), "\t", as_string(release.tag_name || ""), "\n");
-                    return;
-                }
-            }
-        }
-    }
-}
-
 function release_select_arch_suffix_asset(asset_ext, arch_candidates) {
     let release = object_or_empty(read_stdin_json());
 
@@ -1179,8 +1136,6 @@ else if (mode == "updates-arch-package-version")
     updates_arch_package_version(ARGV[1], ARGV[2]);
 else if (mode == "updates-zapret-bundle-version")
     updates_zapret_bundle_version(ARGV[1]);
-else if (mode == "updates-zapret2-bundle-version")
-    updates_zapret2_bundle_version(ARGV[1]);
 else if (mode == "updates-normalize-sing-box-version")
     updates_normalize_sing_box_version(ARGV[1]);
 else if (mode == "updates-normalize-zapret-version")
@@ -1217,8 +1172,6 @@ else if (mode == "updates-apk-info-package-version")
     updates_apk_info_package_version(ARGV[1]);
 else if (mode == "updates-apk-policy-version")
     updates_apk_policy_version();
-else if (mode == "named-release-select-asset")
-    named_release_select_asset(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "release-select-arch-suffix-asset")
     release_select_arch_suffix_asset(ARGV[1], ARGV[2]);
 else if (mode == "byedpi-select-asset")
