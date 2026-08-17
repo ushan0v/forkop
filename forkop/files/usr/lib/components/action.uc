@@ -821,10 +821,6 @@ function extract_zapret_bundle_version(bundle_name) {
     return trim(helper_output("updates-zapret-bundle-version", [ bundle_name ]));
 }
 
-function extract_zapret2_bundle_version(bundle_name) {
-    return trim(helper_output("updates-zapret2-bundle-version", [ bundle_name ]));
-}
-
 function normalize_zapret_version(value) {
     return trim(helper_output("updates-normalize-zapret-version", [ value ]));
 }
@@ -854,20 +850,22 @@ function resolve_zapret_release(arch) {
 }
 
 function resolve_zapret2_release(arch) {
-    let releases_json = fetch_github_releases_json("remittor", "zapret-openwrt", "30");
-    if (releases_json == "")
+    let release_json = fetch_github_release_json("1andrevich", "zapret2-openwrt");
+    if (release_json == "")
         return null;
-    let resolved = trim(helper_output_input(releases_json, "named-release-select-asset", [ "zapret2 ", "zapret2", "zip", arch.candidates ]));
+    let asset_ext = is_apk() ? "apk" : "ipk";
+    let resolved = trim(helper_output_input(release_json, "release-select-arch-suffix-asset", [ asset_ext, arch.candidates ]));
     let fields = split(resolved, "\t");
-    if (length(fields) < 4)
+    if (length(fields) < 5)
         return null;
-    let version = extract_zapret2_bundle_version(fields[1]);
+    // The assets carry no version, only the release tag does.
+    let version = normalize_zapret_version(fields[4]);
     if (version == "")
-        version = trim(helper_output("string-remove-suffix", [ fields[1], ".zip" ]));
+        return null;
     return {
         arch: fields[0],
-        bundle_name: fields[1],
-        bundle_url: fields[2],
+        package_name: fields[1],
+        package_url: fields[2],
         release_url: fields[3],
         version
     };
@@ -892,7 +890,7 @@ function download_and_extract_zip_package(release, component) {
 
     let version = as_string(release.version || "");
     if (version == "")
-        version = component == "zapret2" ? extract_zapret2_bundle_version(release.bundle_name) : extract_zapret_bundle_version(release.bundle_name);
+        version = extract_zapret_bundle_version(release.bundle_name);
     if (version == "")
         version = extract_arch_package_version(package_name, release.arch);
 
@@ -901,6 +899,12 @@ function download_and_extract_zip_package(release, component) {
         file: package_file,
         version
     };
+}
+
+function download_zapret_bundle_package(release, component, action) {
+    if (!ensure_package_tool("unzip", "unzip", component, action))
+        action_fail(component, action, "Failed to install unzip");
+    return download_and_extract_zip_package(release, component);
 }
 
 function resolve_byedpi_release(arch) {
@@ -922,7 +926,7 @@ function resolve_byedpi_release(arch) {
     };
 }
 
-function download_byedpi_package(release) {
+function download_release_package(release) {
     let package_file = tmp_dir + "/" + release.package_name;
     if (!download_with_retry(release.package_url, package_file, release.package_name) || !file_nonempty(package_file))
         return null;
@@ -952,7 +956,7 @@ function provider_package_version(runtime_module) {
     return trim(module_output([ runtime_module, "package-version" ]));
 }
 
-function install_zapret_like(component, action, runtime_module, resolve_fn, label) {
+function install_zapret_like(component, action, runtime_module, resolve_fn, download_fn, label) {
     init_tmp_dir() || action_fail(component, action, "Failed to create temporary directory");
     let arch = resolve_arch_candidates();
     if (arch == null)
@@ -973,9 +977,7 @@ function install_zapret_like(component, action, runtime_module, resolve_fn, labe
         check_success_compared(component, current_version, release.version, normalize_zapret_version(current_version), normalize_zapret_version(release.version), release.release_url || "");
     }
 
-    if (!ensure_package_tool("unzip", "unzip", component, action))
-        action_fail(component, action, "Failed to install unzip");
-    let pkg = download_and_extract_zip_package(release, component);
+    let pkg = download_fn(release, component, action);
     if (pkg == null)
         action_fail(component, action, "Failed to download " + label + " package", current_version, release.version, "", release.release_url || "");
 
@@ -992,11 +994,11 @@ function install_zapret_like(component, action, runtime_module, resolve_fn, labe
 }
 
 function install_zapret(action) {
-    install_zapret_like("zapret", action, LIB_DIR + "/providers/zapret/runtime.uc", resolve_zapret_release, "zapret");
+    install_zapret_like("zapret", action, LIB_DIR + "/providers/zapret/runtime.uc", resolve_zapret_release, download_zapret_bundle_package, "zapret");
 }
 
 function install_zapret2(action) {
-    install_zapret_like("zapret2", action, LIB_DIR + "/providers/zapret2/runtime.uc", resolve_zapret2_release, "zapret2");
+    install_zapret_like("zapret2", action, LIB_DIR + "/providers/zapret2/runtime.uc", resolve_zapret2_release, download_release_package, "zapret2");
 }
 
 function install_byedpi(action) {
@@ -1021,7 +1023,7 @@ function install_byedpi(action) {
         check_success("byedpi", current_version, release.version, release.release_url || "");
     }
 
-    let pkg = download_byedpi_package(release);
+    let pkg = download_release_package(release);
     if (pkg == null)
         action_fail("byedpi", action, "Failed to download ByeDPI package");
     if (!run_logged("Installing ByeDPI package " + pkg.name, pkg_install_files_command([ pkg.file ])))
