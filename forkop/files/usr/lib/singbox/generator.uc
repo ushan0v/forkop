@@ -1240,6 +1240,32 @@ function dashboard_filtered_outbounds(section, selector_tags, state, group_outbo
     );
 }
 
+// Section-level exclusions define the pool of servers the whole section may use: a server excluded
+// here must not stay reachable through an URLTest or Priority group either. Only the exclude half is
+// propagated - the include half may be group based, and group membership is only known once the
+// groups themselves are built.
+function section_pool_candidate_outbounds(section, urltest_candidate_tags, state) {
+    if (!filter_mode_uses_exclude(connections.dashboard_filter_mode(section)))
+        return urltest_candidate_tags;
+
+    return filter_candidate_outbounds(
+        "exclude",
+        urltest_candidate_tags,
+        object_or_empty(object_or_empty(state.outboundMetadata).names),
+        dashboard_country_metadata(section, state),
+        object_or_empty(state.outboundMetadata),
+        // include side is unused in "exclude" mode
+        [], [], [], false, [], [], [],
+        connections.dashboard_exclude_outbounds(section),
+        connections.dashboard_exclude_regex(section),
+        connections.dashboard_exclude_countries(section),
+        connections.dashboard_exclude_proxy_parameters(section),
+        connections.dashboard_exclude_protocols(section),
+        connections.dashboard_exclude_transports(section),
+        connections.dashboard_exclude_securities(section)
+    );
+}
+
 function priority_levels_with_outbounds(group_id, urltest_candidate_tags, state) {
     let result = [];
     let assigned = {};
@@ -1389,9 +1415,10 @@ function add_proxy_selector(config, section, selector_tags, urltest_candidate_ta
     let urltest_tags = [];
     let priority_tags = [];
     let group_outbounds = {};
+    let group_candidate_tags = section_pool_candidate_outbounds(section, urltest_candidate_tags, state);
 
     for (let urltest_id in connections.urltests(section)) {
-        let urltest = add_urltest_outbound(config, section, urltest_id, urltest_candidate_tags, state);
+        let urltest = add_urltest_outbound(config, section, urltest_id, group_candidate_tags, state);
         remember_dashboard_group_outbounds(
             group_outbounds,
             connections.urltest_display_name(section, urltest_id),
@@ -1404,7 +1431,7 @@ function add_proxy_selector(config, section, selector_tags, urltest_candidate_ta
     }
 
     for (let group_id in connections.priority_groups(section)) {
-        let priority = add_priority_group_outbound(config, section, group_id, urltest_candidate_tags, state);
+        let priority = add_priority_group_outbound(config, section, group_id, group_candidate_tags, state);
         remember_dashboard_group_outbounds(
             group_outbounds,
             connections.priority_group_display_name(section, group_id),

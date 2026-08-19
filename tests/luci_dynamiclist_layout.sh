@@ -72,7 +72,7 @@ grep -Fq '"dashboard_filter_mode"' <<<"$dashboard_options" ||
   fail "section settings must expose the dashboard server filter"
 grep -Fq '_("Servers on dashboard")' <<<"$dashboard_options" ||
   fail "dashboard server filter must use the requested section-level label"
-grep -Fq '_("Filter the servers that will be displayed on the dashboard.")' <<<"$dashboard_options" ||
+grep -Fq '_("Filter the servers that will be displayed on the dashboard. Excluded servers are also removed from the URLTest and Priority groups of this section.")' <<<"$dashboard_options" ||
   fail "dashboard server filter must use the requested description"
 grep -Fq 'option.modalonly = true;' <<<"$dashboard_options" ||
   fail "dashboard server filter options must stay inside the section modal"

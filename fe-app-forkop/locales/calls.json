@@ -1756,10 +1756,10 @@
     ]
   },
   {
-    "call": "Filter the servers that will be displayed on the dashboard.",
-    "key": "Filter the servers that will be displayed on the dashboard.",
+    "call": "Filter the servers that will be displayed on the dashboard. Excluded servers are also removed from the URLTest and Priority groups of this section.",
+    "key": "Filter the servers that will be displayed on the dashboard. Excluded servers are also removed from the URLTest and Priority groups of this section.",
     "places": [
-      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:3142"
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:3164"
     ]
   },
   {
