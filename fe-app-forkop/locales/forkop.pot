@@ -1064,8 +1064,8 @@ msgstr ""
 msgid "Fastest"
 msgstr ""
 
-#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:3142
-msgid "Filter the servers that will be displayed on the dashboard."
+#: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:3164
+msgid "Filter the servers that will be displayed on the dashboard. Excluded servers are also removed from the URLTest and Priority groups of this section."
 msgstr ""
 
 #: src/forkop/tabs/diagnostic/checks/runInboundsCheck.ts:136

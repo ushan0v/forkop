@@ -725,8 +725,8 @@ msgstr "Интервал поиска более быстрого сервера
 msgid "Fastest"
 msgstr "Самый быстрый"
 
-msgid "Filter the servers that will be displayed on the dashboard."
-msgstr "Отфильтровать серверы, которые будут отображаться в дашборде."
+msgid "Filter the servers that will be displayed on the dashboard. Excluded servers are also removed from the URLTest and Priority groups of this section."
+msgstr "Отфильтровать серверы, которые будут отображаться в дашборде. Исключённые серверы также убираются из URLTest и Приоритет групп этой секции."
 
 msgid "Firewall WAN port"
 msgstr "Порт в firewall для WAN"

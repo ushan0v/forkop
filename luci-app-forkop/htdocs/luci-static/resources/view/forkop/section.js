@@ -3161,7 +3161,7 @@ function addDashboardServerFilterOptions(section) {
     form.ListValue,
     "dashboard_filter_mode",
     _("Servers on dashboard"),
-    _("Filter the servers that will be displayed on the dashboard."),
+    _("Filter the servers that will be displayed on the dashboard. Excluded servers are also removed from the URLTest and Priority groups of this section."),
   );
   urlTestFilterModeChoices().forEach((choice) =>
     o.value(choice.value, choice.label),
