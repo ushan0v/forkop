@@ -9,16 +9,31 @@
         "/var/run/forkop/section-cache/*": [
           "read"
         ],
+        "/tmp/run/forkop/section-cache/*": [
+          "read"
+        ],
         "/var/run/forkop/component-actions/*": [
+          "read"
+        ],
+        "/tmp/run/forkop/component-actions/*": [
           "read"
         ],
         "/var/run/forkop/ui-state/*": [
           "read"
         ],
+        "/tmp/run/forkop/ui-state/*": [
+          "read"
+        ],
         "/var/run/forkop/ui-state/service-actions/*": [
           "read"
         ],
+        "/tmp/run/forkop/ui-state/service-actions/*": [
+          "read"
+        ],
         "/var/run/forkop/ui-state/latency-actions/*": [
+          "read"
+        ],
+        "/tmp/run/forkop/ui-state/latency-actions/*": [
           "read"
         ],
         "/usr/bin/forkop": [
@@ -46,10 +61,19 @@
         "/var/run/forkop/ui-state/*": [
           "write"
         ],
+        "/tmp/run/forkop/ui-state/*": [
+          "write"
+        ],
         "/var/run/forkop/ui-state/service-actions/*": [
           "write"
         ],
+        "/tmp/run/forkop/ui-state/service-actions/*": [
+          "write"
+        ],
         "/var/run/forkop/ui-state/latency-actions/*": [
+          "write"
+        ],
+        "/tmp/run/forkop/ui-state/latency-actions/*": [
           "write"
         ]
       },
