@@ -390,6 +390,8 @@ function managed_service_installed() {
 }
 
 function managed_service_text() {
+    // sing-box persists the FakeIP allocator metadata during graceful shutdown.
+    // Give large configurations more than procd's five-second default before SIGKILL.
     return "#!/bin/sh /etc/rc.common\n" +
         "# " + SB_MANAGED_SERVICE_MARKER + "\n\n" +
         "USE_PROCD=1\n" +
@@ -410,6 +412,7 @@ function managed_service_text() {
         "    procd_set_param stderr \"$log_stderr\"\n" +
         "    procd_set_param limits core=\"unlimited\"\n" +
         "    procd_set_param limits nofile=\"1000000 1000000\"\n" +
+        "    procd_set_param term_timeout 30\n" +
         "    procd_set_param respawn\n" +
         "    procd_close_instance\n" +
         "}\n\n" +

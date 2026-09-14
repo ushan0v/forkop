@@ -56,6 +56,8 @@ grep -Fq 'require("core.uci")' "$SINGBOX_GENERATOR_UC" ||
   fail "singbox/generator.uc must import core.uci"
 grep -Fq 'FORKOP_RULE_CONDITION_CACHE_DIR' "$LIFECYCLE_UC" ||
   fail "service/lifecycle.uc must pass rule-condition cache dir through module environment"
+grep -Fq 'procd_set_param term_timeout 30' "$SINGBOX_RUNTIME_UC" ||
+  fail "managed sing-box service must allow enough time for graceful cache persistence"
 if awk '
 /"write-current-reload-state-clean"|"write-captured-reload-state"/ {
   in_block = 1
