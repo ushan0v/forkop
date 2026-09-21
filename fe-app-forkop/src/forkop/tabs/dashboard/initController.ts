@@ -1120,36 +1120,54 @@ function renderPriorityInfoModal(outbound: Forkop.Outbound) {
       label: _('Selected'),
       children: [renderPrioritySelectedValue(info)],
     },
-    { label: _('Check URL'), children: [renderDetailsUrl(info.healthUrl)] },
-    {
-      label: _('Check interval'),
-      value: info.activeCheckInterval,
-    },
-    { label: _('Unavailability timeout'), value: info.checkTimeout },
-    {
-      label: _('Higher-level check interval'),
-      value: info.recoveryCheckInterval,
-    },
-    {
-      label: _('Select the fastest node'),
-      value: info.pickFastest,
-    },
-    {
-      label: _('Automatically select the fastest node in the current level'),
-      value: info.switchToFasterSamePriority,
-    },
-    ...(info.switchToFasterSamePriority
+    ...(info.implementation === 'native_fallback'
       ? [
           {
-            label: _('Faster server search interval'),
-            value: info.fastestCheckInterval,
+            label: _('Failed server retry interval'),
+            value: info.blacklistTimeout,
+          },
+        ]
+      : [
+          {
+            label: _('Check URL'),
+            children: [renderDetailsUrl(info.healthUrl)],
+          },
+          {
+            label: _('Check interval'),
+            value: info.activeCheckInterval,
+          },
+          { label: _('Unavailability timeout'), value: info.checkTimeout },
+          {
+            label: _('Higher-level check interval'),
+            value: info.recoveryCheckInterval,
+          },
+          {
+            label: _('Select the fastest node'),
+            value: info.pickFastest,
+          },
+          {
+            label: _(
+              'Automatically select the fastest node in the current level',
+            ),
+            value: info.switchToFasterSamePriority,
+          },
+          ...(info.switchToFasterSamePriority
+            ? [
+                {
+                  label: _('Faster server search interval'),
+                  value: info.fastestCheckInterval,
+                },
+              ]
+            : []),
+        ]),
+    ...(info.implementation === 'watchdog'
+      ? [
+          {
+            label: _('Interrupt connections'),
+            value: info.interruptExistConnections,
           },
         ]
       : []),
-    {
-      label: _('Interrupt connections'),
-      value: info.interruptExistConnections,
-    },
   ];
 
   return E('div', { class: 'fkp_dashboard-page__urltest-details' }, [

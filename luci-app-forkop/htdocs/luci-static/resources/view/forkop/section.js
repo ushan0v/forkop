@@ -2156,9 +2156,11 @@ function urlTestChildDefaults() {
 function priorityGroupSettingsKeys() {
   return [
     "name",
+    "implementation",
     "health_url",
     "active_check_interval",
     "check_timeout",
+    "blacklist_timeout",
     "recovery_check_interval",
     "pick_fastest",
     "switch_to_faster_same_priority",
@@ -2171,9 +2173,11 @@ function priorityGroupSettingsKeys() {
 function defaultPriorityGroupSettings() {
   return {
     name: "",
+    implementation: "watchdog",
     health_url: "https://www.gstatic.com/generate_204",
     active_check_interval: "5s",
     check_timeout: "2s",
+    blacklist_timeout: "1m",
     recovery_check_interval: "15s",
     pick_fastest: "0",
     switch_to_faster_same_priority: "0",
@@ -2185,9 +2189,11 @@ function defaultPriorityGroupSettings() {
 
 function priorityGroupChildDefaults() {
   return {
+    implementation: "watchdog",
     health_url: "https://www.gstatic.com/generate_204",
     active_check_interval: "5s",
     check_timeout: "2s",
+    blacklist_timeout: "1m",
     recovery_check_interval: "15s",
     pick_fastest: "0",
     switch_to_faster_same_priority: "0",
@@ -2933,6 +2939,19 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   };
 
   o = itemSection.option(
+    form.ListValue,
+    "implementation",
+    _("Failover implementation"),
+    _(
+      "Native fallback reacts to real connection failures and requires sing-box extended. The watchdog mode works with all supported sing-box variants.",
+    ),
+  );
+  o.value("watchdog", _("Forkop watchdog"));
+  o.value("native_fallback", _("Native fallback (sing-box extended)"));
+  o.default = "watchdog";
+  o.rmempty = false;
+
+  o = itemSection.option(
     form.Value,
     "health_url",
     _("Check URL"),
@@ -2940,6 +2959,7 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   );
   o.default = "https://www.gstatic.com/generate_204";
   o.rmempty = false;
+  o.depends("implementation", "watchdog");
   urlTestUrlChoices().forEach((value) => o.value(value));
   o.validate = function (_itemId, value) {
     return validateUrlTestUrl(value);
@@ -2953,6 +2973,20 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   );
   o.default = "5s";
   o.rmempty = false;
+  o.depends("implementation", "watchdog");
+  o.validate = function (_itemId, value) {
+    return validateRequiredSingBoxDuration(value);
+  };
+
+  o = itemSection.option(
+    form.Value,
+    "blacklist_timeout",
+    _("Failed server retry interval"),
+    _("After a connection failure, retry the skipped server after this duration"),
+  );
+  o.depends("implementation", "native_fallback");
+  o.default = "1m";
+  o.rmempty = false;
   o.validate = function (_itemId, value) {
     return validateRequiredSingBoxDuration(value);
   };
@@ -2965,6 +2999,7 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   );
   o.default = "2s";
   o.rmempty = false;
+  o.depends("implementation", "watchdog");
   o.validate = function (_itemId, value) {
     return validateRequiredSingBoxDuration(value);
   };
@@ -2979,6 +3014,7 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   );
   o.default = "15s";
   o.rmempty = false;
+  o.depends("implementation", "watchdog");
   o.validate = function (_itemId, value) {
     return validateRequiredSingBoxDuration(value);
   };
@@ -2993,6 +3029,7 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   );
   o.default = "0";
   o.rmempty = false;
+  o.depends("implementation", "watchdog");
 
   o = itemSection.option(
     form.Flag,
@@ -3004,6 +3041,7 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   );
   o.default = "0";
   o.rmempty = false;
+  o.depends("implementation", "watchdog");
 
   o = itemSection.option(
     form.Value,
@@ -3011,7 +3049,7 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
     _("Faster server search interval"),
     _("Use sing-box duration format like 1d, 12h or 30m"),
   );
-  o.depends("switch_to_faster_same_priority", "1");
+  o.depends({ implementation: "watchdog", switch_to_faster_same_priority: "1" });
   o.default = "3m";
   o.rmempty = false;
   o.validate = function (itemId, value) {
@@ -3029,6 +3067,7 @@ function addPriorityGroupItemOptions(itemSection, options = {}) {
   );
   o.default = "1";
   o.rmempty = false;
+  o.depends("implementation", "watchdog");
 
   o = itemSection.option(
     form.Flag,
