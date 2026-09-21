@@ -147,6 +147,7 @@ function normalize_group(group, tag_name) {
         id: as_string(group.id || ""),
         tag: as_string(group.tag || tag_name),
         section: as_string(group.section || ""),
+        implementation: as_string(group.implementation || "watchdog"),
         displayName: as_string(group.displayName || group.name || tag_name),
         health_url: as_string(group.health_url || "https://www.gstatic.com/generate_204"),
         active_check_interval: as_string(group.active_check_interval || "5s"),
@@ -186,7 +187,7 @@ function priority_groups_from_cache() {
         let cache = object_or_empty(read_json_file(path));
         for (let tag_name, group in object_or_empty(cache.priorityGroups)) {
             let normalized = normalize_group(group, tag_name);
-            if (normalized.tag != "" && length(normalized.levels) > 0)
+            if (normalized.implementation == "watchdog" && normalized.tag != "" && length(normalized.levels) > 0)
                 push(result, normalized);
         }
     }

@@ -5549,5 +5549,48 @@
     "places": [
       "src/forkop/tabs/diagnostic/checks/runZapret2Check.ts:107"
     ]
+  },
+  {
+    "call": "Failover implementation",
+    "key": "Failover implementation",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2947"
+    ]
+  },
+  {
+    "call": "Forkop watchdog",
+    "key": "Forkop watchdog",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2952"
+    ]
+  },
+  {
+    "call": "Failed server retry interval",
+    "key": "Failed server retry interval",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2984",
+      "src/forkop/tabs/dashboard/initController.ts:1128"
+    ]
+  },
+  {
+    "call": "Native fallback (sing-box extended)",
+    "key": "Native fallback (sing-box extended)",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2953"
+    ]
+  },
+  {
+    "call": "Native fallback reacts to real connection failures and requires sing-box extended. The watchdog mode works with all supported sing-box variants.",
+    "key": "Native fallback reacts to real connection failures and requires sing-box extended. The watchdog mode works with all supported sing-box variants.",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2949"
+    ]
+  },
+  {
+    "call": "After a connection failure, retry the skipped server after this duration",
+    "key": "After a connection failure, retry the skipped server after this duration",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2985"
+    ]
   }
 ]

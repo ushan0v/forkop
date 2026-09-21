@@ -149,11 +149,13 @@ export namespace Forkop {
   export interface PriorityInfo {
     code: string;
     displayName: string;
+    implementation: 'watchdog' | 'native_fallback';
     selectedCode?: string;
     selectedName?: string;
     healthUrl?: string;
     activeCheckInterval?: string;
     checkTimeout?: string;
+    blacklistTimeout?: string;
     recoveryCheckInterval?: string;
     pickFastest?: boolean;
     switchToFasterSamePriority?: boolean;
@@ -325,8 +327,10 @@ export namespace Forkop {
     order?: string;
     direct?: '0' | '1';
     health_url?: string;
+    implementation?: 'watchdog' | 'native_fallback';
     active_check_interval?: string;
     check_timeout?: string;
+    blacklist_timeout?: string;
     recovery_check_interval?: string;
     pick_fastest?: '0' | '1';
     switch_to_faster_same_priority?: '0' | '1';

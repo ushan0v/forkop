@@ -1053,6 +1053,8 @@ function priority_groups_signature(section) {
         push(result, {
             id: group_id,
             display_name: connections.priority_group_display_name(section, group_id),
+            implementation: connections.priority_group_implementation(section, group_id),
+            blacklist_timeout: connections.priority_group_blacklist_timeout(section, group_id),
             health_url: connections.priority_group_health_url(section, group_id),
             active_check_interval: connections.priority_group_active_check_interval(section, group_id),
             check_timeout: connections.priority_group_check_timeout(section, group_id),

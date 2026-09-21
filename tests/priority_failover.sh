@@ -21,10 +21,11 @@ fail() {
 generate_config() {
   local fixture="$1"
   local output="$2"
+  local supports_extended="${3:-}"
 
   mkdir -p "${output}.section-cache"
   ucode -L "$FORKOP_LIB" "$GENERATOR_UC" generate-config-fixture \
-    "$fixture" "$output" "127.0.0.1"
+    "$fixture" "$output" "127.0.0.1" "0" "$supports_extended"
 }
 
 validate_fixture() {
@@ -214,6 +215,63 @@ if (cached.levels[0].detect_server_country != "country_is" || cached.levels[1].d
 assert_array(cached.levels[0].outbounds, [ "proxy-2-out" ], "upper level outbounds");
 assert_array(cached.levels[1].outbounds, [ "proxy-3-out" ], "lower level outbounds");
 ' "$output" "$output.section-cache/proxy.json" || fail "priority selector generation"
+
+node - "$WORK_DIR/fixture.json" "$WORK_DIR/native-fallback.json" <<'JS'
+const fs = require('fs');
+const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+input.priority_group = input.priority_group.filter((group) => group['.name'] === 'pg_main');
+input.priority_group[0].implementation = 'native_fallback';
+input.priority_group[0].blacklist_timeout = '1m';
+input.priority_level = input.priority_level.filter((level) => level.group === 'pg_main');
+fs.writeFileSync(process.argv[3], JSON.stringify(input));
+JS
+
+validate_fixture "$WORK_DIR/native-fallback.json"
+native_output="$WORK_DIR/native-fallback-config.json"
+generate_config "$WORK_DIR/native-fallback.json" "$native_output"
+ucode -e '
+let fs = require("fs");
+
+function fail(message) {
+    die(message + "\n");
+}
+
+function outbound_by_tag(config, tag_name) {
+    for (let outbound in config.outbounds || [])
+        if (outbound && outbound.tag == tag_name)
+            return outbound;
+    return null;
+}
+
+let config = json(fs.readfile(ARGV[0]));
+let cache = json(fs.readfile(ARGV[1]));
+let fallback = outbound_by_tag(config, "proxy-priority-pg_main-out");
+if (!fallback || fallback.type != "fallback")
+    fail("native priority group must generate a fallback outbound");
+if (length(fallback.outbounds || []) != 2 || fallback.outbounds[0] != "proxy-2-out" || fallback.outbounds[1] != "proxy-3-out")
+    fail("native fallback should flatten levels in priority order: " + sprintf("%J", fallback.outbounds));
+if (fallback.blacklist_timeout != "1m")
+    fail("native fallback retry interval mismatch: " + sprintf("%J", fallback));
+if (fallback.levels != null || fallback.url != null || fallback.interrupt_exist_connections != null)
+    fail("native fallback must use the released sing-box extended schema");
+let cached = (cache.priorityGroups || {})[fallback.tag];
+if (!cached || cached.implementation != "native_fallback" || cached.blacklist_timeout != "1m")
+    fail("native fallback dashboard metadata mismatch: " + sprintf("%J", cached));
+' "$native_output" "$native_output.section-cache/proxy.json" || fail "native fallback generation"
+
+node - "$WORK_DIR/native-fallback.json" "$WORK_DIR/invalid-native-fallback.json" <<'JS'
+const fs = require('fs');
+const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+input.priority_group[0].blacklist_timeout = '0';
+fs.writeFileSync(process.argv[3], JSON.stringify(input));
+JS
+assert_rejects "invalid native fallback retry interval" "$WORK_DIR/invalid-native-fallback.json" "blacklist_timeout"
+
+if native_error="$(generate_config "$WORK_DIR/native-fallback.json" "$WORK_DIR/native-stable-config.json" "0" 2>&1)"; then
+  fail "native fallback should be rejected when sing-box extended is unavailable"
+fi
+printf '%s\n' "$native_error" | grep -Fq "native fallback, but sing-box-extended is not installed" ||
+  fail "native fallback rejection should explain the sing-box extended requirement"
 
 cat >"$WORK_DIR/group-no-levels.json" <<'JSON'
 {

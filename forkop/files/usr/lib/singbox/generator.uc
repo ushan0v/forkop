@@ -1341,20 +1341,38 @@ function add_priority_group_outbound(config, section, group_id, urltest_candidat
     let outbounds = priority_group_outbounds(levels);
     let priority_tag = priority_outbound_tag(section_name, group_id);
     let display_name = connections.priority_group_display_name(section, group_id);
-    let outbound = {
-        type: "selector",
-        tag: priority_tag,
-        outbounds,
-        default: outbounds[0],
-        interrupt_exist_connections: connections.priority_group_interrupt_exist_connections(section, group_id)
-    };
+    let implementation = connections.priority_group_implementation(section, group_id);
+    let interrupt_exist_connections = connections.priority_group_interrupt_exist_connections(section, group_id);
+    let outbound;
+
+    if (implementation == "native_fallback") {
+        if (!runtime_supports_xhttp)
+            runtime_generate_unsupported("Priority group '" + display_name + "' uses native fallback, but sing-box-extended is not installed");
+        outbound = {
+            type: "fallback",
+            tag: priority_tag,
+            outbounds,
+            blacklist_timeout: connections.priority_group_blacklist_timeout(section, group_id)
+        };
+    }
+    else {
+        outbound = {
+            type: "selector",
+            tag: priority_tag,
+            outbounds,
+            default: outbounds[0],
+            interrupt_exist_connections
+        };
+    }
 
     runtime_subscription.remember_outbound_metadata(state, priority_tag, display_name, outbound);
-    runtime_subscription.remember_priority_group(state, priority_tag, {
+    let priority_metadata = {
         id: group_id,
         tag: priority_tag,
         section: section_name,
         displayName: display_name,
+        implementation,
+        blacklist_timeout: connections.priority_group_blacklist_timeout(section, group_id),
         health_url: connections.priority_group_health_url(section, group_id),
         active_check_interval: connections.priority_group_active_check_interval(section, group_id),
         check_timeout: connections.priority_group_check_timeout(section, group_id),
@@ -1362,11 +1380,12 @@ function add_priority_group_outbound(config, section, group_id, urltest_candidat
         pick_fastest: connections.priority_group_pick_fastest(section, group_id),
         switch_to_faster_same_priority: connections.priority_group_switch_to_faster_same_priority(section, group_id),
         fastest_check_interval: connections.priority_group_fastest_check_interval(section, group_id),
-        interrupt_exist_connections: connections.priority_group_interrupt_exist_connections(section, group_id),
+        interrupt_exist_connections: implementation == "watchdog" && interrupt_exist_connections,
         pin_dashboard: connections.priority_group_pin_dashboard(section, group_id),
         outbounds,
         levels
-    });
+    };
+    runtime_subscription.remember_priority_group(state, priority_tag, priority_metadata);
 
     if (length(outbounds) == 0)
         return {

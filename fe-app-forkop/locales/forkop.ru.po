@@ -2275,3 +2275,21 @@ msgstr "sing-box outbound для Zapret2 настроен"
 
 msgid "Zapret2 sing-box outbound is not configured"
 msgstr "sing-box outbound для Zapret2 не настроен"
+
+msgid "Failover implementation"
+msgstr "Реализация переключения при сбое"
+
+msgid "Forkop watchdog"
+msgstr "Контроль Forkop"
+
+msgid "Failed server retry interval"
+msgstr "Интервал повторной попытки для недоступного сервера"
+
+msgid "After a connection failure, retry the skipped server after this duration"
+msgstr "После ошибки соединения повторять попытку через этот интервал"
+
+msgid "Native fallback (sing-box extended)"
+msgstr "Нативный fallback (sing-box extended)"
+
+msgid "Native fallback reacts to real connection failures and requires sing-box extended. The watchdog mode works with all supported sing-box variants."
+msgstr "Нативный fallback реагирует на реальные ошибки соединения и требует sing-box extended. Режим контроля Forkop работает со всеми поддерживаемыми вариантами sing-box."

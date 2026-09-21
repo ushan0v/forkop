@@ -884,6 +884,11 @@ function priority_group_display_name(section, value) {
     return child != null ? child_option(child, "name", as_string(value)) : as_string(value);
 }
 
+function priority_group_implementation(section, value) {
+    let child = priority_group_child(section, value);
+    return child != null ? child_option(child, "implementation", "watchdog") : "watchdog";
+}
+
 function priority_group_health_url(section, value) {
     let child = priority_group_child(section, value);
     return child != null ? child_option(child, "health_url", "https://www.gstatic.com/generate_204") : "https://www.gstatic.com/generate_204";
@@ -897,6 +902,11 @@ function priority_group_active_check_interval(section, value) {
 function priority_group_check_timeout(section, value) {
     let child = priority_group_child(section, value);
     return child != null ? child_option(child, "check_timeout", "2s") : "2s";
+}
+
+function priority_group_blacklist_timeout(section, value) {
+    let child = priority_group_child(section, value);
+    return child != null ? child_option(child, "blacklist_timeout", "1m") : "1m";
 }
 
 function priority_group_recovery_check_interval(section, value) {
@@ -1166,9 +1176,11 @@ return {
     priority_group_settings,
     priority_levels,
     priority_group_display_name,
+    priority_group_implementation,
     priority_group_health_url,
     priority_group_active_check_interval,
     priority_group_check_timeout,
+    priority_group_blacklist_timeout,
     priority_group_recovery_check_interval,
     priority_group_pick_fastest,
     priority_group_switch_to_faster_same_priority,

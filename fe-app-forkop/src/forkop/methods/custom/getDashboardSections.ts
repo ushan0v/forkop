@@ -60,6 +60,8 @@ type PriorityCacheGroup = {
   tag?: string;
   section?: string;
   displayName?: string;
+  implementation?: 'watchdog' | 'native_fallback';
+  blacklist_timeout?: string;
   health_url?: string;
   active_check_interval?: string;
   check_timeout?: string;
@@ -105,11 +107,13 @@ type PriorityConfig = {
   id: string;
   code: string;
   displayName: string;
+  implementation: 'watchdog' | 'native_fallback';
   settings: ItemSettings;
   pinDashboard: boolean;
   healthUrl: string;
   activeCheckInterval: string;
   checkTimeout: string;
+  blacklistTimeout: string;
   recoveryCheckInterval: string;
   pickFastest: boolean;
   switchToFasterSamePriority: boolean;
@@ -330,6 +334,8 @@ function hydrateConfigSections(configSections: Forkop.ConfigSection[]) {
 
         settings[groupId] = {
           name: item.name,
+          implementation: item.implementation,
+          blacklist_timeout: item.blacklist_timeout,
           health_url: item.health_url,
           active_check_interval: item.active_check_interval,
           check_timeout: item.check_timeout,
@@ -742,6 +748,11 @@ function getPriorityConfigs(section: Forkop.ConfigSection): PriorityConfig[] {
       id,
       code: getPriorityTag(sectionName, id),
       displayName: itemSettingString(settings, 'name', id),
+      implementation:
+        itemSettingString(settings, 'implementation', 'watchdog') ===
+        'native_fallback'
+          ? 'native_fallback'
+          : 'watchdog',
       settings,
       pinDashboard: itemSettingBoolean(settings, 'pin_dashboard', true),
       healthUrl: itemSettingString(
@@ -755,6 +766,7 @@ function getPriorityConfigs(section: Forkop.ConfigSection): PriorityConfig[] {
         '5s',
       ),
       checkTimeout: itemSettingString(settings, 'check_timeout', '2s'),
+      blacklistTimeout: itemSettingString(settings, 'blacklist_timeout', '1m'),
       recoveryCheckInterval: itemSettingString(
         settings,
         'recovery_check_interval',
@@ -1039,12 +1051,14 @@ function buildPriorityInfo({
   return {
     code: config.code,
     displayName: groupCache?.displayName || config.displayName,
+    implementation: groupCache?.implementation || config.implementation,
     selectedCode: selectedCode || undefined,
     selectedName: selectedName || undefined,
     healthUrl: groupCache?.health_url || config.healthUrl,
     activeCheckInterval:
       groupCache?.active_check_interval || config.activeCheckInterval,
     checkTimeout: groupCache?.check_timeout || config.checkTimeout,
+    blacklistTimeout: groupCache?.blacklist_timeout || config.blacklistTimeout,
     recoveryCheckInterval:
       groupCache?.recovery_check_interval || config.recoveryCheckInterval,
     pickFastest: groupCache?.pick_fastest ?? config.pickFastest,

@@ -78,9 +78,11 @@ function priorityGroup(
     '.type': 'priority_group',
     section: 'main',
     name: 'Codex Priority',
+    implementation: 'watchdog',
     health_url: 'https://priority.example/204',
     active_check_interval: '5s',
     check_timeout: '2s',
+    blacklist_timeout: '1m',
     recovery_check_interval: '15s',
     pick_fastest: '0',
     switch_to_faster_same_priority: '0',
@@ -387,11 +389,13 @@ describe('getDashboardSections', () => {
       selected: true,
     });
     expect(priority?.priorityInfo).toMatchObject({
+      implementation: 'watchdog',
       selectedCode: 'main-2-out',
       selectedName: 'Second cached',
       healthUrl: 'https://priority.example/204',
       activeCheckInterval: '5s',
       checkTimeout: '2s',
+      blacklistTimeout: '1m',
       recoveryCheckInterval: '15s',
       pickFastest: false,
       interruptExistConnections: true,
@@ -466,6 +470,65 @@ describe('getDashboardSections', () => {
     });
     expect(priority?.priorityInfo?.selectedName).toBeUndefined();
     expect(priority?.priorityInfo?.outbounds).toEqual([]);
+  });
+
+  it('shows native fallback settings and the selected node', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({ urltests: [], urltest_settings: undefined }),
+      priorityGroup('pg_native', {
+        implementation: 'native_fallback',
+        blacklist_timeout: '1m',
+      }),
+      priorityLevel('pl_native', { name: 'Primary', order: '0' }),
+    ]);
+    mocks.getClashApiProxies.mockResolvedValue({
+      success: true,
+      data: {
+        proxies: {
+          ...clashProxies,
+          'main-out': proxy('Selector', {
+            name: 'main-out',
+            now: 'main-priority-pg_native-out',
+            all: ['main-priority-pg_native-out'],
+          }),
+          'main-priority-pg_native-out': proxy('Fallback', {
+            name: 'main-priority-pg_native-out',
+            now: 'main-1-out',
+            all: ['main-1-out'],
+          }),
+        },
+      },
+    });
+    mocks.fsRead.mockResolvedValue(
+      JSON.stringify({
+        priorityGroups: {
+          'main-priority-pg_native-out': {
+            implementation: 'native_fallback',
+            displayName: 'Codex Priority',
+            blacklist_timeout: '1m',
+            levels: [
+              {
+                id: 'pl_native',
+                displayName: 'Primary',
+                order: 0,
+                outbounds: ['main-1-out'],
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    const result = await getDashboardSections();
+    const priority = result.data[0].outbounds.find(
+      (item) => item.code === 'main-priority-pg_native-out',
+    );
+
+    expect(priority?.priorityInfo).toMatchObject({
+      implementation: 'native_fallback',
+      selectedCode: 'main-1-out',
+      blacklistTimeout: '1m',
+    });
   });
 
   it('keeps legacy URLTest sections compatible before migration', async () => {

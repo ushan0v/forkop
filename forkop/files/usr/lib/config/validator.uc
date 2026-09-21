@@ -1110,19 +1110,34 @@ function validate_priority_level_order(value, section, group_id, level_id) {
     fail_validation("Invalid priority level order '" + value + "' in rule '" + section + "', priority '" + group_id + "', level '" + level_id + "'. Use a non-negative integer. Aborted.");
 }
 
+function validate_priority_group_implementation(value, section, group_id) {
+    value = trim(as_string(value));
+    if (value == "watchdog" || value == "native_fallback")
+        return;
+
+    fail_validation("Invalid priority implementation '" + value + "' in rule '" + section + "', priority '" + group_id + "'. Use watchdog or native_fallback. Aborted.");
+}
+
 function validate_priority_group(section, group_id) {
     let name = section_name(section);
     validate_priority_identifier_value(group_id, name);
+    let implementation = connections.priority_group_implementation(section, group_id);
 
     if (trim(connections.priority_group_display_name(section, group_id)) == "")
         fail_validation("Priority group '" + group_id + "' in rule '" + name + "' has no display name. Aborted.");
 
-    validate_http_url_option(connections.priority_group_health_url(section, group_id), "rule." + name + ".priority." + group_id + ".health_url");
-    validate_required_duration_option(connections.priority_group_active_check_interval(section, group_id), "rule." + name + ".priority." + group_id + ".active_check_interval");
-    validate_required_duration_option(connections.priority_group_check_timeout(section, group_id), "rule." + name + ".priority." + group_id + ".check_timeout");
-    validate_required_duration_option(connections.priority_group_recovery_check_interval(section, group_id), "rule." + name + ".priority." + group_id + ".recovery_check_interval");
-    if (connections.priority_group_switch_to_faster_same_priority(section, group_id))
-        validate_required_duration_option(connections.priority_group_fastest_check_interval(section, group_id), "rule." + name + ".priority." + group_id + ".fastest_check_interval");
+    validate_priority_group_implementation(implementation, name, group_id);
+    if (implementation == "native_fallback") {
+        validate_required_duration_option(connections.priority_group_blacklist_timeout(section, group_id), "rule." + name + ".priority." + group_id + ".blacklist_timeout");
+    }
+    else {
+        validate_http_url_option(connections.priority_group_health_url(section, group_id), "rule." + name + ".priority." + group_id + ".health_url");
+        validate_required_duration_option(connections.priority_group_active_check_interval(section, group_id), "rule." + name + ".priority." + group_id + ".active_check_interval");
+        validate_required_duration_option(connections.priority_group_check_timeout(section, group_id), "rule." + name + ".priority." + group_id + ".check_timeout");
+        validate_required_duration_option(connections.priority_group_recovery_check_interval(section, group_id), "rule." + name + ".priority." + group_id + ".recovery_check_interval");
+        if (connections.priority_group_switch_to_faster_same_priority(section, group_id))
+            validate_required_duration_option(connections.priority_group_fastest_check_interval(section, group_id), "rule." + name + ".priority." + group_id + ".fastest_check_interval");
+    }
 
     for (let level_id in connections.priority_levels(group_id)) {
         validate_priority_identifier_value(level_id, name);
