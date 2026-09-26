@@ -2275,3 +2275,15 @@ msgstr "sing-box outbound для Zapret2 настроен"
 
 msgid "Zapret2 sing-box outbound is not configured"
 msgstr "sing-box outbound для Zapret2 не настроен"
+
+msgid "DNS Failures Before Switching"
+msgstr "Ошибок DNS перед переключением"
+
+msgid "DNS Successful Checks Before Recovery"
+msgstr "Успешных проверок DNS перед восстановлением"
+
+msgid "Number of consecutive failed checks required before switching DNS servers."
+msgstr "Количество последовательных неудачных проверок, необходимое для переключения DNS-сервера."
+
+msgid "Number of consecutive successful checks required before returning to a higher-priority DNS server."
+msgstr "Количество последовательных успешных проверок, необходимое для возврата к DNS-серверу с более высоким приоритетом."

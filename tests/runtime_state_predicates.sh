@@ -574,6 +574,10 @@ prefer_ipv6
 60s
 [settings.dns_check_timeout]
 2s
+[settings.dns_failure_threshold]
+3
+[settings.dns_recovery_threshold]
+3
 [settings.dns_detour_enabled]
 0
 [settings.dns_rewrite_ttl]

@@ -171,6 +171,20 @@ cat >"$WORK_DIR/bad-dns-duration.json" <<'JSON'
 JSON
 assert_rejects "bad DNS interval" "$WORK_DIR/bad-dns-duration.json" "settings.dns_check_interval"
 
+cat >"$WORK_DIR/bad-dns-threshold.json" <<'JSON'
+{
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "dns_server": [ "1.1.1.1", "8.8.8.8" ],
+    "bootstrap_dns_server": [ "77.88.8.8" ],
+    "dns_failure_threshold": "0"
+  },
+  "section": []
+}
+JSON
+assert_rejects "bad DNS threshold" "$WORK_DIR/bad-dns-threshold.json" "dns_failure_threshold"
+
 cat >"$WORK_DIR/bad-dns-server.json" <<'JSON'
 {
   "settings": {

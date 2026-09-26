@@ -5549,5 +5549,33 @@
     "places": [
       "src/forkop/tabs/diagnostic/checks/runZapret2Check.ts:107"
     ]
+  },
+  {
+    "call": "DNS Failures Before Switching",
+    "key": "DNS Failures Before Switching",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:229"
+    ]
+  },
+  {
+    "call": "DNS Successful Checks Before Recovery",
+    "key": "DNS Successful Checks Before Recovery",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:237"
+    ]
+  },
+  {
+    "call": "Number of consecutive failed checks required before switching DNS servers.",
+    "key": "Number of consecutive failed checks required before switching DNS servers.",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:230"
+    ]
+  },
+  {
+    "call": "Number of consecutive successful checks required before returning to a higher-priority DNS server.",
+    "key": "Number of consecutive successful checks required before returning to a higher-priority DNS server.",
+    "places": [
+      "../luci-app-forkop/htdocs/luci-static/resources/view/forkop/settings.js:238"
+    ]
   }
 ]
