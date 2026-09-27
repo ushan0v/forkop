@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const sourceDir = path.resolve(__dirname, 'locales');
-const targetRoot = path.resolve(__dirname, '../luci-app-forkop/po');
+const targetRoot = path.resolve(__dirname, '../luci-app-nexroute/po');
 
 async function main() {
     const files = await fs.readdir(sourceDir);
