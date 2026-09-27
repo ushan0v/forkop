@@ -1017,7 +1017,8 @@
     "call": "Direct",
     "key": "Direct",
     "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/server.js:2563"
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/server.js:2563",
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4059"
     ]
   },
   {

@@ -426,7 +426,7 @@ msgid "Diagnostics"
 msgstr "Диагностика"
 
 msgid "Direct"
-msgstr "Напрямую"
+msgstr "Напрямую (Direct)"
 
 msgid "Direct connection"
 msgstr "Прямое подключение"
