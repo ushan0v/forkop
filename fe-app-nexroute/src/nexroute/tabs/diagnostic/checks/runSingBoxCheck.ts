@@ -1,5 +1,5 @@
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { ForkopShellMethods } from '../../../methods';
+import { NexrouteShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { getMeta } from '../helpers/getMeta';
 
@@ -15,7 +15,7 @@ export async function runSingBoxCheck() {
     items: [],
   });
 
-  const singBoxChecks = await ForkopShellMethods.checkSingBox();
+  const singBoxChecks = await NexrouteShellMethods.checkSingBox();
 
   if (!singBoxChecks.success) {
     updateCheckStore({

@@ -15,7 +15,7 @@ export function render() {
           role: 'status',
         },
         _(
-          'Forkop service is stopped. Start the service to display the dashboard.',
+          'Nexroute service is stopped. Start the service to display the dashboard.',
         ),
       ),
       E('div', { class: 'fkp_dashboard-page__content' }, [

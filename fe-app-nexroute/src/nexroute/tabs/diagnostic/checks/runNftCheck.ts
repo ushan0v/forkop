@@ -1,5 +1,5 @@
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { RemoteFakeIPMethods, ForkopShellMethods } from '../../../methods';
+import { RemoteFakeIPMethods, NexrouteShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { getMeta } from '../helpers/getMeta';
 
@@ -18,7 +18,7 @@ export async function runNftCheck() {
   await RemoteFakeIPMethods.getFakeIpCheck();
   await RemoteFakeIPMethods.getIpCheck();
 
-  const nftablesChecks = await ForkopShellMethods.checkNftRules();
+  const nftablesChecks = await NexrouteShellMethods.checkNftRules();
 
   if (!nftablesChecks.success) {
     updateCheckStore({

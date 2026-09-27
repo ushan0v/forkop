@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-PARSER="$ROOT_DIR/forkop/files/usr/lib/subscription/parser.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+PARSER="$ROOT_DIR/nexroute/files/usr/lib/subscription/parser.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -69,6 +69,6 @@ if (invalid.valid || invalid.error != "Subscription URL must start with http:// 
     exit(1);
 UCODE
 
-ucode -L "$FORKOP_LIB" "$WORK_DIR/require-subscription-parser.uc"
+ucode -L "$NEXROUTE_LIB" "$WORK_DIR/require-subscription-parser.uc"
 
 printf 'subscription source entry checks passed\n'

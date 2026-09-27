@@ -1,4 +1,4 @@
-import { logger } from '../forkop/services/logger.service';
+import { logger } from '../nexroute/services/logger.service';
 
 export async function withTimeout<T>(
   promise: Promise<T>,

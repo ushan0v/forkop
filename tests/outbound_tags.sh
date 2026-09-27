@@ -2,10 +2,10 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-GENERATOR_UC="$FORKOP_LIB/singbox/generator.uc"
-PARSER_UC="$FORKOP_LIB/subscription/parser.uc"
-VALIDATOR_UC="$FORKOP_LIB/config/validator.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+GENERATOR_UC="$NEXROUTE_LIB/singbox/generator.uc"
+PARSER_UC="$NEXROUTE_LIB/subscription/parser.uc"
+VALIDATOR_UC="$NEXROUTE_LIB/config/validator.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -109,7 +109,7 @@ JSON
 runtime_config="$WORK_DIR/runtime-config.json"
 mkdir -p "$runtime_config.section-cache"
 TMP_SUBSCRIPTION_FOLDER="$WORK_DIR/subscriptions" \
-  ucode -L "$FORKOP_LIB" "$GENERATOR_UC" generate-config-fixture \
+  ucode -L "$NEXROUTE_LIB" "$GENERATOR_UC" generate-config-fixture \
     "$WORK_DIR/runtime-tags.json" "$runtime_config" "127.0.0.1" "0"
 
 ucode -e '
@@ -225,7 +225,7 @@ input.settings.dns_server = ['77.88.8.8'];
 input.settings.bootstrap_dns_server = ['77.88.8.8'];
 fs.writeFileSync(process.argv[3], JSON.stringify(input));
 JS
-  if output="$(FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$VALIDATOR_UC" \
+  if output="$(NEXROUTE_LIB="$NEXROUTE_LIB" ucode -L "$NEXROUTE_LIB" "$VALIDATOR_UC" \
       validate-runtime-fixture "$normalized" '{}' 2>/dev/null)"; then
     fail "validator accepted $fixture"
   fi
@@ -259,7 +259,7 @@ cat >"$WORK_DIR/xray-duplicates.json" <<'JSON'
 ]
 JSON
 
-ucode -L "$FORKOP_LIB" "$PARSER_UC" normalize-content \
+ucode -L "$NEXROUTE_LIB" "$PARSER_UC" normalize-content \
   "$WORK_DIR/xray-duplicates.json" "$WORK_DIR/xray-normalized.json"
 ucode -e '
 let fs = require("fs");
@@ -289,7 +289,7 @@ cat >"$WORK_DIR/xray-unsupported-flow.json" <<'JSON'
 }
 JSON
 
-ucode -L "$FORKOP_LIB" "$PARSER_UC" normalize-content \
+ucode -L "$NEXROUTE_LIB" "$PARSER_UC" normalize-content \
   "$WORK_DIR/xray-unsupported-flow.json" "$WORK_DIR/xray-supported.json"
 ucode -e '
 let fs = require("fs");

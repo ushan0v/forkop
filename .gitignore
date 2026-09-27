@@ -1,7 +1,7 @@
 .idea
-fe-app-forkop/node_modules
-fe-app-forkop/.yarn/
-fe-app-forkop/.env
+fe-app-nexroute/node_modules
+fe-app-nexroute/.yarn/
+fe-app-nexroute/.env
 .DS_Store
 
 sandbox/

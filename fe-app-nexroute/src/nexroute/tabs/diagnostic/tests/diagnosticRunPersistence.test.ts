@@ -91,7 +91,7 @@ describe('diagnostic run persistence', () => {
 
   it('removes invalid snapshots', () => {
     const storage = new MemoryStorage();
-    storage.setItem('forkop:diagnostic-run:v1', '{broken');
+    storage.setItem('nexroute:diagnostic-run:v1', '{broken');
 
     expect(readPersistedDiagnosticRun(storage)).toBeNull();
     expect(storage.length).toBe(0);
@@ -118,7 +118,7 @@ describe('diagnostic run persistence', () => {
     const storage = new MemoryStorage();
 
     storage.setItem(
-      'forkop:diagnostic-run:v1',
+      'nexroute:diagnostic-run:v1',
       JSON.stringify({
         nextRunnerIndex: 0,
         providerOptions: {},
@@ -144,7 +144,7 @@ describe('diagnostic run persistence', () => {
     const storage = new MemoryStorage();
 
     storage.setItem(
-      'forkop:diagnostic-run:v1',
+      'nexroute:diagnostic-run:v1',
       JSON.stringify({
         nextRunnerIndex: 0,
         providerOptions: {},

@@ -7,11 +7,11 @@ import {
   renderSearchIcon24,
   renderXIcon24,
 } from '../../../icons';
-import { CustomForkopMethods, ForkopShellMethods } from '../../methods';
+import { CustomNexrouteMethods, NexrouteShellMethods } from '../../methods';
 import { getOutboundTagBySection } from '../../runtimeTags';
 import { getClashApiSecret } from '../../methods/custom/getClashApiSecret';
 import { logger, socket, store, StoreType } from '../../services';
-import { Forkop } from '../../types';
+import { Nexroute } from '../../types';
 import {
   getCachedRuntimeUiState,
   refreshRuntimeUiState,
@@ -127,7 +127,7 @@ function getListValues(value?: string[] | string) {
     .filter(Boolean);
 }
 
-function getUrlTestIds(section: Forkop.ConfigSection) {
+function getUrlTestIds(section: Nexroute.ConfigSection) {
   const values = getListValues(section.urltests);
   return values.length
     ? values
@@ -167,11 +167,11 @@ function formatEndpoint(address?: string, port?: string | number): string {
   return `${normalizedAddress}:${normalizedPort}`;
 }
 
-function getDisplayName(section: Forkop.ConfigSection) {
+function getDisplayName(section: Nexroute.ConfigSection) {
   return normalizeString(section.label) || section['.name'];
 }
 
-function buildRouteDisplayNames(sections: Forkop.ConfigSection[]) {
+function buildRouteDisplayNames(sections: Nexroute.ConfigSection[]) {
   const map: Record<string, string> = {
     'bypass-out': 'Bypass',
     'direct-out': 'direct',
@@ -923,7 +923,7 @@ function renderConnections(options: { force?: boolean } = {}) {
     container.replaceChildren(
       renderConnectionsTable([], {
         text: _(
-          'Forkop service is stopped. Start the service to display connections.',
+          'Nexroute service is stopped. Start the service to display connections.',
         ),
       }),
     );
@@ -1207,7 +1207,7 @@ async function closeConnection(connectionId: string) {
 
   try {
     const response =
-      await ForkopShellMethods.closeClashApiConnection(connectionId);
+      await NexrouteShellMethods.closeClashApiConnection(connectionId);
 
     if (!response.success) {
       showToast(_('Failed to close connection'), 'error');
@@ -1241,7 +1241,7 @@ async function closeAllConnections() {
   renderControls();
 
   try {
-    const response = await ForkopShellMethods.closeAllClashApiConnections();
+    const response = await NexrouteShellMethods.closeAllClashApiConnections();
 
     if (!response.success) {
       showToast(_('Failed to close connections'), 'error');
@@ -1343,7 +1343,7 @@ async function loadLocalDevices() {
 
 async function loadRouteDisplayNames() {
   try {
-    buildRouteDisplayNames(await CustomForkopMethods.getConfigSections());
+    buildRouteDisplayNames(await CustomNexrouteMethods.getConfigSections());
   } catch (error) {
     logger.warn('[MONITORING]', 'loadRouteDisplayNames: failed', error);
     buildRouteDisplayNames([]);
@@ -1367,7 +1367,7 @@ async function pollConnectionsSnapshot() {
   pollingConnections = true;
 
   try {
-    const response = await ForkopShellMethods.getClashApiConnections();
+    const response = await NexrouteShellMethods.getClashApiConnections();
 
     if (
       !monitoringMounted ||
@@ -1532,7 +1532,7 @@ function watchServiceState() {
       getServiceAvailability({
         loading: false,
         failed: false,
-        running: uiState.service.forkop.running,
+        running: uiState.service.nexroute.running,
       }),
     );
   });

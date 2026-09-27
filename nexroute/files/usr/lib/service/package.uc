@@ -12,17 +12,17 @@ function env(name, fallback) {
     return value == null ? as_string(fallback) : as_string(value);
 }
 
-const CONFIG_NAME = env("FORKOP_CONFIG_NAME", "forkop");
-const RT_TABLES_PATH = env("FORKOP_RT_TABLES", "/etc/iproute2/rt_tables");
-const BIN_PATH = env("FORKOP_BIN", "/usr/bin/forkop");
-const INIT_PATH = env("FORKOP_INIT", "/etc/init.d/forkop");
-const DNS_APPLY_UC = env("FORKOP_DNS_APPLY_UC", "/usr/lib/forkop/dns/apply.uc");
-const SING_BOX_INIT = env("FORKOP_SING_BOX_INIT", "/etc/init.d/sing-box");
-const SING_BOX_BIN = env("FORKOP_SING_BOX_BIN", "/usr/bin/sing-box");
-const SING_BOX_CRONET = env("FORKOP_SING_BOX_CRONET", "/usr/lib/libcronet.so");
-const SING_BOX_MANAGED_MARKER = env("SB_MANAGED_SERVICE_MARKER", "Forkop managed sing-box service for binary variants");
-const PACKAGE_UPGRADE_STATE = env("FORKOP_PACKAGE_UPGRADE_STATE", "/tmp/forkop-package-was-running");
-const PACKAGE_TEST_MODE = env("FORKOP_PACKAGE_TEST_MODE", "") != "";
+const CONFIG_NAME = env("NEXROUTE_CONFIG_NAME", "nexroute");
+const RT_TABLES_PATH = env("NEXROUTE_RT_TABLES", "/etc/iproute2/rt_tables");
+const BIN_PATH = env("NEXROUTE_BIN", "/usr/bin/nexroute");
+const INIT_PATH = env("NEXROUTE_INIT", "/etc/init.d/nexroute");
+const DNS_APPLY_UC = env("NEXROUTE_DNS_APPLY_UC", "/usr/lib/nexroute/dns/apply.uc");
+const SING_BOX_INIT = env("NEXROUTE_SING_BOX_INIT", "/etc/init.d/sing-box");
+const SING_BOX_BIN = env("NEXROUTE_SING_BOX_BIN", "/usr/bin/sing-box");
+const SING_BOX_CRONET = env("NEXROUTE_SING_BOX_CRONET", "/usr/lib/libcronet.so");
+const SING_BOX_MANAGED_MARKER = env("SB_MANAGED_SERVICE_MARKER", "Nexroute managed sing-box service for binary variants");
+const PACKAGE_UPGRADE_STATE = env("NEXROUTE_PACKAGE_UPGRADE_STATE", "/tmp/nexroute-package-was-running");
+const PACKAGE_TEST_MODE = env("NEXROUTE_PACKAGE_TEST_MODE", "") != "";
 
 function shell_quote(value) {
     return "'" + replace(as_string(value), /'/g, "'\\''") + "'";
@@ -61,7 +61,7 @@ function remove_rt_tables_entry() {
     let changed = false;
     let lines = [];
     for (let line in split(data, "\n")) {
-        if (index(line, "105 forkop") >= 0) {
+        if (index(line, "105 nexroute") >= 0) {
             changed = true;
             continue;
         }
@@ -144,7 +144,7 @@ function postinst_restore() {
 }
 
 function luci_cache_globs() {
-    let configured = env("FORKOP_LUCI_CACHE_GLOBS", "");
+    let configured = env("NEXROUTE_LUCI_CACHE_GLOBS", "");
     if (configured != "")
         return split(configured, /[ \t\r\n]+/);
 
@@ -167,7 +167,7 @@ function luci_postinst() {
     if (!PACKAGE_TEST_MODE) {
         if (path_exists("/etc/init.d/rpcd"))
             command_success_from_args([ "/etc/init.d/rpcd", "reload" ]);
-        command_success_from_args([ "logger", "-t", "forkop", "[info] Package defaults applied" ]);
+        command_success_from_args([ "logger", "-t", "nexroute", "[info] Package defaults applied" ]);
     }
     return true;
 }

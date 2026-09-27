@@ -12,7 +12,7 @@ vi.mock('../getConfigSections', () => ({
 }));
 
 vi.mock('../../shell', () => ({
-  ForkopShellMethods: {
+  NexrouteShellMethods: {
     getClashApiProxies: mocks.getClashApiProxies,
   },
 }));
@@ -26,7 +26,7 @@ vi.mock('../../../../helpers', () => ({
 }));
 
 import { getDashboardSections } from '../getDashboardSections';
-import { ClashAPI, Forkop } from '../../../types';
+import { ClashAPI, Nexroute } from '../../../types';
 
 function proxy(
   type: string,
@@ -43,8 +43,8 @@ function proxy(
 }
 
 function proxySection(
-  options: Partial<Forkop.ConfigSection> = {},
-): Forkop.ConfigSection {
+  options: Partial<Nexroute.ConfigSection> = {},
+): Nexroute.ConfigSection {
   return {
     '.name': 'main',
     '.type': 'section',
@@ -71,8 +71,8 @@ function urlTestSettings(
 
 function priorityGroup(
   id: string,
-  options: Partial<Forkop.ConfigSection> = {},
-): Forkop.ConfigSection {
+  options: Partial<Nexroute.ConfigSection> = {},
+): Nexroute.ConfigSection {
   return {
     '.name': id,
     '.type': 'priority_group',
@@ -93,8 +93,8 @@ function priorityGroup(
 
 function priorityLevel(
   id: string,
-  options: Partial<Forkop.ConfigSection> = {},
-): Forkop.ConfigSection {
+  options: Partial<Nexroute.ConfigSection> = {},
+): Nexroute.ConfigSection {
   return {
     '.name': id,
     '.type': 'priority_level',

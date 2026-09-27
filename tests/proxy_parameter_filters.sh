@@ -2,9 +2,9 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-GENERATOR_UC="$FORKOP_LIB/singbox/generator.uc"
-VALIDATOR_UC="$FORKOP_LIB/config/validator.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+GENERATOR_UC="$NEXROUTE_LIB/singbox/generator.uc"
+VALIDATOR_UC="$NEXROUTE_LIB/config/validator.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -21,13 +21,13 @@ generate_config() {
   local fixture="$1"
   local output="$2"
   mkdir -p "${output}.section-cache"
-  ucode -L "$FORKOP_LIB" "$GENERATOR_UC" generate-config-fixture \
+  ucode -L "$NEXROUTE_LIB" "$GENERATOR_UC" generate-config-fixture \
     "$fixture" "$output" "127.0.0.1"
 }
 
 validate_fixture() {
   local fixture="$1"
-  FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$VALIDATOR_UC" \
+  NEXROUTE_LIB="$NEXROUTE_LIB" ucode -L "$NEXROUTE_LIB" "$VALIDATOR_UC" \
     validate-runtime-fixture "$fixture" "{}"
 }
 

@@ -14,17 +14,17 @@ async function main() {
     for (const file of files) {
         const filePath = path.join(sourceDir, file);
 
-        if (file === 'forkop.pot') {
-            const potTarget = path.join(targetRoot, 'templates', 'forkop.pot');
+        if (file === 'nexroute.pot') {
+            const potTarget = path.join(targetRoot, 'templates', 'nexroute.pot');
             await fs.mkdir(path.dirname(potTarget), { recursive: true });
             await fs.copyFile(filePath, potTarget);
             console.log(`✅ Copied POT: ${filePath} → ${potTarget}`);
         }
 
-        const match = file.match(/^forkop\.([a-zA-Z_]+)\.po$/);
+        const match = file.match(/^nexroute\.([a-zA-Z_]+)\.po$/);
         if (match) {
             const lang = match[1];
-            const poTarget = path.join(targetRoot, lang, 'forkop.po');
+            const poTarget = path.join(targetRoot, lang, 'nexroute.po');
             await fs.mkdir(path.dirname(poTarget), { recursive: true });
             await fs.copyFile(filePath, poTarget);
             console.log(`✅ Copied ${lang.toUpperCase()}: ${filePath} → ${poTarget}`);

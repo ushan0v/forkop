@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CACHE_UC="$ROOT_DIR/forkop/files/usr/lib/subscription/cache.uc"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
+CACHE_UC="$ROOT_DIR/nexroute/files/usr/lib/subscription/cache.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -42,7 +42,7 @@ preferred_candidates="$(printf '%s\n%s\n%s\n%s\n%s\n%s' \
   Clash.Meta)"
 
 cache_ucode() {
-  ucode -L "$FORKOP_LIB" "$CACHE_UC" "$@"
+  ucode -L "$NEXROUTE_LIB" "$CACHE_UC" "$@"
 }
 
 cache_ucode write-user-agent-candidates "$WORK_DIR/default.txt" "" "" "$default_ua"

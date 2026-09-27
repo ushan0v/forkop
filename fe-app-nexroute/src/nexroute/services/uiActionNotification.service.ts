@@ -1,5 +1,5 @@
 const UI_ACTION_NOTIFICATION_STORAGE_KEY =
-  'forkop:owned-ui-action-notifications:v1';
+  'nexroute:owned-ui-action-notifications:v1';
 const MAX_STORED_UI_ACTION_NOTIFICATIONS = 100;
 
 export type UiActionNotificationKind = 'component' | 'subscription';

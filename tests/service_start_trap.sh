@@ -2,18 +2,18 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_BIN="$ROOT_DIR/forkop/files/usr/bin/forkop"
-FORKOP_INIT="$ROOT_DIR/forkop/files/etc/init.d/forkop"
-CLI_UC="$FORKOP_BIN"
-LIFECYCLE_UC="$ROOT_DIR/forkop/files/usr/lib/service/lifecycle.uc"
-INITD_UC="$ROOT_DIR/forkop/files/usr/lib/service/initd.uc"
-STATE_UC="$ROOT_DIR/forkop/files/usr/lib/service/state.uc"
-UI_UC="$ROOT_DIR/forkop/files/usr/lib/service/ui.uc"
-UPDATES_UC="$ROOT_DIR/forkop/files/usr/lib/components/updates.uc"
-SUBSCRIPTION_CACHE_UC="$ROOT_DIR/forkop/files/usr/lib/subscription/cache.uc"
-NFQUEUE_RUNTIME_UC="$ROOT_DIR/forkop/files/usr/lib/providers/nfqueue/runtime.uc"
-BYEDPI_RUNTIME_UC="$ROOT_DIR/forkop/files/usr/lib/providers/byedpi/runtime.uc"
-PRIORITY_UC="$ROOT_DIR/forkop/files/usr/lib/singbox/priority.uc"
+NEXROUTE_BIN="$ROOT_DIR/nexroute/files/usr/bin/nexroute"
+NEXROUTE_INIT="$ROOT_DIR/nexroute/files/etc/init.d/nexroute"
+CLI_UC="$NEXROUTE_BIN"
+LIFECYCLE_UC="$ROOT_DIR/nexroute/files/usr/lib/service/lifecycle.uc"
+INITD_UC="$ROOT_DIR/nexroute/files/usr/lib/service/initd.uc"
+STATE_UC="$ROOT_DIR/nexroute/files/usr/lib/service/state.uc"
+UI_UC="$ROOT_DIR/nexroute/files/usr/lib/service/ui.uc"
+UPDATES_UC="$ROOT_DIR/nexroute/files/usr/lib/components/updates.uc"
+SUBSCRIPTION_CACHE_UC="$ROOT_DIR/nexroute/files/usr/lib/subscription/cache.uc"
+NFQUEUE_RUNTIME_UC="$ROOT_DIR/nexroute/files/usr/lib/providers/nfqueue/runtime.uc"
+BYEDPI_RUNTIME_UC="$ROOT_DIR/nexroute/files/usr/lib/providers/byedpi/runtime.uc"
+PRIORITY_UC="$ROOT_DIR/nexroute/files/usr/lib/singbox/priority.uc"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -31,7 +31,7 @@ reject_pattern() {
   local pattern="$1"
   local label="$2"
 
-  ! grep -Fq "$pattern" "$FORKOP_BIN" || fail "$label"
+  ! grep -Fq "$pattern" "$NEXROUTE_BIN" || fail "$label"
 }
 
 require_file_pattern() {
@@ -42,18 +42,18 @@ require_file_pattern() {
   grep -Fq "$pattern" "$file" || fail "$label"
 }
 
-[ -r "$FORKOP_BIN" ] || fail "forkop binary source is missing"
-[ -r "$FORKOP_BIN" ] || fail "forkop entrypoint is missing"
+[ -r "$NEXROUTE_BIN" ] || fail "nexroute binary source is missing"
+[ -r "$NEXROUTE_BIN" ] || fail "nexroute entrypoint is missing"
 [ -r "$LIFECYCLE_UC" ] || fail "service/lifecycle.uc is missing"
 
-grep -Fq '#!/usr/bin/ucode' "$FORKOP_BIN" ||
-  fail "forkop entrypoint must be a direct ucode executable"
+grep -Fq '#!/usr/bin/ucode' "$NEXROUTE_BIN" ||
+  fail "nexroute entrypoint must be a direct ucode executable"
 grep -Fq 'service/lifecycle.uc' "$CLI_UC" ||
   fail "service/cli.uc must dispatch startup through service/lifecycle.uc"
 reject_pattern "trap " \
-  "forkop shell entrypoint must not own startup fail-safe traps"
+  "nexroute shell entrypoint must not own startup fail-safe traps"
 reject_pattern "clear_startup_failsafe_trap" \
-  "forkop shell entrypoint must not keep old trap helper"
+  "nexroute shell entrypoint must not keep old trap helper"
 require_pattern 'module_background(UPDATES_UC, [ "list-update" ])' \
   "startup list_update background job must be owned by service/lifecycle.uc"
 require_pattern 'module_background(DIAGNOSTICS_UC, [ "get-system-info" ])' \
@@ -91,9 +91,9 @@ require_file_pattern "$INITD_UC" 'reload pending >/dev/null 2>&1 1000>&- &' \
   "service/initd.uc pending reload worker must close inherited procd lock fd"
 require_file_pattern "$STATE_UC" 'reload pending >/dev/null 2>&1 1000>&- &' \
   "service/state.uc pending reload worker must close inherited procd lock fd"
-require_file_pattern "$FORKOP_INIT" 'FORKOP_LAST_START_STATUS="$?"' \
+require_file_pattern "$NEXROUTE_INIT" 'NEXROUTE_LAST_START_STATUS="$?"' \
   "init.d start_service must preserve backend start status for rc.common"
-require_file_pattern "$FORKOP_INIT" 'service_started()' \
+require_file_pattern "$NEXROUTE_INIT" 'service_started()' \
   "init.d must return preserved start status through rc.common service_started hook"
 require_file_pattern "$UI_UC" '>/dev/null 2>&1 1000>&- & echo $!' \
   "service/ui.uc service action workers must close inherited procd lock fd"

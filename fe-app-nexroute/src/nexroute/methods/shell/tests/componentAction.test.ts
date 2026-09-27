@@ -9,9 +9,9 @@ vi.mock('../../../../helpers', () => ({
   executeShellCommand: mocks.executeShellCommand,
 }));
 
-import { ForkopShellMethods } from '../index';
+import { NexrouteShellMethods } from '../index';
 
-describe('ForkopShellMethods.componentAction', () => {
+describe('NexrouteShellMethods.componentAction', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.executeShellCommand.mockReset();
@@ -26,7 +26,7 @@ describe('ForkopShellMethods.componentAction', () => {
     vi.unstubAllGlobals();
   });
 
-  it('does not fail Forkop self-update when status polling disappears after package replacement', async () => {
+  it('does not fail Nexroute self-update when status polling disappears after package replacement', async () => {
     mocks.fsRead.mockRejectedValue(new Error('Access denied'));
     mocks.executeShellCommand.mockImplementation(({ args }) => {
       if (args[0] === 'component_action_status') {
@@ -52,9 +52,9 @@ describe('ForkopShellMethods.componentAction', () => {
       });
     });
 
-    const responsePromise = ForkopShellMethods.waitComponentActionJob(
+    const responsePromise = NexrouteShellMethods.waitComponentActionJob(
       'job-1',
-      'forkop',
+      'nexroute',
       'install',
       '0.7.17.11',
     );
@@ -65,9 +65,9 @@ describe('ForkopShellMethods.componentAction', () => {
       success: true,
       data: {
         success: true,
-        component: 'forkop',
+        component: 'nexroute',
         action: 'install',
-        message: 'Forkop has been installed',
+        message: 'Nexroute has been installed',
         current_version: '0.7.17.11',
         latest_version: '0.7.17.11',
         changed: true,
@@ -87,7 +87,7 @@ describe('ForkopShellMethods.componentAction', () => {
     });
 
     await expect(
-      ForkopShellMethods.componentActionStart('zapret', 'install'),
+      NexrouteShellMethods.componentActionStart('zapret', 'install'),
     ).resolves.toEqual({
       success: false,
       error: 'Another component action is already running',
@@ -147,7 +147,7 @@ describe('ForkopShellMethods.componentAction', () => {
       });
     });
 
-    const responsePromise = ForkopShellMethods.waitComponentActionJob(
+    const responsePromise = NexrouteShellMethods.waitComponentActionJob(
       'job-1',
       'sing_box',
       'check_update',
@@ -201,7 +201,7 @@ describe('ForkopShellMethods.componentAction', () => {
         return Promise.resolve({
           stdout: JSON.stringify({
             service: {
-              forkop: {
+              nexroute: {
                 running: 0,
                 enabled: 1,
                 status: 'stopped but enabled',
@@ -251,7 +251,7 @@ describe('ForkopShellMethods.componentAction', () => {
       });
     });
 
-    const responsePromise = ForkopShellMethods.waitComponentActionJob(
+    const responsePromise = NexrouteShellMethods.waitComponentActionJob(
       'job-1',
       'sing_box',
       'install_extended',
@@ -274,7 +274,7 @@ describe('ForkopShellMethods.componentAction', () => {
       },
     });
     expect(mocks.executeShellCommand).toHaveBeenCalledWith({
-      command: '/usr/bin/forkop',
+      command: '/usr/bin/nexroute',
       args: ['get_ui_state'],
       timeout: 3000,
     });
@@ -321,7 +321,7 @@ describe('ForkopShellMethods.componentAction', () => {
       });
     });
 
-    const responsePromise = ForkopShellMethods.waitComponentActionJob(
+    const responsePromise = NexrouteShellMethods.waitComponentActionJob(
       'job-1',
       'zapret',
       'check_update',

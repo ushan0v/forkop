@@ -2,7 +2,7 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -95,9 +95,9 @@ UCODE
 
 FAKE_COUNTRY_PAYLOAD="$WORK_DIR/payload.json" \
 FAKE_COUNTRY_RESOLVE="$WORK_DIR/resolve.txt" \
-FORKOP_COUNTRY_IS_URL="https://country.invalid/" \
+NEXROUTE_COUNTRY_IS_URL="https://country.invalid/" \
 PATH="$WORK_DIR/bin:$PATH" \
-  ucode -L "$FORKOP_LIB" "$WORK_DIR/runner.uc"
+  ucode -L "$NEXROUTE_LIB" "$WORK_DIR/runner.uc"
 
 grep -Fq '8.8.8.8' "$WORK_DIR/payload.json" ||
   fail "country.is request did not contain the first resolved IP"

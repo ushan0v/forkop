@@ -1,5 +1,5 @@
 import { onMount, preserveScrollForPage } from '../../../helpers';
-import { FORKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT } from '../../../constants';
+import { NEXROUTE_ACTION_PROVIDERS_AVAILABILITY_EVENT } from '../../../constants';
 import { normalizeCompiledVersion } from '../../../helpers/normalizeCompiledVersion';
 import { showToast } from '../../../helpers/showToast';
 import {
@@ -29,7 +29,7 @@ import {
   shouldRefreshComponentStateBeforeRender,
   shouldResetCheckResultsOnMount,
 } from './checkResultLifecycle';
-import { ForkopShellMethods } from '../../methods';
+import { NexrouteShellMethods } from '../../methods';
 import {
   logger,
   markUiActionOwned,
@@ -44,20 +44,20 @@ import {
   refreshRuntimeUiState,
   subscribeRuntimeUiState,
 } from '../../services/runtimeUiState.service';
-import { Forkop } from '../../types';
+import { Nexroute } from '../../types';
 
-type UpdateStatus = StoreType['updatesChecks'][Forkop.ComponentName]['status'];
+type UpdateStatus = StoreType['updatesChecks'][Nexroute.ComponentName]['status'];
 
 interface ComponentActionButton {
   key: UpdatesActionKey;
   text: string;
   icon: () => SVGSVGElement;
-  component: Forkop.ComponentName;
-  action: Forkop.ComponentAction;
+  component: Nexroute.ComponentName;
+  action: Nexroute.ComponentAction;
 }
 
 interface ComponentCard {
-  component: Forkop.ComponentName;
+  component: Nexroute.ComponentName;
   column: 0 | 1;
   title: string;
   version: string;
@@ -73,9 +73,9 @@ let updatesMountId = 0;
 let pageUnloading = false;
 let preserveCheckResultsOnNextMount = false;
 let componentUpdateCheckCacheResolved = false;
-let componentUpdateCheckCacheSnapshot: Forkop.ComponentUpdateCheckCache | null =
+let componentUpdateCheckCacheSnapshot: Nexroute.ComponentUpdateCheckCache | null =
   null;
-let componentUpdateCheckCachePromise: Promise<Forkop.ComponentUpdateCheckCache> | null =
+let componentUpdateCheckCachePromise: Promise<Nexroute.ComponentUpdateCheckCache> | null =
   null;
 let componentActionStateUnsubscribe: (() => void) | null = null;
 let componentActionStateRefreshPromise: Promise<void> | null = null;
@@ -95,13 +95,13 @@ function isNotInstalled(version: string | undefined) {
   return !version || version === 'not installed';
 }
 
-function shouldShowInstallAfterCheck(component: Forkop.ComponentName) {
+function shouldShowInstallAfterCheck(component: Nexroute.ComponentName) {
   const status = getVisibleCheckResult(component)?.status;
 
   return status === 'outdated' || status === 'dev';
 }
 
-function getVisibleCheckResult(component: Forkop.ComponentName) {
+function getVisibleCheckResult(component: Nexroute.ComponentName) {
   if (
     !shouldExposeCheckResults({
       mounted: updatesMounted,
@@ -114,7 +114,7 @@ function getVisibleCheckResult(component: Forkop.ComponentName) {
   return store.get().updatesChecks[component];
 }
 
-function getLatestVersion(component: Forkop.ComponentName) {
+function getLatestVersion(component: Nexroute.ComponentName) {
   const checkResult = getVisibleCheckResult(component);
 
   if (!checkResult || !shouldShowInstallAfterCheck(component)) {
@@ -124,7 +124,7 @@ function getLatestVersion(component: Forkop.ComponentName) {
   return checkResult.latest_version || undefined;
 }
 
-function getGitHubReleaseUrl(component: Forkop.ComponentName) {
+function getGitHubReleaseUrl(component: Nexroute.ComponentName) {
   const checkResult = getVisibleCheckResult(component);
 
   if (
@@ -147,7 +147,7 @@ function isServiceRuntimeActionLoading() {
 
   return (
     hasLocalMutatingServiceActionLoading(state.diagnosticsActions) ||
-    isServiceTransitionStatus(state.servicesInfoWidget.data.forkopStatus)
+    isServiceTransitionStatus(state.servicesInfoWidget.data.nexrouteStatus)
   );
 }
 
@@ -186,7 +186,7 @@ function beginComponentAction(button: ComponentActionButton) {
 }
 
 function setCheckResult(
-  component: Forkop.ComponentName,
+  component: Nexroute.ComponentName,
   status: UpdateStatus,
   latestVersion: string,
   releaseUrl: string = '',
@@ -205,11 +205,11 @@ function setCheckResult(
   });
 }
 
-function resetCheckResult(component: Forkop.ComponentName) {
+function resetCheckResult(component: Nexroute.ComponentName) {
   setCheckResult(component, null, '');
 }
 
-function applyCachedCheckResults(results: Forkop.ComponentActionResult[]) {
+function applyCachedCheckResults(results: Nexroute.ComponentActionResult[]) {
   results.forEach((result) => {
     const status = result.status || null;
 
@@ -233,14 +233,14 @@ function loadComponentUpdateCheckCache({ force = false } = {}) {
     return componentUpdateCheckCachePromise;
   }
 
-  const promise = ForkopShellMethods.componentUpdateCheckCache()
+  const promise = NexrouteShellMethods.componentUpdateCheckCache()
     .then((response) =>
       response.success
         ? response.data
         : ({
             enabled: false,
             results: [],
-          } satisfies Forkop.ComponentUpdateCheckCache),
+          } satisfies Nexroute.ComponentUpdateCheckCache),
     )
     .then((cache) => {
       componentUpdateCheckCacheSnapshot = cache;
@@ -262,7 +262,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 async function ackComponentActionJob(jobId: string) {
   try {
-    const response = await ForkopShellMethods.uiActionAck('component', jobId);
+    const response = await NexrouteShellMethods.uiActionAck('component', jobId);
 
     if (!response.success) {
       logger.debug('[UPDATES]', 'component action ack failed', response.error);
@@ -273,7 +273,7 @@ async function ackComponentActionJob(jobId: string) {
 }
 
 function getExpectedLatestVersionForAction(button: ComponentActionButton) {
-  if (button.component !== 'forkop' || button.action !== 'install') {
+  if (button.component !== 'nexroute' || button.action !== 'install') {
     return undefined;
   }
 
@@ -306,7 +306,7 @@ function notifyActionProvidersAvailabilityChanged(
   }
 
   window.dispatchEvent(
-    new CustomEvent(FORKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT, {
+    new CustomEvent(NEXROUTE_ACTION_PROVIDERS_AVAILABILITY_EVENT, {
       detail: {
         zapretInstalled: Boolean(systemInfo.zapret_installed),
         zapret2Installed: Boolean(systemInfo.zapret2_installed),
@@ -316,20 +316,20 @@ function notifyActionProvidersAvailabilityChanged(
   );
 }
 
-function reloadPageAfterForkopUpdate() {
+function reloadPageAfterNexrouteUpdate() {
   window.setTimeout(() => {
     window.location.reload();
   }, 1200);
 }
 
-function patchSystemInfoAfterMutation(result: Forkop.ComponentActionResult) {
+function patchSystemInfoAfterMutation(result: Nexroute.ComponentActionResult) {
   const systemInfo = store.get().diagnosticsSystemInfo;
   const nextSystemInfo = { ...systemInfo, loading: false, loaded: true };
   const version =
     result.current_version || result.latest_version || _('unknown');
 
-  if (result.component === 'forkop' && result.action === 'install') {
-    nextSystemInfo.forkop_version = version;
+  if (result.component === 'nexroute' && result.action === 'install') {
+    nextSystemInfo.nexroute_version = version;
   }
 
   if (result.component === 'sing_box') {
@@ -421,7 +421,7 @@ async function applyCompletedComponentAction({
   notify,
 }: {
   key: UpdatesActionKey;
-  result: Forkop.ComponentActionResult;
+  result: Nexroute.ComponentActionResult;
   notify: boolean;
 }) {
   if (result.action === 'check_update') {
@@ -466,13 +466,13 @@ async function applyCompletedComponentAction({
   patchSystemInfoAfterMutation(result);
   setActionLoading(key, false);
 
-  if (result.component === 'forkop' && result.action === 'install') {
+  if (result.component === 'nexroute' && result.action === 'install') {
     if (notify && result.message) {
       showToast(result.message, 'success', 1200);
     }
 
     if (notify) {
-      reloadPageAfterForkopUpdate();
+      reloadPageAfterNexrouteUpdate();
     }
     return;
   }
@@ -487,7 +487,7 @@ async function applyCompletedComponentAction({
 async function completeComponentActionJob(
   key: UpdatesActionKey,
   jobId: string,
-  response: Forkop.MethodResponse<Forkop.ComponentActionResult>,
+  response: Nexroute.MethodResponse<Nexroute.ComponentActionResult>,
 ) {
   if (pageUnloading) {
     setActionLoading(key, false);
@@ -532,7 +532,7 @@ async function completeComponentActionJob(
   });
 }
 
-async function followComponentActionState(state: Forkop.ComponentActionResult) {
+async function followComponentActionState(state: Nexroute.ComponentActionResult) {
   const jobId = state.job_id;
   const key = getComponentActionKey(state.component, state.action);
 
@@ -551,7 +551,7 @@ async function followComponentActionState(state: Forkop.ComponentActionResult) {
 
   try {
     const response = state.running
-      ? await ForkopShellMethods.waitComponentActionJob(
+      ? await NexrouteShellMethods.waitComponentActionJob(
           jobId,
           state.component,
           state.action,
@@ -560,7 +560,7 @@ async function followComponentActionState(state: Forkop.ComponentActionResult) {
       : ({
           success: true,
           data: state,
-        } as Forkop.MethodSuccessResponse<Forkop.ComponentActionResult>);
+        } as Nexroute.MethodSuccessResponse<Nexroute.ComponentActionResult>);
 
     await completeComponentActionJob(key, jobId, response);
   } catch (error) {
@@ -611,7 +611,7 @@ function isComponentActionAlreadyRunningError(message: string | undefined) {
   );
 }
 
-function handleComponentUiState(uiState: Forkop.UiState) {
+function handleComponentUiState(uiState: Nexroute.UiState) {
   for (const state of uiState.actions.component || []) {
     void followComponentActionState(state);
   }
@@ -671,7 +671,7 @@ async function handleComponentAction(button: ComponentActionButton) {
   let ownsJobFollow = false;
 
   try {
-    const startResponse = await ForkopShellMethods.componentActionStart(
+    const startResponse = await NexrouteShellMethods.componentActionStart(
       button.component,
       button.action,
     );
@@ -705,7 +705,7 @@ async function handleComponentAction(button: ComponentActionButton) {
     followedComponentJobs.add(jobId);
     ownsJobFollow = true;
 
-    const response = await ForkopShellMethods.waitComponentActionJob(
+    const response = await NexrouteShellMethods.waitComponentActionJob(
       jobId,
       button.component,
       button.action,
@@ -732,7 +732,7 @@ async function handleComponentAction(button: ComponentActionButton) {
 }
 
 function getCheckAction(
-  component: Forkop.ComponentName,
+  component: Nexroute.ComponentName,
   key: UpdatesActionKey,
 ): ComponentActionButton {
   return {
@@ -745,7 +745,7 @@ function getCheckAction(
 }
 
 function getInstallAction(
-  component: Forkop.ComponentName,
+  component: Nexroute.ComponentName,
   key: UpdatesActionKey,
   installed: boolean,
 ): ComponentActionButton {
@@ -759,7 +759,7 @@ function getInstallAction(
 }
 
 function getInstalledUpdateActions(
-  component: Forkop.ComponentName,
+  component: Nexroute.ComponentName,
   checkKey: UpdatesActionKey,
   installKey: UpdatesActionKey,
   installed = true,
@@ -824,10 +824,10 @@ function getComponentCards(): ComponentCard[] {
     Boolean(systemInfo.sing_box_compressed);
   const singBoxTiny = Boolean(systemInfo.sing_box_tiny);
 
-  const forkopActions = getInstalledUpdateActions(
-    'forkop',
-    'forkopCheck',
-    'forkopInstall',
+  const nexrouteActions = getInstalledUpdateActions(
+    'nexroute',
+    'nexrouteCheck',
+    'nexrouteInstall',
   );
   const singBoxActions = getInstalledUpdateActions(
     'sing_box',
@@ -898,15 +898,15 @@ function getComponentCards(): ComponentCard[] {
 
   return [
     {
-      component: 'forkop',
+      component: 'nexroute',
       column: 0,
-      title: 'Forkop',
+      title: 'Nexroute',
       version: systemInfoLoading
         ? _('Loading...')
-        : normalizeCompiledVersion(systemInfo.forkop_version),
-      latestVersion: getLatestVersion('forkop'),
-      releaseUrl: getGitHubReleaseUrl('forkop'),
-      actions: forkopActions,
+        : normalizeCompiledVersion(systemInfo.nexroute_version),
+      latestVersion: getLatestVersion('nexroute'),
+      releaseUrl: getGitHubReleaseUrl('nexroute'),
+      actions: nexrouteActions,
     },
     {
       component: 'sing_box',
@@ -1228,7 +1228,7 @@ function onStoreUpdate(
 }
 
 function applyComponentUpdateCheckCache(
-  componentUpdateCheckCache: Forkop.ComponentUpdateCheckCache,
+  componentUpdateCheckCache: Nexroute.ComponentUpdateCheckCache,
 ) {
   componentUpdateCheckCacheResolved = true;
 

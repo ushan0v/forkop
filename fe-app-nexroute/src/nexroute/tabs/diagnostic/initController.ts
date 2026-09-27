@@ -32,14 +32,14 @@ import {
   renderRunAction,
   renderSystemInfo,
 } from './partials';
-import { ForkopShellMethods } from '../../methods';
+import { NexrouteShellMethods } from '../../methods';
 import { fetchServicesInfo } from '../../fetchers/fetchServicesInfo';
 import { normalizeCompiledVersion } from '../../../helpers/normalizeCompiledVersion';
 import { renderModal } from '../../../partials';
-import { FORKOP_LUCI_APP_VERSION } from '../../../constants';
+import { NEXROUTE_LUCI_APP_VERSION } from '../../../constants';
 import { renderWikiDisclaimer } from './partials/renderWikiDisclaimer';
 import { runSectionsCheck } from './checks/runSectionsCheck';
-import { Forkop } from '../../types';
+import { Nexroute } from '../../types';
 import {
   getAvailableActionsDisabledState,
   getServiceTransition,
@@ -156,11 +156,11 @@ function isLocalMutatingServiceActionLoading() {
 function isMutatingServiceActionLoading() {
   return (
     isLocalMutatingServiceActionLoading() ||
-    isServiceTransitionStatus(store.get().servicesInfoWidget.data.forkopStatus)
+    isServiceTransitionStatus(store.get().servicesInfoWidget.data.nexrouteStatus)
   );
 }
 
-function getForkopStatusText(running: boolean, enabled: boolean) {
+function getNexrouteStatusText(running: boolean, enabled: boolean) {
   if (running) {
     return enabled ? 'running & enabled' : 'running but disabled';
   }
@@ -168,9 +168,9 @@ function getForkopStatusText(running: boolean, enabled: boolean) {
   return enabled ? 'stopped but enabled' : 'stopped & disabled';
 }
 
-function setDisplayedForkopRunning(running: boolean) {
+function setDisplayedNexrouteRunning(running: boolean) {
   const servicesInfoWidget = store.get().servicesInfoWidget;
-  const enabled = Boolean(servicesInfoWidget.data.forkopEnabled);
+  const enabled = Boolean(servicesInfoWidget.data.nexrouteEnabled);
 
   store.set({
     servicesInfoWidget: {
@@ -178,8 +178,8 @@ function setDisplayedForkopRunning(running: boolean) {
       loading: false,
       data: {
         ...servicesInfoWidget.data,
-        forkopRunning: running ? 1 : 0,
-        forkopStatus: getForkopStatusText(running, enabled),
+        nexrouteRunning: running ? 1 : 0,
+        nexrouteStatus: getNexrouteStatusText(running, enabled),
       },
     },
   });
@@ -232,17 +232,17 @@ async function refreshDiagnosticServicesInfo({
   return promise;
 }
 
-async function waitForForkopRunningState(expectedRunning: boolean) {
+async function waitForNexrouteRunningState(expectedRunning: boolean) {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < SERVICE_ACTION_STATUS_TIMEOUT_MS) {
     await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
 
-    const forkopRunning = Boolean(
-      store.get().servicesInfoWidget.data.forkopRunning,
+    const nexrouteRunning = Boolean(
+      store.get().servicesInfoWidget.data.nexrouteRunning,
     );
 
-    if (forkopRunning === expectedRunning) {
+    if (nexrouteRunning === expectedRunning) {
       return true;
     }
 
@@ -274,13 +274,13 @@ function stopServiceActionStateWatcher() {
 }
 
 function isVisibleServiceRuntimeAction(
-  action: Forkop.ServiceActionState['action'],
+  action: Nexroute.ServiceActionState['action'],
 ): action is ServiceRuntimeAction {
   return action === 'restart' || action === 'start' || action === 'stop';
 }
 
 function setServiceActionStateLoading(
-  state: Forkop.ServiceActionState,
+  state: Nexroute.ServiceActionState,
   loading: boolean,
 ) {
   if (!isVisibleServiceRuntimeAction(state.action)) {
@@ -290,7 +290,7 @@ function setServiceActionStateLoading(
   setDiagnosticActionLoading(state.action, loading);
 }
 
-async function followServiceActionState(state: Forkop.ServiceActionState) {
+async function followServiceActionState(state: Nexroute.ServiceActionState) {
   const jobId = state.job_id;
 
   if (!jobId || followedServiceActionJobs.has(jobId)) {
@@ -308,7 +308,7 @@ async function followServiceActionState(state: Forkop.ServiceActionState) {
 
   try {
     if (state.running) {
-      await ForkopShellMethods.waitServiceActionJob(jobId);
+      await NexrouteShellMethods.waitServiceActionJob(jobId);
     }
   } catch (error) {
     logger.error('[DIAGNOSTIC]', 'followServiceActionState failed', error);
@@ -316,13 +316,13 @@ async function followServiceActionState(state: Forkop.ServiceActionState) {
     handledServiceActionJobs.add(jobId);
     setServiceActionStateLoading(state, false);
     await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
-    void ForkopShellMethods.uiActionAck('service', jobId);
+    void NexrouteShellMethods.uiActionAck('service', jobId);
     followedServiceActionJobs.delete(jobId);
     resetDiagnosticsChecks();
   }
 }
 
-function followServiceActionsFromUiState(uiState?: Forkop.UiState) {
+function followServiceActionsFromUiState(uiState?: Nexroute.UiState) {
   if (!uiState) {
     return;
   }
@@ -411,10 +411,10 @@ async function fetchDiagnosticsProviderInfo({
 
     const [zapretRuntime, zapret2Runtime, byedpiRuntime, inboundsConfig] =
       await Promise.all([
-        ForkopShellMethods.checkZapretRuntime(),
-        ForkopShellMethods.checkZapret2Runtime(),
-        ForkopShellMethods.checkByedpiRuntime(),
-        ForkopShellMethods.checkInboundsConfig(),
+        NexrouteShellMethods.checkZapretRuntime(),
+        NexrouteShellMethods.checkZapret2Runtime(),
+        NexrouteShellMethods.checkByedpiRuntime(),
+        NexrouteShellMethods.checkInboundsConfig(),
       ]);
 
     if (requestId !== latestProviderInfoRequestId) {
@@ -532,7 +532,7 @@ function renderDiagnosticRunActionWidget() {
   const providerInfoLoaded =
     store.get().diagnosticsSystemInfo.providerInfoLoaded;
   const servicesInfoWidget = store.get().servicesInfoWidget;
-  const forkopRunning = Boolean(servicesInfoWidget.data.forkopRunning);
+  const nexrouteRunning = Boolean(servicesInfoWidget.data.nexrouteRunning);
   const container = document.getElementById('fkp_diagnostic-page-run-check');
 
   const renderedAction = renderRunAction({
@@ -540,7 +540,7 @@ function renderDiagnosticRunActionWidget() {
     disabled: shouldDisableDiagnosticRunAction({
       providerInfoLoaded,
       servicesInfoLoading: servicesInfoWidget.loading,
-      forkopRunning,
+      nexrouteRunning,
       mutatingServiceActionLoading: isMutatingServiceActionLoading(),
     }),
     click: () => runChecks(),
@@ -566,11 +566,11 @@ async function handleServiceRuntimeAction({
   let delegatedToWatcher = false;
 
   if (optimisticRunning !== undefined) {
-    setDisplayedForkopRunning(optimisticRunning);
+    setDisplayedNexrouteRunning(optimisticRunning);
   }
 
   try {
-    const startResponse = await ForkopShellMethods.serviceActionStart(action);
+    const startResponse = await NexrouteShellMethods.serviceActionStart(action);
 
     if (!startResponse.success) {
       throw new Error(startResponse.error);
@@ -584,7 +584,7 @@ async function handleServiceRuntimeAction({
 
     followedServiceActionJobs.add(jobId);
     ownsJobFollow = true;
-    const result = await ForkopShellMethods.waitServiceActionJob(jobId);
+    const result = await NexrouteShellMethods.waitServiceActionJob(jobId);
 
     if (!result.success) {
       throw new Error(result.error);
@@ -594,7 +594,7 @@ async function handleServiceRuntimeAction({
       throw new Error(result.data.message || _('Service action failed'));
     }
 
-    await waitForForkopRunningState(expectedRunning);
+    await waitForNexrouteRunningState(expectedRunning);
   } catch (e) {
     logger.error('[DIAGNOSTIC]', `handleServiceRuntimeAction(${action})`, e);
   } finally {
@@ -607,7 +607,7 @@ async function handleServiceRuntimeAction({
       await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
       if (jobId) {
         handledServiceActionJobs.add(jobId);
-        void ForkopShellMethods.uiActionAck('service', jobId);
+        void NexrouteShellMethods.uiActionAck('service', jobId);
       }
       resetDiagnosticsChecks();
     }
@@ -640,7 +640,7 @@ async function handleEnable() {
   setDiagnosticActionLoading('enable', true);
 
   try {
-    await ForkopShellMethods.enable();
+    await NexrouteShellMethods.enable();
   } catch (e) {
     logger.error('[DIAGNOSTIC]', 'handleEnable - e', e);
   } finally {
@@ -656,7 +656,7 @@ async function handleDisable() {
   setDiagnosticActionLoading('disable', true);
 
   try {
-    await ForkopShellMethods.disable();
+    await NexrouteShellMethods.disable();
   } catch (e) {
     logger.error('[DIAGNOSTIC]', 'handleDisable - e', e);
   } finally {
@@ -672,7 +672,7 @@ async function handleShowGlobalCheck() {
   setDiagnosticActionLoading('globalCheck', true);
 
   try {
-    const globalCheck = await ForkopShellMethods.globalCheck(false);
+    const globalCheck = await NexrouteShellMethods.globalCheck(false);
 
     if (globalCheck.success) {
       const rawGlobalCheckText = (globalCheck.data as string) ?? '';
@@ -700,11 +700,11 @@ async function handleViewLogs() {
   setDiagnosticActionLoading('viewLogs', true);
 
   try {
-    const viewLogs = await ForkopShellMethods.checkLogs();
+    const viewLogs = await NexrouteShellMethods.checkLogs();
 
     if (viewLogs.success) {
       const getLatestLogs = async () => {
-        const latestLogs = await ForkopShellMethods.checkLogs();
+        const latestLogs = await NexrouteShellMethods.checkLogs();
 
         if (!latestLogs.success) {
           throw latestLogs;
@@ -737,7 +737,7 @@ async function handleShowSingBoxConfig() {
   setDiagnosticActionLoading('showSingBoxConfig', true);
 
   try {
-    const showSingBoxConfig = await ForkopShellMethods.showSingBoxConfig(false);
+    const showSingBoxConfig = await NexrouteShellMethods.showSingBoxConfig(false);
 
     if (showSingBoxConfig.success) {
       const rawSingBoxConfigText = stringifySingBoxConfig(
@@ -799,10 +799,10 @@ function renderDiagnosticAvailableActionsWidget() {
   const servicesInfoWidget = store.get().servicesInfoWidget;
   logger.debug('[DIAGNOSTIC]', 'renderDiagnosticAvailableActionsWidget');
 
-  const forkopEnabled = Boolean(servicesInfoWidget.data.forkopEnabled);
-  const forkopRunning = Boolean(servicesInfoWidget.data.forkopRunning);
+  const nexrouteEnabled = Boolean(servicesInfoWidget.data.nexrouteEnabled);
+  const nexrouteRunning = Boolean(servicesInfoWidget.data.nexrouteRunning);
   const serviceTransition = getServiceTransition(
-    servicesInfoWidget.data.forkopStatus,
+    servicesInfoWidget.data.nexrouteStatus,
   );
   const restartLoading =
     diagnosticsActions.restart.loading || serviceTransition.restarting;
@@ -824,13 +824,13 @@ function renderDiagnosticAvailableActionsWidget() {
       componentActionLoading,
     });
   const startVisible = shouldShowStartAction({
-    forkopRunning,
+    nexrouteRunning,
     restartLoading,
     startLoading,
     stopLoading,
   });
   const stopVisible = shouldShowStopAction({
-    forkopRunning,
+    nexrouteRunning,
     restartLoading,
     startLoading,
     stopLoading,
@@ -842,7 +842,7 @@ function renderDiagnosticAvailableActionsWidget() {
     restart: {
       loading: restartLoading,
       visible: shouldShowRestartAction({
-        forkopRunning,
+        nexrouteRunning,
         restartLoading,
         startLoading,
         stopLoading,
@@ -864,13 +864,13 @@ function renderDiagnosticAvailableActionsWidget() {
     },
     enable: {
       loading: diagnosticsActions.enable.loading,
-      visible: !forkopEnabled,
+      visible: !nexrouteEnabled,
       onClick: handleEnable,
       disabled: serviceControlsDisabled,
     },
     disable: {
       loading: diagnosticsActions.disable.loading,
-      visible: forkopEnabled,
+      visible: nexrouteEnabled,
       onClick: handleDisable,
       disabled: serviceControlsDisabled,
     },
@@ -907,12 +907,12 @@ function renderDiagnosticSystemInfoWidget() {
 
   const items = [
     {
-      key: 'Forkop',
-      value: normalizeCompiledVersion(diagnosticsSystemInfo.forkop_version),
+      key: 'Nexroute',
+      value: normalizeCompiledVersion(diagnosticsSystemInfo.nexroute_version),
     },
     {
       key: 'Luci App',
-      value: normalizeCompiledVersion(FORKOP_LUCI_APP_VERSION),
+      value: normalizeCompiledVersion(NEXROUTE_LUCI_APP_VERSION),
     },
     {
       key: 'Sing-box',

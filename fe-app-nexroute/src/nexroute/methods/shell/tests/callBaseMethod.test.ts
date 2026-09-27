@@ -8,7 +8,7 @@ vi.mock('../../../../helpers', () => ({
   executeShellCommand: mocks.executeShellCommand,
 }));
 
-import { Forkop } from '../../../types';
+import { Nexroute } from '../../../types';
 import { callBaseMethod } from '../callBaseMethod';
 
 describe('callBaseMethod', () => {
@@ -24,7 +24,7 @@ describe('callBaseMethod', () => {
     });
 
     const response = await callBaseMethod(
-      Forkop.AvailableMethods.CHECK_DNS_AVAILABLE,
+      Nexroute.AvailableMethods.CHECK_DNS_AVAILABLE,
     );
 
     expect(response).toEqual({
@@ -41,9 +41,9 @@ describe('callBaseMethod', () => {
     });
 
     const response = await callBaseMethod(
-      Forkop.AvailableMethods.GLOBAL_CHECK,
+      Nexroute.AvailableMethods.GLOBAL_CHECK,
       [],
-      '/usr/bin/forkop',
+      '/usr/bin/nexroute',
       { allowNonZeroWithStdout: true },
     );
 
@@ -61,14 +61,14 @@ describe('callBaseMethod', () => {
     });
 
     await callBaseMethod(
-      Forkop.AvailableMethods.GLOBAL_CHECK,
+      Nexroute.AvailableMethods.GLOBAL_CHECK,
       [],
-      '/usr/bin/forkop',
+      '/usr/bin/nexroute',
       { timeout: 60000 },
     );
 
     expect(mocks.executeShellCommand).toHaveBeenCalledWith({
-      command: '/usr/bin/forkop',
+      command: '/usr/bin/nexroute',
       args: ['global_check'],
       timeout: 60000,
     });

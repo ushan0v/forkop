@@ -19,12 +19,12 @@ function stripIllegalReturn(code) {
 
 const files = await glob([
     'src/**/*.ts',
-    '../luci-app-nexroute/htdocs/luci-static/resources/view/forkop/**/*.js',
+    '../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/**/*.js',
 ], {
     ignore: [
         '**/*.test.ts',
         '**/main.js',
-        '../luci-app-nexroute/htdocs/luci-static/resources/view/forkop/main.js',
+        '../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/main.js',
     ],
     absolute: true,
 });

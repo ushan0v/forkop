@@ -6,13 +6,13 @@ let common = require("core.common");
 let core_ip = require("core.ip");
 let runtime_dns = require("singbox.dns");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
-const RUNTIME_STATE_DIR = getenv("FORKOP_RUNTIME_STATE_DIR") || "/var/run/forkop";
-const STATE_FILE = getenv("FORKOP_DNS_FAILOVER_STATE_FILE") || RUNTIME_STATE_DIR + "/dns-failover.json";
-const PID_FILE = getenv("FORKOP_DNS_FAILOVER_PID_FILE") || RUNTIME_STATE_DIR + "/dns-failover.pid";
-const DNS_FAILOVER_UC = getenv("FORKOP_DNS_FAILOVER_UC") || LIB_DIR + "/singbox/dns_failover.uc";
-const SERVICE_BIN = getenv("FORKOP_BIN") || "/usr/bin/forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
+const RUNTIME_STATE_DIR = getenv("NEXROUTE_RUNTIME_STATE_DIR") || "/var/run/nexroute";
+const STATE_FILE = getenv("NEXROUTE_DNS_FAILOVER_STATE_FILE") || RUNTIME_STATE_DIR + "/dns-failover.json";
+const PID_FILE = getenv("NEXROUTE_DNS_FAILOVER_PID_FILE") || RUNTIME_STATE_DIR + "/dns-failover.pid";
+const DNS_FAILOVER_UC = getenv("NEXROUTE_DNS_FAILOVER_UC") || LIB_DIR + "/singbox/dns_failover.uc";
+const SERVICE_BIN = getenv("NEXROUTE_BIN") || "/usr/bin/nexroute";
 const CHECK_DOMAIN = "example.com";
 
 function as_string(value) {
@@ -79,7 +79,7 @@ function write_state(path, value) {
 }
 
 function log_message(message, level) {
-    command_success_from_args([ "logger", "-t", "forkop", "[" + as_string(level || "info") + "] DNS failover: " + as_string(message) ]);
+    command_success_from_args([ "logger", "-t", "nexroute", "[" + as_string(level || "info") + "] DNS failover: " + as_string(message) ]);
 }
 
 function duration_milliseconds(value, fallback) {

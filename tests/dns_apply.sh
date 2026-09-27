@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APPLY="$ROOT_DIR/forkop/files/usr/lib/dns/apply.uc"
-UCODE_LIB="$ROOT_DIR/forkop/files/usr/lib"
+APPLY="$ROOT_DIR/nexroute/files/usr/lib/dns/apply.uc"
+UCODE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
 WORK_DIR="$(mktemp -d)"
 STATE="$WORK_DIR/uci.state"
 LOG="$WORK_DIR/uci.log"
@@ -131,7 +131,7 @@ export UCI_STATE="$STATE"
 export UCI_LOG="$LOG"
 export DNSMASQ_LOG
 export DNSMASQ_INIT="$WORK_DIR/dnsmasq-init"
-export FORKOP_CONFIG_NAME="forkop"
+export NEXROUTE_CONFIG_NAME="nexroute"
 export SB_DNS_INBOUND_ADDRESS="127.0.0.42"
 
 if grep -E 'uci -q|command -v uci' "$APPLY" >/dev/null; then
@@ -182,18 +182,18 @@ cat >"$STATE" <<'EOF_STATE'
 dhcp.@dnsmasq[0].server=1.1.1.1 8.8.8.8
 dhcp.@dnsmasq[0].noresolv=0
 dhcp.@dnsmasq[0].cachesize=150
-forkop.settings.shutdown_correctly=1
+nexroute.settings.shutdown_correctly=1
 EOF_STATE
 
 : > "$DNSMASQ_LOG"
 : > "$LOG"
 ucode -L "$UCODE_LIB" "$APPLY" configure force
 assert_value 'dhcp.@dnsmasq[0].server' '127.0.0.42'
-assert_value 'dhcp.@dnsmasq[0].forkop_server' '1.1.1.1 8.8.8.8'
+assert_value 'dhcp.@dnsmasq[0].nexroute_server' '1.1.1.1 8.8.8.8'
 assert_value 'dhcp.@dnsmasq[0].noresolv' '1'
-assert_value 'dhcp.@dnsmasq[0].forkop_noresolv' '0'
+assert_value 'dhcp.@dnsmasq[0].nexroute_noresolv' '0'
 assert_value 'dhcp.@dnsmasq[0].cachesize' '0'
-assert_value 'dhcp.@dnsmasq[0].forkop_cachesize' '150'
+assert_value 'dhcp.@dnsmasq[0].nexroute_cachesize' '150'
 assert_log_contains 'commit dhcp'
 assert_dnsmasq_restarted
 
@@ -203,21 +203,21 @@ ucode -L "$UCODE_LIB" "$APPLY" restore force
 assert_value 'dhcp.@dnsmasq[0].server' '1.1.1.1 8.8.8.8'
 assert_value 'dhcp.@dnsmasq[0].noresolv' '0'
 assert_value 'dhcp.@dnsmasq[0].cachesize' '150'
-assert_absent 'dhcp.@dnsmasq[0].forkop_server'
-assert_absent 'dhcp.@dnsmasq[0].forkop_noresolv'
-assert_absent 'dhcp.@dnsmasq[0].forkop_cachesize'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_server'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_noresolv'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_cachesize'
 assert_log_contains 'commit dhcp'
 assert_dnsmasq_restarted
 
 cat >"$STATE" <<'EOF_STATE'
 dhcp.@dnsmasq[0].server=127.0.0.42
 dhcp.@dnsmasq[0].notinterface=br-lan guest
-dhcp.@dnsmasq[0].forkop_server=1.1.1.1 8.8.8.8
-dhcp.@dnsmasq[0].forkop_notinterface=wan docker
-dhcp.@dnsmasq[0].forkop_noresolv=1
-dhcp.@dnsmasq[0].forkop_cachesize=0
-dhcp.forkop.interface=br-lan guest
-forkop.settings.dont_touch_dhcp=1
+dhcp.@dnsmasq[0].nexroute_server=1.1.1.1 8.8.8.8
+dhcp.@dnsmasq[0].nexroute_notinterface=wan docker
+dhcp.@dnsmasq[0].nexroute_noresolv=1
+dhcp.@dnsmasq[0].nexroute_cachesize=0
+dhcp.nexroute.interface=br-lan guest
+nexroute.settings.dont_touch_dhcp=1
 EOF_STATE
 
 run_restore
@@ -225,16 +225,16 @@ assert_value 'dhcp.@dnsmasq[0].server' '1.1.1.1 8.8.8.8'
 assert_value 'dhcp.@dnsmasq[0].notinterface' 'wan docker'
 assert_value 'dhcp.@dnsmasq[0].noresolv' '1'
 assert_value 'dhcp.@dnsmasq[0].cachesize' '0'
-assert_absent 'dhcp.@dnsmasq[0].forkop_server'
-assert_absent 'dhcp.@dnsmasq[0].forkop_notinterface'
-assert_absent 'dhcp.@dnsmasq[0].forkop_noresolv'
-assert_absent 'dhcp.@dnsmasq[0].forkop_cachesize'
-assert_absent 'dhcp.forkop.interface'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_server'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_notinterface'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_noresolv'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_cachesize'
+assert_absent 'dhcp.nexroute.interface'
 assert_log_contains 'commit dhcp'
 
 cat >"$STATE" <<'EOF_STATE'
 dhcp.@dnsmasq[0].server=9.9.9.9
-forkop.settings.dont_touch_dhcp=1
+nexroute.settings.dont_touch_dhcp=1
 EOF_STATE
 
 run_restore
@@ -243,17 +243,17 @@ assert_log_empty
 
 cat >"$STATE" <<'EOF_STATE'
 dhcp.@dnsmasq[0].server=127.0.0.42
-dhcp.@dnsmasq[0].forkop_noresolv=1
-dhcp.@dnsmasq[0].forkop_cachesize=0
-forkop.settings.dont_touch_dhcp=0
+dhcp.@dnsmasq[0].nexroute_noresolv=1
+dhcp.@dnsmasq[0].nexroute_cachesize=0
+nexroute.settings.dont_touch_dhcp=0
 EOF_STATE
 
 run_restore
 assert_absent 'dhcp.@dnsmasq[0].server'
 assert_value 'dhcp.@dnsmasq[0].noresolv' '1'
 assert_value 'dhcp.@dnsmasq[0].cachesize' '0'
-assert_absent 'dhcp.@dnsmasq[0].forkop_noresolv'
-assert_absent 'dhcp.@dnsmasq[0].forkop_cachesize'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_noresolv'
+assert_absent 'dhcp.@dnsmasq[0].nexroute_cachesize'
 assert_log_contains 'commit dhcp'
 
 printf 'DNS apply checks passed\n'

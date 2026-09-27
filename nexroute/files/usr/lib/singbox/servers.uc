@@ -270,10 +270,10 @@ function add_tailscale_endpoint(config, section, tag_name) {
     let endpoint = {
         type: "tailscale",
         tag: tag_name,
-        state_directory: "/etc/forkop/tailscale/" + safe_filename(section_name),
+        state_directory: "/etc/nexroute/tailscale/" + safe_filename(section_name),
         auth_key: option(section, "tailscale_auth_key", ""),
         control_url: option(section, "tailscale_control_url", "https://controlplane.tailscale.com"),
-        hostname: option(section, "tailscale_hostname", "forkop-" + safe_filename(section_name))
+        hostname: option(section, "tailscale_hostname", "nexroute-" + safe_filename(section_name))
     };
     if (bool_option(section, "tailscale_accept_routes", false))
         endpoint.accept_routes = true;

@@ -16,16 +16,16 @@ function shell_quote(value) {
 function constants_map() {
     let c = {};
 
-    c.FORKOP_VERSION = env("FORKOP_VERSION", "__COMPILED_VERSION_VARIABLE__");
-    c.FORKOP_CONFIG_NAME = env("FORKOP_CONFIG_NAME", "forkop");
-    c.FORKOP_CONFIG = env("FORKOP_CONFIG", "/etc/config/" + c.FORKOP_CONFIG_NAME);
-    c.FORKOP_BIN = env("FORKOP_BIN", "/usr/bin/forkop");
-    c.FORKOP_SERVICE_NAME = env("FORKOP_SERVICE_NAME", "forkop");
-    c.FORKOP_SERVICE_INIT = env("FORKOP_SERVICE_INIT", "/etc/init.d/forkop");
-    c.FORKOP_RELEASE_REPO = env("FORKOP_RELEASE_REPO", "ushan0v/forkop");
-    c.FORKOP_LUCI_VIEW_NAMESPACE = env("FORKOP_LUCI_VIEW_NAMESPACE", "forkop");
-    c.FORKOP_LUCI_VIEW_DIR = env("FORKOP_LUCI_VIEW_DIR", "/www/luci-static/resources/view/" + c.FORKOP_LUCI_VIEW_NAMESPACE);
-    c.FORKOP_LUCI_I18N_DOMAIN = env("FORKOP_LUCI_I18N_DOMAIN", "forkop");
+    c.NEXROUTE_VERSION = env("NEXROUTE_VERSION", "__COMPILED_VERSION_VARIABLE__");
+    c.NEXROUTE_CONFIG_NAME = env("NEXROUTE_CONFIG_NAME", "nexroute");
+    c.NEXROUTE_CONFIG = env("NEXROUTE_CONFIG", "/etc/config/" + c.NEXROUTE_CONFIG_NAME);
+    c.NEXROUTE_BIN = env("NEXROUTE_BIN", "/usr/bin/nexroute");
+    c.NEXROUTE_SERVICE_NAME = env("NEXROUTE_SERVICE_NAME", "nexroute");
+    c.NEXROUTE_SERVICE_INIT = env("NEXROUTE_SERVICE_INIT", "/etc/init.d/nexroute");
+    c.NEXROUTE_RELEASE_REPO = env("NEXROUTE_RELEASE_REPO", "filippxda26/Nexroute");
+    c.NEXROUTE_LUCI_VIEW_NAMESPACE = env("NEXROUTE_LUCI_VIEW_NAMESPACE", "nexroute");
+    c.NEXROUTE_LUCI_VIEW_DIR = env("NEXROUTE_LUCI_VIEW_DIR", "/www/luci-static/resources/view/" + c.NEXROUTE_LUCI_VIEW_NAMESPACE);
+    c.NEXROUTE_LUCI_I18N_DOMAIN = env("NEXROUTE_LUCI_I18N_DOMAIN", "nexroute");
 
     c.RESOLV_CONF = env("RESOLV_CONF", "/etc/resolv.conf");
     c.CHECK_PROXY_IP_DOMAIN = env("CHECK_PROXY_IP_DOMAIN", "ip.podkop.fyi");
@@ -35,24 +35,24 @@ function constants_map() {
     c.TMP_SUBSCRIPTION_FOLDER = env("TMP_SUBSCRIPTION_FOLDER", c.TMP_SING_BOX_FOLDER + "/subscriptions");
     c.CLOUDFLARE_OCTETS = env("CLOUDFLARE_OCTETS", "8.47 162.159 188.114");
     c.COREUTILS_BASE64_REQUIRED_VERSION = env("COREUTILS_BASE64_REQUIRED_VERSION", "9.7");
-    c.RT_TABLE_NAME = env("RT_TABLE_NAME", "forkop");
+    c.RT_TABLE_NAME = env("RT_TABLE_NAME", "nexroute");
 
-    c.NFT_TABLE_NAME = env("NFT_TABLE_NAME", "ForkopTable");
+    c.NFT_TABLE_NAME = env("NFT_TABLE_NAME", "NexrouteTable");
     c.NFT_LOCALV4_SET_NAME = env("NFT_LOCALV4_SET_NAME", "localv4");
     c.NFT_LOCALV6_SET_NAME = env("NFT_LOCALV6_SET_NAME", "localv6");
-    c.NFT_COMMON_SET_NAME = env("NFT_COMMON_SET_NAME", "forkop_subnets");
-    c.NFT_COMMON6_SET_NAME = env("NFT_COMMON6_SET_NAME", "forkop_subnets6");
-    c.NFT_PORT_SET_NAME = env("NFT_PORT_SET_NAME", "forkop_ports");
-    c.NFT_IP_PORT_SET_NAME = env("NFT_IP_PORT_SET_NAME", "forkop_ip_ports");
-    c.NFT_IP_PORT6_SET_NAME = env("NFT_IP_PORT6_SET_NAME", "forkop_ip6_ports");
-    c.NFT_DISCORD_SET_NAME = env("NFT_DISCORD_SET_NAME", "forkop_discord_subnets");
-    c.NFT_DISCORD6_SET_NAME = env("NFT_DISCORD6_SET_NAME", "forkop_discord_subnets6");
-    c.NFT_INTERFACE_SET_NAME = env("NFT_INTERFACE_SET_NAME", "forkop_interfaces");
+    c.NFT_COMMON_SET_NAME = env("NFT_COMMON_SET_NAME", "nexroute_subnets");
+    c.NFT_COMMON6_SET_NAME = env("NFT_COMMON6_SET_NAME", "nexroute_subnets6");
+    c.NFT_PORT_SET_NAME = env("NFT_PORT_SET_NAME", "nexroute_ports");
+    c.NFT_IP_PORT_SET_NAME = env("NFT_IP_PORT_SET_NAME", "nexroute_ip_ports");
+    c.NFT_IP_PORT6_SET_NAME = env("NFT_IP_PORT6_SET_NAME", "nexroute_ip6_ports");
+    c.NFT_DISCORD_SET_NAME = env("NFT_DISCORD_SET_NAME", "nexroute_discord_subnets");
+    c.NFT_DISCORD6_SET_NAME = env("NFT_DISCORD6_SET_NAME", "nexroute_discord_subnets6");
+    c.NFT_INTERFACE_SET_NAME = env("NFT_INTERFACE_SET_NAME", "nexroute_interfaces");
     c.NFT_FAKEIP_MARK = env("NFT_FAKEIP_MARK", "0x04000000");
     c.NFT_OUTBOUND_MARK = env("NFT_OUTBOUND_MARK", "0x08000000");
 
     c.SB_REQUIRED_VERSION = env("SB_REQUIRED_VERSION", "1.12.0");
-    c.SB_MANAGED_SERVICE_MARKER = env("SB_MANAGED_SERVICE_MARKER", "Forkop managed sing-box service for binary variants");
+    c.SB_MANAGED_SERVICE_MARKER = env("SB_MANAGED_SERVICE_MARKER", "Nexroute managed sing-box service for binary variants");
     c.SB_DNS_SERVER_TAG = env("SB_DNS_SERVER_TAG", "dns-server");
     c.SB_FAKEIP_DNS_SERVER_TAG = env("SB_FAKEIP_DNS_SERVER_TAG", "fakeip-server");
     c.SB_FAKEIP_INET4_RANGE = env("SB_FAKEIP_INET4_RANGE", "198.18.0.0/15");
@@ -75,8 +75,8 @@ function constants_map() {
     c.SB_DIRECT_OUTBOUND_TAG = env("SB_DIRECT_OUTBOUND_TAG", "direct-out");
     c.SB_BYPASS_OUTBOUND_TAG = env("SB_BYPASS_OUTBOUND_TAG", "bypass-out");
     c.SB_CLASH_API_CONTROLLER_PORT = env("SB_CLASH_API_CONTROLLER_PORT", "9090");
-    c.SB_VARIANT_STATE_FILE = env("SB_VARIANT_STATE_FILE", "/etc/forkop/sing-box-variant");
-    c.SB_VERSION_STATE_FILE = env("SB_VERSION_STATE_FILE", "/etc/forkop/sing-box-version");
+    c.SB_VARIANT_STATE_FILE = env("SB_VARIANT_STATE_FILE", "/etc/nexroute/sing-box-variant");
+    c.SB_VERSION_STATE_FILE = env("SB_VERSION_STATE_FILE", "/etc/nexroute/sing-box-version");
 
     c.GITHUB_RAW_URL = env("GITHUB_RAW_URL", "https://raw.githubusercontent.com/itdoginfo/allow-domains/main");
     c.SRS_MAIN_URL = env("SRS_MAIN_URL", "https://github.com/itdoginfo/allow-domains/releases/latest/download");
@@ -98,9 +98,9 @@ function constants_map() {
     c.ZAPRET_PROVIDER_NFQWS_BIN = env("ZAPRET_PROVIDER_NFQWS_BIN", c.ZAPRET_PROVIDER_BASE_DIR + "/nfq/nfqws");
     c.ZAPRET_PROVIDER_FILES_DIR = env("ZAPRET_PROVIDER_FILES_DIR", c.ZAPRET_PROVIDER_BASE_DIR + "/files");
     c.ZAPRET_PROVIDER_IPSET_DIR = env("ZAPRET_PROVIDER_IPSET_DIR", c.ZAPRET_PROVIDER_BASE_DIR + "/ipset");
-    c.ZAPRET_LEGACY_RUNTIME_BASE_DIR = env("ZAPRET_LEGACY_RUNTIME_BASE_DIR", "/var/run/forkop/zapret-runtime");
+    c.ZAPRET_LEGACY_RUNTIME_BASE_DIR = env("ZAPRET_LEGACY_RUNTIME_BASE_DIR", "/var/run/nexroute/zapret-runtime");
     c.ZAPRET_NFQWS_BIN = env("ZAPRET_NFQWS_BIN", c.ZAPRET_PROVIDER_NFQWS_BIN);
-    c.ZAPRET_STATE_DIR = env("ZAPRET_STATE_DIR", "/var/run/forkop/zapret");
+    c.ZAPRET_STATE_DIR = env("ZAPRET_STATE_DIR", "/var/run/nexroute/zapret");
     c.ZAPRET_PID_DIR = env("ZAPRET_PID_DIR", c.ZAPRET_STATE_DIR + "/pid");
     c.ZAPRET_CHILD_PID_DIR = env("ZAPRET_CHILD_PID_DIR", c.ZAPRET_STATE_DIR + "/child-pid");
     c.ZAPRET_LOG_DIR = env("ZAPRET_LOG_DIR", c.ZAPRET_STATE_DIR + "/log");
@@ -120,7 +120,7 @@ function constants_map() {
     c.ZAPRET2_PROVIDER_IPSET_DIR = env("ZAPRET2_PROVIDER_IPSET_DIR", c.ZAPRET2_PROVIDER_BASE_DIR + "/ipset");
     c.ZAPRET2_PROVIDER_LUA_DIR = env("ZAPRET2_PROVIDER_LUA_DIR", c.ZAPRET2_PROVIDER_BASE_DIR + "/lua");
     c.ZAPRET2_NFQWS2_BIN = env("ZAPRET2_NFQWS2_BIN", c.ZAPRET2_PROVIDER_NFQWS2_BIN);
-    c.ZAPRET2_STATE_DIR = env("ZAPRET2_STATE_DIR", "/var/run/forkop/zapret2");
+    c.ZAPRET2_STATE_DIR = env("ZAPRET2_STATE_DIR", "/var/run/nexroute/zapret2");
     c.ZAPRET2_PID_DIR = env("ZAPRET2_PID_DIR", c.ZAPRET2_STATE_DIR + "/pid");
     c.ZAPRET2_CHILD_PID_DIR = env("ZAPRET2_CHILD_PID_DIR", c.ZAPRET2_STATE_DIR + "/child-pid");
     c.ZAPRET2_LOG_DIR = env("ZAPRET2_LOG_DIR", c.ZAPRET2_STATE_DIR + "/log");
@@ -134,7 +134,7 @@ function constants_map() {
 
     c.BYEDPI_BIN = env("BYEDPI_BIN", "/usr/bin/ciadpi");
     c.BYEDPI_SERVICE_INIT = env("BYEDPI_SERVICE_INIT", "/etc/init.d/byedpi");
-    c.BYEDPI_STATE_DIR = env("BYEDPI_STATE_DIR", "/var/run/forkop/byedpi");
+    c.BYEDPI_STATE_DIR = env("BYEDPI_STATE_DIR", "/var/run/nexroute/byedpi");
     c.BYEDPI_PID_DIR = env("BYEDPI_PID_DIR", c.BYEDPI_STATE_DIR + "/pid");
     c.BYEDPI_CHILD_PID_DIR = env("BYEDPI_CHILD_PID_DIR", c.BYEDPI_STATE_DIR + "/child-pid");
     c.BYEDPI_LOG_DIR = env("BYEDPI_LOG_DIR", c.BYEDPI_STATE_DIR + "/log");

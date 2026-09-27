@@ -12,7 +12,7 @@ vi.mock('../../../../methods/custom/getDashboardSections', () => ({
 }));
 
 vi.mock('../../../../methods', () => ({
-  ForkopShellMethods: {
+  NexrouteShellMethods: {
     getClashApiProxyLatency: mocks.getClashApiProxyLatency,
     getClashApiGroupLatency: mocks.getClashApiGroupLatency,
   },

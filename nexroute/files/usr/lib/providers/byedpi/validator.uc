@@ -99,26 +99,26 @@ function controlled_option_failure(token, next_token) {
             as_string(next_token) != "" && substr(as_string(next_token), 0, 1) != "-")
             display += " " + as_string(next_token);
         return validation_failure(
-            "ByeDPI listen address and port are assigned by Forkop and must not be set in the strategy: " + display,
+            "ByeDPI listen address and port are assigned by Nexroute and must not be set in the strategy: " + display,
             [ base ]
         );
     }
 
     if (token == "--transparent" || token == "-E" || match(token, /^-E.+/) != null)
         return validation_failure(
-            "Transparent proxy mode is incompatible with action=byedpi because Forkop connects to ciadpi through SOCKS.",
+            "Transparent proxy mode is incompatible with action=byedpi because Nexroute connects to ciadpi through SOCKS.",
             [ base ]
         );
 
     if (token == "--daemon" || token == "-D" || match(token, /^-D.+/) != null)
         return validation_failure(
-            "Forkop manages the ciadpi process lifecycle itself, so daemon mode is not allowed here.",
+            "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here.",
             [ base ]
         );
 
     if (token == "--pidfile" || index(token, "--pidfile=") == 0 || token == "-w" || match(token, /^-w.+/) != null)
         return validation_failure(
-            "Forkop manages ciadpi pid files itself, so pidfile options are not allowed here.",
+            "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here.",
             [ base ]
         );
 

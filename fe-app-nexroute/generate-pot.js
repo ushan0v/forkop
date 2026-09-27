@@ -2,8 +2,8 @@ import fs from 'fs/promises';
 import { execSync } from 'child_process';
 
 const inputFile = 'locales/calls.json';
-const outputFile = 'locales/forkop.pot';
-const projectId = 'FORKOP';
+const outputFile = 'locales/nexroute.pot';
+const projectId = 'NEXROUTE';
 
 function getGitUser() {
   try {
@@ -26,8 +26,8 @@ function getGitUser() {
   }
 
   return {
-    name: 'Forkop',
-    email: 'ushan0v@users.noreply.github.com',
+    name: 'Nexroute',
+    email: 'filippxda26@users.noreply.github.com',
   };
 }
 

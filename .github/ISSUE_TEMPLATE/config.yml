@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: 💬 Если у вас что-то не работает, прежде всего прочитайте README проекта
-    url: https://github.com/ushan0v/forkop
+    url: https://github.com/filippxda26/Nexroute
     about: README проекта
   - name: 📚 Если вы не нашли в README документацию, то вот ссылка на неё
-    url: https://github.com/ushan0v/forkop#readme
-    about: README Forkop
+    url: https://github.com/filippxda26/Nexroute#readme
+    about: README Nexroute

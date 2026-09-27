@@ -8,14 +8,14 @@ EXTRA_HELP="        retry_start_on_wan_up Retry failed cold start after WAN come
 
 script=$(readlink "$initscript")
 NAME="$(basename ${script:-$initscript})"
-FORKOP_LIB="/usr/lib/forkop"
-FORKOP_INITD_UC="$FORKOP_LIB/service/initd.uc"
+NEXROUTE_LIB="/usr/lib/nexroute"
+NEXROUTE_INITD_UC="$NEXROUTE_LIB/service/initd.uc"
 
 initd_ucode() {
-    [ -r "$FORKOP_INITD_UC" ] || return 1
-    FORKOP_LIB="$FORKOP_LIB" \
-        FORKOP_SERVICE_NAME="$NAME" \
-        ucode -L "$FORKOP_LIB" "$FORKOP_INITD_UC" "$@"
+    [ -r "$NEXROUTE_INITD_UC" ] || return 1
+    NEXROUTE_LIB="$NEXROUTE_LIB" \
+        NEXROUTE_SERVICE_NAME="$NAME" \
+        ucode -L "$NEXROUTE_LIB" "$NEXROUTE_INITD_UC" "$@"
 }
 
 sync_service_triggers() {
@@ -31,12 +31,12 @@ sync_service_triggers_payload() {
 
 start_service() {
     initd_ucode start-service "$1" "$$"
-    FORKOP_LAST_START_STATUS="$?"
-    return "$FORKOP_LAST_START_STATUS"
+    NEXROUTE_LAST_START_STATUS="$?"
+    return "$NEXROUTE_LAST_START_STATUS"
 }
 
 service_started() {
-    return "${FORKOP_LAST_START_STATUS:-0}"
+    return "${NEXROUTE_LAST_START_STATUS:-0}"
 }
 
 stop_service() {

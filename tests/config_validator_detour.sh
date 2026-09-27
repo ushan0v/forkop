@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-VALIDATOR="$ROOT_DIR/forkop/files/usr/lib/config/validator.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+VALIDATOR="$ROOT_DIR/nexroute/files/usr/lib/config/validator.uc"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -20,7 +20,7 @@ assert_rejects() {
   shift 2
   local output
 
-  if output="$(rows "$@" | ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-outbound-detours 2>/dev/null)"; then
+  if output="$(rows "$@" | ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-outbound-detours 2>/dev/null)"; then
     fail "$label should be rejected"
   fi
 
@@ -31,7 +31,7 @@ assert_rejects() {
 rows \
   source 1 connection 1 target \
   target 1 connection 0 '' |
-  ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-outbound-detours
+  ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-outbound-detours
 
 assert_rejects "unsupported source action" "supported only for Connection rules" \
   source 1 zapret 1 target \

@@ -53,12 +53,6 @@ jobs:
           find nexroute/files/usr/lib -name '*.uc' -print0 | xargs -0 -n1 ucode -c -o /dev/null
           find nexroute/files/usr/lib -name '*.uc' -print0 | xargs -0 -n1 ucode -S -c -o /dev/null
 
-      - name: Create compatibility paths for tests
-        shell: bash
-        run: |
-          ln -sfn nexroute forkop
-          ln -sfn luci-app-nexroute luci-app-forkop
-          ln -sfn fe-app-nexroute fe-app-forkop
 
       - name: Run backend tests
         shell: bash

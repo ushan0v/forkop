@@ -3,34 +3,34 @@
 let fs = require("fs");
 let uci_core = require("core.uci");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
-const BIN_PATH = getenv("FORKOP_BIN") || "/usr/bin/forkop";
-const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || "/etc/init.d/forkop";
-const SERVICE_NAME = getenv("FORKOP_SERVICE_NAME") || "forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
+const BIN_PATH = getenv("NEXROUTE_BIN") || "/usr/bin/nexroute";
+const SERVICE_INIT = getenv("NEXROUTE_SERVICE_INIT") || "/etc/init.d/nexroute";
+const SERVICE_NAME = getenv("NEXROUTE_SERVICE_NAME") || "nexroute";
 const STATE_UC = LIB_DIR + "/service/state.uc";
 const UI_UC = LIB_DIR + "/service/ui.uc";
-const STATE_DIR = getenv("FORKOP_UI_STATE_DIR") || "/var/run/forkop/ui-state";
-const PENDING_RELOAD_FILE = getenv("FORKOP_PENDING_RELOAD_FILE") || "/var/run/forkop/reload.pending";
-const SERVICE_ACTION_DIR = getenv("FORKOP_UI_SERVICE_ACTION_DIR") || STATE_DIR + "/service-actions";
-const SERVICE_ACTION_LOCK_DIR = getenv("FORKOP_UI_SERVICE_ACTION_LOCK_DIR") || STATE_DIR + "/service-actions.lock";
-const LATENCY_ACTION_DIR = getenv("FORKOP_UI_LATENCY_ACTION_DIR") || STATE_DIR + "/latency-actions";
-const COMPONENT_ACTION_DIR = getenv("FORKOP_UI_COMPONENT_ACTION_DIR") || getenv("UPDATES_JOB_DIR") || "/var/run/forkop/component-actions";
-const SUBSCRIPTION_ACTION_DIR = getenv("FORKOP_UI_SUBSCRIPTION_ACTION_DIR") || getenv("FORKOP_SUBSCRIPTION_UPDATE_JOB_DIR") || "/var/run/forkop/subscription-update-jobs";
-const SING_BOX_VERSION_CACHE_FILE = getenv("FORKOP_UI_SING_BOX_VERSION_CACHE_FILE") || STATE_DIR + "/sing-box-version";
-const SING_BOX_VERSION_CACHE_LOCK_DIR = getenv("FORKOP_UI_SING_BOX_VERSION_CACHE_LOCK_DIR") || SING_BOX_VERSION_CACHE_FILE + ".lock";
-const SING_BOX_VARIANT_STATE_FILE = getenv("FORKOP_UI_SING_BOX_VARIANT_STATE_FILE") || "/etc/forkop/sing-box-variant";
-const SING_BOX_BIN_PATH = getenv("FORKOP_UI_SING_BOX_BIN_PATH") || "/usr/bin/sing-box";
-const SING_BOX_VERSION_PROBE_TIMEOUT_SECONDS = getenv("FORKOP_UI_SING_BOX_VERSION_PROBE_TIMEOUT_SECONDS") || "1";
-const SING_BOX_VERSION_PROBE_FAILURE_TTL_SECONDS = getenv("FORKOP_UI_SING_BOX_VERSION_PROBE_FAILURE_TTL_SECONDS") || "30";
-const ACTION_FINISHED_TTL_MINUTES = getenv("FORKOP_UI_ACTION_FINISHED_TTL_MINUTES") || "60";
-const ACTION_ACKED_TTL_SECONDS = getenv("FORKOP_UI_ACTION_ACKED_TTL_SECONDS") || "15";
-const ACTION_STALE_GRACE_SECONDS = getenv("FORKOP_UI_ACTION_STALE_GRACE_SECONDS") || "15";
-const SERVICE_ACTION_TIMEOUT_SECONDS = getenv("FORKOP_UI_SERVICE_ACTION_TIMEOUT_SECONDS") || "120";
-const SERVICE_ACTION_SETTLE_SECONDS = getenv("FORKOP_UI_SERVICE_ACTION_SETTLE_SECONDS") || "2";
-const RUNTIME_STABLE_MIN_AGE = getenv("FORKOP_RUNTIME_STABLE_MIN_AGE") || "2";
-const NFT_TABLE_NAME = getenv("NFT_TABLE_NAME") || "ForkopTable";
-const RT_TABLE_NAME = getenv("RT_TABLE_NAME") || "forkop";
+const STATE_DIR = getenv("NEXROUTE_UI_STATE_DIR") || "/var/run/nexroute/ui-state";
+const PENDING_RELOAD_FILE = getenv("NEXROUTE_PENDING_RELOAD_FILE") || "/var/run/nexroute/reload.pending";
+const SERVICE_ACTION_DIR = getenv("NEXROUTE_UI_SERVICE_ACTION_DIR") || STATE_DIR + "/service-actions";
+const SERVICE_ACTION_LOCK_DIR = getenv("NEXROUTE_UI_SERVICE_ACTION_LOCK_DIR") || STATE_DIR + "/service-actions.lock";
+const LATENCY_ACTION_DIR = getenv("NEXROUTE_UI_LATENCY_ACTION_DIR") || STATE_DIR + "/latency-actions";
+const COMPONENT_ACTION_DIR = getenv("NEXROUTE_UI_COMPONENT_ACTION_DIR") || getenv("UPDATES_JOB_DIR") || "/var/run/nexroute/component-actions";
+const SUBSCRIPTION_ACTION_DIR = getenv("NEXROUTE_UI_SUBSCRIPTION_ACTION_DIR") || getenv("NEXROUTE_SUBSCRIPTION_UPDATE_JOB_DIR") || "/var/run/nexroute/subscription-update-jobs";
+const SING_BOX_VERSION_CACHE_FILE = getenv("NEXROUTE_UI_SING_BOX_VERSION_CACHE_FILE") || STATE_DIR + "/sing-box-version";
+const SING_BOX_VERSION_CACHE_LOCK_DIR = getenv("NEXROUTE_UI_SING_BOX_VERSION_CACHE_LOCK_DIR") || SING_BOX_VERSION_CACHE_FILE + ".lock";
+const SING_BOX_VARIANT_STATE_FILE = getenv("NEXROUTE_UI_SING_BOX_VARIANT_STATE_FILE") || "/etc/nexroute/sing-box-variant";
+const SING_BOX_BIN_PATH = getenv("NEXROUTE_UI_SING_BOX_BIN_PATH") || "/usr/bin/sing-box";
+const SING_BOX_VERSION_PROBE_TIMEOUT_SECONDS = getenv("NEXROUTE_UI_SING_BOX_VERSION_PROBE_TIMEOUT_SECONDS") || "1";
+const SING_BOX_VERSION_PROBE_FAILURE_TTL_SECONDS = getenv("NEXROUTE_UI_SING_BOX_VERSION_PROBE_FAILURE_TTL_SECONDS") || "30";
+const ACTION_FINISHED_TTL_MINUTES = getenv("NEXROUTE_UI_ACTION_FINISHED_TTL_MINUTES") || "60";
+const ACTION_ACKED_TTL_SECONDS = getenv("NEXROUTE_UI_ACTION_ACKED_TTL_SECONDS") || "15";
+const ACTION_STALE_GRACE_SECONDS = getenv("NEXROUTE_UI_ACTION_STALE_GRACE_SECONDS") || "15";
+const SERVICE_ACTION_TIMEOUT_SECONDS = getenv("NEXROUTE_UI_SERVICE_ACTION_TIMEOUT_SECONDS") || "120";
+const SERVICE_ACTION_SETTLE_SECONDS = getenv("NEXROUTE_UI_SERVICE_ACTION_SETTLE_SECONDS") || "2";
+const RUNTIME_STABLE_MIN_AGE = getenv("NEXROUTE_RUNTIME_STABLE_MIN_AGE") || "2";
+const NFT_TABLE_NAME = getenv("NFT_TABLE_NAME") || "NexrouteTable";
+const RT_TABLE_NAME = getenv("RT_TABLE_NAME") || "nexroute";
 const NFT_FAKEIP_MARK = getenv("NFT_FAKEIP_MARK") || "0x04000000";
 const SB_DNS_INBOUND_ADDRESS = getenv("SB_DNS_INBOUND_ADDRESS") || "127.0.0.42";
 const ZAPRET_PROVIDER_NFQWS_BIN = getenv("ZAPRET_PROVIDER_NFQWS_BIN") || "/opt/zapret/nfq/nfqws";
@@ -290,27 +290,27 @@ function print_service_status_text(running, enabled) {
 
 function ui_state_json() {
     let action_state = read_state_paths();
-    let forkop_running = arg_number(ARGV[1]);
-    let forkop_enabled = arg_number(ARGV[2]);
-    let forkop_status = as_string(ARGV[3]);
-    let forkop_dns_configured = arg_number(ARGV[4]);
+    let nexroute_running = arg_number(ARGV[1]);
+    let nexroute_enabled = arg_number(ARGV[2]);
+    let nexroute_status = as_string(ARGV[3]);
+    let nexroute_dns_configured = arg_number(ARGV[4]);
     let sing_box_running = arg_number(ARGV[5]);
     let sing_box_enabled = arg_number(ARGV[6]);
     let sing_box_status = as_string(ARGV[7]);
 
-    if (forkop_status == "")
-        forkop_status = service_status_text(forkop_running, forkop_enabled);
+    if (nexroute_status == "")
+        nexroute_status = service_status_text(nexroute_running, nexroute_enabled);
 
     if (sing_box_status == "")
         sing_box_status = service_status_text(sing_box_running, sing_box_enabled);
 
     write_json({
         service: {
-            forkop: {
-                running: forkop_running,
-                enabled: forkop_enabled,
-                status: forkop_status,
-                dns_configured: forkop_dns_configured
+            nexroute: {
+                running: nexroute_running,
+                enabled: nexroute_enabled,
+                status: nexroute_status,
+                dns_configured: nexroute_dns_configured
             },
             sing_box: {
                 running: sing_box_running,
@@ -862,9 +862,9 @@ function sing_box_running() {
     ]);
 }
 
-function forkop_running() {
+function nexroute_running() {
     return module_success(LIB_DIR + "/service/state.uc", [
-        "forkop-stably-running",
+        "nexroute-stably-running",
         RT_TABLE_NAME,
         NFT_TABLE_NAME,
         NFT_FAKEIP_MARK,
@@ -1077,29 +1077,29 @@ function current_ui_state_json() {
     refresh_action_dirs();
 
     let capabilities = capability_flags();
-    let forkop_is_running = forkop_running() ? 1 : 0;
-    let forkop_is_enabled = service_enabled() ? 1 : 0;
-    let sing_box_is_running = forkop_is_running ? 1 : (sing_box_running() ? 1 : 0);
+    let nexroute_is_running = nexroute_running() ? 1 : 0;
+    let nexroute_is_enabled = service_enabled() ? 1 : 0;
+    let sing_box_is_running = nexroute_is_running ? 1 : (sing_box_running() ? 1 : 0);
     let sing_box_is_enabled = sing_box_enabled() ? 1 : 0;
-    let forkop_status = service_status_text(forkop_is_running, forkop_is_enabled);
+    let nexroute_status = service_status_text(nexroute_is_running, nexroute_is_enabled);
     let sing_box_status = service_status_text(sing_box_is_running, sing_box_is_enabled);
     let active_action = active_service_action_value();
 
     if (active_action == "start")
-        forkop_status = "starting";
+        nexroute_status = "starting";
     else if (active_action == "stop")
-        forkop_status = "stopping";
+        nexroute_status = "stopping";
     else if (active_action == "restart")
-        forkop_status = "restarting";
+        nexroute_status = "restarting";
     else if (active_action == "reload")
-        forkop_status = "reloading";
+        nexroute_status = "reloading";
 
     write_json({
         service: {
-            forkop: {
-                running: forkop_is_running,
-                enabled: forkop_is_enabled,
-                status: forkop_status,
+            nexroute: {
+                running: nexroute_is_running,
+                enabled: nexroute_is_enabled,
+                status: nexroute_status,
                 dns_configured: dns_configured() ? 1 : 0
             },
             sing_box: {
@@ -1126,7 +1126,7 @@ function service_action_reached_expected_state(action) {
     let expected = service_action_expected_running_value(action);
     if (expected < 0)
         return false;
-    return expected == 1 ? forkop_running() : !forkop_running();
+    return expected == 1 ? nexroute_running() : !nexroute_running();
 }
 
 function service_action_wait_for_expected_state(action, timeout, settle_seconds) {
@@ -1202,29 +1202,29 @@ function launch_worker(args) {
         push(command_args, arg);
 
     let command = command_env({
-        FORKOP_CONFIG_NAME: CONFIG_NAME,
-        FORKOP_LIB: LIB_DIR,
-        FORKOP_BIN: BIN_PATH,
-        FORKOP_SERVICE_INIT: SERVICE_INIT,
-        FORKOP_SERVICE_NAME: SERVICE_NAME,
-        FORKOP_UI_STATE_DIR: STATE_DIR,
-        FORKOP_UI_SERVICE_ACTION_DIR: SERVICE_ACTION_DIR,
-        FORKOP_UI_SERVICE_ACTION_LOCK_DIR: SERVICE_ACTION_LOCK_DIR,
-        FORKOP_UI_LATENCY_ACTION_DIR: LATENCY_ACTION_DIR,
-        FORKOP_UI_COMPONENT_ACTION_DIR: COMPONENT_ACTION_DIR,
-        FORKOP_UI_SUBSCRIPTION_ACTION_DIR: SUBSCRIPTION_ACTION_DIR,
-        FORKOP_UI_SING_BOX_VERSION_CACHE_FILE: SING_BOX_VERSION_CACHE_FILE,
-        FORKOP_UI_SING_BOX_VERSION_CACHE_LOCK_DIR: SING_BOX_VERSION_CACHE_LOCK_DIR,
-        FORKOP_UI_SING_BOX_VARIANT_STATE_FILE: SING_BOX_VARIANT_STATE_FILE,
-        FORKOP_UI_SING_BOX_BIN_PATH: SING_BOX_BIN_PATH,
-        FORKOP_UI_SING_BOX_VERSION_PROBE_TIMEOUT_SECONDS: SING_BOX_VERSION_PROBE_TIMEOUT_SECONDS,
-        FORKOP_UI_SING_BOX_VERSION_PROBE_FAILURE_TTL_SECONDS: SING_BOX_VERSION_PROBE_FAILURE_TTL_SECONDS,
-        FORKOP_UI_ACTION_FINISHED_TTL_MINUTES: ACTION_FINISHED_TTL_MINUTES,
-        FORKOP_UI_ACTION_ACKED_TTL_SECONDS: ACTION_ACKED_TTL_SECONDS,
-        FORKOP_UI_ACTION_STALE_GRACE_SECONDS: ACTION_STALE_GRACE_SECONDS,
-        FORKOP_UI_SERVICE_ACTION_TIMEOUT_SECONDS: SERVICE_ACTION_TIMEOUT_SECONDS,
-        FORKOP_UI_SERVICE_ACTION_SETTLE_SECONDS: SERVICE_ACTION_SETTLE_SECONDS,
-        FORKOP_PENDING_RELOAD_FILE: PENDING_RELOAD_FILE,
+        NEXROUTE_CONFIG_NAME: CONFIG_NAME,
+        NEXROUTE_LIB: LIB_DIR,
+        NEXROUTE_BIN: BIN_PATH,
+        NEXROUTE_SERVICE_INIT: SERVICE_INIT,
+        NEXROUTE_SERVICE_NAME: SERVICE_NAME,
+        NEXROUTE_UI_STATE_DIR: STATE_DIR,
+        NEXROUTE_UI_SERVICE_ACTION_DIR: SERVICE_ACTION_DIR,
+        NEXROUTE_UI_SERVICE_ACTION_LOCK_DIR: SERVICE_ACTION_LOCK_DIR,
+        NEXROUTE_UI_LATENCY_ACTION_DIR: LATENCY_ACTION_DIR,
+        NEXROUTE_UI_COMPONENT_ACTION_DIR: COMPONENT_ACTION_DIR,
+        NEXROUTE_UI_SUBSCRIPTION_ACTION_DIR: SUBSCRIPTION_ACTION_DIR,
+        NEXROUTE_UI_SING_BOX_VERSION_CACHE_FILE: SING_BOX_VERSION_CACHE_FILE,
+        NEXROUTE_UI_SING_BOX_VERSION_CACHE_LOCK_DIR: SING_BOX_VERSION_CACHE_LOCK_DIR,
+        NEXROUTE_UI_SING_BOX_VARIANT_STATE_FILE: SING_BOX_VARIANT_STATE_FILE,
+        NEXROUTE_UI_SING_BOX_BIN_PATH: SING_BOX_BIN_PATH,
+        NEXROUTE_UI_SING_BOX_VERSION_PROBE_TIMEOUT_SECONDS: SING_BOX_VERSION_PROBE_TIMEOUT_SECONDS,
+        NEXROUTE_UI_SING_BOX_VERSION_PROBE_FAILURE_TTL_SECONDS: SING_BOX_VERSION_PROBE_FAILURE_TTL_SECONDS,
+        NEXROUTE_UI_ACTION_FINISHED_TTL_MINUTES: ACTION_FINISHED_TTL_MINUTES,
+        NEXROUTE_UI_ACTION_ACKED_TTL_SECONDS: ACTION_ACKED_TTL_SECONDS,
+        NEXROUTE_UI_ACTION_STALE_GRACE_SECONDS: ACTION_STALE_GRACE_SECONDS,
+        NEXROUTE_UI_SERVICE_ACTION_TIMEOUT_SECONDS: SERVICE_ACTION_TIMEOUT_SECONDS,
+        NEXROUTE_UI_SERVICE_ACTION_SETTLE_SECONDS: SERVICE_ACTION_SETTLE_SECONDS,
+        NEXROUTE_PENDING_RELOAD_FILE: PENDING_RELOAD_FILE,
         NFT_TABLE_NAME,
         RT_TABLE_NAME,
         NFT_FAKEIP_MARK,
@@ -1291,7 +1291,7 @@ function run_pending_reload_after_service_action(action, success) {
     if (!consume_pending_reload())
         return;
 
-    command_success_from_args([ "logger", "-t", SERVICE_NAME, "[info] Applying pending Forkop reload" ]);
+    command_success_from_args([ "logger", "-t", SERVICE_NAME, "[info] Applying pending Nexroute reload" ]);
     let started = start_service_action("reload", "initd", "pending");
     if (!started.success)
         mark_pending_reload("pending");
@@ -1318,7 +1318,7 @@ function finish_service_action_after_command(action, job_id_value, status, spawn
         return 0;
     }
 
-    if (!service_enabled() && !forkop_running()) {
+    if (!service_enabled() && !nexroute_running()) {
         write_finished_service_action_state(path, action, true, "Service " + as_string(action) + " completed", 0);
         return 0;
     }
@@ -1351,7 +1351,7 @@ function service_action_worker(path, action, job_id_value, reason) {
     reason = as_string(reason || "");
     if (reason != "")
         push(args, reason);
-    let command = "FORKOP_UI_ACTION_TRACKED=1 " + command_from_args(args) + " >/dev/null 2>&1";
+    let command = "NEXROUTE_UI_ACTION_TRACKED=1 " + command_from_args(args) + " >/dev/null 2>&1";
     let status = command_status(command);
     finish_service_action_after_command(action, job_id_value, status, false);
 }

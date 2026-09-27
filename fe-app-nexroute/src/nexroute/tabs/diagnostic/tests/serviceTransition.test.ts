@@ -94,7 +94,7 @@ describe('diagnostic service transitions', () => {
   it('shows restart while the service is running even when autostart is disabled', () => {
     expect(
       shouldShowRestartAction({
-        forkopRunning: true,
+        nexrouteRunning: true,
         restartLoading: false,
         startLoading: false,
         stopLoading: false,
@@ -102,7 +102,7 @@ describe('diagnostic service transitions', () => {
     ).toBe(true);
     expect(
       shouldShowRestartAction({
-        forkopRunning: false,
+        nexrouteRunning: false,
         restartLoading: false,
         startLoading: false,
         stopLoading: false,
@@ -110,7 +110,7 @@ describe('diagnostic service transitions', () => {
     ).toBe(false);
     expect(
       shouldShowRestartAction({
-        forkopRunning: false,
+        nexrouteRunning: false,
         restartLoading: true,
         startLoading: false,
         stopLoading: false,
@@ -121,7 +121,7 @@ describe('diagnostic service transitions', () => {
   it('does not show restart from transient running state while start or stop is active', () => {
     expect(
       shouldShowRestartAction({
-        forkopRunning: true,
+        nexrouteRunning: true,
         restartLoading: false,
         startLoading: true,
         stopLoading: false,
@@ -129,7 +129,7 @@ describe('diagnostic service transitions', () => {
     ).toBe(false);
     expect(
       shouldShowRestartAction({
-        forkopRunning: true,
+        nexrouteRunning: true,
         restartLoading: false,
         startLoading: false,
         stopLoading: true,
@@ -142,7 +142,7 @@ describe('diagnostic service transitions', () => {
       shouldDisableDiagnosticRunAction({
         providerInfoLoaded: true,
         servicesInfoLoading: false,
-        forkopRunning: true,
+        nexrouteRunning: true,
         mutatingServiceActionLoading: false,
       }),
     ).toBe(false);
@@ -150,7 +150,7 @@ describe('diagnostic service transitions', () => {
       shouldDisableDiagnosticRunAction({
         providerInfoLoaded: true,
         servicesInfoLoading: false,
-        forkopRunning: false,
+        nexrouteRunning: false,
         mutatingServiceActionLoading: false,
       }),
     ).toBe(true);
@@ -159,7 +159,7 @@ describe('diagnostic service transitions', () => {
   it('detects running component actions', () => {
     expect(
       hasComponentActionLoading({
-        forkopCheck: { loading: false },
+        nexrouteCheck: { loading: false },
         zapretInstall: { loading: true },
       }),
     ).toBe(true);
@@ -196,7 +196,7 @@ describe('diagnostic service transitions', () => {
   it('keeps the lower service action visible while restart is running', () => {
     expect(
       shouldShowStopAction({
-        forkopRunning: false,
+        nexrouteRunning: false,
         restartLoading: true,
         startLoading: false,
         stopLoading: false,
@@ -204,7 +204,7 @@ describe('diagnostic service transitions', () => {
     ).toBe(true);
     expect(
       shouldShowStartAction({
-        forkopRunning: false,
+        nexrouteRunning: false,
         restartLoading: true,
         startLoading: false,
         stopLoading: false,
@@ -215,7 +215,7 @@ describe('diagnostic service transitions', () => {
   it('keeps the normal start and stop visibility outside restart', () => {
     expect(
       shouldShowStartAction({
-        forkopRunning: false,
+        nexrouteRunning: false,
         restartLoading: false,
         startLoading: false,
         stopLoading: false,
@@ -223,7 +223,7 @@ describe('diagnostic service transitions', () => {
     ).toBe(true);
     expect(
       shouldShowStopAction({
-        forkopRunning: false,
+        nexrouteRunning: false,
         restartLoading: false,
         startLoading: false,
         stopLoading: false,
@@ -231,7 +231,7 @@ describe('diagnostic service transitions', () => {
     ).toBe(false);
     expect(
       shouldShowStopAction({
-        forkopRunning: true,
+        nexrouteRunning: true,
         restartLoading: false,
         startLoading: false,
         stopLoading: false,

@@ -6,13 +6,13 @@ import {
 } from '../../../../icons';
 import { isCopyableProxyLink, svgEl } from '../../../../helpers';
 import { prettyBytes } from '../../../../helpers/prettyBytes';
-import { Forkop } from '../../../types';
+import { Nexroute } from '../../../types';
 import { renderFlagEmojis } from './renderFlagEmojis';
 
 interface IRenderSectionsProps {
   loading: boolean;
   failed: boolean;
-  section: Forkop.OutboundGroup;
+  section: Nexroute.OutboundGroup;
   onTestLatency: (tag: string | string[]) => void;
   onChooseOutbound: (
     sectionName: string,
@@ -20,14 +20,14 @@ interface IRenderSectionsProps {
     tag: string,
   ) => void;
   onCopyOutbound: (
-    section: Forkop.OutboundGroup,
-    outbound: Forkop.Outbound,
+    section: Nexroute.OutboundGroup,
+    outbound: Nexroute.Outbound,
   ) => void;
-  onShowUrlTestInfo: (outbound: Forkop.Outbound) => void;
-  onShowPriorityInfo: (outbound: Forkop.Outbound) => void;
-  onUpdateSubscription: (section: Forkop.OutboundGroup) => void;
+  onShowUrlTestInfo: (outbound: Nexroute.Outbound) => void;
+  onShowPriorityInfo: (outbound: Nexroute.Outbound) => void;
+  onUpdateSubscription: (section: Nexroute.OutboundGroup) => void;
   latencyFetching: boolean;
-  latencyProgress?: Forkop.LatencyActionProgress;
+  latencyProgress?: Nexroute.LatencyActionProgress;
   subscriptionUpdating: boolean;
   selectorSwitchingTag?: string;
 }
@@ -104,7 +104,7 @@ function renderMetadataAction(label: string, url?: string) {
 }
 
 function renderSubscriptionMetadata(
-  metadata: Forkop.SubscriptionMetadata | undefined,
+  metadata: Nexroute.SubscriptionMetadata | undefined,
 ) {
   if (!metadata || Object.keys(metadata).length <= 1) {
     return undefined;
@@ -198,9 +198,9 @@ function renderSubscriptionMetadata(
 }
 
 function renderSubscriptionUpdateAction(
-  section: Forkop.OutboundGroup,
+  section: Nexroute.OutboundGroup,
   subscriptionUpdating: boolean,
-  onUpdateSubscription: (section: Forkop.OutboundGroup) => void,
+  onUpdateSubscription: (section: Nexroute.OutboundGroup) => void,
 ) {
   if (!section.subscriptionSourceCount) {
     return undefined;
@@ -230,7 +230,7 @@ function renderSubscriptionUpdateAction(
 }
 
 export function getLatencyTestLabel(
-  latencyProgress?: Forkop.LatencyActionProgress,
+  latencyProgress?: Nexroute.LatencyActionProgress,
 ) {
   const total = Math.trunc(Number(latencyProgress?.total ?? 0));
   if (!Number.isFinite(total) || total <= 0) {
@@ -275,7 +275,7 @@ function renderDefaultState({
     }
   }
 
-  function renderOutbound(outbound: Forkop.Outbound) {
+  function renderOutbound(outbound: Nexroute.Outbound) {
     function getLatencyClass() {
       if (!outbound.latency) {
         return 'fkp_dashboard-page__outbound-grid__item__latency--empty';

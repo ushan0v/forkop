@@ -1,20 +1,20 @@
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { ForkopShellMethods } from '../../../methods';
+import { NexrouteShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { getMeta } from '../helpers/getMeta';
 import { IDiagnosticsChecksItem } from '../../../services';
-import { Forkop } from '../../../types';
+import { Nexroute } from '../../../types';
 
-function serverPrefix(item: Forkop.InboundCheckItem) {
+function serverPrefix(item: Nexroute.InboundCheckItem) {
   return `${item.label}:`;
 }
 
-function formatListen(item: Forkop.InboundCheckItem) {
+function formatListen(item: Nexroute.InboundCheckItem) {
   return `${item.listen}:${Number(item.listen_port || 0)} [${item.required_proto}]`;
 }
 
 function getPortConflictItem(
-  item: Forkop.InboundCheckItem,
+  item: Nexroute.InboundCheckItem,
 ): IDiagnosticsChecksItem {
   const key = `${serverPrefix(item)} ${_('Port conflict')}`;
 
@@ -34,7 +34,7 @@ function getPortConflictItem(
 }
 
 function getPublicHostItem(
-  item: Forkop.InboundCheckItem,
+  item: Nexroute.InboundCheckItem,
   wanIp: string,
 ): IDiagnosticsChecksItem {
   const key = `${serverPrefix(item)} ${_('Public host')}`;
@@ -79,7 +79,7 @@ function getPublicHostItem(
 }
 
 function getServerItems(
-  item: Forkop.InboundCheckItem,
+  item: Nexroute.InboundCheckItem,
   wanIp: string,
 ): IDiagnosticsChecksItem[] {
   const prefix = serverPrefix(item);
@@ -162,7 +162,7 @@ export async function runInboundsCheck() {
     items: [],
   });
 
-  const inboundsChecks = await ForkopShellMethods.checkInbounds();
+  const inboundsChecks = await NexrouteShellMethods.checkInbounds();
 
   if (!inboundsChecks.success) {
     updateCheckStore({

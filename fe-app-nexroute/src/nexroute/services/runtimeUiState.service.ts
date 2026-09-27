@@ -1,17 +1,17 @@
-import { ForkopShellMethods } from '../methods';
-import { Forkop } from '../types';
+import { NexrouteShellMethods } from '../methods';
+import { Nexroute } from '../types';
 import { logger } from './logger.service';
 import { applyUiStateToStore } from './uiState.service';
 
 const RUNTIME_UI_STATE_REFRESH_MIN_INTERVAL_MS = 500;
 const RUNTIME_UI_STATE_IDLE_POLL_INTERVAL_MS = 1000;
 const RUNTIME_UI_STATE_ACTIVE_POLL_INTERVAL_MS = 500;
-type RuntimeUiStateListener = (uiState: Forkop.UiState) => void;
+type RuntimeUiStateListener = (uiState: Nexroute.UiState) => void;
 
-let runtimeUiStateRefreshPromise: Promise<Forkop.UiState | undefined> | null =
+let runtimeUiStateRefreshPromise: Promise<Nexroute.UiState | undefined> | null =
   null;
 let lastRuntimeUiStateRefreshAt = 0;
-let lastRuntimeUiState: Forkop.UiState | undefined;
+let lastRuntimeUiState: Nexroute.UiState | undefined;
 let runtimeStateResumeRefreshRegistered = false;
 let runtimeStatePollTimer: ReturnType<typeof setTimeout> | null = null;
 let runtimeStatePollingStarted = false;
@@ -26,7 +26,7 @@ function isDocumentVisible() {
   );
 }
 
-function hasRunningAction(uiState: Forkop.UiState) {
+function hasRunningAction(uiState: Nexroute.UiState) {
   return Object.values(uiState.actions).some((actions) =>
     actions.some((action) => action.running),
   );
@@ -57,7 +57,7 @@ function scheduleRuntimeUiStatePoll(delay = getNextPollDelay()) {
   }, delay);
 }
 
-function notifyRuntimeUiStateListeners(uiState: Forkop.UiState) {
+function notifyRuntimeUiStateListeners(uiState: Nexroute.UiState) {
   for (const listener of runtimeUiStateListeners) {
     try {
       listener(uiState);
@@ -69,7 +69,7 @@ function notifyRuntimeUiStateListeners(uiState: Forkop.UiState) {
 
 export async function refreshRuntimeUiState({
   force = false,
-}: { force?: boolean } = {}): Promise<Forkop.UiState | undefined> {
+}: { force?: boolean } = {}): Promise<Nexroute.UiState | undefined> {
   if (!isDocumentVisible()) {
     return undefined;
   }
@@ -88,7 +88,7 @@ export async function refreshRuntimeUiState({
 
   lastRuntimeUiStateRefreshAt = now;
 
-  const promise = ForkopShellMethods.getUiState()
+  const promise = NexrouteShellMethods.getUiState()
     .then((response) => {
       if (!response.success) {
         return undefined;

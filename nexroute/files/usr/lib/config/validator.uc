@@ -13,7 +13,7 @@ let core_ip = require("core.ip");
 let rule_config = require("config.rule");
 let connections = require("config.connections");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
 const DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
 const TAILSCALE_FWMARK_MASK = 0x00ff0000;
 
@@ -195,7 +195,7 @@ function command_exists(name) {
 
 function log_message(message, level) {
     level = as_string(level || "info");
-    run_args([ "logger", "-t", "forkop", "[" + level + "] " + as_string(message) ]);
+    run_args([ "logger", "-t", "nexroute", "[" + level + "] " + as_string(message) ]);
 }
 
 function fail_requirement(message, level) {
@@ -215,7 +215,7 @@ function mkdir_p(paths) {
 
 function safe_rm_rf(path) {
     path = as_string(path);
-    if (path == "" || substr(path, 0, length("/var/run/forkop/")) != "/var/run/forkop/")
+    if (path == "" || substr(path, 0, length("/var/run/nexroute/")) != "/var/run/nexroute/")
         return true;
 
     return run_args([ "rm", "-rf", path ]);
@@ -1661,7 +1661,7 @@ function validate_runtime_mark_ranges_context(context) {
     let outbound_mark = parse_number(context.nft_outbound_mark);
 
     if (fakeip_mark == null || outbound_mark == null)
-        fail_validation("Forkop marks contain invalid numeric constants. Aborted.");
+        fail_validation("Nexroute marks contain invalid numeric constants. Aborted.");
     if ((fakeip_mark & TAILSCALE_FWMARK_MASK) != 0)
         fail_validation("FakeIP mark overlaps Tailscale fwmark mask 0x00ff0000. Aborted.");
     if ((outbound_mark & TAILSCALE_FWMARK_MASK) != 0)
@@ -1776,7 +1776,7 @@ function context_from_runtime() {
 function sing_box_variant_marker(ctx, value) {
     let path = as_string(ctx.sing_box_variant_state_file);
     if (path == "")
-        path = "/etc/forkop/sing-box-variant";
+        path = "/etc/nexroute/sing-box-variant";
 
     let data = fs.readfile(path);
     return trim(as_string(data)) == as_string(value);
@@ -1793,7 +1793,7 @@ function sing_box_extended_marker_set(ctx) {
 function sing_box_version_state(ctx) {
     let path = as_string(ctx.sing_box_version_state_file);
     if (path == "")
-        path = "/etc/forkop/sing-box-version";
+        path = "/etc/nexroute/sing-box-version";
 
     let data = fs.readfile(path);
     if (data == null)
@@ -1853,7 +1853,7 @@ function sing_box_supports_tailscale(ctx, version, version_output) {
 function managed_sing_box_service_script(marker) {
     marker = as_string(marker);
     if (marker == "")
-        marker = "Forkop managed sing-box service for binary variants";
+        marker = "Nexroute managed sing-box service for binary variants";
 
     return "#!/bin/sh /etc/rc.common\n" +
         "# " + marker + "\n" +
@@ -1891,7 +1891,7 @@ function managed_sing_box_service_script(marker) {
 
 function install_managed_sing_box_service_script(ctx) {
     let stamp = clock();
-    let tmp_file = sprintf("/etc/init.d/sing-box.forkop.%d.%d", stamp[0], stamp[1]);
+    let tmp_file = sprintf("/etc/init.d/sing-box.nexroute.%d.%d", stamp[0], stamp[1]);
 
     if (!fs.writefile(tmp_file, managed_sing_box_service_script(ctx.sing_box_managed_service_marker)))
         return false;
@@ -2005,7 +2005,7 @@ function check_provider_requirements(ctx) {
         ctx.zapret_provider_nfqws_bin,
         [ ctx.zapret_state_dir, ctx.zapret_pid_dir, ctx.zapret_child_pid_dir, ctx.zapret_log_dir ],
         "Zapret provider is not available at " + ctx.zapret_provider_nfqws_bin + ". Rules with action 'zapret' will be skipped until the zapret provider is installed.",
-        "Failed to prepare the Forkop zapret state directory in " + ctx.zapret_state_dir + ". Aborted."
+        "Failed to prepare the Nexroute zapret state directory in " + ctx.zapret_state_dir + ". Aborted."
     );
 
     check_provider_requirement(
@@ -2014,7 +2014,7 @@ function check_provider_requirements(ctx) {
         ctx.zapret2_provider_nfqws2_bin,
         [ ctx.zapret2_state_dir, ctx.zapret2_pid_dir, ctx.zapret2_child_pid_dir, ctx.zapret2_log_dir ],
         "Zapret2 provider is not available at " + ctx.zapret2_provider_nfqws2_bin + ". Rules with action 'zapret2' will be skipped until the zapret2 provider is installed.",
-        "Failed to prepare the Forkop zapret2 state directory in " + ctx.zapret2_state_dir + ". Aborted."
+        "Failed to prepare the Nexroute zapret2 state directory in " + ctx.zapret2_state_dir + ". Aborted."
     );
 
     check_provider_requirement(
@@ -2023,7 +2023,7 @@ function check_provider_requirements(ctx) {
         ctx.byedpi_bin,
         [ ctx.byedpi_state_dir, ctx.byedpi_pid_dir, ctx.byedpi_child_pid_dir, ctx.byedpi_log_dir ],
         "ByeDPI provider is not available at " + ctx.byedpi_bin + ". Rules with action 'byedpi' will be skipped until the byedpi package is installed.",
-        "Failed to prepare the Forkop ByeDPI state directory in " + ctx.byedpi_state_dir + ". Aborted."
+        "Failed to prepare the Nexroute ByeDPI state directory in " + ctx.byedpi_state_dir + ". Aborted."
     );
 }
 
@@ -2057,12 +2057,12 @@ function check_runtime_requirements() {
         log_message("Package 'coreutils-base64' version (" + coreutils_base64_version + ") is lower than the required minimum (" + ctx.coreutils_base64_required_version + "). This may cause issues when decoding base64 streams with missing padding, as automatic padding support is not available in older versions.", "warn");
 
     if (dhcp_has_https_dns_proxy_options("/etc/config/dhcp") === true)
-        log_message("https-dns-proxy is enabled in DHCP config. Disable it or edit /etc/config/dhcp before starting Forkop.", "error");
+        log_message("https-dns-proxy is enabled in DHCP config. Disable it or edit /etc/config/dhcp before starting Nexroute.", "error");
 
     if (has_outbound_section(ctx))
         log_message("Proxy outbound configuration found", "debug");
     else
-        log_message("No proxy outbound sections found. Forkop will use direct and/or provider-only routing.", "warn");
+        log_message("No proxy outbound sections found. Nexroute will use direct and/or provider-only routing.", "warn");
 
     check_provider_requirements(ctx);
 }

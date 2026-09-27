@@ -1,12 +1,12 @@
 // language=CSS
-import { FORKOP_UCI_PACKAGE as FORKOP_CBI_PREFIX } from '../../../constants';
+import { NEXROUTE_UCI_PACKAGE as NEXROUTE_CBI_PREFIX } from '../../../constants';
 
 export const styles = `
-#cbi-${FORKOP_CBI_PREFIX}-updates-_mount_node > div {
+#cbi-${NEXROUTE_CBI_PREFIX}-updates-_mount_node > div {
     width: 100%;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-updates > h3 {
+#cbi-${NEXROUTE_CBI_PREFIX}-updates > h3 {
     display: none;
 }
 

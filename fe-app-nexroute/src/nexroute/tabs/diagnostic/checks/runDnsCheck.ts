@@ -1,6 +1,6 @@
 import { insertIf } from '../../../../helpers';
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { ForkopShellMethods } from '../../../methods';
+import { NexrouteShellMethods } from '../../../methods';
 import type { IDiagnosticsChecksItem } from '../../../services';
 import { updateCheckStore } from './updateCheckStore';
 import { getDnsCheckPresentation } from './getDnsCheckPresentation';
@@ -17,7 +17,7 @@ export async function runDnsCheck() {
     items: [],
   });
 
-  const dnsChecks = await ForkopShellMethods.checkDNSAvailable();
+  const dnsChecks = await NexrouteShellMethods.checkDNSAvailable();
 
   if (!dnsChecks.success) {
     updateCheckStore({

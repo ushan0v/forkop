@@ -856,7 +856,7 @@ function getProxyUrlName(url) {
   }
 }
 
-// src/forkop/tabs/dashboard/partials/renderFlagEmojis.ts
+// src/nexroute/tabs/dashboard/partials/renderFlagEmojis.ts
 var FLAG_EMOJI_PATTERN = /([\u{1f1e6}-\u{1f1ff}]{2}|\u{1f3f4}[\u{e0061}-\u{e007a}]+\u{e007f})/gu;
 var EXACT_FLAG_EMOJI_PATTERN = /^([\u{1f1e6}-\u{1f1ff}]{2}|\u{1f3f4}[\u{e0061}-\u{e007a}]+\u{e007f})$/u;
 function renderFlagEmojis(value) {
@@ -882,7 +882,7 @@ function downloadAsTxt(text, filename) {
   URL.revokeObjectURL(link.href);
 }
 
-// src/forkop/services/logger.service.ts
+// src/nexroute/services/logger.service.ts
 var Logger = class {
   constructor() {
     this.logs = [];
@@ -954,9 +954,9 @@ async function withTimeout(promise, timeoutMs, operationName, timeoutMessage = _
 }
 
 // src/constants.ts
-var FORKOP_UCI_PACKAGE = "forkop";
-var FORKOP_LUCI_APP_VERSION = "__COMPILED_VERSION_VARIABLE__";
-var FORKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT = "forkop:action-providers-availability";
+var NEXROUTE_UCI_PACKAGE = "nexroute";
+var NEXROUTE_LUCI_APP_VERSION = "__COMPILED_VERSION_VARIABLE__";
+var NEXROUTE_ACTION_PROVIDERS_AVAILABILITY_EVENT = "nexroute:action-providers-availability";
 var FAKEIP_CHECK_DOMAIN = "fakeip.podkop.fyi";
 var IP_CHECK_DOMAIN = "ip.podkop.fyi";
 var DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
@@ -1769,7 +1769,7 @@ function prettyBytes(n) {
   return n + " " + unit;
 }
 
-// src/forkop/tabs/dashboard/partials/renderSections.ts
+// src/nexroute/tabs/dashboard/partials/renderSections.ts
 function renderFailedState() {
   return E(
     "div",
@@ -2149,7 +2149,7 @@ function renderSections(props) {
   return renderDefaultState(props);
 }
 
-// src/forkop/tabs/dashboard/partials/renderWidget.ts
+// src/nexroute/tabs/dashboard/partials/renderWidget.ts
 function renderFailedState2() {
   return E(
     "div",
@@ -2211,7 +2211,7 @@ function renderWidget(props) {
   return renderDefaultState2(props);
 }
 
-// src/forkop/tabs/dashboard/render.ts
+// src/nexroute/tabs/dashboard/render.ts
 function render() {
   return E(
     "div",
@@ -2227,7 +2227,7 @@ function render() {
           role: "status"
         },
         _(
-          "Forkop service is stopped. Start the service to display the dashboard."
+          "Nexroute service is stopped. Start the service to display the dashboard."
         )
       ),
       E("div", { class: "fkp_dashboard-page__content" }, [
@@ -2346,12 +2346,12 @@ function copyToClipboard(text) {
   document.body.removeChild(textarea);
 }
 
-// src/forkop/methods/custom/getConfigSections.ts
+// src/nexroute/methods/custom/getConfigSections.ts
 async function getConfigSections() {
-  return uci.load(FORKOP_UCI_PACKAGE).then(() => uci.sections(FORKOP_UCI_PACKAGE));
+  return uci.load(NEXROUTE_UCI_PACKAGE).then(() => uci.sections(NEXROUTE_UCI_PACKAGE));
 }
 
-// src/forkop/runtimeTags.ts
+// src/nexroute/runtimeTags.ts
 var RESERVED_RUNTIME_TAGS = /* @__PURE__ */ new Set([
   "dns-server",
   "fakeip-server",
@@ -2379,8 +2379,8 @@ function getOutboundTagBySection(sectionName) {
   return allocateRuntimeTag(sectionName, "out");
 }
 
-// src/forkop/methods/shell/callBaseMethod.ts
-async function callBaseMethod(method, args = [], command = "/usr/bin/forkop", options = {}) {
+// src/nexroute/methods/shell/callBaseMethod.ts
+async function callBaseMethod(method, args = [], command = "/usr/bin/nexroute", options = {}) {
   try {
     const response = await executeShellCommand({
       command,
@@ -2419,9 +2419,9 @@ async function callBaseMethod(method, args = [], command = "/usr/bin/forkop", op
   }
 }
 
-// src/forkop/types.ts
-var Forkop;
-((Forkop2) => {
+// src/nexroute/types.ts
+var Nexroute;
+((Nexroute2) => {
   let AvailableMethods;
   ((AvailableMethods2) => {
     AvailableMethods2["CHECK_DNS_AVAILABLE"] = "check_dns_available";
@@ -2461,7 +2461,7 @@ var Forkop;
     AvailableMethods2["COMPONENT_UPDATE_CHECK_CACHE"] = "component_update_check_cache";
     AvailableMethods2["SUBSCRIPTION_UPDATE_ASYNC"] = "subscription_update_async";
     AvailableMethods2["SUBSCRIPTION_UPDATE_STATUS"] = "subscription_update_status";
-  })(AvailableMethods = Forkop2.AvailableMethods || (Forkop2.AvailableMethods = {}));
+  })(AvailableMethods = Nexroute2.AvailableMethods || (Nexroute2.AvailableMethods = {}));
   let AvailableClashAPIMethods;
   ((AvailableClashAPIMethods2) => {
     AvailableClashAPIMethods2["GET_PROXIES"] = "get_proxies";
@@ -2472,10 +2472,10 @@ var Forkop;
     AvailableClashAPIMethods2["SET_GROUP_PROXY"] = "set_group_proxy";
     AvailableClashAPIMethods2["CLOSE_CONNECTION"] = "close_connection";
     AvailableClashAPIMethods2["CLOSE_ALL_CONNECTIONS"] = "close_all_connections";
-  })(AvailableClashAPIMethods = Forkop2.AvailableClashAPIMethods || (Forkop2.AvailableClashAPIMethods = {}));
-})(Forkop || (Forkop = {}));
+  })(AvailableClashAPIMethods = Nexroute2.AvailableClashAPIMethods || (Nexroute2.AvailableClashAPIMethods = {}));
+})(Nexroute || (Nexroute = {}));
 
-// src/forkop/helpers/isTransientRpcError.ts
+// src/nexroute/helpers/isTransientRpcError.ts
 var TRANSIENT_RPC_ERROR_PATTERNS = [
   "no related rpc reply",
   "request aborted",
@@ -2491,7 +2491,7 @@ function isTransientRpcError(message) {
   );
 }
 
-// src/forkop/methods/shell/index.ts
+// src/nexroute/methods/shell/index.ts
 var SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS = 15e3;
 var SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS = 1500;
 var UI_ACTION_RPC_TIMEOUT_MS = 15e3;
@@ -2505,7 +2505,7 @@ var COMPONENT_ACTION_POLL_INTERVAL_MS = 1500;
 var COMPONENT_ACTION_STATUS_REFRESH_INTERVAL_MS = 15e3;
 var COMPONENT_ACTION_SELF_UPDATE_SETTLE_MS = 3e4;
 var COMPONENT_ACTION_TRANSIENT_RPC_GRACE_MS = 3e4;
-var COMPONENT_ACTION_STATE_DIR = "/var/run/forkop/component-actions";
+var COMPONENT_ACTION_STATE_DIR = "/var/run/nexroute/component-actions";
 var GET_UI_STATE_RPC_TIMEOUT_MS = 3e3;
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -2578,9 +2578,9 @@ async function readComponentActionState(jobId) {
     return null;
   }
 }
-async function readForkopVersion() {
+async function readNexrouteVersion() {
   const response = await executeShellCommand({
-    command: "/usr/bin/forkop",
+    command: "/usr/bin/nexroute",
     args: ["show_version"],
     timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
   });
@@ -2591,9 +2591,9 @@ async function readForkopVersion() {
 }
 async function isComponentActionStillRunning(jobId, component, action) {
   const response = await callBaseMethod(
-    Forkop.AvailableMethods.GET_UI_STATE,
+    Nexroute.AvailableMethods.GET_UI_STATE,
     [],
-    "/usr/bin/forkop",
+    "/usr/bin/nexroute",
     { timeout: GET_UI_STATE_RPC_TIMEOUT_MS }
   );
   return response.success && response.data.actions.component.some(
@@ -2630,126 +2630,126 @@ function createTransientRpcGraceTracker(graceMs) {
     }
   };
 }
-var ForkopShellMethods = {
+var NexrouteShellMethods = {
   checkDNSAvailable: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_DNS_AVAILABLE
+    Nexroute.AvailableMethods.CHECK_DNS_AVAILABLE
   ),
   checkFakeIP: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_FAKEIP
+    Nexroute.AvailableMethods.CHECK_FAKEIP
   ),
   checkNftRules: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_NFT_RULES
+    Nexroute.AvailableMethods.CHECK_NFT_RULES
   ),
   checkZapretRuntime: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_ZAPRET_RUNTIME
+    Nexroute.AvailableMethods.CHECK_ZAPRET_RUNTIME
   ),
   checkZapret2Runtime: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_ZAPRET2_RUNTIME
+    Nexroute.AvailableMethods.CHECK_ZAPRET2_RUNTIME
   ),
   checkByedpiRuntime: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_BYEDPI_RUNTIME
+    Nexroute.AvailableMethods.CHECK_BYEDPI_RUNTIME
   ),
   checkInboundsConfig: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_INBOUNDS_CONFIG
+    Nexroute.AvailableMethods.CHECK_INBOUNDS_CONFIG
   ),
-  getStatus: async () => callBaseMethod(Forkop.AvailableMethods.GET_STATUS),
+  getStatus: async () => callBaseMethod(Nexroute.AvailableMethods.GET_STATUS),
   getOutboundMetadata: async (section) => callBaseMethod(
-    Forkop.AvailableMethods.GET_OUTBOUND_METADATA,
+    Nexroute.AvailableMethods.GET_OUTBOUND_METADATA,
     [section]
   ),
   getSubscriptionMetadata: async (section) => callBaseMethod(
-    Forkop.AvailableMethods.GET_SUBSCRIPTION_METADATA,
+    Nexroute.AvailableMethods.GET_SUBSCRIPTION_METADATA,
     [section]
   ),
   checkSingBox: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_SING_BOX
+    Nexroute.AvailableMethods.CHECK_SING_BOX
   ),
   checkInbounds: async () => callBaseMethod(
-    Forkop.AvailableMethods.CHECK_INBOUNDS
+    Nexroute.AvailableMethods.CHECK_INBOUNDS
   ),
   getSingBoxStatus: async () => callBaseMethod(
-    Forkop.AvailableMethods.GET_SING_BOX_STATUS
+    Nexroute.AvailableMethods.GET_SING_BOX_STATUS
   ),
   getZapretStatus: async () => callBaseMethod(
-    Forkop.AvailableMethods.GET_ZAPRET_STATUS
+    Nexroute.AvailableMethods.GET_ZAPRET_STATUS
   ),
   getZapret2Status: async () => callBaseMethod(
-    Forkop.AvailableMethods.GET_ZAPRET2_STATUS
+    Nexroute.AvailableMethods.GET_ZAPRET2_STATUS
   ),
   getByedpiStatus: async () => callBaseMethod(
-    Forkop.AvailableMethods.GET_BYEDPI_STATUS
+    Nexroute.AvailableMethods.GET_BYEDPI_STATUS
   ),
-  getClashApiProxies: async () => callBaseMethod(Forkop.AvailableMethods.CLASH_API, [
-    Forkop.AvailableClashAPIMethods.GET_PROXIES
+  getClashApiProxies: async () => callBaseMethod(Nexroute.AvailableMethods.CLASH_API, [
+    Nexroute.AvailableClashAPIMethods.GET_PROXIES
   ]),
-  getClashApiConnections: async () => callBaseMethod(Forkop.AvailableMethods.CLASH_API, [
-    Forkop.AvailableClashAPIMethods.GET_CONNECTIONS
+  getClashApiConnections: async () => callBaseMethod(Nexroute.AvailableMethods.CLASH_API, [
+    Nexroute.AvailableClashAPIMethods.GET_CONNECTIONS
   ]),
   getClashApiProxyLatency: async (tag, timeout = "5000") => callBaseMethod(
-    Forkop.AvailableMethods.CLASH_API,
-    [Forkop.AvailableClashAPIMethods.GET_PROXY_LATENCY, tag, timeout]
+    Nexroute.AvailableMethods.CLASH_API,
+    [Nexroute.AvailableClashAPIMethods.GET_PROXY_LATENCY, tag, timeout]
   ),
   getClashApiProxyLatencies: async (tags) => callBaseMethod(
-    Forkop.AvailableMethods.CLASH_API,
+    Nexroute.AvailableMethods.CLASH_API,
     [
-      Forkop.AvailableClashAPIMethods.GET_PROXY_LATENCIES,
+      Nexroute.AvailableClashAPIMethods.GET_PROXY_LATENCIES,
       JSON.stringify(tags),
       "5000"
     ]
   ),
   getClashApiGroupLatency: async (tag) => callBaseMethod(
-    Forkop.AvailableMethods.CLASH_API,
-    [Forkop.AvailableClashAPIMethods.GET_GROUP_LATENCY, tag, "10000"]
+    Nexroute.AvailableMethods.CLASH_API,
+    [Nexroute.AvailableClashAPIMethods.GET_GROUP_LATENCY, tag, "10000"]
   ),
-  setClashApiGroupProxy: async (group, proxy) => callBaseMethod(Forkop.AvailableMethods.CLASH_API, [
-    Forkop.AvailableClashAPIMethods.SET_GROUP_PROXY,
+  setClashApiGroupProxy: async (group, proxy) => callBaseMethod(Nexroute.AvailableMethods.CLASH_API, [
+    Nexroute.AvailableClashAPIMethods.SET_GROUP_PROXY,
     group,
     proxy
   ]),
-  closeClashApiConnection: async (connectionId) => callBaseMethod(Forkop.AvailableMethods.CLASH_API, [
-    Forkop.AvailableClashAPIMethods.CLOSE_CONNECTION,
+  closeClashApiConnection: async (connectionId) => callBaseMethod(Nexroute.AvailableMethods.CLASH_API, [
+    Nexroute.AvailableClashAPIMethods.CLOSE_CONNECTION,
     connectionId
   ]),
-  closeAllClashApiConnections: async () => callBaseMethod(Forkop.AvailableMethods.CLASH_API, [
-    Forkop.AvailableClashAPIMethods.CLOSE_ALL_CONNECTIONS
+  closeAllClashApiConnections: async () => callBaseMethod(Nexroute.AvailableMethods.CLASH_API, [
+    Nexroute.AvailableClashAPIMethods.CLOSE_ALL_CONNECTIONS
   ]),
   enable: async () => callBaseMethod(
-    Forkop.AvailableMethods.ENABLE,
+    Nexroute.AvailableMethods.ENABLE,
     [],
-    "/etc/init.d/forkop"
+    "/etc/init.d/nexroute"
   ),
   disable: async () => callBaseMethod(
-    Forkop.AvailableMethods.DISABLE,
+    Nexroute.AvailableMethods.DISABLE,
     [],
-    "/etc/init.d/forkop"
+    "/etc/init.d/nexroute"
   ),
-  globalCheck: async (masked = true) => callBaseMethod(Forkop.AvailableMethods.GLOBAL_CHECK, [
+  globalCheck: async (masked = true) => callBaseMethod(Nexroute.AvailableMethods.GLOBAL_CHECK, [
     masked ? "masked" : "raw"
   ]),
-  showSingBoxConfig: async (masked = true) => callBaseMethod(Forkop.AvailableMethods.SHOW_SING_BOX_CONFIG, [
+  showSingBoxConfig: async (masked = true) => callBaseMethod(Nexroute.AvailableMethods.SHOW_SING_BOX_CONFIG, [
     masked ? "masked" : "raw"
   ]),
-  checkLogs: async () => callBaseMethod(Forkop.AvailableMethods.CHECK_LOGS),
-  checkSingBoxLogs: async () => callBaseMethod(Forkop.AvailableMethods.CHECK_SING_BOX_LOGS),
+  checkLogs: async () => callBaseMethod(Nexroute.AvailableMethods.CHECK_LOGS),
+  checkSingBoxLogs: async () => callBaseMethod(Nexroute.AvailableMethods.CHECK_SING_BOX_LOGS),
   getSystemInfo: async () => callBaseMethod(
-    Forkop.AvailableMethods.GET_SYSTEM_INFO
+    Nexroute.AvailableMethods.GET_SYSTEM_INFO
   ),
   getServerCapabilities: async () => callBaseMethod(
-    Forkop.AvailableMethods.GET_SERVER_CAPABILITIES
+    Nexroute.AvailableMethods.GET_SERVER_CAPABILITIES
   ),
   getUiCapabilities: async () => callBaseMethod(
-    Forkop.AvailableMethods.GET_UI_CAPABILITIES
+    Nexroute.AvailableMethods.GET_UI_CAPABILITIES
   ),
   getUiState: async () => callBaseMethod(
-    Forkop.AvailableMethods.GET_UI_STATE,
+    Nexroute.AvailableMethods.GET_UI_STATE,
     [],
-    "/usr/bin/forkop",
+    "/usr/bin/nexroute",
     { timeout: GET_UI_STATE_RPC_TIMEOUT_MS }
   ),
   serviceActionStart: async (action) => {
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
-      args: [Forkop.AvailableMethods.SERVICE_ACTION_ASYNC, action],
+      command: "/usr/bin/nexroute",
+      args: [Nexroute.AvailableMethods.SERVICE_ACTION_ASYNC, action],
       timeout: UI_ACTION_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseUiActionStartResult(response);
@@ -2767,8 +2767,8 @@ var ForkopShellMethods = {
   },
   serviceActionStatus: async (jobId) => {
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
-      args: [Forkop.AvailableMethods.SERVICE_ACTION_STATUS, jobId],
+      command: "/usr/bin/nexroute",
+      args: [Nexroute.AvailableMethods.SERVICE_ACTION_STATUS, jobId],
       timeout: UI_ACTION_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseServiceActionState(response);
@@ -2787,7 +2787,7 @@ var ForkopShellMethods = {
   waitServiceActionJob: async (jobId, startedAt = Date.now()) => {
     while (Date.now() - startedAt < SERVICE_ACTION_TIMEOUT_MS) {
       await sleep(SERVICE_ACTION_POLL_INTERVAL_MS);
-      const response = await ForkopShellMethods.serviceActionStatus(jobId);
+      const response = await NexrouteShellMethods.serviceActionStatus(jobId);
       if (!response.success) {
         return response;
       }
@@ -2803,9 +2803,9 @@ var ForkopShellMethods = {
   },
   latencyTestStart: async (latencyType, section, tag, timeout) => {
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
+      command: "/usr/bin/nexroute",
       args: [
-        Forkop.AvailableMethods.LATENCY_TEST_ASYNC,
+        Nexroute.AvailableMethods.LATENCY_TEST_ASYNC,
         latencyType,
         section,
         tag,
@@ -2828,8 +2828,8 @@ var ForkopShellMethods = {
   },
   latencyTestStatus: async (jobId) => {
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
-      args: [Forkop.AvailableMethods.LATENCY_TEST_STATUS, jobId],
+      command: "/usr/bin/nexroute",
+      args: [Nexroute.AvailableMethods.LATENCY_TEST_STATUS, jobId],
       timeout: UI_ACTION_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseLatencyActionState(response);
@@ -2851,7 +2851,7 @@ var ForkopShellMethods = {
     );
     while (Date.now() - startedAt < LATENCY_TEST_TIMEOUT_MS) {
       await sleep(LATENCY_TEST_POLL_INTERVAL_MS);
-      const response = await ForkopShellMethods.latencyTestStatus(jobId);
+      const response = await NexrouteShellMethods.latencyTestStatus(jobId);
       if (!response.success) {
         if (transientRpc.shouldContinue(response.error)) {
           continue;
@@ -2871,8 +2871,8 @@ var ForkopShellMethods = {
   },
   uiActionAck: async (kind, jobId) => {
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
-      args: [Forkop.AvailableMethods.UI_ACTION_ACK, kind, jobId],
+      command: "/usr/bin/nexroute",
+      args: [Nexroute.AvailableMethods.UI_ACTION_ACK, kind, jobId],
       timeout: UI_ACTION_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseUiActionStartResult(response);
@@ -2886,8 +2886,8 @@ var ForkopShellMethods = {
   },
   componentActionStart: async (component, action) => {
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
-      args: [Forkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
+      command: "/usr/bin/nexroute",
+      args: [Nexroute.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseComponentActionStartResult(response);
@@ -2901,8 +2901,8 @@ var ForkopShellMethods = {
   },
   componentActionStatus: async (jobId) => {
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
-      args: [Forkop.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
+      command: "/usr/bin/nexroute",
+      args: [Nexroute.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseComponentActionResult(response);
@@ -2915,7 +2915,7 @@ var ForkopShellMethods = {
     };
   },
   componentUpdateCheckCache: async () => callBaseMethod(
-    Forkop.AvailableMethods.COMPONENT_UPDATE_CHECK_CACHE
+    Nexroute.AvailableMethods.COMPONENT_UPDATE_CHECK_CACHE
   ),
   waitComponentActionJob: async (jobId, component, action, expectedLatestVersion) => {
     let selfUpdateVersionMatchedAt = 0;
@@ -2940,8 +2940,8 @@ var ForkopShellMethods = {
       }
       lastStatusRefreshAt = Date.now();
       const statusResponse = await executeShellCommand({
-        command: "/usr/bin/forkop",
-        args: [Forkop.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
+        command: "/usr/bin/nexroute",
+        args: [Nexroute.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
         timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
       });
       const parsedResponse = parseComponentActionResult(statusResponse);
@@ -2958,8 +2958,8 @@ var ForkopShellMethods = {
         if (transientRpc.shouldContinue(failure.error)) {
           continue;
         }
-        if (component === "forkop" && action === "install") {
-          const installedVersion = expectedLatestVersion ? await readForkopVersion() : "";
+        if (component === "nexroute" && action === "install") {
+          const installedVersion = expectedLatestVersion ? await readNexrouteVersion() : "";
           if (expectedLatestVersion && installedVersion === expectedLatestVersion) {
             if (!selfUpdateVersionMatchedAt) {
               selfUpdateVersionMatchedAt = Date.now();
@@ -2971,7 +2971,7 @@ var ForkopShellMethods = {
                   success: true,
                   component,
                   action,
-                  message: translate("Forkop has been installed"),
+                  message: translate("Nexroute has been installed"),
                   current_version: installedVersion,
                   latest_version: expectedLatestVersion,
                   changed: true,
@@ -2996,12 +2996,12 @@ var ForkopShellMethods = {
   },
   subscriptionUpdateStart: async (section, sourceIndex) => {
     const startArgs = [
-      Forkop.AvailableMethods.SUBSCRIPTION_UPDATE_ASYNC,
+      Nexroute.AvailableMethods.SUBSCRIPTION_UPDATE_ASYNC,
       ...section ? [section] : [],
       ...section && sourceIndex !== void 0 ? [String(sourceIndex)] : []
     ];
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
+      command: "/usr/bin/nexroute",
       args: startArgs,
       timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS
     });
@@ -3019,8 +3019,8 @@ var ForkopShellMethods = {
   },
   subscriptionUpdateStatus: async (jobId) => {
     const response = await executeShellCommand({
-      command: "/usr/bin/forkop",
-      args: [Forkop.AvailableMethods.SUBSCRIPTION_UPDATE_STATUS, jobId],
+      command: "/usr/bin/nexroute",
+      args: [Nexroute.AvailableMethods.SUBSCRIPTION_UPDATE_STATUS, jobId],
       timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseSubscriptionUpdateJobState(response);
@@ -3041,7 +3041,7 @@ var ForkopShellMethods = {
     );
     while (true) {
       await sleep(SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS);
-      const response = await ForkopShellMethods.subscriptionUpdateStatus(jobId);
+      const response = await NexrouteShellMethods.subscriptionUpdateStatus(jobId);
       if (!response.success) {
         if (transientRpc.shouldContinue(response.error)) {
           continue;
@@ -3057,8 +3057,8 @@ var ForkopShellMethods = {
   }
 };
 
-// src/forkop/methods/custom/getDashboardSections.ts
-var DASHBOARD_SECTION_CACHE_DIR = "/var/run/forkop/section-cache";
+// src/nexroute/methods/custom/getDashboardSections.ts
+var DASHBOARD_SECTION_CACHE_DIR = "/var/run/nexroute/section-cache";
 var CLASH_API_FETCH_TIMEOUT_MS = 5e3;
 function getDisplayName(section) {
   return section.label || section[".name"];
@@ -3096,7 +3096,7 @@ async function getClashApiProxies(configSections) {
       clearTimeout(timeoutId);
     }
   }
-  return ForkopShellMethods.getClashApiProxies();
+  return NexrouteShellMethods.getClashApiProxies();
 }
 function getListValues(value) {
   if (!value) {
@@ -4030,21 +4030,21 @@ async function getDashboardSections(options = {}) {
   };
 }
 
-// src/forkop/methods/custom/getClashApiSecret.ts
+// src/nexroute/methods/custom/getClashApiSecret.ts
 async function getClashApiSecret2() {
   const sections = await getConfigSections();
   const settings = sections.find((section) => section[".type"] === "settings");
   return settings?.yacd_secret_key || "";
 }
 
-// src/forkop/methods/custom/index.ts
-var CustomForkopMethods = {
+// src/nexroute/methods/custom/index.ts
+var CustomNexrouteMethods = {
   getConfigSections,
   getDashboardSections,
   getClashApiSecret: getClashApiSecret2
 };
 
-// src/forkop/api.ts
+// src/nexroute/api.ts
 async function createBaseApiRequest(fetchFn, options) {
   const wrappedFn = () => options?.timeoutMs && options?.operationName ? withTimeout(
     fetchFn(),
@@ -4073,7 +4073,7 @@ async function createBaseApiRequest(fetchFn, options) {
   }
 }
 
-// src/forkop/methods/fakeip/getFakeIpCheck.ts
+// src/nexroute/methods/fakeip/getFakeIpCheck.ts
 async function getFakeIpCheck() {
   return createBaseApiRequest(
     () => fetch(`https://${FAKEIP_CHECK_DOMAIN}/check`, {
@@ -4087,7 +4087,7 @@ async function getFakeIpCheck() {
   );
 }
 
-// src/forkop/methods/fakeip/getIpCheck.ts
+// src/nexroute/methods/fakeip/getIpCheck.ts
 async function getIpCheck() {
   return createBaseApiRequest(
     () => fetch(`https://${IP_CHECK_DOMAIN}/check`, {
@@ -4101,13 +4101,13 @@ async function getIpCheck() {
   );
 }
 
-// src/forkop/methods/fakeip/index.ts
+// src/nexroute/methods/fakeip/index.ts
 var RemoteFakeIPMethods = {
   getFakeIpCheck,
   getIpCheck
 };
 
-// src/forkop/services/tab.service.ts
+// src/nexroute/services/tab.service.ts
 var TabService = class _TabService {
   constructor() {
     this.observer = null;
@@ -4164,12 +4164,12 @@ var TabService = class _TabService {
 };
 var TabServiceInstance = TabService.getInstance();
 
-// src/forkop/tabs/diagnostic/helpers/getCheckTitle.ts
+// src/nexroute/tabs/diagnostic/helpers/getCheckTitle.ts
 function getCheckTitle(name) {
   return `${name} ${_("checks")}`;
 }
 
-// src/forkop/tabs/diagnostic/checks/contstants.ts
+// src/nexroute/tabs/diagnostic/checks/contstants.ts
 var DIAGNOSTICS_CHECKS = /* @__PURE__ */ ((DIAGNOSTICS_CHECKS2) => {
   DIAGNOSTICS_CHECKS2["DNS"] = "DNS";
   DIAGNOSTICS_CHECKS2["SINGBOX"] = "SINGBOX";
@@ -4230,7 +4230,7 @@ var DIAGNOSTICS_CHECKS_MAP = {
   }
 };
 
-// src/forkop/tabs/diagnostic/diagnostic.store.ts
+// src/nexroute/tabs/diagnostic/diagnostic.store.ts
 function createDiagnosticCheck(code, description) {
   const meta = DIAGNOSTICS_CHECKS_MAP[code];
   return {
@@ -4270,8 +4270,8 @@ var initialDiagnosticStore = {
     loading: true,
     loaded: false,
     providerInfoLoaded: false,
-    forkop_version: "loading",
-    forkop_latest_version: "loading",
+    nexroute_version: "loading",
+    nexroute_latest_version: "loading",
     luci_app_version: "loading",
     sing_box_version: "loading",
     sing_box_extended: 0,
@@ -4317,8 +4317,8 @@ var initialDiagnosticStore = {
   diagnosticsRunAction: { loading: false },
   diagnosticsChecks: getDiagnosticsChecks(_("Not running")),
   updatesActions: {
-    forkopCheck: { loading: false },
-    forkopInstall: { loading: false },
+    nexrouteCheck: { loading: false },
+    nexrouteInstall: { loading: false },
     singBoxCheck: { loading: false },
     singBoxInstall: { loading: false },
     singBoxInstallExtended: { loading: false },
@@ -4336,7 +4336,7 @@ var initialDiagnosticStore = {
     byedpiRemove: { loading: false }
   },
   updatesChecks: {
-    forkop: { status: null, latest_version: "", release_url: "" },
+    nexroute: { status: null, latest_version: "", release_url: "" },
     sing_box: { status: null, latest_version: "", release_url: "" },
     zapret: { status: null, latest_version: "", release_url: "" },
     zapret2: { status: null, latest_version: "", release_url: "" },
@@ -4344,7 +4344,7 @@ var initialDiagnosticStore = {
   }
 };
 
-// src/forkop/services/store.service.ts
+// src/nexroute/services/store.service.ts
 function jsonStableStringify(obj) {
   return JSON.stringify(obj, (_2, value) => {
     if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -4457,9 +4457,9 @@ var initialStore = {
     failed: false,
     data: {
       singbox: 0,
-      forkopRunning: 0,
-      forkopEnabled: 0,
-      forkopStatus: ""
+      nexrouteRunning: 0,
+      nexrouteEnabled: 0,
+      nexrouteStatus: ""
     }
   },
   sectionsWidget: {
@@ -4475,8 +4475,8 @@ var initialStore = {
 };
 var store = new StoreService(initialStore);
 
-// src/forkop/services/forkopLogWatcher.service.ts
-var ForkopLogWatcher = class _ForkopLogWatcher {
+// src/nexroute/services/nexrouteLogWatcher.service.ts
+var NexrouteLogWatcher = class _NexrouteLogWatcher {
   constructor() {
     this.intervalMs = 5e3;
     this.lastLines = /* @__PURE__ */ new Set();
@@ -4492,10 +4492,10 @@ var ForkopLogWatcher = class _ForkopLogWatcher {
     }
   }
   static getInstance() {
-    if (!_ForkopLogWatcher.instance) {
-      _ForkopLogWatcher.instance = new _ForkopLogWatcher();
+    if (!_NexrouteLogWatcher.instance) {
+      _NexrouteLogWatcher.instance = new _NexrouteLogWatcher();
     }
-    return _ForkopLogWatcher.instance;
+    return _NexrouteLogWatcher.instance;
   }
   init(fetcher, options) {
     this.fetcher = fetcher;
@@ -4504,7 +4504,7 @@ var ForkopLogWatcher = class _ForkopLogWatcher {
     this.maxTrackedLines = options?.maxTrackedLines ?? 500;
     this.lastLines = /* @__PURE__ */ new Set();
     logger.info(
-      "[ForkopLogWatcher]",
+      "[NexrouteLogWatcher]",
       `initialized (interval: ${this.intervalMs}ms)`
     );
   }
@@ -4513,16 +4513,16 @@ var ForkopLogWatcher = class _ForkopLogWatcher {
   }
   async checkOnce() {
     if (!this.fetcher) {
-      logger.warn("[ForkopLogWatcher]", "fetcher not found");
+      logger.warn("[NexrouteLogWatcher]", "fetcher not found");
       return;
     }
     if (this.paused) {
-      logger.debug("[ForkopLogWatcher]", "skipped check \u2014 tab not visible");
+      logger.debug("[NexrouteLogWatcher]", "skipped check \u2014 tab not visible");
       return;
     }
     if (this.checking) {
       logger.debug(
-        "[ForkopLogWatcher]",
+        "[NexrouteLogWatcher]",
         "skipped check \u2014 previous check is running"
       );
       return;
@@ -4544,7 +4544,7 @@ var ForkopLogWatcher = class _ForkopLogWatcher {
         );
       }
     } catch (err) {
-      logger.error("[ForkopLogWatcher]", "failed to read logs:", err);
+      logger.error("[NexrouteLogWatcher]", "failed to read logs:", err);
     } finally {
       this.checking = false;
     }
@@ -4552,14 +4552,14 @@ var ForkopLogWatcher = class _ForkopLogWatcher {
   start() {
     if (this.running) return;
     if (!this.fetcher) {
-      logger.warn("[ForkopLogWatcher]", "attempted to start without fetcher");
+      logger.warn("[NexrouteLogWatcher]", "attempted to start without fetcher");
       return;
     }
     this.running = true;
     void this.checkOnce();
     this.timer = setInterval(() => this.checkOnce(), this.intervalMs);
     logger.info(
-      "[ForkopLogWatcher]",
+      "[NexrouteLogWatcher]",
       `started (interval: ${this.intervalMs}ms)`
     );
   }
@@ -4567,28 +4567,28 @@ var ForkopLogWatcher = class _ForkopLogWatcher {
     if (!this.running) return;
     this.running = false;
     if (this.timer) clearInterval(this.timer);
-    logger.info("[ForkopLogWatcher]", "stopped");
+    logger.info("[NexrouteLogWatcher]", "stopped");
   }
   pause() {
     if (!this.running || this.paused) return;
     this.paused = true;
-    logger.info("[ForkopLogWatcher]", "paused (tab not visible)");
+    logger.info("[NexrouteLogWatcher]", "paused (tab not visible)");
   }
   resume() {
     if (!this.running || !this.paused) return;
     this.paused = false;
-    logger.info("[ForkopLogWatcher]", "resumed (tab active)");
+    logger.info("[NexrouteLogWatcher]", "resumed (tab active)");
     void this.checkOnce();
   }
   reset() {
     this.lastLines = /* @__PURE__ */ new Set();
     this.checking = false;
-    logger.info("[ForkopLogWatcher]", "log history reset");
+    logger.info("[NexrouteLogWatcher]", "log history reset");
   }
 };
 
-// src/forkop/services/logNotificationDeduper.service.ts
-var LOG_NOTIFICATION_STORAGE_KEY = "forkop:shown-log-error-notifications:v1";
+// src/nexroute/services/logNotificationDeduper.service.ts
+var LOG_NOTIFICATION_STORAGE_KEY = "nexroute:shown-log-error-notifications:v1";
 var MAX_STORED_LOG_NOTIFICATIONS = 500;
 function getSessionStorage() {
   if (typeof window === "undefined") {
@@ -4629,12 +4629,12 @@ function isErrorLogLine(line) {
   const lower = line.toLowerCase();
   return lower.includes("[error]") || lower.includes("[fatal]") || lower.includes("sing-box") && lower.includes("rule-set") && /\b(error|fatal)\b/.test(lower);
 }
-function getForkopLogNotification(line) {
+function getNexrouteLogNotification(line) {
   if (isErrorLogLine(line)) {
     return { kind: "error", line };
   }
   const update = line.match(
-    /\[component-update\]\s+(forkop|sing_box|zapret|zapret2|byedpi)\s+(\S+)/i
+    /\[component-update\]\s+(nexroute|sing_box|zapret|zapret2|byedpi)\s+(\S+)/i
   );
   if (!update) {
     return null;
@@ -4655,7 +4655,7 @@ var LogNotificationDeduper = class {
     this.seenKeys = new Set(readStoredKeys(storage));
   }
   shouldNotify(line) {
-    if (!getForkopLogNotification(line)) {
+    if (!getNexrouteLogNotification(line)) {
       return false;
     }
     const key = getLogNotificationKey(line);
@@ -4668,10 +4668,10 @@ var LogNotificationDeduper = class {
   }
 };
 
-// src/forkop/helpers/getComponentActionKey.ts
+// src/nexroute/helpers/getComponentActionKey.ts
 var componentActionKeyMap = {
-  "forkop:check_update": "forkopCheck",
-  "forkop:install": "forkopInstall",
+  "nexroute:check_update": "nexrouteCheck",
+  "nexroute:install": "nexrouteInstall",
   "sing_box:check_update": "singBoxCheck",
   "sing_box:install": "singBoxInstall",
   "sing_box:install_extended": "singBoxInstallExtended",
@@ -4692,7 +4692,7 @@ function getComponentActionKey(component, action) {
   return componentActionKeyMap[`${component}:${action}`];
 }
 
-// src/forkop/helpers/singBoxVariant.ts
+// src/nexroute/helpers/singBoxVariant.ts
 function isExtendedSingBoxVersion(version) {
   return String(version || "").includes("extended");
 }
@@ -4732,7 +4732,7 @@ function normalizeSingBoxVariantFields(value) {
   };
 }
 
-// src/forkop/services/localActionOverlay.service.ts
+// src/nexroute/services/localActionOverlay.service.ts
 var componentActions = /* @__PURE__ */ new Set();
 var subscriptionSections = /* @__PURE__ */ new Set();
 var latencySections = /* @__PURE__ */ new Set();
@@ -4771,14 +4771,14 @@ function getLocalActionOverlay() {
   };
 }
 
-// src/forkop/services/uiState.service.ts
+// src/nexroute/services/uiState.service.ts
 function isRunningAction(state) {
   return state.running === true;
 }
 function getEmptyUpdatesActions() {
   return {
-    forkopCheck: { loading: false },
-    forkopInstall: { loading: false },
+    nexrouteCheck: { loading: false },
+    nexrouteInstall: { loading: false },
     singBoxCheck: { loading: false },
     singBoxInstall: { loading: false },
     singBoxInstallExtended: { loading: false },
@@ -4839,9 +4839,9 @@ function applyServiceState(uiState) {
       failed: false,
       data: {
         singbox: uiState.service.sing_box.running,
-        forkopRunning: uiState.service.forkop.running,
-        forkopEnabled: uiState.service.forkop.enabled,
-        forkopStatus: uiState.service.forkop.status
+        nexrouteRunning: uiState.service.nexroute.running,
+        nexrouteEnabled: uiState.service.nexroute.enabled,
+        nexrouteStatus: uiState.service.nexroute.status
       }
     },
     diagnosticsSystemInfo: normalizeSingBoxVariantFields(nextSystemInfo)
@@ -4924,7 +4924,7 @@ function applyUiStateToStore(uiState) {
   applyActionState(uiState.actions);
 }
 
-// src/forkop/services/runtimeUiState.service.ts
+// src/nexroute/services/runtimeUiState.service.ts
 var RUNTIME_UI_STATE_REFRESH_MIN_INTERVAL_MS = 500;
 var RUNTIME_UI_STATE_IDLE_POLL_INTERVAL_MS = 1e3;
 var RUNTIME_UI_STATE_ACTIVE_POLL_INTERVAL_MS = 500;
@@ -4981,7 +4981,7 @@ async function refreshRuntimeUiState({
     return void 0;
   }
   lastRuntimeUiStateRefreshAt = now;
-  const promise = ForkopShellMethods.getUiState().then((response) => {
+  const promise = NexrouteShellMethods.getUiState().then((response) => {
     if (!response.success) {
       return void 0;
     }
@@ -5042,12 +5042,12 @@ function startRuntimeUiStatePolling() {
   });
 }
 
-// src/forkop/services/core.service.ts
+// src/nexroute/services/core.service.ts
 var LOG_WATCHER_INTERVAL_MS = 1e4;
 var LOG_WATCHER_START_DELAY_MS = 5e3;
 function componentDisplayName(component) {
   const names = {
-    forkop: "Forkop",
+    nexroute: "Nexroute",
     sing_box: "sing-box",
     zapret: "Zapret",
     zapret2: "Zapret2",
@@ -5067,7 +5067,7 @@ function showLogNotification(notification) {
     return;
   }
   ui.addNotification(
-    _("Forkop Error"),
+    _("Nexroute Error"),
     E("div", {}, notification.line),
     "error",
     "fkp-log-error-notification"
@@ -5083,11 +5083,11 @@ function coreService(options = {}) {
       }
     });
   });
-  const watcher = ForkopLogWatcher.getInstance();
+  const watcher = NexrouteLogWatcher.getInstance();
   const logNotificationDeduper = new LogNotificationDeduper();
   watcher.init(
     async () => {
-      const logs = await ForkopShellMethods.checkLogs();
+      const logs = await NexrouteShellMethods.checkLogs();
       if (logs.success) {
         return logs.data;
       }
@@ -5097,7 +5097,7 @@ function coreService(options = {}) {
       intervalMs: LOG_WATCHER_INTERVAL_MS,
       onNewLog: (line) => {
         if (logNotificationDeduper.shouldNotify(line)) {
-          const notification = getForkopLogNotification(line);
+          const notification = getNexrouteLogNotification(line);
           if (notification) {
             showLogNotification(notification);
           }
@@ -5123,7 +5123,7 @@ function coreService(options = {}) {
   startRuntimeUiStatePolling();
 }
 
-// src/forkop/services/socket.service.ts
+// src/nexroute/services/socket.service.ts
 var SocketManager = class _SocketManager {
   constructor() {
     this.sockets = /* @__PURE__ */ new Map();
@@ -5262,8 +5262,8 @@ var SocketManager = class _SocketManager {
 };
 var socket = SocketManager.getInstance();
 
-// src/forkop/services/uiActionNotification.service.ts
-var UI_ACTION_NOTIFICATION_STORAGE_KEY = "forkop:owned-ui-action-notifications:v1";
+// src/nexroute/services/uiActionNotification.service.ts
+var UI_ACTION_NOTIFICATION_STORAGE_KEY = "nexroute:owned-ui-action-notifications:v1";
 var MAX_STORED_UI_ACTION_NOTIFICATIONS = 100;
 function getSessionStorage2() {
   if (typeof window === "undefined") {
@@ -5369,7 +5369,7 @@ function shouldNotifyOwnedUiAction(kind, jobId) {
   return uiActionNotifications.shouldNotify(kind, jobId);
 }
 
-// src/forkop/fetchers/fetchServicesInfo.ts
+// src/nexroute/fetchers/fetchServicesInfo.ts
 var latestServicesInfoRequestId = 0;
 function getSettledMethodResponse(scope, result) {
   if (result.status === "fulfilled") {
@@ -5390,32 +5390,32 @@ async function fetchServicesInfo() {
   if (uiState) {
     return uiState;
   }
-  const [forkopResult, singboxResult] = await Promise.allSettled([
-    ForkopShellMethods.getStatus(),
-    ForkopShellMethods.getSingBoxStatus()
+  const [nexrouteResult, singboxResult] = await Promise.allSettled([
+    NexrouteShellMethods.getStatus(),
+    NexrouteShellMethods.getSingBoxStatus()
   ]);
   if (requestId !== latestServicesInfoRequestId) {
     return;
   }
-  const forkop = getSettledMethodResponse("getStatus", forkopResult);
+  const nexroute = getSettledMethodResponse("getStatus", nexrouteResult);
   const singbox = getSettledMethodResponse("getSingBoxStatus", singboxResult);
   const previousData = store.get().servicesInfoWidget.data;
   store.set({
     servicesInfoWidget: {
       loading: false,
-      failed: !forkop.success || !singbox.success,
+      failed: !nexroute.success || !singbox.success,
       data: {
         singbox: singbox.success ? singbox.data.running : previousData.singbox,
-        forkopRunning: forkop.success ? forkop.data.running : previousData.forkopRunning,
-        forkopEnabled: forkop.success ? forkop.data.enabled : previousData.forkopEnabled,
-        forkopStatus: forkop.success ? forkop.data.status : previousData.forkopStatus
+        nexrouteRunning: nexroute.success ? nexroute.data.running : previousData.nexrouteRunning,
+        nexrouteEnabled: nexroute.success ? nexroute.data.enabled : previousData.nexrouteEnabled,
+        nexrouteStatus: nexroute.success ? nexroute.data.status : previousData.nexrouteStatus
       }
     }
   });
   return void 0;
 }
 
-// src/forkop/helpers/isActiveLuciTab.ts
+// src/nexroute/helpers/isActiveLuciTab.ts
 function isActiveLuciTab(tabId) {
   if (typeof document === "undefined") {
     return false;
@@ -5427,12 +5427,12 @@ function isActiveLuciTab(tabId) {
   );
 }
 
-// src/forkop/helpers/restoredActionLoading.ts
+// src/nexroute/helpers/restoredActionLoading.ts
 function shouldShowLoadingForRestoredAction(state) {
   return state.running === true;
 }
 
-// src/forkop/helpers/serviceAvailability.ts
+// src/nexroute/helpers/serviceAvailability.ts
 function getServiceAvailability({
   loading: loading2,
   failed: failed2,
@@ -5447,7 +5447,7 @@ function getServiceAvailability({
   return running ? "running" : "stopped";
 }
 
-// src/forkop/tabs/dashboard/initController.ts
+// src/nexroute/tabs/dashboard/initController.ts
 var SECTIONS_REFRESH_INTERVAL_MS = 1e4;
 var LATENCY_TEST_BUTTON_CLASS = "dashboard-sections-grid-item-test-latency";
 var LATENCY_TEST_BUTTON_LABEL_CLASS = "dashboard-sections-grid-item-test-latency__label";
@@ -5486,7 +5486,7 @@ async function fetchDashboardSectionsOnce(mountId) {
     }
   });
   try {
-    const { data, success } = await CustomForkopMethods.getDashboardSections();
+    const { data, success } = await CustomNexrouteMethods.getDashboardSections();
     if (!dashboardMounted || mountId !== dashboardMountId || getDashboardServiceAvailability() === "stopped") {
       return false;
     }
@@ -5631,7 +5631,7 @@ async function completeSubscriptionUpdateJob(jobId, sectionName, response) {
   }
   setSubscriptionUpdating(sectionName, false);
   if (jobId && response.success) {
-    void ForkopShellMethods.uiActionAck("subscription", jobId);
+    void NexrouteShellMethods.uiActionAck("subscription", jobId);
   }
   if (failed2) {
     if (shouldNotify) {
@@ -5659,7 +5659,7 @@ async function followSubscriptionUpdateState(state) {
     setSubscriptionUpdating(sectionName, true);
   }
   try {
-    const response = state.running ? await ForkopShellMethods.waitSubscriptionUpdateJob(jobId) : {
+    const response = state.running ? await NexrouteShellMethods.waitSubscriptionUpdateJob(jobId) : {
       success: true,
       data: state
     };
@@ -5689,7 +5689,7 @@ async function completeLatencyTestJob(jobId, sectionName) {
     handledLatencyJobs.add(jobId);
   }
   if (jobId) {
-    void ForkopShellMethods.uiActionAck("latency", jobId);
+    void NexrouteShellMethods.uiActionAck("latency", jobId);
   }
   void fetchDashboardSections({ force: true });
 }
@@ -5708,7 +5708,7 @@ async function followLatencyTestState(state) {
   }
   try {
     if (state.running) {
-      await ForkopShellMethods.waitLatencyTestJob(jobId);
+      await NexrouteShellMethods.waitLatencyTestJob(jobId);
     }
     await completeLatencyTestJob(jobId, sectionName);
   } catch (error) {
@@ -5726,7 +5726,7 @@ function followDashboardActionsFromUiState(uiState) {
       void followSubscriptionUpdateState(state);
     } else if (state.job_id && !handledSubscriptionJobs.has(state.job_id)) {
       handledSubscriptionJobs.add(state.job_id);
-      void ForkopShellMethods.uiActionAck("subscription", state.job_id);
+      void NexrouteShellMethods.uiActionAck("subscription", state.job_id);
     }
   }
   for (const state of uiState.actions.latency || []) {
@@ -5734,7 +5734,7 @@ function followDashboardActionsFromUiState(uiState) {
       void followLatencyTestState(state);
     } else if (state.job_id && !handledLatencyJobs.has(state.job_id)) {
       handledLatencyJobs.add(state.job_id);
-      void ForkopShellMethods.uiActionAck("latency", state.job_id);
+      void NexrouteShellMethods.uiActionAck("latency", state.job_id);
     }
   }
 }
@@ -5852,7 +5852,7 @@ function getDashboardServiceAvailability() {
   return getServiceAvailability({
     loading: service.loading,
     failed: service.failed,
-    running: service.data.forkopRunning
+    running: service.data.nexrouteRunning
   });
 }
 function stopDashboardDataUpdates() {
@@ -5900,7 +5900,7 @@ async function handleChooseOutbound(sectionName, selector, tag) {
   }
   setSelectorSwitching(sectionName, tag);
   try {
-    await ForkopShellMethods.setClashApiGroupProxy(selector, tag);
+    await NexrouteShellMethods.setClashApiGroupProxy(selector, tag);
     await fetchDashboardSections({ force: true });
   } finally {
     setSelectorSwitching(sectionName);
@@ -5937,7 +5937,7 @@ async function handleTestLatency(latencyType, sectionName, tag, timeout) {
   let ownsJobFollow = false;
   let completed = false;
   try {
-    const startResponse = await ForkopShellMethods.latencyTestStart(
+    const startResponse = await NexrouteShellMethods.latencyTestStart(
       latencyType,
       sectionName,
       tag,
@@ -5953,7 +5953,7 @@ async function handleTestLatency(latencyType, sectionName, tag, timeout) {
     }
     followedLatencyJobs.add(jobId);
     ownsJobFollow = true;
-    await ForkopShellMethods.waitLatencyTestJob(jobId);
+    await NexrouteShellMethods.waitLatencyTestJob(jobId);
     await completeLatencyTestJob(jobId, sectionName);
     completed = true;
   } catch (error) {
@@ -6424,7 +6424,7 @@ async function handleUpdateSubscription(section) {
   let jobId = "";
   let ownsJobFollow = false;
   try {
-    const startResponse = await ForkopShellMethods.subscriptionUpdateStart(
+    const startResponse = await NexrouteShellMethods.subscriptionUpdateStart(
       section.sectionName
     );
     if (!startResponse.success) {
@@ -6437,7 +6437,7 @@ async function handleUpdateSubscription(section) {
     }
     followedSubscriptionJobs.add(jobId);
     ownsJobFollow = true;
-    const response = await ForkopShellMethods.waitSubscriptionUpdateJob(jobId);
+    const response = await NexrouteShellMethods.waitSubscriptionUpdateJob(jobId);
     await completeSubscriptionUpdateJob(jobId, section.sectionName, response);
   } catch (error) {
     logger.error("[DASHBOARD]", "handleUpdateSubscription: failed", error);
@@ -6712,10 +6712,10 @@ async function renderServicesInfoWidget() {
     title: _("Services info"),
     items: [
       {
-        key: "Forkop",
-        value: servicesInfoWidget.data.forkopRunning ? _("\u2714 Running") : _("\u2718 Stopped"),
+        key: "Nexroute",
+        value: servicesInfoWidget.data.nexrouteRunning ? _("\u2714 Running") : _("\u2718 Stopped"),
         attributes: {
-          class: servicesInfoWidget.data.forkopRunning ? "fkp_dashboard-page__widgets-section__item__row--success" : "fkp_dashboard-page__widgets-section__item__row--error"
+          class: servicesInfoWidget.data.nexrouteRunning ? "fkp_dashboard-page__widgets-section__item__row--success" : "fkp_dashboard-page__widgets-section__item__row--error"
         }
       },
       {
@@ -6838,31 +6838,31 @@ async function initController() {
   });
 }
 
-// src/forkop/tabs/dashboard/styles.ts
+// src/nexroute/tabs/dashboard/styles.ts
 var styles = `
 @font-face {
     font-family: "Twemoji Country Flags";
-    src: url("/luci-static/resources/view/forkop/fonts/TwemojiCountryFlags.woff2") format("woff2");
+    src: url("/luci-static/resources/view/nexroute/fonts/TwemojiCountryFlags.woff2") format("woff2");
     font-display: swap;
     font-style: normal;
     font-weight: normal;
     unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-dashboard-_mount_node > .cbi-value-title {
+#cbi-${NEXROUTE_UCI_PACKAGE}-dashboard-_mount_node > .cbi-value-title {
     display: none;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-dashboard-_mount_node > .cbi-value-field {
+#cbi-${NEXROUTE_UCI_PACKAGE}-dashboard-_mount_node > .cbi-value-field {
     margin-left: 0;
     width: 100%;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-dashboard-_mount_node > div {
+#cbi-${NEXROUTE_UCI_PACKAGE}-dashboard-_mount_node > div {
     width: 100%;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-dashboard > h3 {
+#cbi-${NEXROUTE_UCI_PACKAGE}-dashboard > h3 {
     display: none;
 }
 
@@ -7531,14 +7531,14 @@ var styles = `
 
 `;
 
-// src/forkop/tabs/dashboard/index.ts
+// src/nexroute/tabs/dashboard/index.ts
 var DashboardTab = {
   render,
   initController,
   styles
 };
 
-// src/forkop/tabs/diagnostic/renderDiagnostic.ts
+// src/nexroute/tabs/diagnostic/renderDiagnostic.ts
 function render2() {
   return E("div", { id: "diagnostic-status", class: "fkp_diagnostic-page" }, [
     E("div", { class: "fkp_diagnostic-page__left-bar" }, [
@@ -7556,7 +7556,7 @@ function render2() {
   ]);
 }
 
-// src/forkop/tabs/diagnostic/checks/updateCheckStore.ts
+// src/nexroute/tabs/diagnostic/checks/updateCheckStore.ts
 function updateCheckStore(check, minified) {
   const diagnosticsChecks = store.get().diagnosticsChecks;
   const other = diagnosticsChecks.filter((item) => item.code !== check.code);
@@ -7570,7 +7570,7 @@ function updateCheckStore(check, minified) {
   });
 }
 
-// src/forkop/tabs/diagnostic/helpers/getMeta.ts
+// src/nexroute/tabs/diagnostic/helpers/getMeta.ts
 function getMeta({ allGood, atLeastOneGood }) {
   if (allGood) {
     return {
@@ -7590,7 +7590,7 @@ function getMeta({ allGood, atLeastOneGood }) {
   };
 }
 
-// src/forkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts
+// src/nexroute/tabs/diagnostic/checks/getDnsCheckPresentation.ts
 function getDnsCheckPresentation(data) {
   const dhcpManagedManually = Boolean(data.dont_touch_dhcp);
   const dhcpCheckOk = dhcpManagedManually || Boolean(data.dhcp_config_status);
@@ -7609,7 +7609,7 @@ function getDnsCheckPresentation(data) {
   };
 }
 
-// src/forkop/tabs/diagnostic/checks/runDnsCheck.ts
+// src/nexroute/tabs/diagnostic/checks/runDnsCheck.ts
 async function runDnsCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.DNS;
   updateCheckStore({
@@ -7620,7 +7620,7 @@ async function runDnsCheck() {
     state: "loading",
     items: []
   });
-  const dnsChecks = await ForkopShellMethods.checkDNSAvailable();
+  const dnsChecks = await NexrouteShellMethods.checkDNSAvailable();
   if (!dnsChecks.success) {
     updateCheckStore({
       order,
@@ -7673,7 +7673,7 @@ async function runDnsCheck() {
   }
 }
 
-// src/forkop/tabs/diagnostic/checks/runSingBoxCheck.ts
+// src/nexroute/tabs/diagnostic/checks/runSingBoxCheck.ts
 async function runSingBoxCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.SINGBOX;
   updateCheckStore({
@@ -7684,7 +7684,7 @@ async function runSingBoxCheck() {
     state: "loading",
     items: []
   });
-  const singBoxChecks = await ForkopShellMethods.checkSingBox();
+  const singBoxChecks = await NexrouteShellMethods.checkSingBox();
   if (!singBoxChecks.success) {
     updateCheckStore({
       order,
@@ -7744,7 +7744,7 @@ async function runSingBoxCheck() {
   }
 }
 
-// src/forkop/tabs/diagnostic/checks/runInboundsCheck.ts
+// src/nexroute/tabs/diagnostic/checks/runInboundsCheck.ts
 function serverPrefix(item) {
   return `${item.label}:`;
 }
@@ -7865,7 +7865,7 @@ async function runInboundsCheck() {
     state: "loading",
     items: []
   });
-  const inboundsChecks = await ForkopShellMethods.checkInbounds();
+  const inboundsChecks = await NexrouteShellMethods.checkInbounds();
   if (!inboundsChecks.success) {
     updateCheckStore({
       order,
@@ -7915,7 +7915,7 @@ async function runInboundsCheck() {
   }
 }
 
-// src/forkop/tabs/diagnostic/checks/runNftCheck.ts
+// src/nexroute/tabs/diagnostic/checks/runNftCheck.ts
 async function runNftCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.NFT;
   updateCheckStore({
@@ -7928,7 +7928,7 @@ async function runNftCheck() {
   });
   await RemoteFakeIPMethods.getFakeIpCheck();
   await RemoteFakeIPMethods.getIpCheck();
-  const nftablesChecks = await ForkopShellMethods.checkNftRules();
+  const nftablesChecks = await NexrouteShellMethods.checkNftRules();
   if (!nftablesChecks.success) {
     updateCheckStore({
       order,
@@ -7998,7 +7998,7 @@ async function runNftCheck() {
   }
 }
 
-// src/forkop/tabs/diagnostic/checks/runFakeIPCheck.ts
+// src/nexroute/tabs/diagnostic/checks/runFakeIPCheck.ts
 async function runFakeIPCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.FAKEIP;
   updateCheckStore({
@@ -8009,7 +8009,7 @@ async function runFakeIPCheck() {
     state: "loading",
     items: []
   });
-  const routerFakeIPResponse = await ForkopShellMethods.checkFakeIP();
+  const routerFakeIPResponse = await NexrouteShellMethods.checkFakeIP();
   const checkFakeIPResponse = await RemoteFakeIPMethods.getFakeIpCheck();
   const checkIPResponse = await RemoteFakeIPMethods.getIpCheck();
   const browserFakeIPCheckUnavailable = !checkFakeIPResponse.success;
@@ -8059,7 +8059,7 @@ async function runFakeIPCheck() {
   });
 }
 
-// src/forkop/tabs/diagnostic/checks/getCheckItemsMeta.ts
+// src/nexroute/tabs/diagnostic/checks/getCheckItemsMeta.ts
 function getCheckItemsMeta(items) {
   if (items.some((item) => item.state === "error")) {
     return {
@@ -8079,7 +8079,7 @@ function getCheckItemsMeta(items) {
   };
 }
 
-// src/forkop/tabs/diagnostic/checks/runZapretCheck.ts
+// src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts
 async function runZapretCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.ZAPRET;
   updateCheckStore({
@@ -8090,7 +8090,7 @@ async function runZapretCheck() {
     state: "loading",
     items: []
   });
-  const zapretStatus = await ForkopShellMethods.getZapretStatus();
+  const zapretStatus = await NexrouteShellMethods.getZapretStatus();
   if (!zapretStatus.success) {
     updateCheckStore({
       order,
@@ -8112,7 +8112,7 @@ async function runZapretCheck() {
   const expectedProcesses = Number(data.expected_process_count || 0);
   const runningProcesses = Number(data.running_process_count || 0);
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
-  const forkopRuntimeReady = !hasZapretRules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
+  const nexrouteRuntimeReady = !hasZapretRules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
   const unexpectedRuntime = !hasZapretRules && (runningProcesses > 0 || supervisorProcesses > 0);
   const outboundsConfigured = Boolean(data.outbounds_configured);
   const items = [
@@ -8132,8 +8132,8 @@ async function runZapretCheck() {
       value: ""
     },
     {
-      state: unexpectedRuntime || !forkopRuntimeReady ? "error" : "success",
-      key: hasZapretRules ? forkopRuntimeReady ? _("Forkop-managed nfqws runtime is ready") : _("Forkop-managed nfqws runtime is not ready") : unexpectedRuntime ? _("Unexpected Forkop-managed nfqws runtime is running") : _("Forkop-managed nfqws runtime is not running"),
+      state: unexpectedRuntime || !nexrouteRuntimeReady ? "error" : "success",
+      key: hasZapretRules ? nexrouteRuntimeReady ? _("Nexroute-managed nfqws runtime is ready") : _("Nexroute-managed nfqws runtime is not ready") : unexpectedRuntime ? _("Unexpected Nexroute-managed nfqws runtime is running") : _("Nexroute-managed nfqws runtime is not running"),
       value: hasZapretRules ? `${runningProcesses}/${expectedProcesses}` : ""
     },
     {
@@ -8148,7 +8148,7 @@ async function runZapretCheck() {
     },
     {
       state: standaloneConflict ? "warning" : "success",
-      key: standaloneServiceRunning ? hasZapretRules ? _("Standalone Zapret is active together with Forkop Zapret rules") : _("Standalone Zapret service is active") : _("Standalone Zapret service is inactive"),
+      key: standaloneServiceRunning ? hasZapretRules ? _("Standalone Zapret is active together with Nexroute Zapret rules") : _("Standalone Zapret service is active") : _("Standalone Zapret service is inactive"),
       value: ""
     }
   ];
@@ -8163,7 +8163,7 @@ async function runZapretCheck() {
   });
 }
 
-// src/forkop/tabs/diagnostic/checks/runZapret2Check.ts
+// src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts
 async function runZapret2Check() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.ZAPRET2;
   updateCheckStore({
@@ -8174,7 +8174,7 @@ async function runZapret2Check() {
     state: "loading",
     items: []
   });
-  const zapret2Status = await ForkopShellMethods.getZapret2Status();
+  const zapret2Status = await NexrouteShellMethods.getZapret2Status();
   if (!zapret2Status.success) {
     updateCheckStore({
       order,
@@ -8194,7 +8194,7 @@ async function runZapret2Check() {
   const expectedProcesses = Number(data.expected_process_count || 0);
   const runningProcesses = Number(data.running_process_count || 0);
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
-  const forkopRuntimeReady = !hasZapret2Rules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
+  const nexrouteRuntimeReady = !hasZapret2Rules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
   const unexpectedRuntime = !hasZapret2Rules && (runningProcesses > 0 || supervisorProcesses > 0);
   const outboundsConfigured = Boolean(data.outbounds_configured);
   const standaloneServiceEnabled = Boolean(data.standalone_service_enabled);
@@ -8218,8 +8218,8 @@ async function runZapret2Check() {
       value: ""
     },
     {
-      state: unexpectedRuntime || !forkopRuntimeReady ? "error" : "success",
-      key: hasZapret2Rules ? forkopRuntimeReady ? _("Forkop-managed nfqws2 runtime is ready") : _("Forkop-managed nfqws2 runtime is not ready") : unexpectedRuntime ? _("Unexpected Forkop-managed nfqws2 runtime is running") : _("Forkop-managed nfqws2 runtime is not running"),
+      state: unexpectedRuntime || !nexrouteRuntimeReady ? "error" : "success",
+      key: hasZapret2Rules ? nexrouteRuntimeReady ? _("Nexroute-managed nfqws2 runtime is ready") : _("Nexroute-managed nfqws2 runtime is not ready") : unexpectedRuntime ? _("Unexpected Nexroute-managed nfqws2 runtime is running") : _("Nexroute-managed nfqws2 runtime is not running"),
       value: hasZapret2Rules ? `${runningProcesses}/${expectedProcesses}` : ""
     },
     {
@@ -8234,7 +8234,7 @@ async function runZapret2Check() {
     },
     {
       state: standaloneConflict ? "error" : standaloneAutostartRisk ? "warning" : "success",
-      key: standaloneServiceRunning ? hasZapret2Rules ? _("Standalone Zapret2 is active together with Forkop Zapret2 rules") : _("Standalone Zapret2 service is active") : standaloneAutostartRisk ? _("Standalone Zapret2 autostart is enabled") : _("Standalone Zapret2 service is inactive"),
+      key: standaloneServiceRunning ? hasZapret2Rules ? _("Standalone Zapret2 is active together with Nexroute Zapret2 rules") : _("Standalone Zapret2 service is active") : standaloneAutostartRisk ? _("Standalone Zapret2 autostart is enabled") : _("Standalone Zapret2 service is inactive"),
       value: ""
     }
   ];
@@ -8249,7 +8249,7 @@ async function runZapret2Check() {
   });
 }
 
-// src/forkop/tabs/diagnostic/checks/runByedpiCheck.ts
+// src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts
 async function runByedpiCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.BYEDPI;
   updateCheckStore({
@@ -8260,7 +8260,7 @@ async function runByedpiCheck() {
     state: "loading",
     items: []
   });
-  const byedpiStatus = await ForkopShellMethods.getByedpiStatus();
+  const byedpiStatus = await NexrouteShellMethods.getByedpiStatus();
   if (!byedpiStatus.success) {
     updateCheckStore({
       order,
@@ -8281,7 +8281,7 @@ async function runByedpiCheck() {
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
   const restartCount = Number(data.restart_count || 0);
   const runtimeUnstable = Boolean(data.runtime_unstable);
-  const forkopRuntimeReady = !hasByedpiRules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
+  const nexrouteRuntimeReady = !hasByedpiRules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
   const unexpectedRuntime = !hasByedpiRules && (runningProcesses > 0 || supervisorProcesses > 0);
   const outboundsConfigured = Boolean(data.outbounds_configured);
   const standaloneServiceEnabled = Boolean(data.standalone_service_enabled);
@@ -8305,8 +8305,8 @@ async function runByedpiCheck() {
       value: ""
     },
     {
-      state: unexpectedRuntime || !forkopRuntimeReady ? "error" : runtimeUnstable ? "warning" : "success",
-      key: hasByedpiRules ? runtimeUnstable ? _("Forkop-managed ciadpi runtime has restarted") : forkopRuntimeReady ? _("Forkop-managed ciadpi runtime is ready") : _("Forkop-managed ciadpi runtime is not ready") : unexpectedRuntime ? _("Unexpected Forkop-managed ciadpi runtime is running") : _("Forkop-managed ciadpi runtime is not running"),
+      state: unexpectedRuntime || !nexrouteRuntimeReady ? "error" : runtimeUnstable ? "warning" : "success",
+      key: hasByedpiRules ? runtimeUnstable ? _("Nexroute-managed ciadpi runtime has restarted") : nexrouteRuntimeReady ? _("Nexroute-managed ciadpi runtime is ready") : _("Nexroute-managed ciadpi runtime is not ready") : unexpectedRuntime ? _("Unexpected Nexroute-managed ciadpi runtime is running") : _("Nexroute-managed ciadpi runtime is not running"),
       value: hasByedpiRules ? runtimeUnstable ? `${restartCount}` : `${runningProcesses}/${expectedProcesses}` : ""
     },
     {
@@ -8316,7 +8316,7 @@ async function runByedpiCheck() {
     },
     {
       state: standaloneConflict ? "error" : standaloneAutostartRisk ? "warning" : "success",
-      key: standaloneServiceRunning ? hasByedpiRules ? _("Standalone ByeDPI is active together with Forkop ByeDPI rules") : _("Standalone ByeDPI service is active") : standaloneAutostartRisk ? _("Standalone ByeDPI autostart is enabled") : _("Standalone ByeDPI service is inactive"),
+      key: standaloneServiceRunning ? hasByedpiRules ? _("Standalone ByeDPI is active together with Nexroute ByeDPI rules") : _("Standalone ByeDPI service is active") : standaloneAutostartRisk ? _("Standalone ByeDPI autostart is enabled") : _("Standalone ByeDPI service is inactive"),
       value: ""
     }
   ];
@@ -8331,13 +8331,13 @@ async function runByedpiCheck() {
   });
 }
 
-// src/forkop/services/systemInfo.service.ts
+// src/nexroute/services/systemInfo.service.ts
 var UNKNOWN_SYSTEM_INFO = {
   loading: false,
   loaded: false,
   providerInfoLoaded: false,
-  forkop_version: _("unknown"),
-  forkop_latest_version: _("unknown"),
+  nexroute_version: _("unknown"),
+  nexroute_latest_version: _("unknown"),
   luci_app_version: _("unknown"),
   sing_box_version: _("unknown"),
   sing_box_extended: 0,
@@ -8382,7 +8382,7 @@ async function ensureSystemInfo({
   }
   const promise = (async () => {
     try {
-      const systemInfo = await ForkopShellMethods.getSystemInfo();
+      const systemInfo = await NexrouteShellMethods.getSystemInfo();
       if (requestId !== latestSystemInfoRequestId) {
         return store.get().diagnosticsSystemInfo;
       }
@@ -8821,7 +8821,7 @@ ${styles2}
 ${styles3}
 `;
 
-// src/forkop/tabs/diagnostic/partials/renderAvailableActions.ts
+// src/nexroute/tabs/diagnostic/partials/renderAvailableActions.ts
 function renderAvailableActions({
   restart,
   start,
@@ -8839,7 +8839,7 @@ function renderAvailableActions({
         classNames: ["cbi-button-apply"],
         onClick: restart.onClick,
         icon: renderRotateCcwIcon24,
-        text: _("Restart Forkop"),
+        text: _("Restart Nexroute"),
         loading: restart.loading,
         disabled: restart.disabled
       })
@@ -8849,7 +8849,7 @@ function renderAvailableActions({
         classNames: ["cbi-button-remove"],
         onClick: stop.onClick,
         icon: renderCircleStopIcon24,
-        text: _("Stop Forkop"),
+        text: _("Stop Nexroute"),
         loading: stop.loading,
         disabled: stop.disabled
       })
@@ -8859,7 +8859,7 @@ function renderAvailableActions({
         classNames: ["cbi-button-save"],
         onClick: start.onClick,
         icon: renderCirclePlayIcon24,
-        text: _("Start Forkop"),
+        text: _("Start Nexroute"),
         loading: start.loading,
         disabled: start.disabled
       })
@@ -8914,7 +8914,7 @@ function renderAvailableActions({
   ]);
 }
 
-// src/forkop/tabs/diagnostic/partials/renderCheckSection.ts
+// src/nexroute/tabs/diagnostic/partials/renderCheckSection.ts
 function renderCheckSummary(items) {
   if (!items.length) {
     return E("div", {}, "");
@@ -9069,7 +9069,7 @@ function renderCheckSection(props) {
   return E("div", {}, _("Not implement yet"));
 }
 
-// src/forkop/tabs/diagnostic/partials/renderRunAction.ts
+// src/nexroute/tabs/diagnostic/partials/renderRunAction.ts
 function renderRunAction({
   loading: loading2,
   disabled,
@@ -9087,7 +9087,7 @@ function renderRunAction({
   ]);
 }
 
-// src/forkop/tabs/diagnostic/partials/renderSystemInfo.ts
+// src/nexroute/tabs/diagnostic/partials/renderSystemInfo.ts
 function renderSystemInfo({ items }) {
   return E("div", { class: "fkp_diagnostic-page__right-bar__system-info" }, [
     E(
@@ -9131,7 +9131,7 @@ function normalizeCompiledVersion(version) {
   return version;
 }
 
-// src/forkop/tabs/diagnostic/partials/renderWikiDisclaimer.ts
+// src/nexroute/tabs/diagnostic/partials/renderWikiDisclaimer.ts
 function renderWikiDisclaimer(kind) {
   const iconWrap = E("span", {
     class: "fkp_diagnostic-page__right-bar__wiki__icon"
@@ -9158,7 +9158,7 @@ function renderWikiDisclaimer(kind) {
       classNames: ["cbi-button-save"],
       text: _("Open Project Page"),
       onClick: () => window.open(
-        "https://github.com/ushan0v/forkop#readme",
+        "https://github.com/filippxda26/Nexroute#readme",
         "_blank",
         "noopener,noreferrer"
       )
@@ -9166,7 +9166,7 @@ function renderWikiDisclaimer(kind) {
   ]);
 }
 
-// src/forkop/tabs/diagnostic/checks/runSectionsCheck.ts
+// src/nexroute/tabs/diagnostic/checks/runSectionsCheck.ts
 function getSubscriptionLatencyState(latencyValues) {
   const hasAvailableLatency = latencyValues.some((item) => Boolean(item));
   const hasUnavailableLatency = latencyValues.some((item) => !item);
@@ -9211,7 +9211,7 @@ async function runSectionsCheck() {
         ) ?? section.outbounds[0];
         const isSubscription = section.proxyConfigType === "subscription";
         if (selectedOutbound2?.code) {
-          const latencyProxy2 = await ForkopShellMethods.getClashApiProxyLatency(
+          const latencyProxy2 = await NexrouteShellMethods.getClashApiProxyLatency(
             selectedOutbound2.code,
             section.latencyTestTimeout
           );
@@ -9227,7 +9227,7 @@ async function runSectionsCheck() {
             latency: `[${selectedOutbound2.displayName ?? ""}] ${_("Not responding")}`
           };
         }
-        const latencyGroup = await ForkopShellMethods.getClashApiGroupLatency(
+        const latencyGroup = await NexrouteShellMethods.getClashApiGroupLatency(
           section.code
         );
         const success2 = latencyGroup.success && !latencyGroup.data.message;
@@ -9252,7 +9252,7 @@ async function runSectionsCheck() {
         };
       }
       const selectedOutbound = section.outbounds[0];
-      const latencyProxy = await ForkopShellMethods.getClashApiProxyLatency(
+      const latencyProxy = await NexrouteShellMethods.getClashApiProxyLatency(
         section.code,
         section.latencyTestTimeout
       );
@@ -9297,7 +9297,7 @@ async function runSectionsCheck() {
   }
 }
 
-// src/forkop/tabs/diagnostic/serviceTransition.ts
+// src/nexroute/tabs/diagnostic/serviceTransition.ts
 function isServiceTransitionStatus(status) {
   return ["starting", "stopping", "restarting", "reloading"].includes(status);
 }
@@ -9326,10 +9326,10 @@ function shouldResetDiagnosticsChecks({
 function shouldDisableDiagnosticRunAction({
   providerInfoLoaded,
   servicesInfoLoading,
-  forkopRunning,
+  nexrouteRunning,
   mutatingServiceActionLoading
 }) {
-  return !providerInfoLoaded || servicesInfoLoading || !forkopRunning || mutatingServiceActionLoading;
+  return !providerInfoLoaded || servicesInfoLoading || !nexrouteRunning || mutatingServiceActionLoading;
 }
 function hasComponentActionLoading(actions) {
   return Object.values(actions).some((action) => action.loading);
@@ -9346,32 +9346,32 @@ function getAvailableActionsDisabledState({
   };
 }
 function shouldShowRestartAction({
-  forkopRunning,
+  nexrouteRunning,
   restartLoading,
   startLoading,
   stopLoading
 }) {
-  return restartLoading || forkopRunning && !startLoading && !stopLoading;
+  return restartLoading || nexrouteRunning && !startLoading && !stopLoading;
 }
 function shouldShowStartAction({
-  forkopRunning,
+  nexrouteRunning,
   restartLoading,
   startLoading,
   stopLoading
 }) {
-  return startLoading || !restartLoading && !forkopRunning && !stopLoading;
+  return startLoading || !restartLoading && !nexrouteRunning && !stopLoading;
 }
 function shouldShowStopAction({
-  forkopRunning,
+  nexrouteRunning,
   restartLoading,
   startLoading,
   stopLoading
 }) {
-  return stopLoading || restartLoading || forkopRunning && !startLoading;
+  return stopLoading || restartLoading || nexrouteRunning && !startLoading;
 }
 
-// src/forkop/tabs/diagnostic/diagnosticRunPersistence.ts
-var DIAGNOSTIC_RUN_STORAGE_KEY = "forkop:diagnostic-run:v1";
+// src/nexroute/tabs/diagnostic/diagnosticRunPersistence.ts
+var DIAGNOSTIC_RUN_STORAGE_KEY = "nexroute:diagnostic-run:v1";
 var DIAGNOSTIC_RUN_TTL_MS = 30 * 60 * 1e3;
 var CHECK_STATES = ["loading", "warning", "success", "error", "skipped"];
 var CHECK_ITEM_STATES = ["error", "warning", "success"];
@@ -9457,7 +9457,7 @@ function clearPersistedDiagnosticRun(storage = getSessionStorage3()) {
   }
 }
 
-// src/forkop/tabs/diagnostic/helpers/maskDiagnostics.ts
+// src/nexroute/tabs/diagnostic/helpers/maskDiagnostics.ts
 var MASKED_VALUE = "MASKED";
 var SING_BOX_MASKED_KEYS = /* @__PURE__ */ new Set([
   "auth_key",
@@ -9486,7 +9486,7 @@ var SING_BOX_MASKED_KEYS = /* @__PURE__ */ new Set([
   "ip_cidr",
   "source_ip_cidr"
 ]);
-var FORKOP_MASK_AFTER_TOKEN = [
+var NEXROUTE_MASK_AFTER_TOKEN = [
   "option proxy_string",
   "option hwid",
   "option subscription_url",
@@ -9505,7 +9505,7 @@ var FORKOP_MASK_AFTER_TOKEN = [
   "list reality_short_id",
   "option yacd_secret_key"
 ];
-var FORKOP_MASK_AFTER_TOKEN_SPACE = [
+var NEXROUTE_MASK_AFTER_TOKEN_SPACE = [
   "option outbound_json",
   "list domain",
   "list domain_suffix",
@@ -9585,10 +9585,10 @@ function maskOptionPath(line, token) {
 }
 function maskGlobalCheckLine(line) {
   let maskedLine = line;
-  for (const token of FORKOP_MASK_AFTER_TOKEN) {
+  for (const token of NEXROUTE_MASK_AFTER_TOKEN) {
     maskedLine = maskAfterToken(maskedLine, token);
   }
-  for (const token of FORKOP_MASK_AFTER_TOKEN_SPACE) {
+  for (const token of NEXROUTE_MASK_AFTER_TOKEN_SPACE) {
     maskedLine = maskAfterTokenSpace(maskedLine, token);
   }
   maskedLine = maskOptionPath(maskedLine, "option dns_server '");
@@ -9647,7 +9647,7 @@ function maskGlobalCheckText(text = "") {
   }).join("\n");
 }
 
-// src/forkop/tabs/diagnostic/initController.ts
+// src/nexroute/tabs/diagnostic/initController.ts
 var SERVICE_STATUS_REFRESH_INTERVAL_MS = 2e3;
 var SERVICE_ACTION_STATUS_TIMEOUT_MS = 45e3;
 var latestProviderInfoRequestId = 0;
@@ -9702,25 +9702,25 @@ function isLocalMutatingServiceActionLoading() {
   return hasLocalMutatingServiceActionLoading(actions);
 }
 function isMutatingServiceActionLoading() {
-  return isLocalMutatingServiceActionLoading() || isServiceTransitionStatus(store.get().servicesInfoWidget.data.forkopStatus);
+  return isLocalMutatingServiceActionLoading() || isServiceTransitionStatus(store.get().servicesInfoWidget.data.nexrouteStatus);
 }
-function getForkopStatusText(running, enabled) {
+function getNexrouteStatusText(running, enabled) {
   if (running) {
     return enabled ? "running & enabled" : "running but disabled";
   }
   return enabled ? "stopped but enabled" : "stopped & disabled";
 }
-function setDisplayedForkopRunning(running) {
+function setDisplayedNexrouteRunning(running) {
   const servicesInfoWidget = store.get().servicesInfoWidget;
-  const enabled = Boolean(servicesInfoWidget.data.forkopEnabled);
+  const enabled = Boolean(servicesInfoWidget.data.nexrouteEnabled);
   store.set({
     servicesInfoWidget: {
       ...servicesInfoWidget,
       loading: false,
       data: {
         ...servicesInfoWidget.data,
-        forkopRunning: running ? 1 : 0,
-        forkopStatus: getForkopStatusText(running, enabled)
+        nexrouteRunning: running ? 1 : 0,
+        nexrouteStatus: getNexrouteStatusText(running, enabled)
       }
     }
   });
@@ -9758,14 +9758,14 @@ async function refreshDiagnosticServicesInfo({
   servicesInfoRefreshPromise = promise;
   return promise;
 }
-async function waitForForkopRunningState(expectedRunning) {
+async function waitForNexrouteRunningState(expectedRunning) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < SERVICE_ACTION_STATUS_TIMEOUT_MS) {
     await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
-    const forkopRunning = Boolean(
-      store.get().servicesInfoWidget.data.forkopRunning
+    const nexrouteRunning = Boolean(
+      store.get().servicesInfoWidget.data.nexrouteRunning
     );
-    if (forkopRunning === expectedRunning) {
+    if (nexrouteRunning === expectedRunning) {
       return true;
     }
     await sleep2(SERVICE_STATUS_REFRESH_INTERVAL_MS);
@@ -9812,7 +9812,7 @@ async function followServiceActionState(state) {
   }
   try {
     if (state.running) {
-      await ForkopShellMethods.waitServiceActionJob(jobId);
+      await NexrouteShellMethods.waitServiceActionJob(jobId);
     }
   } catch (error) {
     logger.error("[DIAGNOSTIC]", "followServiceActionState failed", error);
@@ -9820,7 +9820,7 @@ async function followServiceActionState(state) {
     handledServiceActionJobs.add(jobId);
     setServiceActionStateLoading(state, false);
     await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
-    void ForkopShellMethods.uiActionAck("service", jobId);
+    void NexrouteShellMethods.uiActionAck("service", jobId);
     followedServiceActionJobs.delete(jobId);
     resetDiagnosticsChecks();
   }
@@ -9895,10 +9895,10 @@ async function fetchDiagnosticsProviderInfo({
       return;
     }
     const [zapretRuntime, zapret2Runtime, byedpiRuntime, inboundsConfig] = await Promise.all([
-      ForkopShellMethods.checkZapretRuntime(),
-      ForkopShellMethods.checkZapret2Runtime(),
-      ForkopShellMethods.checkByedpiRuntime(),
-      ForkopShellMethods.checkInboundsConfig()
+      NexrouteShellMethods.checkZapretRuntime(),
+      NexrouteShellMethods.checkZapret2Runtime(),
+      NexrouteShellMethods.checkByedpiRuntime(),
+      NexrouteShellMethods.checkInboundsConfig()
     ]);
     if (requestId !== latestProviderInfoRequestId) {
       return;
@@ -9986,14 +9986,14 @@ function renderDiagnosticRunActionWidget() {
   const { loading: loading2 } = store.get().diagnosticsRunAction;
   const providerInfoLoaded = store.get().diagnosticsSystemInfo.providerInfoLoaded;
   const servicesInfoWidget = store.get().servicesInfoWidget;
-  const forkopRunning = Boolean(servicesInfoWidget.data.forkopRunning);
+  const nexrouteRunning = Boolean(servicesInfoWidget.data.nexrouteRunning);
   const container = document.getElementById("fkp_diagnostic-page-run-check");
   const renderedAction = renderRunAction({
     loading: loading2,
     disabled: shouldDisableDiagnosticRunAction({
       providerInfoLoaded,
       servicesInfoLoading: servicesInfoWidget.loading,
-      forkopRunning,
+      nexrouteRunning,
       mutatingServiceActionLoading: isMutatingServiceActionLoading()
     }),
     click: () => runChecks()
@@ -10012,10 +10012,10 @@ async function handleServiceRuntimeAction({
   let ownsJobFollow = false;
   let delegatedToWatcher = false;
   if (optimisticRunning !== void 0) {
-    setDisplayedForkopRunning(optimisticRunning);
+    setDisplayedNexrouteRunning(optimisticRunning);
   }
   try {
-    const startResponse = await ForkopShellMethods.serviceActionStart(action);
+    const startResponse = await NexrouteShellMethods.serviceActionStart(action);
     if (!startResponse.success) {
       throw new Error(startResponse.error);
     }
@@ -10026,14 +10026,14 @@ async function handleServiceRuntimeAction({
     }
     followedServiceActionJobs.add(jobId);
     ownsJobFollow = true;
-    const result = await ForkopShellMethods.waitServiceActionJob(jobId);
+    const result = await NexrouteShellMethods.waitServiceActionJob(jobId);
     if (!result.success) {
       throw new Error(result.error);
     }
     if (result.data.success === false) {
       throw new Error(result.data.message || _("Service action failed"));
     }
-    await waitForForkopRunningState(expectedRunning);
+    await waitForNexrouteRunningState(expectedRunning);
   } catch (e) {
     logger.error("[DIAGNOSTIC]", `handleServiceRuntimeAction(${action})`, e);
   } finally {
@@ -10045,7 +10045,7 @@ async function handleServiceRuntimeAction({
       await refreshDiagnosticServicesInfo({ force: true, allowInactive: true });
       if (jobId) {
         handledServiceActionJobs.add(jobId);
-        void ForkopShellMethods.uiActionAck("service", jobId);
+        void NexrouteShellMethods.uiActionAck("service", jobId);
       }
       resetDiagnosticsChecks();
     }
@@ -10073,7 +10073,7 @@ async function handleStop() {
 async function handleEnable() {
   setDiagnosticActionLoading("enable", true);
   try {
-    await ForkopShellMethods.enable();
+    await NexrouteShellMethods.enable();
   } catch (e) {
     logger.error("[DIAGNOSTIC]", "handleEnable - e", e);
   } finally {
@@ -10087,7 +10087,7 @@ async function handleEnable() {
 async function handleDisable() {
   setDiagnosticActionLoading("disable", true);
   try {
-    await ForkopShellMethods.disable();
+    await NexrouteShellMethods.disable();
   } catch (e) {
     logger.error("[DIAGNOSTIC]", "handleDisable - e", e);
   } finally {
@@ -10101,7 +10101,7 @@ async function handleDisable() {
 async function handleShowGlobalCheck() {
   setDiagnosticActionLoading("globalCheck", true);
   try {
-    const globalCheck = await ForkopShellMethods.globalCheck(false);
+    const globalCheck = await NexrouteShellMethods.globalCheck(false);
     if (globalCheck.success) {
       const rawGlobalCheckText = globalCheck.data ?? "";
       const maskedGlobalCheckText = maskGlobalCheckText(rawGlobalCheckText);
@@ -10125,10 +10125,10 @@ async function handleShowGlobalCheck() {
 async function handleViewLogs() {
   setDiagnosticActionLoading("viewLogs", true);
   try {
-    const viewLogs = await ForkopShellMethods.checkLogs();
+    const viewLogs = await NexrouteShellMethods.checkLogs();
     if (viewLogs.success) {
       const getLatestLogs = async () => {
-        const latestLogs = await ForkopShellMethods.checkLogs();
+        const latestLogs = await NexrouteShellMethods.checkLogs();
         if (!latestLogs.success) {
           throw latestLogs;
         }
@@ -10156,7 +10156,7 @@ async function handleViewLogs() {
 async function handleShowSingBoxConfig() {
   setDiagnosticActionLoading("showSingBoxConfig", true);
   try {
-    const showSingBoxConfig = await ForkopShellMethods.showSingBoxConfig(false);
+    const showSingBoxConfig = await NexrouteShellMethods.showSingBoxConfig(false);
     if (showSingBoxConfig.success) {
       const rawSingBoxConfigText = stringifySingBoxConfig(
         showSingBoxConfig.data
@@ -10207,10 +10207,10 @@ function renderDiagnosticAvailableActionsWidget() {
   const updatesActions = store.get().updatesActions;
   const servicesInfoWidget = store.get().servicesInfoWidget;
   logger.debug("[DIAGNOSTIC]", "renderDiagnosticAvailableActionsWidget");
-  const forkopEnabled = Boolean(servicesInfoWidget.data.forkopEnabled);
-  const forkopRunning = Boolean(servicesInfoWidget.data.forkopRunning);
+  const nexrouteEnabled = Boolean(servicesInfoWidget.data.nexrouteEnabled);
+  const nexrouteRunning = Boolean(servicesInfoWidget.data.nexrouteRunning);
   const serviceTransition = getServiceTransition(
-    servicesInfoWidget.data.forkopStatus
+    servicesInfoWidget.data.nexrouteStatus
   );
   const restartLoading = diagnosticsActions.restart.loading || serviceTransition.restarting;
   const startLoading = diagnosticsActions.start.loading || serviceTransition.starting;
@@ -10223,13 +10223,13 @@ function renderDiagnosticAvailableActionsWidget() {
     componentActionLoading
   });
   const startVisible = shouldShowStartAction({
-    forkopRunning,
+    nexrouteRunning,
     restartLoading,
     startLoading,
     stopLoading
   });
   const stopVisible = shouldShowStopAction({
-    forkopRunning,
+    nexrouteRunning,
     restartLoading,
     startLoading,
     stopLoading
@@ -10239,7 +10239,7 @@ function renderDiagnosticAvailableActionsWidget() {
     restart: {
       loading: restartLoading,
       visible: shouldShowRestartAction({
-        forkopRunning,
+        nexrouteRunning,
         restartLoading,
         startLoading,
         stopLoading
@@ -10261,13 +10261,13 @@ function renderDiagnosticAvailableActionsWidget() {
     },
     enable: {
       loading: diagnosticsActions.enable.loading,
-      visible: !forkopEnabled,
+      visible: !nexrouteEnabled,
       onClick: handleEnable,
       disabled: serviceControlsDisabled
     },
     disable: {
       loading: diagnosticsActions.disable.loading,
-      visible: forkopEnabled,
+      visible: nexrouteEnabled,
       onClick: handleDisable,
       disabled: serviceControlsDisabled
     },
@@ -10300,12 +10300,12 @@ function renderDiagnosticSystemInfoWidget() {
   const container = document.getElementById("fkp_diagnostic-page-system-info");
   const items = [
     {
-      key: "Forkop",
-      value: normalizeCompiledVersion(diagnosticsSystemInfo.forkop_version)
+      key: "Nexroute",
+      value: normalizeCompiledVersion(diagnosticsSystemInfo.nexroute_version)
     },
     {
       key: "Luci App",
-      value: normalizeCompiledVersion(FORKOP_LUCI_APP_VERSION)
+      value: normalizeCompiledVersion(NEXROUTE_LUCI_APP_VERSION)
     },
     {
       key: "Sing-box",
@@ -10592,14 +10592,14 @@ async function initController2() {
   });
 }
 
-// src/forkop/tabs/diagnostic/styles.ts
+// src/nexroute/tabs/diagnostic/styles.ts
 var styles4 = `
 
-#cbi-${FORKOP_UCI_PACKAGE}-diagnostic-_mount_node > div {
+#cbi-${NEXROUTE_UCI_PACKAGE}-diagnostic-_mount_node > div {
     width: 100%;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-diagnostic > h3 {
+#cbi-${NEXROUTE_UCI_PACKAGE}-diagnostic > h3 {
     display: none;
 }
 
@@ -10794,14 +10794,14 @@ var styles4 = `
 }
 `;
 
-// src/forkop/tabs/diagnostic/index.ts
+// src/nexroute/tabs/diagnostic/index.ts
 var DiagnosticTab = {
   render: render2,
   initController: initController2,
   styles: styles4
 };
 
-// src/forkop/tabs/monitoring/render.ts
+// src/nexroute/tabs/monitoring/render.ts
 function render3() {
   return E(
     "div",
@@ -10896,7 +10896,7 @@ function render3() {
   );
 }
 
-// src/forkop/tabs/monitoring/initController.ts
+// src/nexroute/tabs/monitoring/initController.ts
 function normalizeConnectionsPayload(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -11560,7 +11560,7 @@ function renderConnections(options = {}) {
     container.replaceChildren(
       renderConnectionsTable([], {
         text: _(
-          "Forkop service is stopped. Start the service to display connections."
+          "Nexroute service is stopped. Start the service to display connections."
         )
       })
     );
@@ -11762,7 +11762,7 @@ async function closeConnection(connectionId) {
   closingConnectionIds.add(connectionId);
   renderConnections();
   try {
-    const response = await ForkopShellMethods.closeClashApiConnection(connectionId);
+    const response = await NexrouteShellMethods.closeClashApiConnection(connectionId);
     if (!response.success) {
       showToast(_("Failed to close connection"), "error");
       return;
@@ -11791,7 +11791,7 @@ async function closeAllConnections() {
   closingAll = true;
   renderControls();
   try {
-    const response = await ForkopShellMethods.closeAllClashApiConnections();
+    const response = await NexrouteShellMethods.closeAllClashApiConnections();
     if (!response.success) {
       showToast(_("Failed to close connections"), "error");
       return;
@@ -11880,7 +11880,7 @@ async function loadLocalDevices() {
 }
 async function loadRouteDisplayNames() {
   try {
-    buildRouteDisplayNames(await CustomForkopMethods.getConfigSections());
+    buildRouteDisplayNames(await CustomNexrouteMethods.getConfigSections());
   } catch (error) {
     logger.warn("[MONITORING]", "loadRouteDisplayNames: failed", error);
     buildRouteDisplayNames([]);
@@ -11896,7 +11896,7 @@ async function pollConnectionsSnapshot() {
   const mountId = monitoringMountId;
   pollingConnections = true;
   try {
-    const response = await ForkopShellMethods.getClashApiConnections();
+    const response = await NexrouteShellMethods.getClashApiConnections();
     if (!monitoringMounted || mountId !== monitoringMountId || serviceAvailability !== "running") {
       return;
     }
@@ -12015,7 +12015,7 @@ function watchServiceState() {
       getServiceAvailability({
         loading: false,
         failed: false,
-        running: uiState.service.forkop.running
+        running: uiState.service.nexroute.running
       })
     );
   });
@@ -12123,27 +12123,27 @@ async function initController3(controllerDependencies = {}) {
   });
 }
 
-// src/forkop/tabs/monitoring/styles.ts
+// src/nexroute/tabs/monitoring/styles.ts
 var styles5 = `
-#cbi-${FORKOP_UCI_PACKAGE}-monitoring-_mount_node {
+#cbi-${NEXROUTE_UCI_PACKAGE}-monitoring-_mount_node {
     margin: 16px 0 22px;
     padding: 0;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-monitoring-_mount_node > .cbi-value-title {
+#cbi-${NEXROUTE_UCI_PACKAGE}-monitoring-_mount_node > .cbi-value-title {
     display: none;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-monitoring-_mount_node > .cbi-value-field {
+#cbi-${NEXROUTE_UCI_PACKAGE}-monitoring-_mount_node > .cbi-value-field {
     margin-left: 0;
     width: 100%;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-monitoring-_mount_node > div {
+#cbi-${NEXROUTE_UCI_PACKAGE}-monitoring-_mount_node > div {
     width: 100%;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-monitoring > h3 {
+#cbi-${NEXROUTE_UCI_PACKAGE}-monitoring > h3 {
     display: none;
 }
 
@@ -12756,14 +12756,14 @@ var styles5 = `
 }
 `;
 
-// src/forkop/tabs/monitoring/index.ts
+// src/nexroute/tabs/monitoring/index.ts
 var MonitoringTab = {
   render: render3,
   initController: initController3,
   styles: styles5
 };
 
-// src/forkop/tabs/updates/render.ts
+// src/nexroute/tabs/updates/render.ts
 function render4() {
   return E("div", { id: "updates-status", class: "fkp_updates-page" }, [
     E("div", {
@@ -12773,12 +12773,12 @@ function render4() {
   ]);
 }
 
-// src/forkop/tabs/updates/componentActionCompletion.ts
+// src/nexroute/tabs/updates/componentActionCompletion.ts
 function shouldApplyCompletedComponentActionResult(result, notify) {
   return result.action !== "check_update" || notify;
 }
 
-// src/forkop/tabs/updates/checkResultLifecycle.ts
+// src/nexroute/tabs/updates/checkResultLifecycle.ts
 function shouldPreserveCompletedCheckResultOnNextMount({
   action,
   mounted
@@ -12804,7 +12804,7 @@ function shouldExposeCheckResults({
   return mounted && cacheResolved;
 }
 
-// src/forkop/tabs/updates/initController.ts
+// src/nexroute/tabs/updates/initController.ts
 var updatesLifecycleRegistered = false;
 var updatesControllerInitialized = false;
 var updatesMounted = false;
@@ -12861,7 +12861,7 @@ function isAnyActionLoading() {
 }
 function isServiceRuntimeActionLoading() {
   const state = store.get();
-  return hasLocalMutatingServiceActionLoading(state.diagnosticsActions) || isServiceTransitionStatus(state.servicesInfoWidget.data.forkopStatus);
+  return hasLocalMutatingServiceActionLoading(state.diagnosticsActions) || isServiceTransitionStatus(state.servicesInfoWidget.data.nexrouteStatus);
 }
 function isSystemInfoLoading() {
   const systemInfo = store.get().diagnosticsSystemInfo;
@@ -12922,7 +12922,7 @@ function loadComponentUpdateCheckCache({ force = false } = {}) {
   if (componentUpdateCheckCachePromise) {
     return componentUpdateCheckCachePromise;
   }
-  const promise = ForkopShellMethods.componentUpdateCheckCache().then(
+  const promise = NexrouteShellMethods.componentUpdateCheckCache().then(
     (response) => response.success ? response.data : {
       enabled: false,
       results: []
@@ -12943,7 +12943,7 @@ function getErrorMessage(error, fallback) {
 }
 async function ackComponentActionJob(jobId) {
   try {
-    const response = await ForkopShellMethods.uiActionAck("component", jobId);
+    const response = await NexrouteShellMethods.uiActionAck("component", jobId);
     if (!response.success) {
       logger.debug("[UPDATES]", "component action ack failed", response.error);
     }
@@ -12952,7 +12952,7 @@ async function ackComponentActionJob(jobId) {
   }
 }
 function getExpectedLatestVersionForAction(button) {
-  if (button.component !== "forkop" || button.action !== "install") {
+  if (button.component !== "nexroute" || button.action !== "install") {
     return void 0;
   }
   return store.get().updatesChecks[button.component].latest_version || void 0;
@@ -12974,7 +12974,7 @@ function notifyActionProvidersAvailabilityChanged(systemInfo) {
     return;
   }
   window.dispatchEvent(
-    new CustomEvent(FORKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT, {
+    new CustomEvent(NEXROUTE_ACTION_PROVIDERS_AVAILABILITY_EVENT, {
       detail: {
         zapretInstalled: Boolean(systemInfo.zapret_installed),
         zapret2Installed: Boolean(systemInfo.zapret2_installed),
@@ -12983,7 +12983,7 @@ function notifyActionProvidersAvailabilityChanged(systemInfo) {
     })
   );
 }
-function reloadPageAfterForkopUpdate() {
+function reloadPageAfterNexrouteUpdate() {
   window.setTimeout(() => {
     window.location.reload();
   }, 1200);
@@ -12992,8 +12992,8 @@ function patchSystemInfoAfterMutation(result) {
   const systemInfo = store.get().diagnosticsSystemInfo;
   const nextSystemInfo = { ...systemInfo, loading: false, loaded: true };
   const version = result.current_version || result.latest_version || _("unknown");
-  if (result.component === "forkop" && result.action === "install") {
-    nextSystemInfo.forkop_version = version;
+  if (result.component === "nexroute" && result.action === "install") {
+    nextSystemInfo.nexroute_version = version;
   }
   if (result.component === "sing_box") {
     nextSystemInfo.sing_box_version = version;
@@ -13097,12 +13097,12 @@ async function applyCompletedComponentAction({
   }
   patchSystemInfoAfterMutation(result);
   setActionLoading(key, false);
-  if (result.component === "forkop" && result.action === "install") {
+  if (result.component === "nexroute" && result.action === "install") {
     if (notify && result.message) {
       showToast(result.message, "success", 1200);
     }
     if (notify) {
-      reloadPageAfterForkopUpdate();
+      reloadPageAfterNexrouteUpdate();
     }
     return;
   }
@@ -13159,7 +13159,7 @@ async function followComponentActionState(state) {
     setActionLoading(key, true);
   }
   try {
-    const response = state.running ? await ForkopShellMethods.waitComponentActionJob(
+    const response = state.running ? await NexrouteShellMethods.waitComponentActionJob(
       jobId,
       state.component,
       state.action,
@@ -13251,7 +13251,7 @@ async function handleComponentAction(button) {
   let jobId = "";
   let ownsJobFollow = false;
   try {
-    const startResponse = await ForkopShellMethods.componentActionStart(
+    const startResponse = await NexrouteShellMethods.componentActionStart(
       button.component,
       button.action
     );
@@ -13279,7 +13279,7 @@ async function handleComponentAction(button) {
     }
     followedComponentJobs.add(jobId);
     ownsJobFollow = true;
-    const response = await ForkopShellMethods.waitComponentActionJob(
+    const response = await NexrouteShellMethods.waitComponentActionJob(
       jobId,
       button.component,
       button.action,
@@ -13364,10 +13364,10 @@ function getComponentCards() {
   const singBoxExtended = Boolean(systemInfo.sing_box_extended) && !systemInfo.sing_box_compressed;
   const singBoxExtendedCompressed = Boolean(systemInfo.sing_box_extended) && Boolean(systemInfo.sing_box_compressed);
   const singBoxTiny = Boolean(systemInfo.sing_box_tiny);
-  const forkopActions = getInstalledUpdateActions(
-    "forkop",
-    "forkopCheck",
-    "forkopInstall"
+  const nexrouteActions = getInstalledUpdateActions(
+    "nexroute",
+    "nexrouteCheck",
+    "nexrouteInstall"
   );
   const singBoxActions = getInstalledUpdateActions(
     "sing_box",
@@ -13434,13 +13434,13 @@ function getComponentCards() {
   });
   return [
     {
-      component: "forkop",
+      component: "nexroute",
       column: 0,
-      title: "Forkop",
-      version: systemInfoLoading ? _("Loading...") : normalizeCompiledVersion(systemInfo.forkop_version),
-      latestVersion: getLatestVersion("forkop"),
-      releaseUrl: getGitHubReleaseUrl("forkop"),
-      actions: forkopActions
+      title: "Nexroute",
+      version: systemInfoLoading ? _("Loading...") : normalizeCompiledVersion(systemInfo.nexroute_version),
+      latestVersion: getLatestVersion("nexroute"),
+      releaseUrl: getGitHubReleaseUrl("nexroute"),
+      actions: nexrouteActions
     },
     {
       component: "sing_box",
@@ -13774,13 +13774,13 @@ async function initController4() {
   });
 }
 
-// src/forkop/tabs/updates/styles.ts
+// src/nexroute/tabs/updates/styles.ts
 var styles6 = `
-#cbi-${FORKOP_UCI_PACKAGE}-updates-_mount_node > div {
+#cbi-${NEXROUTE_UCI_PACKAGE}-updates-_mount_node > div {
     width: 100%;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-updates > h3 {
+#cbi-${NEXROUTE_UCI_PACKAGE}-updates > h3 {
     display: none;
 }
 
@@ -13935,7 +13935,7 @@ var styles6 = `
 }
 `;
 
-// src/forkop/tabs/updates/index.ts
+// src/nexroute/tabs/updates/index.ts
 var UpdatesTab = {
   render: render4,
   initController: initController4,
@@ -13952,49 +13952,49 @@ ${PartialStyles}
 
 
 /* Hide extra H3 for settings tab */
-#cbi-${FORKOP_UCI_PACKAGE}-settings > h3 {
+#cbi-${NEXROUTE_UCI_PACKAGE}-settings > h3 {
     display: none;
 }
 
 /* Hide extra H3 for rules tab */
-#cbi-${FORKOP_UCI_PACKAGE}-section > h3:nth-child(1) {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section > h3:nth-child(1) {
     display: none;
 }
 
 /* Vertical align for remove rule action button */
-#cbi-${FORKOP_UCI_PACKAGE}-section > .cbi-section-remove {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section > .cbi-section-remove {
     margin-bottom: -32px;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-actions > div {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-actions > div {
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-actions {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-actions {
     text-align: right;
 }
 
 /* Rule reorder visuals */
-#cbi-${FORKOP_UCI_PACKAGE}-section {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section {
     position: relative;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-table-row {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-table-row {
     position: relative;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-table-row.placeholder {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-table-row.placeholder {
     opacity: 1;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-table-row.placeholder em {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-table-row.placeholder em {
     font-style: italic;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-table-row.drag-over-above::after,
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-table-row.drag-over-below::after {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-table-row.drag-over-above::after,
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-table-row.drag-over-below::after {
     content: '';
     position: absolute;
     left: 10px;
@@ -14006,11 +14006,11 @@ ${PartialStyles}
     z-index: 2;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-table-row.drag-over-above::after {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-table-row.drag-over-above::after {
     top: -1px;
 }
 
-#cbi-${FORKOP_UCI_PACKAGE}-section .cbi-section-table-row.drag-over-below::after {
+#cbi-${NEXROUTE_UCI_PACKAGE}-section .cbi-section-table-row.drag-over-below::after {
     bottom: -1px;
 }
 
@@ -14103,15 +14103,15 @@ ${PartialStyles}
 `;
 
 // src/helpers/injectGlobalStyles.ts
-var FORKOP_GLOBAL_STYLES_ID = "forkop-global-styles";
+var NEXROUTE_GLOBAL_STYLES_ID = "nexroute-global-styles";
 function injectGlobalStyles() {
-  if (document.getElementById(FORKOP_GLOBAL_STYLES_ID)) {
+  if (document.getElementById(NEXROUTE_GLOBAL_STYLES_ID)) {
     return;
   }
   document.head.insertAdjacentHTML(
     "beforeend",
     `
-        <style id="${FORKOP_GLOBAL_STYLES_ID}">
+        <style id="${NEXROUTE_GLOBAL_STYLES_ID}">
           ${GlobalStyles}
         </style>
     `
@@ -14128,9 +14128,9 @@ return baseclass.extend({
   DOMAIN_LIST_OPTIONS,
   DashboardTab,
   DiagnosticTab,
-  FORKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT,
-  FORKOP_UCI_PACKAGE,
-  ForkopShellMethods,
+  NEXROUTE_ACTION_PROVIDERS_AVAILABILITY_EVENT,
+  NEXROUTE_UCI_PACKAGE,
+  NexrouteShellMethods,
   LATENCY_TEST_URL_OPTIONS,
   MonitoringTab,
   UpdatesTab,

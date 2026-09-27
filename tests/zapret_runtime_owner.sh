@@ -2,32 +2,32 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_BIN="$ROOT_DIR/forkop/files/usr/bin/forkop"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-CLI_UC="$FORKOP_BIN"
-LIFECYCLE_UC="$FORKOP_LIB/service/lifecycle.uc"
-ZAPRET_RUNTIME="$FORKOP_LIB/providers/zapret/runtime.uc"
-ZAPRET2_RUNTIME="$FORKOP_LIB/providers/zapret2/runtime.uc"
-ZAPRET_COMMON="$FORKOP_LIB/providers/zapret/common.uc"
-ZAPRET2_COMMON="$FORKOP_LIB/providers/zapret2/common.uc"
-NFQUEUE_RUNTIME="$FORKOP_LIB/providers/nfqueue/runtime.uc"
-NFQUEUE_CHECK="$FORKOP_LIB/providers/nfqueue/check.uc"
-NFQUEUE_VALIDATOR="$FORKOP_LIB/providers/nfqueue/validator.uc"
-ZAPRET2_CHECK="$FORKOP_LIB/providers/zapret2/check.uc"
-ZAPRET2_VALIDATOR="$FORKOP_LIB/providers/zapret2/validator.uc"
+NEXROUTE_BIN="$ROOT_DIR/nexroute/files/usr/bin/nexroute"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+CLI_UC="$NEXROUTE_BIN"
+LIFECYCLE_UC="$NEXROUTE_LIB/service/lifecycle.uc"
+ZAPRET_RUNTIME="$NEXROUTE_LIB/providers/zapret/runtime.uc"
+ZAPRET2_RUNTIME="$NEXROUTE_LIB/providers/zapret2/runtime.uc"
+ZAPRET_COMMON="$NEXROUTE_LIB/providers/zapret/common.uc"
+ZAPRET2_COMMON="$NEXROUTE_LIB/providers/zapret2/common.uc"
+NFQUEUE_RUNTIME="$NEXROUTE_LIB/providers/nfqueue/runtime.uc"
+NFQUEUE_CHECK="$NEXROUTE_LIB/providers/nfqueue/check.uc"
+NFQUEUE_VALIDATOR="$NEXROUTE_LIB/providers/nfqueue/validator.uc"
+ZAPRET2_CHECK="$NEXROUTE_LIB/providers/zapret2/check.uc"
+ZAPRET2_VALIDATOR="$NEXROUTE_LIB/providers/zapret2/validator.uc"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
   exit 1
 }
 
-[ ! -e "$FORKOP_LIB/zapret.sh" ] ||
+[ ! -e "$NEXROUTE_LIB/zapret.sh" ] ||
   fail "zapret.sh shell owner must be removed"
-[ ! -e "$FORKOP_LIB/zapret2.sh" ] ||
+[ ! -e "$NEXROUTE_LIB/zapret2.sh" ] ||
   fail "zapret2.sh shell owner must be removed"
 
-grep -Fq '#!/usr/bin/ucode' "$FORKOP_BIN" ||
-  fail "forkop entrypoint must be a direct ucode executable"
+grep -Fq '#!/usr/bin/ucode' "$NEXROUTE_BIN" ||
+  fail "nexroute entrypoint must be a direct ucode executable"
 grep -Fq 'service/lifecycle.uc' "$CLI_UC" ||
   fail "service/cli.uc must dispatch lifecycle orchestration through service/lifecycle.uc"
 grep -Fq 'providers/zapret/runtime.uc' "$LIFECYCLE_UC" ||
@@ -64,21 +64,21 @@ if grep -n -E 'function (start_runtime|stop_runtime|status_json|create_nft_rules
   fail "provider common modules must stay thin config wrappers, not runtime engines"
 fi
 if grep -R -n -E 'providers/zapret/runtime\.uc" (start-runtime|stop-runtime|status|check|installed|package-installed|package-version|enabled-rule-count) zapret2' \
-  "$FORKOP_BIN" "$FORKOP_LIB" --include='*.sh' >/dev/null 2>&1; then
+  "$NEXROUTE_BIN" "$NEXROUTE_LIB" --include='*.sh' >/dev/null 2>&1; then
   fail "zapret2 must not be multiplexed through providers/zapret/runtime.uc"
 fi
-if grep -R -n -E 'providers\.zapret\.|providers/zapret/' "$FORKOP_LIB/providers/zapret2" >/dev/null 2>&1; then
+if grep -R -n -E 'providers\.zapret\.|providers/zapret/' "$NEXROUTE_LIB/providers/zapret2" >/dev/null 2>&1; then
   fail "zapret2 provider modules must not import or execute providers/zapret modules"
 fi
 if grep -n 'zapret2' "$ZAPRET_COMMON" >/dev/null 2>&1; then
   fail "providers/zapret/common.uc must not contain zapret2 ownership"
 fi
 if grep -R -n -E 'start_zapret2?_runtime|stop_zapret2?_runtime|get_zapret2?_status_json|check_zapret2?_runtime_json|create_zapret2?_nft_rules|validate_rule_nfqws2?_opt|has_enabled_zapret2?_rules|get_zapret2?_rule_' \
-  "$FORKOP_BIN" "$FORKOP_LIB" --include='*.sh' >/dev/null 2>&1; then
+  "$NEXROUTE_BIN" "$NEXROUTE_LIB" --include='*.sh' >/dev/null 2>&1; then
   fail "zapret runtime shell symbols must not remain"
 fi
 if grep -R -n -E 'is_zapret2?_installed|get_zapret2?_package_version' \
-  "$FORKOP_BIN" "$FORKOP_LIB" --include='*.sh' >/dev/null 2>&1; then
+  "$NEXROUTE_BIN" "$NEXROUTE_LIB" --include='*.sh' >/dev/null 2>&1; then
   fail "zapret installed/version shell predicates must not remain"
 fi
 if grep -n -E 'require\("uci"\)\.cursor|uci -q|"uci", "-q"|command_output\(command_from_args\(\[ "uci"' "$NFQUEUE_RUNTIME" "$ZAPRET_COMMON" "$ZAPRET2_COMMON" >/dev/null 2>&1; then
@@ -119,7 +119,7 @@ grep -Fq 'providers/zapret2/check.uc' "$ZAPRET2_COMMON" ||
 grep -Fq 'providers.zapret2.validator' "$ZAPRET2_COMMON" ||
   fail "providers/zapret2/common.uc must use its own validator module"
 
-status_json="$(FORKOP_CONFIG_NAME=forkop-definitely-missing ucode -L "$FORKOP_LIB" "$ZAPRET_RUNTIME" status)"
+status_json="$(NEXROUTE_CONFIG_NAME=nexroute-definitely-missing ucode -L "$NEXROUTE_LIB" "$ZAPRET_RUNTIME" status)"
 JSON_VALUE="$status_json" node - <<'NODE'
 const value = JSON.parse(process.env.JSON_VALUE);
 if (value.configured !== false || value.enabled_rule_count !== 0 || typeof value.provider_path !== 'string') {
@@ -128,7 +128,7 @@ if (value.configured !== false || value.enabled_rule_count !== 0 || typeof value
 }
 NODE
 
-check_json="$(ucode -L "$FORKOP_LIB" "$ZAPRET2_RUNTIME" check)"
+check_json="$(ucode -L "$NEXROUTE_LIB" "$ZAPRET2_RUNTIME" check)"
 JSON_VALUE="$check_json" node - <<'NODE'
 const value = JSON.parse(process.env.JSON_VALUE);
 if (!Object.prototype.hasOwnProperty.call(value, 'zapret2_installed') ||
@@ -139,14 +139,14 @@ if (!Object.prototype.hasOwnProperty.call(value, 'zapret2_installed') ||
 }
 NODE
 
-ucode -L "$FORKOP_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws2 '--name forkop --intercept=1' >/dev/null ||
+ucode -L "$NEXROUTE_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws2 '--name nexroute --intercept=1' >/dev/null ||
   fail "providers/zapret2/validator.uc must validate nfqws2 strategies"
-if ucode -L "$FORKOP_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws '--dpi-desync=fake' >/dev/null 2>&1; then
+if ucode -L "$NEXROUTE_LIB" -- "$ZAPRET2_VALIDATOR" validate-json nfqws '--dpi-desync=fake' >/dev/null 2>&1; then
   fail "providers/zapret2/validator.uc must not validate nfqws strategies"
 fi
 
 printf 'table inet x { chain y { queue num 4301 bypass } }\n' |
-  ucode -L "$FORKOP_LIB" "$ZAPRET2_CHECK" nft-queue-overlap ForkopTable 4300 4555 >/dev/null ||
+  ucode -L "$NEXROUTE_LIB" "$ZAPRET2_CHECK" nft-queue-overlap NexrouteTable 4300 4555 >/dev/null ||
   fail "providers/zapret2/check.uc must own zapret2 queue overlap checks"
 
 printf 'zapret runtime ownership checks passed\n'

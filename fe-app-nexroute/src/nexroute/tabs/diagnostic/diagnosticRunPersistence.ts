@@ -2,7 +2,7 @@ import type { StoreType } from '../../services';
 import type { DiagnosticsProviderOptions } from './diagnostic.store';
 import { DIAGNOSTICS_CHECKS } from './checks/contstants';
 
-const DIAGNOSTIC_RUN_STORAGE_KEY = 'forkop:diagnostic-run:v1';
+const DIAGNOSTIC_RUN_STORAGE_KEY = 'nexroute:diagnostic-run:v1';
 const DIAGNOSTIC_RUN_TTL_MS = 30 * 60 * 1000;
 const CHECK_STATES = ['loading', 'warning', 'success', 'error', 'skipped'];
 const CHECK_ITEM_STATES = ['error', 'warning', 'success'];

@@ -6,9 +6,9 @@
 "require rpc";
 "require uci";
 "require ui";
-"require view.forkop.main as main";
+"require view.nexroute.main as main";
 
-const UCI_PACKAGE = main.FORKOP_UCI_PACKAGE;
+const UCI_PACKAGE = main.NEXROUTE_UCI_PACKAGE;
 const ROUTING_SECTION_ACTIONS = [
   "connection",
   "proxy",
@@ -385,7 +385,7 @@ function qrSvgDataUri(text) {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-const SERVER_STYLE_ID = "forkop-server-styles";
+const SERVER_STYLE_ID = "nexroute-server-styles";
 const DEFAULT_SERVER_PROTOCOL = "tailscale";
 const FALLBACK_SERVER_PROTOCOL = "vless";
 const STREAM_PROTOCOLS = ["vless", "vmess", "trojan"];
@@ -934,15 +934,15 @@ function serverSafeName(sectionId) {
 }
 
 function defaultTlsCertificatePath(sectionId) {
-  return `/etc/forkop/server-certs/${serverSafeName(sectionId)}.crt`;
+  return `/etc/nexroute/server-certs/${serverSafeName(sectionId)}.crt`;
 }
 
 function defaultTlsKeyPath(sectionId) {
-  return `/etc/forkop/server-certs/${serverSafeName(sectionId)}.key`;
+  return `/etc/nexroute/server-certs/${serverSafeName(sectionId)}.key`;
 }
 
 function defaultTailscaleHostname(sectionId) {
-  return `forkop-${serverSafeName(sectionId)}`;
+  return `nexroute-${serverSafeName(sectionId)}`;
 }
 
 function setDefault(sectionId, key, value) {
@@ -1352,7 +1352,7 @@ function loadGeneratedTlsCertificatePin(sectionId) {
   }
 
   return fs
-    .exec("/usr/bin/forkop", ["get_tls_certificate_sha256", sectionId])
+    .exec("/usr/bin/nexroute", ["get_tls_certificate_sha256", sectionId])
     .then((response) => {
       if ((response.code ?? 0) !== 0 || !response.stdout) {
         throw new Error(response.stderr || response.stdout || "");
@@ -2258,7 +2258,7 @@ function hasRealityKeypair(sectionId) {
 
 function generateRealityKeypair(sectionId) {
   return fs
-    .exec("/usr/bin/forkop", ["generate_reality_keypair"])
+    .exec("/usr/bin/nexroute", ["generate_reality_keypair"])
     .then((response) => {
       if ((response.code ?? 0) !== 0 || !response.stdout) {
         throw new Error(response.stderr || response.stdout || "");

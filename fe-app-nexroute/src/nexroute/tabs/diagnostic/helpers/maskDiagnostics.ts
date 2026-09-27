@@ -28,7 +28,7 @@ const SING_BOX_MASKED_KEYS = new Set([
   'source_ip_cidr',
 ]);
 
-const FORKOP_MASK_AFTER_TOKEN = [
+const NEXROUTE_MASK_AFTER_TOKEN = [
   'option proxy_string',
   'option hwid',
   'option subscription_url',
@@ -48,7 +48,7 @@ const FORKOP_MASK_AFTER_TOKEN = [
   'option yacd_secret_key',
 ];
 
-const FORKOP_MASK_AFTER_TOKEN_SPACE = [
+const NEXROUTE_MASK_AFTER_TOKEN_SPACE = [
   'option outbound_json',
   'list domain',
   'list domain_suffix',
@@ -152,11 +152,11 @@ function maskOptionPath(line: string, token: string) {
 function maskGlobalCheckLine(line: string) {
   let maskedLine = line;
 
-  for (const token of FORKOP_MASK_AFTER_TOKEN) {
+  for (const token of NEXROUTE_MASK_AFTER_TOKEN) {
     maskedLine = maskAfterToken(maskedLine, token);
   }
 
-  for (const token of FORKOP_MASK_AFTER_TOKEN_SPACE) {
+  for (const token of NEXROUTE_MASK_AFTER_TOKEN_SPACE) {
     maskedLine = maskAfterTokenSpace(maskedLine, token);
   }
 

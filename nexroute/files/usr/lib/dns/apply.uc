@@ -3,7 +3,7 @@
 let fs = require("fs");
 let uci = require("core.uci");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
 const SB_DNS_INBOUND_ADDRESS = getenv("SB_DNS_INBOUND_ADDRESS") || "127.0.0.42";
 const DNSMASQ_INIT = getenv("DNSMASQ_INIT") || "/etc/init.d/dnsmasq";
 
@@ -70,7 +70,7 @@ function list_has(values, needle) {
 
 function log(message, level) {
     level = as_string(level || "info");
-    run("logger -t " + shell_quote("forkop") + " " + shell_quote("[" + level + "] " + as_string(message)));
+    run("logger -t " + shell_quote("nexroute") + " " + shell_quote("[" + level + "] " + as_string(message)));
 }
 
 function restart_dnsmasq() {
@@ -78,26 +78,26 @@ function restart_dnsmasq() {
 }
 
 function dnsmasq_legacy_instance_exists() {
-    return uci_exists("dhcp.forkop");
+    return uci_exists("dhcp.nexroute");
 }
 
 function dnsmasq_default_servers() {
     return uci_get("dhcp.@dnsmasq[0].server");
 }
 
-function dnsmasq_default_has_forkop_dns() {
+function dnsmasq_default_has_nexroute_dns() {
     return list_has(dnsmasq_default_servers(), SB_DNS_INBOUND_ADDRESS);
 }
 
-function dnsmasq_has_forkop_dns() {
-    return dnsmasq_default_has_forkop_dns() || dnsmasq_legacy_instance_exists();
+function dnsmasq_has_nexroute_dns() {
+    return dnsmasq_default_has_nexroute_dns() || dnsmasq_legacy_instance_exists();
 }
 
-function dnsmasq_has_forkop_managed_state() {
-    return uci_get("dhcp.@dnsmasq[0].forkop_server") != "" ||
-        uci_get("dhcp.@dnsmasq[0].forkop_noresolv") != "" ||
-        uci_get("dhcp.@dnsmasq[0].forkop_cachesize") != "" ||
-        uci_get("dhcp.@dnsmasq[0].forkop_notinterface") != "" ||
+function dnsmasq_has_nexroute_managed_state() {
+    return uci_get("dhcp.@dnsmasq[0].nexroute_server") != "" ||
+        uci_get("dhcp.@dnsmasq[0].nexroute_noresolv") != "" ||
+        uci_get("dhcp.@dnsmasq[0].nexroute_cachesize") != "" ||
+        uci_get("dhcp.@dnsmasq[0].nexroute_notinterface") != "" ||
         dnsmasq_legacy_instance_exists();
 }
 
@@ -106,14 +106,14 @@ function dnsmasq_management_disabled() {
 }
 
 function dnsmasq_default_config_is_complete() {
-    return dnsmasq_default_has_forkop_dns() &&
+    return dnsmasq_default_has_nexroute_dns() &&
         uci_get("dhcp.@dnsmasq[0].noresolv") == "1" &&
         uci_get("dhcp.@dnsmasq[0].cachesize") == "0" &&
         !dnsmasq_legacy_instance_exists();
 }
 
 function dnsmasq_legacy_interfaces() {
-    let legacy_dnsmasq_section = "forkop";
+    let legacy_dnsmasq_section = "nexroute";
     let legacy_interfaces = uci_get("dhcp." + legacy_dnsmasq_section + ".interface");
     if (legacy_interfaces == "")
         legacy_interfaces = uci_get(CONFIG_NAME + ".settings.source_network_interfaces");
@@ -133,12 +133,12 @@ function backup_dnsmasq_config_option(key, backup_key) {
 }
 
 function backup_dnsmasq_server_list() {
-    if (uci_get("dhcp.@dnsmasq[0].forkop_server") != "")
+    if (uci_get("dhcp.@dnsmasq[0].nexroute_server") != "")
         return;
 
     for (let server in words(dnsmasq_default_servers())) {
         if (server != SB_DNS_INBOUND_ADDRESS)
-            uci_add_list("dhcp.@dnsmasq[0].forkop_server", server);
+            uci_add_list("dhcp.@dnsmasq[0].nexroute_server", server);
     }
 }
 
@@ -160,14 +160,14 @@ function dnsmasq_cleanup_legacy_instance() {
     let legacy_instance_present = dnsmasq_legacy_instance_exists();
     let legacy_interfaces = legacy_instance_present ? dnsmasq_legacy_interfaces() : "";
 
-    uci_delete("dhcp.forkop");
+    uci_delete("dhcp.nexroute");
 
-    let backup_notinterfaces = uci_get("dhcp.@dnsmasq[0].forkop_notinterface");
+    let backup_notinterfaces = uci_get("dhcp.@dnsmasq[0].nexroute_notinterface");
     if (backup_notinterfaces != "") {
         uci_delete("dhcp.@dnsmasq[0].notinterface");
         for (let value in words(backup_notinterfaces))
             uci_add_list("dhcp.@dnsmasq[0].notinterface", value);
-        uci_delete("dhcp.@dnsmasq[0].forkop_notinterface");
+        uci_delete("dhcp.@dnsmasq[0].nexroute_notinterface");
         return;
     }
 
@@ -176,16 +176,16 @@ function dnsmasq_cleanup_legacy_instance() {
             uci_del_list("dhcp.@dnsmasq[0].notinterface", value);
     }
 
-    uci_delete("dhcp.@dnsmasq[0].forkop_notinterface");
+    uci_delete("dhcp.@dnsmasq[0].nexroute_notinterface");
 }
 
 function dnsmasq_configure_default_instance() {
-    let default_has_forkop_dns = dnsmasq_default_has_forkop_dns();
+    let default_has_nexroute_dns = dnsmasq_default_has_nexroute_dns();
 
     backup_dnsmasq_server_list();
-    if (!default_has_forkop_dns) {
-        backup_dnsmasq_config_option("noresolv", "forkop_noresolv");
-        backup_dnsmasq_config_option("cachesize", "forkop_cachesize");
+    if (!default_has_nexroute_dns) {
+        backup_dnsmasq_config_option("noresolv", "nexroute_noresolv");
+        backup_dnsmasq_config_option("cachesize", "nexroute_cachesize");
     }
 
     uci_delete("dhcp.@dnsmasq[0].server");
@@ -196,14 +196,14 @@ function dnsmasq_configure_default_instance() {
 
 function dnsmasq_restore_default_instance() {
     let server_list = dnsmasq_default_servers();
-    let backup_servers = uci_get("dhcp.@dnsmasq[0].forkop_server");
+    let backup_servers = uci_get("dhcp.@dnsmasq[0].nexroute_server");
     let managed_global_dns = list_has(server_list, SB_DNS_INBOUND_ADDRESS);
 
     uci_delete("dhcp.@dnsmasq[0].server");
     if (backup_servers != "") {
         for (let value in words(backup_servers))
             uci_add_list("dhcp.@dnsmasq[0].server", value);
-        uci_delete("dhcp.@dnsmasq[0].forkop_server");
+        uci_delete("dhcp.@dnsmasq[0].nexroute_server");
     }
     else {
         for (let value in words(server_list)) {
@@ -211,17 +211,17 @@ function dnsmasq_restore_default_instance() {
                 uci_add_list("dhcp.@dnsmasq[0].server", value);
         }
     }
-    uci_delete("dhcp.@dnsmasq[0].forkop_server");
+    uci_delete("dhcp.@dnsmasq[0].nexroute_server");
 
-    let noresolv = uci_get("dhcp.@dnsmasq[0].forkop_noresolv");
+    let noresolv = uci_get("dhcp.@dnsmasq[0].nexroute_noresolv");
     if (noresolv != "")
-        restore_dnsmasq_config_option("noresolv", "forkop_noresolv", "");
+        restore_dnsmasq_config_option("noresolv", "nexroute_noresolv", "");
     else if (managed_global_dns)
         uci_set("dhcp.@dnsmasq[0].noresolv", "0");
 
-    let cachesize = uci_get("dhcp.@dnsmasq[0].forkop_cachesize");
+    let cachesize = uci_get("dhcp.@dnsmasq[0].nexroute_cachesize");
     if (cachesize != "")
-        restore_dnsmasq_config_option("cachesize", "forkop_cachesize", "");
+        restore_dnsmasq_config_option("cachesize", "nexroute_cachesize", "");
     else if (managed_global_dns)
         uci_set("dhcp.@dnsmasq[0].cachesize", "150");
 }
@@ -232,10 +232,10 @@ function dnsmasq_configure(force) {
 
     if (as_string(force) != "force" && uci_get(CONFIG_NAME + ".settings.shutdown_correctly") == "0") {
         if (dnsmasq_default_config_is_complete()) {
-            log("Previous Forkop shutdown was unclean; dnsmasq already points to sing-box", "info");
+            log("Previous Nexroute shutdown was unclean; dnsmasq already points to sing-box", "info");
             return true;
         }
-        log("Previous Forkop shutdown was unclean and dnsmasq is not ready; applying Forkop DNS settings", "info");
+        log("Previous Nexroute shutdown was unclean and dnsmasq is not ready; applying Nexroute DNS settings", "info");
     }
 
     log("Configuring dnsmasq to forward DNS to sing-box", "info");
@@ -253,11 +253,11 @@ function dnsmasq_restore(force, quiet) {
     if (!quiet)
         log("Restoring DNS settings in dnsmasq", "info");
     if (as_string(force) != "force" && uci_get(CONFIG_NAME + ".settings.shutdown_correctly") == "1") {
-        if (!dnsmasq_has_forkop_dns()) {
-            log("dnsmasq already uses non-Forkop DNS settings; restore is not required", "info");
+        if (!dnsmasq_has_nexroute_dns()) {
+            log("dnsmasq already uses non-Nexroute DNS settings; restore is not required", "info");
             return true;
         }
-        log("Forkop DNS settings are still present after a clean shutdown; restoring DNS settings in dnsmasq", "info");
+        log("Nexroute DNS settings are still present after a clean shutdown; restoring DNS settings in dnsmasq", "info");
     }
 
     dnsmasq_cleanup_legacy_instance();
@@ -272,15 +272,15 @@ function failsafe_restore() {
         return true;
 
     if (dnsmasq_management_disabled()) {
-        if (!dnsmasq_has_forkop_managed_state()) {
-            log("DNS rollback skipped: dont_touch_dhcp is enabled and no Forkop dnsmasq changes were found", "info");
+        if (!dnsmasq_has_nexroute_managed_state()) {
+            log("DNS rollback skipped: dont_touch_dhcp is enabled and no Nexroute dnsmasq changes were found", "info");
             return true;
         }
 
-        log("Rolling back previous Forkop dnsmasq changes because dont_touch_dhcp is enabled", "warn");
+        log("Rolling back previous Nexroute dnsmasq changes because dont_touch_dhcp is enabled", "warn");
     }
     else {
-        log("Rolling back Forkop DNS changes in dnsmasq", "warn");
+        log("Rolling back Nexroute DNS changes in dnsmasq", "warn");
     }
 
     dnsmasq_restore("force", true);
@@ -295,12 +295,12 @@ else if (mode == "restore")
     exit(dnsmasq_restore(ARGV[1]) ? 0 : 1);
 else if (mode == "failsafe-restore")
     exit(failsafe_restore() ? 0 : 1);
-else if (mode == "has-forkop-dns")
-    exit(dnsmasq_has_forkop_dns() ? 0 : 1);
+else if (mode == "has-nexroute-dns")
+    exit(dnsmasq_has_nexroute_dns() ? 0 : 1);
 else if (mode == "has-managed-state")
-    exit(dnsmasq_has_forkop_managed_state() ? 0 : 1);
+    exit(dnsmasq_has_nexroute_managed_state() ? 0 : 1);
 else if (mode == "default-config-complete")
     exit(dnsmasq_default_config_is_complete() ? 0 : 1);
 
-warn("Usage: dns/apply.uc <configure|restore|failsafe-restore|has-forkop-dns|has-managed-state|default-config-complete>\n");
+warn("Usage: dns/apply.uc <configure|restore|failsafe-restore|has-nexroute-dns|has-managed-state|default-config-complete>\n");
 exit(1);

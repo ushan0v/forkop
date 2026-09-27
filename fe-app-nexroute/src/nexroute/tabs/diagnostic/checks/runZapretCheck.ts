@@ -1,5 +1,5 @@
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { ForkopShellMethods } from '../../../methods';
+import { NexrouteShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { IDiagnosticsChecksItem } from '../../../services';
 import { getCheckItemsMeta } from './getCheckItemsMeta';
@@ -16,7 +16,7 @@ export async function runZapretCheck() {
     items: [],
   });
 
-  const zapretStatus = await ForkopShellMethods.getZapretStatus();
+  const zapretStatus = await NexrouteShellMethods.getZapretStatus();
 
   if (!zapretStatus.success) {
     updateCheckStore({
@@ -41,7 +41,7 @@ export async function runZapretCheck() {
   const expectedProcesses = Number(data.expected_process_count || 0);
   const runningProcesses = Number(data.running_process_count || 0);
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
-  const forkopRuntimeReady =
+  const nexrouteRuntimeReady =
     !hasZapretRules ||
     (runningProcesses === expectedProcesses &&
       supervisorProcesses === expectedProcesses);
@@ -80,14 +80,14 @@ export async function runZapretCheck() {
       value: '',
     },
     {
-      state: unexpectedRuntime || !forkopRuntimeReady ? 'error' : 'success',
+      state: unexpectedRuntime || !nexrouteRuntimeReady ? 'error' : 'success',
       key: hasZapretRules
-        ? forkopRuntimeReady
-          ? _('Forkop-managed nfqws runtime is ready')
-          : _('Forkop-managed nfqws runtime is not ready')
+        ? nexrouteRuntimeReady
+          ? _('Nexroute-managed nfqws runtime is ready')
+          : _('Nexroute-managed nfqws runtime is not ready')
         : unexpectedRuntime
-          ? _('Unexpected Forkop-managed nfqws runtime is running')
-          : _('Forkop-managed nfqws runtime is not running'),
+          ? _('Unexpected Nexroute-managed nfqws runtime is running')
+          : _('Nexroute-managed nfqws runtime is not running'),
       value: hasZapretRules ? `${runningProcesses}/${expectedProcesses}` : '',
     },
     {
@@ -108,7 +108,7 @@ export async function runZapretCheck() {
       state: standaloneConflict ? 'warning' : 'success',
       key: standaloneServiceRunning
         ? hasZapretRules
-          ? _('Standalone Zapret is active together with Forkop Zapret rules')
+          ? _('Standalone Zapret is active together with Nexroute Zapret rules')
           : _('Standalone Zapret service is active')
         : _('Standalone Zapret service is inactive'),
       value: '',

@@ -1,6 +1,6 @@
 import { insertIf } from '../../../../helpers';
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { ForkopShellMethods, RemoteFakeIPMethods } from '../../../methods';
+import { NexrouteShellMethods, RemoteFakeIPMethods } from '../../../methods';
 import type { IDiagnosticsChecksItem } from '../../../services';
 import { updateCheckStore } from './updateCheckStore';
 import { getMeta } from '../helpers/getMeta';
@@ -17,7 +17,7 @@ export async function runFakeIPCheck() {
     items: [],
   });
 
-  const routerFakeIPResponse = await ForkopShellMethods.checkFakeIP();
+  const routerFakeIPResponse = await NexrouteShellMethods.checkFakeIP();
   const checkFakeIPResponse = await RemoteFakeIPMethods.getFakeIpCheck();
   const checkIPResponse = await RemoteFakeIPMethods.getIpCheck();
   const browserFakeIPCheckUnavailable = !checkFakeIPResponse.success;

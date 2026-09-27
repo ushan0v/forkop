@@ -2,9 +2,9 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-UPDATES_UC="$ROOT_DIR/forkop/files/usr/lib/components/updates.uc"
-UPDATES_RUNTIME="$ROOT_DIR/forkop/files/usr/lib/updates_runtime.sh"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
+UPDATES_UC="$ROOT_DIR/nexroute/files/usr/lib/components/updates.uc"
+UPDATES_RUNTIME="$ROOT_DIR/nexroute/files/usr/lib/updates_runtime.sh"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -34,7 +34,7 @@ write_state() {
 }
 
 updates_ucode() {
-  ucode -L "$FORKOP_LIB" "$UPDATES_UC" "$@"
+  ucode -L "$NEXROUTE_LIB" "$UPDATES_UC" "$@"
 }
 
 [ ! -e "$UPDATES_RUNTIME" ] ||
@@ -79,7 +79,7 @@ if (value.running !== false || value.success !== false || value.section !== "pro
 NODE
 
 mkdir -p "$WORK_DIR/bin"
-cat >"$WORK_DIR/bin/forkop" <<'SH'
+cat >"$WORK_DIR/bin/nexroute" <<'SH'
 #!/usr/bin/env sh
 if [ "$1" != "subscription_update" ]; then
   exit 64
@@ -87,27 +87,27 @@ fi
 printf 'fake update for %s/%s\n' "$2" "$3"
 printf 'Subscription update completed by fake worker\n'
 SH
-chmod +x "$WORK_DIR/bin/forkop"
+chmod +x "$WORK_DIR/bin/nexroute"
 
 ASYNC_ENV=(
-  "FORKOP_LIB=$ROOT_DIR/forkop/files/usr/lib"
-  "FORKOP_BIN=$WORK_DIR/bin/forkop"
+  "NEXROUTE_LIB=$ROOT_DIR/nexroute/files/usr/lib"
+  "NEXROUTE_BIN=$WORK_DIR/bin/nexroute"
   "TMP_SING_BOX_FOLDER=$WORK_DIR/tmp/sing-box"
   "TMP_RULESET_FOLDER=$WORK_DIR/tmp/sing-box/rulesets"
   "TMP_SUBSCRIPTION_FOLDER=$WORK_DIR/tmp/sing-box/subscriptions"
-  "FORKOP_RUNTIME_STATE_DIR=$WORK_DIR/run"
-  "FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR=$WORK_DIR/run/subscription-update"
-  "FORKOP_SUBSCRIPTION_UPDATE_JOB_DIR=$WORK_DIR/run/subscription-update-jobs"
-  "FORKOP_SUBSCRIPTION_LINKS_DIR=$WORK_DIR/run/subscription-links"
-  "FORKOP_SUBSCRIPTION_METADATA_DIR=$WORK_DIR/run/subscription-metadata"
-  "FORKOP_OUTBOUND_METADATA_DIR=$WORK_DIR/run/outbound-metadata"
-  "FORKOP_SECTION_CACHE_DIR=$WORK_DIR/run/section-cache"
-  "FORKOP_RUNTIME_CACHE_FORMAT_FILE=$WORK_DIR/run/cache-format"
-  "FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR=$WORK_DIR/persistent/subscription-cache"
-  "FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE=$WORK_DIR/persistent/subscription-cache/cache-format"
+  "NEXROUTE_RUNTIME_STATE_DIR=$WORK_DIR/run"
+  "NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR=$WORK_DIR/run/subscription-update"
+  "NEXROUTE_SUBSCRIPTION_UPDATE_JOB_DIR=$WORK_DIR/run/subscription-update-jobs"
+  "NEXROUTE_SUBSCRIPTION_LINKS_DIR=$WORK_DIR/run/subscription-links"
+  "NEXROUTE_SUBSCRIPTION_METADATA_DIR=$WORK_DIR/run/subscription-metadata"
+  "NEXROUTE_OUTBOUND_METADATA_DIR=$WORK_DIR/run/outbound-metadata"
+  "NEXROUTE_SECTION_CACHE_DIR=$WORK_DIR/run/section-cache"
+  "NEXROUTE_RUNTIME_CACHE_FORMAT_FILE=$WORK_DIR/run/cache-format"
+  "NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR=$WORK_DIR/persistent/subscription-cache"
+  "NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE=$WORK_DIR/persistent/subscription-cache/cache-format"
 )
 
-async_response="$(env "${ASYNC_ENV[@]}" ucode -L "$ROOT_DIR/forkop/files/usr/lib" "$UPDATES_UC" subscription-update-async proxy 1)"
+async_response="$(env "${ASYNC_ENV[@]}" ucode -L "$ROOT_DIR/nexroute/files/usr/lib" "$UPDATES_UC" subscription-update-async proxy 1)"
 job_id="$(JSON_VALUE="$async_response" node - <<'NODE'
 const value = JSON.parse(process.env.JSON_VALUE);
 if (value.success !== true || !value.job_id) {
@@ -120,7 +120,7 @@ NODE
 
 final_status=""
 for _ in $(seq 1 30); do
-  final_status="$(env "${ASYNC_ENV[@]}" ucode -L "$ROOT_DIR/forkop/files/usr/lib" "$UPDATES_UC" subscription-update-status "$job_id")"
+  final_status="$(env "${ASYNC_ENV[@]}" ucode -L "$ROOT_DIR/nexroute/files/usr/lib" "$UPDATES_UC" subscription-update-status "$job_id")"
   if JSON_VALUE="$final_status" node -e 'process.exit(JSON.parse(process.env.JSON_VALUE).running ? 1 : 0)' >/dev/null 2>&1; then
     break
   fi

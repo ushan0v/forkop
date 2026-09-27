@@ -162,7 +162,7 @@ function unsupported_reason(kind, token) {
     let action = kind == "nfqws2" ? "zapret2" : "zapret";
 
     if (token == "<HOSTLIST>" || token == "<HOSTLIST_NOAUTO>")
-        return "Forkop does not expand " + action + " hostlist templates in per-rule strategies because sing-box already selects the resources before NFQUEUE.";
+        return "Nexroute does not expand " + action + " hostlist templates in per-rule strategies because sing-box already selects the resources before NFQUEUE.";
 
     let base = split_option_token(token);
     if (contains([
@@ -173,28 +173,28 @@ function unsupported_reason(kind, token) {
         "--hostlist-auto-retrans-maxseq", "--hostlist-auto-retrans-reset",
         "--hostlist-auto-incoming-maxseq", "--hostlist-auto-udp-in", "--hostlist-auto-udp-out"
     ], base)))
-        return "Hostname-based selection inside " + name + " is incompatible with the Forkop architecture because sing-box already chooses which resources enter action=" + action + ".";
+        return "Hostname-based selection inside " + name + " is incompatible with the Nexroute architecture because sing-box already chooses which resources enter action=" + action + ".";
 
     if (contains([ "--ipset", "--ipset-ip", "--ipset-exclude", "--ipset-exclude-ip" ], base))
-        return "IP or CIDR selection inside " + name + " is incompatible with the Forkop architecture because sing-box already chooses which resources enter action=" + action + ".";
+        return "IP or CIDR selection inside " + name + " is incompatible with the Nexroute architecture because sing-box already chooses which resources enter action=" + action + ".";
 
     if (base == "--qnum")
-        return "The NFQUEUE number is assigned by Forkop per rule and must not be overridden in the strategy.";
+        return "The NFQUEUE number is assigned by Nexroute per rule and must not be overridden in the strategy.";
 
     if (kind == "nfqws" && base == "--dpi-desync-fwmark")
-        return "The desync fwmark is managed by Forkop for loop prevention and must not be overridden in the strategy.";
+        return "The desync fwmark is managed by Nexroute for loop prevention and must not be overridden in the strategy.";
 
     if (kind == "nfqws2" && (base == "--fwmark" || base == "--dpi-desync-fwmark"))
-        return "The nfqws2 fwmark is managed by Forkop for loop prevention and must not be overridden in the strategy.";
+        return "The nfqws2 fwmark is managed by Nexroute for loop prevention and must not be overridden in the strategy.";
 
     if (kind == "nfqws2" && base == "--fuzz")
-        return "nfqws2 fuzz mode disables normal interception and is incompatible with Forkop-managed action=zapret2 rules.";
+        return "nfqws2 fuzz mode disables normal interception and is incompatible with Nexroute-managed action=zapret2 rules.";
 
     if (kind == "nfqws2" && token == "--intercept=0")
-        return "nfqws2 interception must stay enabled for Forkop-managed action=zapret2 rules.";
+        return "nfqws2 interception must stay enabled for Nexroute-managed action=zapret2 rules.";
 
     if (base == "--daemon")
-        return "Forkop manages the " + name + " process lifecycle itself. The strategy must not daemonize " + name + ".";
+        return "Nexroute manages the " + name + " process lifecycle itself. The strategy must not daemonize " + name + ".";
     if (base == "--dry-run")
         return "The strategy must launch a working " + name + " process. --dry-run exits immediately and is not allowed.";
     if (base == "--version")
@@ -235,7 +235,7 @@ function validate_strategy(kind, raw_opt, legacy_default) {
 
         if (token_count == 0 && token_has_external_config_prefix(token))
             return validation_failure(
-                "Unsupported " + label(kind) + " token '" + token + "': External " + (kind == "nfqws2" ? "nfqws2" : "nfqws") + " config files bypass Forkop validation and queue management.",
+                "Unsupported " + label(kind) + " token '" + token + "': External " + (kind == "nfqws2" ? "nfqws2" : "nfqws") + " config files bypass Nexroute validation and queue management.",
                 [ token ]
             );
 

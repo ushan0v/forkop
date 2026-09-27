@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-VALIDATOR="$ROOT_DIR/forkop/files/usr/lib/config/validator.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+VALIDATOR="$ROOT_DIR/nexroute/files/usr/lib/config/validator.uc"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -21,7 +21,7 @@ assert_accepts() {
   local zapret2="$4"
   shift 4
 
-  rows "$@" | ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-download-section "$target" "$byedpi" "$zapret" "$zapret2"
+  rows "$@" | ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-download-section "$target" "$byedpi" "$zapret" "$zapret2"
 }
 
 assert_rejects() {
@@ -34,7 +34,7 @@ assert_rejects() {
   shift 6
   local output
 
-  if output="$(rows "$@" | ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-download-section "$target" "$byedpi" "$zapret" "$zapret2" 2>/dev/null)"; then
+  if output="$(rows "$@" | ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-download-section "$target" "$byedpi" "$zapret" "$zapret2" 2>/dev/null)"; then
     fail "$label should be rejected"
   fi
 

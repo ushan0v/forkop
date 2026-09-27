@@ -1,7 +1,7 @@
-const LOG_NOTIFICATION_STORAGE_KEY = 'forkop:shown-log-error-notifications:v1';
+const LOG_NOTIFICATION_STORAGE_KEY = 'nexroute:shown-log-error-notifications:v1';
 const MAX_STORED_LOG_NOTIFICATIONS = 500;
 
-export type ForkopLogNotification =
+export type NexrouteLogNotification =
   | { kind: 'error'; line: string }
   | {
       kind: 'component-update';
@@ -66,15 +66,15 @@ export function isErrorLogLine(line: string) {
   );
 }
 
-export function getForkopLogNotification(
+export function getNexrouteLogNotification(
   line: string,
-): ForkopLogNotification | null {
+): NexrouteLogNotification | null {
   if (isErrorLogLine(line)) {
     return { kind: 'error', line };
   }
 
   const update = line.match(
-    /\[component-update\]\s+(forkop|sing_box|zapret|zapret2|byedpi)\s+(\S+)/i,
+    /\[component-update\]\s+(nexroute|sing_box|zapret|zapret2|byedpi)\s+(\S+)/i,
   );
 
   if (!update) {
@@ -103,7 +103,7 @@ export class LogNotificationDeduper {
   }
 
   shouldNotify(line: string) {
-    if (!getForkopLogNotification(line)) {
+    if (!getNexrouteLogNotification(line)) {
       return false;
     }
 

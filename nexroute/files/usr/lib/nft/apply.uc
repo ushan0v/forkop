@@ -9,9 +9,9 @@ let domain_config = require("config.domain");
 let connections = require("config.connections");
 let routing_rulesets = require("routing.rulesets");
 let runtime_constants = require("singbox.constants");
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
-const DNS_SOURCE_SET = "forkop_dns_sources";
-const DNS_SOURCE6_SET = "forkop_dns_sources6";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
+const DNS_SOURCE_SET = "nexroute_dns_sources";
+const DNS_SOURCE6_SET = "nexroute_dns_sources6";
 
 let common_read_json_file = common.read_json_file;
 let list_option = common.list_option;
@@ -137,11 +137,11 @@ function command_output_quiet_from_args(args) {
 }
 
 function log_debug(message) {
-    run_args([ "logger", "-t", "forkop", "[debug] " + as_string(message) ]);
+    run_args([ "logger", "-t", "nexroute", "[debug] " + as_string(message) ]);
 }
 
 function log_fatal(message) {
-    run_args([ "logger", "-t", "forkop", "[fatal] " + as_string(message) ]);
+    run_args([ "logger", "-t", "nexroute", "[fatal] " + as_string(message) ]);
 }
 
 function strip_list_comment(line) {
@@ -573,7 +573,7 @@ function section_priority_action(section) {
 }
 
 function section_priority_prefix(section) {
-    return "forkop_rule_" + as_string(section[".name"]);
+    return "nexroute_rule_" + as_string(section[".name"]);
 }
 
 function section_priority_sets(section) {
@@ -796,8 +796,8 @@ function nft_add_section_priority_rules_from_sections(sections, table, interface
 
 function nft_create_runtime_base(table, localv4_set, common_set, port_set, ip_port_set, interface_set, source_interfaces, fakeip_mark, outbound_mark, fakeip_range, tproxy_port, exclude_ntp, localv6_set, common6_set, ip_port6_set, fakeip6_range, tproxy6_address) {
     localv6_set = default_arg(localv6_set, "localv6");
-    common6_set = default_arg(common6_set, "forkop_subnets6");
-    ip_port6_set = default_arg(ip_port6_set, "forkop_ip6_ports");
+    common6_set = default_arg(common6_set, "nexroute_subnets6");
+    ip_port6_set = default_arg(ip_port6_set, "nexroute_ip6_ports");
     fakeip6_range = default_arg(fakeip6_range, "fc00::/18");
     tproxy6_address = default_arg(tproxy6_address, "::1");
 
@@ -893,8 +893,8 @@ function nft_create_runtime_base_from_uci(table, localv4_set, common_set, port_s
 
 function nft_create_runtime_output_rules(table, localv4_set, common_set, port_set, ip_port_set, fakeip_mark, fakeip_range, localv6_set, common6_set, ip_port6_set, fakeip6_range) {
     localv6_set = default_arg(localv6_set, "localv6");
-    common6_set = default_arg(common6_set, "forkop_subnets6");
-    ip_port6_set = default_arg(ip_port6_set, "forkop_ip6_ports");
+    common6_set = default_arg(common6_set, "nexroute_subnets6");
+    ip_port6_set = default_arg(ip_port6_set, "nexroute_ip6_ports");
     fakeip6_range = default_arg(fakeip6_range, "fc00::/18");
 
     return (
@@ -1193,9 +1193,9 @@ function nft_add_inline_ip_cidr_matchers(csv, ports_csv, table, common_set, ip_p
         return true;
 
     if (as_string(ports_csv) != "")
-        return nft_add_csv_chunks_to_family_sets(csv, table, ip_port_set, default_arg(ip_port6_set, "forkop_ip6_ports"), "ip-port-from-ip", ports_csv, chunk_size_text);
+        return nft_add_csv_chunks_to_family_sets(csv, table, ip_port_set, default_arg(ip_port6_set, "nexroute_ip6_ports"), "ip-port-from-ip", ports_csv, chunk_size_text);
 
-    return nft_add_csv_chunks_to_family_sets(csv, table, common_set, default_arg(common6_set, "forkop_subnets6"), "ips", "", chunk_size_text);
+    return nft_add_csv_chunks_to_family_sets(csv, table, common_set, default_arg(common6_set, "nexroute_subnets6"), "ips", "", chunk_size_text);
 }
 
 function normalized_fields(line) {
@@ -1687,19 +1687,19 @@ function nft_add_extracted_ruleset_subnets(unscoped_path, scoped_path, label, ta
     let has_entries = false;
 
     if (file_nonempty(unscoped_path)) {
-        if (!nft_add_file_chunks_to_family_sets(unscoped_path, table, common_set, default_arg(common6_set, "forkop_subnets6"), "ips", "", chunk_size_text))
+        if (!nft_add_file_chunks_to_family_sets(unscoped_path, table, common_set, default_arg(common6_set, "nexroute_subnets6"), "ips", "", chunk_size_text))
             return false;
         has_entries = true;
     }
 
     if (file_nonempty(scoped_path)) {
-        if (!nft_add_file_chunks_to_family_sets(scoped_path, table, ip_port_set, default_arg(ip_port6_set, "forkop_ip6_ports"), "ip-ports", "", chunk_size_text))
+        if (!nft_add_file_chunks_to_family_sets(scoped_path, table, ip_port_set, default_arg(ip_port6_set, "nexroute_ip6_ports"), "ip-ports", "", chunk_size_text))
             return false;
         has_entries = true;
     }
 
     if (!has_entries)
-        run_args([ "logger", "-t", "forkop", "[warn] " + as_string(label) + " has no ip_cidr entries for nftables" ]);
+        run_args([ "logger", "-t", "nexroute", "[warn] " + as_string(label) + " has no ip_cidr entries for nftables" ]);
 
     return true;
 }
