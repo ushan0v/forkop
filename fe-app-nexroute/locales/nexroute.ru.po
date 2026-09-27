@@ -71,20 +71,20 @@ msgstr "Добавьте хотя бы один DNS-сервер"
 msgid "Add prefix to nodes"
 msgstr "Добавлять префикс к узлам"
 
-msgid "Add URLs or local paths to .lst lists containing domains and subnets."
-msgstr "Добавьте URL или локальные пути к спискам .lst с доменами и подсетями."
-
 msgid "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries."
 msgstr "Добавьте URL или локальные пути к спискам .lst с доменами, IP-адресами или CIDR-подсетями. Для действия DNS записи IP игнорируются."
+
+msgid "Add URLs or local paths to .lst lists containing domains and subnets."
+msgstr "Добавьте URL или локальные пути к спискам .lst с доменами и подсетями."
 
 msgid "Add URLs or local paths to .lst lists containing domains. IP entries are ignored."
 msgstr "Добавьте URL или локальные пути к спискам .lst с доменами. IP игнорируются."
 
-msgid "Add URLs or local paths to .srs / .json lists. Only domain rules are supported."
-msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Поддерживаются только доменные правила."
-
 msgid "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default."
 msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Подсети по умолчанию игнорируются."
+
+msgid "Add URLs or local paths to .srs / .json lists. Only domain rules are supported."
+msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Поддерживаются только доменные правила."
 
 msgid "Add URLTest / Priority group"
 msgstr "Добавить группу URLTest / приоритета"
@@ -188,9 +188,6 @@ msgstr "Доступные действия"
 msgid "Backend validation failed: %s"
 msgstr "Backend-проверка завершилась ошибкой: %s"
 
-msgid "Block"
-msgstr "Блокировка"
-
 msgid "Bootstrap DNS"
 msgstr "Bootstrap DNS"
 
@@ -247,9 +244,6 @@ msgstr "Стратегия ByeDPI"
 
 msgid "ByeDPI strategy cannot be empty"
 msgstr "Стратегия ByeDPI не может быть пустой"
-
-msgid "Bypass"
-msgstr "Обход"
 
 msgid "Cache File Path"
 msgstr "Путь к файлу кэша"
@@ -358,9 +352,6 @@ msgstr "Настройте User-Agent в настройках элемента"
 
 msgid "Connect through"
 msgstr "Подключаться через"
-
-msgid "Connection"
-msgstr "Подключение"
 
 msgid "Connection URL"
 msgstr "URL подключения"
@@ -745,6 +736,63 @@ msgstr "Исправьте подсвеченные поля и сохранит
 
 msgid "Forced device routing"
 msgstr "Принудительная маршрутизация устройств"
+
+msgid "Nexroute Error"
+msgstr "Ошибка Nexroute"
+
+msgid "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here."
+msgstr "Nexroute сам управляет pid-файлами ciadpi, поэтому параметры pidfile здесь запрещены."
+
+msgid "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом ciadpi, поэтому режим daemon здесь запрещён."
+
+msgid "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом nfqws, поэтому режим daemon здесь запрещён."
+
+msgid "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом nfqws2, поэтому режим daemon здесь запрещён."
+
+msgid "Nexroute service is stopped. Start the service to display connections."
+msgstr "Служба Nexroute остановлена. Запустите сервис для отображения подключений."
+
+msgid "Nexroute service is stopped. Start the service to display the dashboard."
+msgstr "Служба Nexroute остановлена. Запустите сервис для отображения дашборда."
+
+msgid "Nexroute Settings"
+msgstr "Настройки Nexroute"
+
+msgid "Nexroute will not modify your DHCP configuration"
+msgstr "Nexroute не будет изменять вашу конфигурацию DHCP"
+
+msgid "Nexroute-managed ciadpi runtime has restarted"
+msgstr "ciadpi Nexroute перезапускался"
+
+msgid "Nexroute-managed ciadpi runtime is not ready"
+msgstr "ciadpi Nexroute не готов"
+
+msgid "Nexroute-managed ciadpi runtime is not running"
+msgstr "ciadpi Nexroute не запущен"
+
+msgid "Nexroute-managed ciadpi runtime is ready"
+msgstr "ciadpi Nexroute готов"
+
+msgid "Nexroute-managed nfqws runtime is not ready"
+msgstr "NFQWS Nexroute не готов"
+
+msgid "Nexroute-managed nfqws runtime is not running"
+msgstr "NFQWS Nexroute не запущен"
+
+msgid "Nexroute-managed nfqws runtime is ready"
+msgstr "NFQWS Nexroute готов"
+
+msgid "Nexroute-managed nfqws2 runtime is not ready"
+msgstr "NFQWS2 Nexroute не готов"
+
+msgid "Nexroute-managed nfqws2 runtime is not running"
+msgstr "NFQWS2 Nexroute не запущен"
+
+msgid "Nexroute-managed nfqws2 runtime is ready"
+msgstr "NFQWS2 Nexroute готов"
 
 msgid "Fronting IP"
 msgstr "IP фронтинга"
@@ -1208,63 +1256,6 @@ msgstr "Настройки сетевого интерфейса"
 msgid "New version %s is available for %s"
 msgstr "Доступна новая версия %s для %s"
 
-msgid "Nexroute Error"
-msgstr "Ошибка Nexroute"
-
-msgid "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here."
-msgstr "Nexroute сам управляет pid-файлами ciadpi, поэтому параметры pidfile здесь запрещены."
-
-msgid "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Nexroute сам управляет жизненным циклом ciadpi, поэтому режим daemon здесь запрещён."
-
-msgid "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Nexroute сам управляет жизненным циклом nfqws, поэтому режим daemon здесь запрещён."
-
-msgid "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Nexroute сам управляет жизненным циклом nfqws2, поэтому режим daemon здесь запрещён."
-
-msgid "Nexroute service is stopped. Start the service to display connections."
-msgstr "Служба Nexroute остановлена. Запустите сервис для отображения подключений."
-
-msgid "Nexroute service is stopped. Start the service to display the dashboard."
-msgstr "Служба Nexroute остановлена. Запустите сервис для отображения дашборда."
-
-msgid "Nexroute Settings"
-msgstr "Настройки Nexroute"
-
-msgid "Nexroute will not modify your DHCP configuration"
-msgstr "Nexroute не будет изменять вашу конфигурацию DHCP"
-
-msgid "Nexroute-managed ciadpi runtime has restarted"
-msgstr "ciadpi Nexroute перезапускался"
-
-msgid "Nexroute-managed ciadpi runtime is not ready"
-msgstr "ciadpi Nexroute не готов"
-
-msgid "Nexroute-managed ciadpi runtime is not running"
-msgstr "ciadpi Nexroute не запущен"
-
-msgid "Nexroute-managed ciadpi runtime is ready"
-msgstr "ciadpi Nexroute готов"
-
-msgid "Nexroute-managed nfqws runtime is not ready"
-msgstr "NFQWS Nexroute не готов"
-
-msgid "Nexroute-managed nfqws runtime is not running"
-msgstr "NFQWS Nexroute не запущен"
-
-msgid "Nexroute-managed nfqws runtime is ready"
-msgstr "NFQWS Nexroute готов"
-
-msgid "Nexroute-managed nfqws2 runtime is not ready"
-msgstr "NFQWS2 Nexroute не готов"
-
-msgid "Nexroute-managed nfqws2 runtime is not running"
-msgstr "NFQWS2 Nexroute не запущен"
-
-msgid "Nexroute-managed nfqws2 runtime is ready"
-msgstr "NFQWS2 Nexroute готов"
-
 msgid "NFQUEUE range is available"
 msgstr "Диапазон NFQUEUE свободен"
 
@@ -1486,9 +1477,6 @@ msgstr "Настройки приоритета"
 
 msgid "Protocol"
 msgstr "Протокол"
-
-msgid "Proxy"
-msgstr "Прокси"
 
 msgid "Proxy link is unavailable"
 msgstr "Ссылка прокси недоступна"
@@ -2287,3 +2275,15 @@ msgstr "sing-box outbound для Zapret2 настроен"
 
 msgid "Zapret2 sing-box outbound is not configured"
 msgstr "sing-box outbound для Zapret2 не настроен"
+
+msgid "Block"
+msgstr "Блокировка"
+
+msgid "Bypass"
+msgstr "Обход"
+
+msgid "Connection"
+msgstr "Подключение"
+
+msgid "Proxy"
+msgstr "Прокси"

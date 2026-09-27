@@ -138,17 +138,17 @@
     ]
   },
   {
-    "call": "Add URLs or local paths to .lst lists containing domains and subnets.",
-    "key": "Add URLs or local paths to .lst lists containing domains and subnets.",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7775"
-    ]
-  },
-  {
     "call": "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries.",
     "key": "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries.",
     "places": [
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7915"
+    ]
+  },
+  {
+    "call": "Add URLs or local paths to .lst lists containing domains and subnets.",
+    "key": "Add URLs or local paths to .lst lists containing domains and subnets.",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7775"
     ]
   },
   {
@@ -159,18 +159,18 @@
     ]
   },
   {
+    "call": "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default.",
+    "key": "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default.",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7721"
+    ]
+  },
+  {
     "call": "Add URLs or local paths to .srs / .json lists. Only domain rules are supported.",
     "key": "Add URLs or local paths to .srs / .json lists. Only domain rules are supported.",
     "places": [
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7861",
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7890"
-    ]
-  },
-  {
-    "call": "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default.",
-    "key": "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default.",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7721"
     ]
   },
   {
@@ -418,13 +418,6 @@
     ]
   },
   {
-    "call": "Block",
-    "key": "Block",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4056"
-    ]
-  },
-  {
     "call": "Bootstrap DNS",
     "key": "Bootstrap DNS",
     "places": [
@@ -559,13 +552,6 @@
     "key": "ByeDPI strategy cannot be empty",
     "places": [
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6506"
-    ]
-  },
-  {
-    "call": "Bypass",
-    "key": "Bypass",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4058"
     ]
   },
   {
@@ -850,13 +836,6 @@
     "key": "Connect through",
     "places": [
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7529"
-    ]
-  },
-  {
-    "call": "Connection",
-    "key": "Connection",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4060"
     ]
   },
   {
@@ -1803,6 +1782,139 @@
     "key": "Forced device routing",
     "places": [
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7938"
+    ]
+  },
+  {
+    "call": "Nexroute Error",
+    "key": "Nexroute Error",
+    "places": [
+      "src/nexroute/services/core.service.ts:52"
+    ]
+  },
+  {
+    "call": "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here.",
+    "key": "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here.",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6312"
+    ]
+  },
+  {
+    "call": "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here.",
+    "key": "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here.",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6309"
+    ]
+  },
+  {
+    "call": "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here.",
+    "key": "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here.",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:5456"
+    ]
+  },
+  {
+    "call": "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here.",
+    "key": "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here.",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:5907"
+    ]
+  },
+  {
+    "call": "Nexroute service is stopped. Start the service to display connections.",
+    "key": "Nexroute service is stopped. Start the service to display connections.",
+    "places": [
+      "src/nexroute/tabs/monitoring/initController.ts:925"
+    ]
+  },
+  {
+    "call": "Nexroute service is stopped. Start the service to display the dashboard.",
+    "key": "Nexroute service is stopped. Start the service to display the dashboard.",
+    "places": [
+      "src/nexroute/tabs/dashboard/render.ts:17"
+    ]
+  },
+  {
+    "call": "Nexroute Settings",
+    "key": "Nexroute Settings",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/nexroute.js:342"
+    ]
+  },
+  {
+    "call": "Nexroute will not modify your DHCP configuration",
+    "key": "Nexroute will not modify your DHCP configuration",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/settings.js:602"
+    ]
+  },
+  {
+    "call": "Nexroute-managed ciadpi runtime has restarted",
+    "key": "Nexroute-managed ciadpi runtime has restarted",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:91"
+    ]
+  },
+  {
+    "call": "Nexroute-managed ciadpi runtime is not ready",
+    "key": "Nexroute-managed ciadpi runtime is not ready",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:94"
+    ]
+  },
+  {
+    "call": "Nexroute-managed ciadpi runtime is not running",
+    "key": "Nexroute-managed ciadpi runtime is not running",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:97"
+    ]
+  },
+  {
+    "call": "Nexroute-managed ciadpi runtime is ready",
+    "key": "Nexroute-managed ciadpi runtime is ready",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:93"
+    ]
+  },
+  {
+    "call": "Nexroute-managed nfqws runtime is not ready",
+    "key": "Nexroute-managed nfqws runtime is not ready",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:87"
+    ]
+  },
+  {
+    "call": "Nexroute-managed nfqws runtime is not running",
+    "key": "Nexroute-managed nfqws runtime is not running",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:90"
+    ]
+  },
+  {
+    "call": "Nexroute-managed nfqws runtime is ready",
+    "key": "Nexroute-managed nfqws runtime is ready",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:86"
+    ]
+  },
+  {
+    "call": "Nexroute-managed nfqws2 runtime is not ready",
+    "key": "Nexroute-managed nfqws2 runtime is not ready",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:90"
+    ]
+  },
+  {
+    "call": "Nexroute-managed nfqws2 runtime is not running",
+    "key": "Nexroute-managed nfqws2 runtime is not running",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:93"
+    ]
+  },
+  {
+    "call": "Nexroute-managed nfqws2 runtime is ready",
+    "key": "Nexroute-managed nfqws2 runtime is ready",
+    "places": [
+      "src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:89"
     ]
   },
   {
@@ -2923,139 +3035,6 @@
     ]
   },
   {
-    "call": "Nexroute Error",
-    "key": "Nexroute Error",
-    "places": [
-      "src/nexroute/services/core.service.ts:52"
-    ]
-  },
-  {
-    "call": "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here.",
-    "key": "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here.",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6312"
-    ]
-  },
-  {
-    "call": "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here.",
-    "key": "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here.",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6309"
-    ]
-  },
-  {
-    "call": "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here.",
-    "key": "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here.",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:5456"
-    ]
-  },
-  {
-    "call": "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here.",
-    "key": "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here.",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:5907"
-    ]
-  },
-  {
-    "call": "Nexroute service is stopped. Start the service to display connections.",
-    "key": "Nexroute service is stopped. Start the service to display connections.",
-    "places": [
-      "src/nexroute/tabs/monitoring/initController.ts:925"
-    ]
-  },
-  {
-    "call": "Nexroute service is stopped. Start the service to display the dashboard.",
-    "key": "Nexroute service is stopped. Start the service to display the dashboard.",
-    "places": [
-      "src/nexroute/tabs/dashboard/render.ts:17"
-    ]
-  },
-  {
-    "call": "Nexroute Settings",
-    "key": "Nexroute Settings",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/nexroute.js:342"
-    ]
-  },
-  {
-    "call": "Nexroute will not modify your DHCP configuration",
-    "key": "Nexroute will not modify your DHCP configuration",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/settings.js:602"
-    ]
-  },
-  {
-    "call": "Nexroute-managed ciadpi runtime has restarted",
-    "key": "Nexroute-managed ciadpi runtime has restarted",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:91"
-    ]
-  },
-  {
-    "call": "Nexroute-managed ciadpi runtime is not ready",
-    "key": "Nexroute-managed ciadpi runtime is not ready",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:94"
-    ]
-  },
-  {
-    "call": "Nexroute-managed ciadpi runtime is not running",
-    "key": "Nexroute-managed ciadpi runtime is not running",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:97"
-    ]
-  },
-  {
-    "call": "Nexroute-managed ciadpi runtime is ready",
-    "key": "Nexroute-managed ciadpi runtime is ready",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:93"
-    ]
-  },
-  {
-    "call": "Nexroute-managed nfqws runtime is not ready",
-    "key": "Nexroute-managed nfqws runtime is not ready",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:87"
-    ]
-  },
-  {
-    "call": "Nexroute-managed nfqws runtime is not running",
-    "key": "Nexroute-managed nfqws runtime is not running",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:90"
-    ]
-  },
-  {
-    "call": "Nexroute-managed nfqws runtime is ready",
-    "key": "Nexroute-managed nfqws runtime is ready",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:86"
-    ]
-  },
-  {
-    "call": "Nexroute-managed nfqws2 runtime is not ready",
-    "key": "Nexroute-managed nfqws2 runtime is not ready",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:90"
-    ]
-  },
-  {
-    "call": "Nexroute-managed nfqws2 runtime is not running",
-    "key": "Nexroute-managed nfqws2 runtime is not running",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:93"
-    ]
-  },
-  {
-    "call": "Nexroute-managed nfqws2 runtime is ready",
-    "key": "Nexroute-managed nfqws2 runtime is ready",
-    "places": [
-      "src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:89"
-    ]
-  },
-  {
     "call": "NFQUEUE range is available",
     "key": "NFQUEUE range is available",
     "places": [
@@ -3611,13 +3590,6 @@
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:1929",
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/server.js:2486",
       "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/server.js:2520"
-    ]
-  },
-  {
-    "call": "Proxy",
-    "key": "Proxy",
-    "places": [
-      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4075"
     ]
   },
   {
@@ -5576,6 +5548,34 @@
     "key": "Zapret2 sing-box outbound is not configured",
     "places": [
       "src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:107"
+    ]
+  },
+  {
+    "call": "Block",
+    "key": "Block",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4056"
+    ]
+  },
+  {
+    "call": "Bypass",
+    "key": "Bypass",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4058"
+    ]
+  },
+  {
+    "call": "Connection",
+    "key": "Connection",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4060"
+    ]
+  },
+  {
+    "call": "Proxy",
+    "key": "Proxy",
+    "places": [
+      "../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4075"
     ]
   }
 ]

@@ -100,25 +100,25 @@ msgstr ""
 msgid "Add prefix to nodes"
 msgstr ""
 
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7775
-msgid "Add URLs or local paths to .lst lists containing domains and subnets."
-msgstr ""
-
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7915
 msgid "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries."
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7775
+msgid "Add URLs or local paths to .lst lists containing domains and subnets."
 msgstr ""
 
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7797
 msgid "Add URLs or local paths to .lst lists containing domains. IP entries are ignored."
 msgstr ""
 
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7721
+msgid "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default."
+msgstr ""
+
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7861
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7890
 msgid "Add URLs or local paths to .srs / .json lists. Only domain rules are supported."
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7721
-msgid "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default."
 msgstr ""
 
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:3286
@@ -263,10 +263,6 @@ msgstr ""
 msgid "Backend validation failed: %s"
 msgstr ""
 
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4056
-msgid "Block"
-msgstr ""
-
 #: src/nexroute/tabs/diagnostic/checks/runDnsCheck.ts:57
 msgid "Bootstrap DNS"
 msgstr ""
@@ -345,10 +341,6 @@ msgstr ""
 
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6506
 msgid "ByeDPI strategy cannot be empty"
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4058
-msgid "Bypass"
 msgstr ""
 
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/settings.js:623
@@ -525,10 +517,6 @@ msgstr ""
 
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7529
 msgid "Connect through"
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4060
-msgid "Connection"
 msgstr ""
 
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7252
@@ -1091,6 +1079,82 @@ msgstr ""
 
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:7938
 msgid "Forced device routing"
+msgstr ""
+
+#: src/nexroute/services/core.service.ts:52
+msgid "Nexroute Error"
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6312
+msgid "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here."
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6309
+msgid "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:5456
+msgid "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:5907
+msgid "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
+msgstr ""
+
+#: src/nexroute/tabs/monitoring/initController.ts:925
+msgid "Nexroute service is stopped. Start the service to display connections."
+msgstr ""
+
+#: src/nexroute/tabs/dashboard/render.ts:17
+msgid "Nexroute service is stopped. Start the service to display the dashboard."
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/nexroute.js:342
+msgid "Nexroute Settings"
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/settings.js:602
+msgid "Nexroute will not modify your DHCP configuration"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:91
+msgid "Nexroute-managed ciadpi runtime has restarted"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:94
+msgid "Nexroute-managed ciadpi runtime is not ready"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:97
+msgid "Nexroute-managed ciadpi runtime is not running"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:93
+msgid "Nexroute-managed ciadpi runtime is ready"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:87
+msgid "Nexroute-managed nfqws runtime is not ready"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:90
+msgid "Nexroute-managed nfqws runtime is not running"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:86
+msgid "Nexroute-managed nfqws runtime is ready"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:90
+msgid "Nexroute-managed nfqws2 runtime is not ready"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:93
+msgid "Nexroute-managed nfqws2 runtime is not running"
+msgstr ""
+
+#: src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:89
+msgid "Nexroute-managed nfqws2 runtime is ready"
 msgstr ""
 
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/server.js:3008
@@ -1748,82 +1812,6 @@ msgstr ""
 msgid "New version %s is available for %s"
 msgstr ""
 
-#: src/nexroute/services/core.service.ts:52
-msgid "Nexroute Error"
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6312
-msgid "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here."
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:6309
-msgid "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:5456
-msgid "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:5907
-msgid "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
-msgstr ""
-
-#: src/nexroute/tabs/monitoring/initController.ts:925
-msgid "Nexroute service is stopped. Start the service to display connections."
-msgstr ""
-
-#: src/nexroute/tabs/dashboard/render.ts:17
-msgid "Nexroute service is stopped. Start the service to display the dashboard."
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/nexroute.js:342
-msgid "Nexroute Settings"
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/settings.js:602
-msgid "Nexroute will not modify your DHCP configuration"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:91
-msgid "Nexroute-managed ciadpi runtime has restarted"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:94
-msgid "Nexroute-managed ciadpi runtime is not ready"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:97
-msgid "Nexroute-managed ciadpi runtime is not running"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runByedpiCheck.ts:93
-msgid "Nexroute-managed ciadpi runtime is ready"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:87
-msgid "Nexroute-managed nfqws runtime is not ready"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:90
-msgid "Nexroute-managed nfqws runtime is not running"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:86
-msgid "Nexroute-managed nfqws runtime is ready"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:90
-msgid "Nexroute-managed nfqws2 runtime is not ready"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:93
-msgid "Nexroute-managed nfqws2 runtime is not running"
-msgstr ""
-
-#: src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:89
-msgid "Nexroute-managed nfqws2 runtime is ready"
-msgstr ""
-
 #: src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:100
 #: src/nexroute/tabs/diagnostic/checks/runZapretCheck.ts:97
 msgid "NFQUEUE range is available"
@@ -2158,10 +2146,6 @@ msgstr ""
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/server.js:2486
 #: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/server.js:2520
 msgid "Protocol"
-msgstr ""
-
-#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4075
-msgid "Proxy"
 msgstr ""
 
 #: src/nexroute/tabs/dashboard/initController.ts:757
@@ -3322,4 +3306,20 @@ msgstr ""
 
 #: src/nexroute/tabs/diagnostic/checks/runZapret2Check.ts:107
 msgid "Zapret2 sing-box outbound is not configured"
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4056
+msgid "Block"
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4058
+msgid "Bypass"
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4060
+msgid "Connection"
+msgstr ""
+
+#: ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js:4075
+msgid "Proxy"
 msgstr ""
