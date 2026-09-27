@@ -3,8 +3,8 @@ name: Backend CI
 on:
   pull_request:
     paths:
-      - 'forkop/files/**'
-      - 'forkop/Makefile'
+      - 'nexroute/files/**'
+      - 'nexroute/Makefile'
       - 'build.sh'
       - 'tests/**'
       - '.github/workflows/build.yml'
@@ -13,8 +13,8 @@ on:
     branches:
       - main
     paths:
-      - 'forkop/files/**'
-      - 'forkop/Makefile'
+      - 'nexroute/files/**'
+      - 'nexroute/Makefile'
       - 'build.sh'
       - 'tests/**'
       - '.github/workflows/build.yml'
@@ -50,8 +50,8 @@ jobs:
       - name: Check ucode syntax
         shell: bash
         run: |
-          find forkop/files/usr/lib -name '*.uc' -print0 | xargs -0 -n1 ucode -c -o /dev/null
-          find forkop/files/usr/lib -name '*.uc' -print0 | xargs -0 -n1 ucode -S -c -o /dev/null
+          find nexroute/files/usr/lib -name '*.uc' -print0 | xargs -0 -n1 ucode -c -o /dev/null
+          find nexroute/files/usr/lib -name '*.uc' -print0 | xargs -0 -n1 ucode -S -c -o /dev/null
 
       - name: Run backend tests
         shell: bash
