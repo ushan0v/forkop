@@ -1,8 +1,8 @@
 #!/bin/sh
 # shellcheck shell=dash
 
-REPO_OWNER="ushan0v"
-REPO_NAME="forkop"
+REPO_OWNER="filippxda26"
+REPO_NAME="Nexroute"
 
 REQUIRED_SPACE_KB=15360
 CONNECT_TIMEOUT_SECONDS=15
@@ -55,7 +55,7 @@ usage() {
     cat <<EOF
 Usage: $0
 
-Installs or updates Forkop packages:
+Installs or updates Nexroute packages:
   - forkop
   - luci-app-forkop
   - luci-i18n-forkop-ru when requested or when LuCI language is Russian
@@ -116,7 +116,7 @@ detect_fetcher() {
         return 0
     fi
 
-    fail "wget or curl is required to download Forkop"
+    fail "wget or curl is required to download Nexroute"
 }
 
 run_with_deadline() {
