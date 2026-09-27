@@ -1,11 +1,11 @@
 {
-  "name": "fe-app-forkop",
+  "name": "fe-app-nexroute",
   "version": "1.0.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "format": "prettier --write src",
-    "format:js": "prettier --write ../luci-app-forkop/htdocs/luci-static/resources/view/forkop",
+    "format:js": "prettier --write ../luci-app-nexroute/htdocs/luci-static/resources/view/forkop",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "build": "tsc --noEmit && tsup src/main.ts",
