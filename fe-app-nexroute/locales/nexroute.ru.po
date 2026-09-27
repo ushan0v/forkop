@@ -21,7 +21,7 @@ msgid "-- Select --"
 msgstr "-- Выберите --"
 
 msgid "+ Add JSON outbound"
-msgstr "+ Добавить JSON outbound"
+msgstr "+ Добавить исходящее подключение (JSON)"
 
 msgid "+ Add level"
 msgstr "+ Добавить уровень"
@@ -30,7 +30,7 @@ msgid "+ Add priority"
 msgstr "+ Добавить приоритет"
 
 msgid "+ Add URLTest"
-msgstr "+ Добавить URLTest"
+msgstr "+ Добавить URLTest-группу"
 
 msgid "✔ Running"
 msgstr "✔ Работает"
@@ -71,23 +71,23 @@ msgstr "Добавьте хотя бы один DNS-сервер"
 msgid "Add prefix to nodes"
 msgstr "Добавлять префикс к узлам"
 
-msgid "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries."
-msgstr "Добавьте URL или локальные пути к спискам .lst с доменами, IP-адресами или CIDR-подсетями. Для действия DNS записи IP игнорируются."
-
 msgid "Add URLs or local paths to .lst lists containing domains and subnets."
 msgstr "Добавьте URL или локальные пути к спискам .lst с доменами и подсетями."
+
+msgid "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries."
+msgstr "Добавьте URL или локальные пути к спискам .lst с доменами, IP-адресами или CIDR-подсетями. Для действия DNS записи IP игнорируются."
 
 msgid "Add URLs or local paths to .lst lists containing domains. IP entries are ignored."
 msgstr "Добавьте URL или локальные пути к спискам .lst с доменами. IP игнорируются."
 
-msgid "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default."
-msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Подсети по умолчанию игнорируются."
-
 msgid "Add URLs or local paths to .srs / .json lists. Only domain rules are supported."
 msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Поддерживаются только доменные правила."
 
+msgid "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default."
+msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Подсети по умолчанию игнорируются."
+
 msgid "Add URLTest / Priority group"
-msgstr "Добавить URLTest / Приоритет группу"
+msgstr "Добавить группу URLTest / приоритета"
 
 msgid "Additional marking rules found"
 msgstr "Найдены дополнительные правила маркировки"
@@ -141,7 +141,7 @@ msgid "Allows access to YACD from the WAN. Make sure to open the appropriate por
 msgstr "Обеспечивает доступ к YACD из WAN. Убедитесь, что в брандмауэре открыт соответствующий порт."
 
 msgid "Allows limiting the list of servers for URLTest"
-msgstr "Позволяет ограничить список серверов для URLTest"
+msgstr "Позволяет ограничить список серверов для URLTest-группы"
 
 msgid "ALPN"
 msgstr "ALPN"
@@ -187,6 +187,9 @@ msgstr "Доступные действия"
 
 msgid "Backend validation failed: %s"
 msgstr "Backend-проверка завершилась ошибкой: %s"
+
+msgid "Block"
+msgstr "Блокировка"
 
 msgid "Bootstrap DNS"
 msgstr "Bootstrap DNS"
@@ -244,6 +247,9 @@ msgstr "Стратегия ByeDPI"
 
 msgid "ByeDPI strategy cannot be empty"
 msgstr "Стратегия ByeDPI не может быть пустой"
+
+msgid "Bypass"
+msgstr "Обход"
 
 msgid "Cache File Path"
 msgstr "Путь к файлу кэша"
@@ -353,6 +359,9 @@ msgstr "Настройте User-Agent в настройках элемента"
 msgid "Connect through"
 msgstr "Подключаться через"
 
+msgid "Connection"
+msgstr "Подключение"
+
 msgid "Connection URL"
 msgstr "URL подключения"
 
@@ -393,7 +402,7 @@ msgid "Dashboard currently unavailable"
 msgstr "Дашборд сейчас недоступен"
 
 msgid "Default address for checking server availability and latency. URLTest uses its own address."
-msgstr "Адрес по умолчанию для проверки доступности и задержки серверов. Для URLTest используется собственный адрес."
+msgstr "Адрес по умолчанию для проверки доступности и задержки серверов. URLTest-группа использует собственный адрес."
 
 msgid "Delay in milliseconds before reloading Nexroute after interface UP"
 msgstr "Задержка в миллисекундах перед перезапуском Nexroute после поднятия интерфейса"
@@ -579,7 +588,7 @@ msgid "Drag rows to change priority. The rule at the top is checked first."
 msgstr "Перетаскивайте строки, чтобы изменить приоритет. Правило сверху проверяется первым."
 
 msgid "Duplicate JSON outbound tag"
-msgstr "Такой тег JSON outbound уже используется"
+msgstr "Тег исходящего подключения (JSON) уже используется"
 
 msgid "Duplicate value"
 msgstr "Дублирующееся значение"
@@ -672,7 +681,7 @@ msgid "Exclude servers with one of the selected transports from this level."
 msgstr "Исключить из этого уровня серверы с одним из выбранных транспортов."
 
 msgid "Exclude URLTest / Priority group"
-msgstr "Исключить URLTest / Приоритет группу"
+msgstr "Исключить группу URLTest / приоритета"
 
 msgid "Expecting: %s"
 msgstr "Ожидается: %s"
@@ -737,63 +746,6 @@ msgstr "Исправьте подсвеченные поля и сохранит
 msgid "Forced device routing"
 msgstr "Принудительная маршрутизация устройств"
 
-msgid "Nexroute Error"
-msgstr "Ошибка Nexroute"
-
-msgid "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here."
-msgstr "Nexroute сам управляет pid-файлами ciadpi, поэтому параметры pidfile здесь запрещены."
-
-msgid "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Nexroute сам управляет жизненным циклом ciadpi, поэтому режим daemon здесь запрещён."
-
-msgid "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Nexroute сам управляет жизненным циклом nfqws, поэтому режим daemon здесь запрещён."
-
-msgid "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Nexroute сам управляет жизненным циклом nfqws2, поэтому режим daemon здесь запрещён."
-
-msgid "Nexroute service is stopped. Start the service to display connections."
-msgstr "Служба Nexroute остановлена. Запустите сервис для отображения подключений."
-
-msgid "Nexroute service is stopped. Start the service to display the dashboard."
-msgstr "Служба Nexroute остановлена. Запустите сервис для отображения дашборда."
-
-msgid "Nexroute Settings"
-msgstr "Настройки Nexroute"
-
-msgid "Nexroute will not modify your DHCP configuration"
-msgstr "Nexroute не будет изменять вашу конфигурацию DHCP"
-
-msgid "Nexroute-managed ciadpi runtime has restarted"
-msgstr "ciadpi Nexroute перезапускался"
-
-msgid "Nexroute-managed ciadpi runtime is not ready"
-msgstr "ciadpi Nexroute не готов"
-
-msgid "Nexroute-managed ciadpi runtime is not running"
-msgstr "ciadpi Nexroute не запущен"
-
-msgid "Nexroute-managed ciadpi runtime is ready"
-msgstr "ciadpi Nexroute готов"
-
-msgid "Nexroute-managed nfqws runtime is not ready"
-msgstr "NFQWS Nexroute не готов"
-
-msgid "Nexroute-managed nfqws runtime is not running"
-msgstr "NFQWS Nexroute не запущен"
-
-msgid "Nexroute-managed nfqws runtime is ready"
-msgstr "NFQWS Nexroute готов"
-
-msgid "Nexroute-managed nfqws2 runtime is not ready"
-msgstr "NFQWS2 Nexroute не готов"
-
-msgid "Nexroute-managed nfqws2 runtime is not running"
-msgstr "NFQWS2 Nexroute не запущен"
-
-msgid "Nexroute-managed nfqws2 runtime is ready"
-msgstr "NFQWS2 Nexroute готов"
-
 msgid "Fronting IP"
 msgstr "IP фронтинга"
 
@@ -828,7 +780,7 @@ msgid "Hide cascade connection nodes"
 msgstr "Скрывать узлы каскадных подключений"
 
 msgid "Hide individual nodes that are already included in imported subscription URLTest groups"
-msgstr "Скрывать отдельные узлы, которые уже входят в импортированные URLTest группы подписки"
+msgstr "Скрывать отдельные узлы, уже входящие в импортированные URLTest-группы подписки"
 
 msgid "Hide intermediate nodes used as detours by other subscription nodes"
 msgstr "Скрывать промежуточные узлы, которые используются как detour для других узлов подписки"
@@ -855,7 +807,7 @@ msgid "Hide servers with one of the selected transports."
 msgstr "Скрывать серверы с одним из выбранных транспортов."
 
 msgid "Hide URLTest group nodes"
-msgstr "Скрывать узлы URLTest групп"
+msgstr "Скрывать узлы URLTest-групп"
 
 msgid "Hide values"
 msgstr "Скрывать значения"
@@ -894,10 +846,10 @@ msgid "Idle timeout"
 msgstr "Таймаут простоя"
 
 msgid "Import subscription URLTest groups"
-msgstr "Добавлять URLTest группы из подписки"
+msgstr "Импортировать URLTest-группы из подписки"
 
 msgid "Import URLTest groups returned by this subscription provider"
-msgstr "Импортировать URLTest группы, если провайдер подписки возвращает их"
+msgstr "Импортировать URLTest-группы, предоставляемые этим провайдером подписки"
 
 msgid "Inbound JSON"
 msgstr "Inbound JSON"
@@ -951,7 +903,7 @@ msgid "Interrupt connections when priority failover switches server"
 msgstr "Разрывать соединения при переключении сервера приоритетом"
 
 msgid "Interrupt connections when URLTest switches the selected server"
-msgstr "Прерывать соединения, когда URLTest переключает выбранный сервер"
+msgstr "Прерывать соединения при переключении выбранного сервера URLTest-группой"
 
 msgid "Interval"
 msgstr "Интервал"
@@ -1125,28 +1077,28 @@ msgid "Issues detected"
 msgstr "Обнаружены проблемы"
 
 msgid "JSON outbound"
-msgstr "JSON outbound"
+msgstr "Исходящее подключение (JSON)"
 
 msgid "JSON outbound cannot be empty"
-msgstr "JSON outbound не может быть пустым"
+msgstr "Исходящее подключение (JSON) не может быть пустым"
 
 msgid "JSON outbound must be a JSON object"
-msgstr "JSON outbound должен быть JSON-объектом"
+msgstr "Конфигурация исходящего подключения должна быть JSON-объектом"
 
 msgid "JSON outbound must contain a non-empty tag field"
-msgstr "JSON outbound должен содержать непустое поле tag"
+msgstr "Исходящее подключение (JSON) должно содержать непустое поле tag"
 
 msgid "JSON outbound must contain a non-empty type field"
-msgstr "JSON outbound должен содержать непустое поле type"
+msgstr "Исходящее подключение (JSON) должно содержать непустое поле type"
 
 msgid "JSON outbound settings"
-msgstr "Настройки JSON outbound"
+msgstr "Настройки исходящего подключения (JSON)"
 
 msgid "Keep Priority before latency-sorted servers"
 msgstr "Показывать Priority перед серверами, отсортированными по задержке"
 
 msgid "Keep URLTest before latency-sorted servers"
-msgstr "Держать URLTest перед серверами, отсортированными по задержке"
+msgstr "Показывать URLTest-группу перед серверами, отсортированными по задержке"
 
 msgid "Key path"
 msgstr "Путь к ключу"
@@ -1255,6 +1207,63 @@ msgstr "Настройки сетевого интерфейса"
 
 msgid "New version %s is available for %s"
 msgstr "Доступна новая версия %s для %s"
+
+msgid "Nexroute Error"
+msgstr "Ошибка Nexroute"
+
+msgid "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here."
+msgstr "Nexroute сам управляет pid-файлами ciadpi, поэтому параметры pidfile здесь запрещены."
+
+msgid "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом ciadpi, поэтому режим daemon здесь запрещён."
+
+msgid "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом nfqws, поэтому режим daemon здесь запрещён."
+
+msgid "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом nfqws2, поэтому режим daemon здесь запрещён."
+
+msgid "Nexroute service is stopped. Start the service to display connections."
+msgstr "Служба Nexroute остановлена. Запустите сервис для отображения подключений."
+
+msgid "Nexroute service is stopped. Start the service to display the dashboard."
+msgstr "Служба Nexroute остановлена. Запустите сервис для отображения дашборда."
+
+msgid "Nexroute Settings"
+msgstr "Настройки Nexroute"
+
+msgid "Nexroute will not modify your DHCP configuration"
+msgstr "Nexroute не будет изменять вашу конфигурацию DHCP"
+
+msgid "Nexroute-managed ciadpi runtime has restarted"
+msgstr "ciadpi Nexroute перезапускался"
+
+msgid "Nexroute-managed ciadpi runtime is not ready"
+msgstr "ciadpi Nexroute не готов"
+
+msgid "Nexroute-managed ciadpi runtime is not running"
+msgstr "ciadpi Nexroute не запущен"
+
+msgid "Nexroute-managed ciadpi runtime is ready"
+msgstr "ciadpi Nexroute готов"
+
+msgid "Nexroute-managed nfqws runtime is not ready"
+msgstr "NFQWS Nexroute не готов"
+
+msgid "Nexroute-managed nfqws runtime is not running"
+msgstr "NFQWS Nexroute не запущен"
+
+msgid "Nexroute-managed nfqws runtime is ready"
+msgstr "NFQWS Nexroute готов"
+
+msgid "Nexroute-managed nfqws2 runtime is not ready"
+msgstr "NFQWS2 Nexroute не готов"
+
+msgid "Nexroute-managed nfqws2 runtime is not running"
+msgstr "NFQWS2 Nexroute не запущен"
+
+msgid "Nexroute-managed nfqws2 runtime is ready"
+msgstr "NFQWS2 Nexroute готов"
 
 msgid "NFQUEUE range is available"
 msgstr "Диапазон NFQUEUE свободен"
@@ -1478,6 +1487,9 @@ msgstr "Настройки приоритета"
 msgid "Protocol"
 msgstr "Протокол"
 
+msgid "Proxy"
+msgstr "Прокси"
+
 msgid "Proxy link is unavailable"
 msgstr "Ссылка прокси недоступна"
 
@@ -1650,7 +1662,7 @@ msgid "Select an existing network interface"
 msgstr "Выберите существующий сетевой интерфейс"
 
 msgid "Select an existing URLTest or Priority group"
-msgstr "Выберите существующую URLTest или Приоритет группу"
+msgstr "Выберите существующую группу URLTest или приоритета"
 
 msgid "Select an intermediate section"
 msgstr "Выберите промежуточную секцию"
@@ -1692,7 +1704,7 @@ msgid "Selected section"
 msgstr "Выбранная секция"
 
 msgid "Selector and URLTest outbounds must contain a non-empty outbounds array"
-msgstr "Selector и URLTest outbound должны содержать непустой массив outbounds"
+msgstr "Исходящие подключения типа Selector и URLTest должны содержать непустой массив outbounds"
 
 msgid "Server"
 msgstr "Сервер"
@@ -1851,7 +1863,7 @@ msgid "Start Nexroute"
 msgstr "Запустить Nexroute"
 
 msgid "Stop checking when URLTest group is not used. Use sing-box duration format like 1d, 12h or 30m."
-msgstr "Останавливать проверку если URLTest группа не используется. Используйте формат длительности sing-box, например 1d, 12h или 30m."
+msgstr "Останавливать проверки, когда URLTest-группа не используется. Используйте формат длительности sing-box, например 1d, 12h или 30m."
 
 msgid "Stop Nexroute"
 msgstr "Остановить Nexroute"
@@ -2118,16 +2130,16 @@ msgid "URL used to test server latency"
 msgstr "URL который будет использоваться для тестирования задержки серверов"
 
 msgid "URLTest"
-msgstr "URLTest"
+msgstr "Автовыбор (URLTest)"
 
 msgid "URLTest details"
-msgstr "Детали URLTest"
+msgstr "Сведения о URLTest-группе"
 
 msgid "URLTest details are unavailable"
-msgstr "Детали URLTest недоступны"
+msgstr "Сведения о URLTest-группе недоступны"
 
 msgid "URLTest settings"
-msgstr "Настройки URLTest"
+msgstr "Настройки URLTest-группы"
 
 msgid "Use 32 hex characters"
 msgstr "Укажите 32 hex-символа"
@@ -2154,7 +2166,7 @@ msgid "Use an IP listen address"
 msgstr "Используйте IP-адрес для прослушивания"
 
 msgid "Use another section as an intermediate hop to connect to servers in this section. Does not apply to network interfaces or JSON outbounds."
-msgstr "Использовать другую секцию как промежуточный узел подключения к серверам этой секции. Не применяется к сетевым интерфейсам и JSON outbound."
+msgstr "Использовать другую секцию как промежуточный узел подключения к серверам этой секции. Не применяется к сетевым интерфейсам и исходящим подключениям в формате JSON."
 
 msgid "Use CIDR prefixes like 192.168.1.0/24 or 2001:db8::/32"
 msgstr "Используйте CIDR-префиксы, например 192.168.1.0/24 или 2001:db8::/32"

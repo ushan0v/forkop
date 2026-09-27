@@ -4053,11 +4053,11 @@ function getRuleResolvedAction(section_id) {
 function getActionOptionLabel(action) {
   switch (`${action}`) {
     case "block":
-      return "Block";
+      return _("Block");
     case "bypass":
-      return "Bypass";
+      return _("Bypass");
     case "connection":
-      return "Connection";
+      return _("Connection");
     case "dns":
       return "DNS";
     case "vpn":
@@ -4072,7 +4072,7 @@ function getActionOptionLabel(action) {
       return _("JSON outbound");
     case "proxy":
     default:
-      return "Proxy";
+      return _("Proxy");
   }
 }
 
@@ -4103,9 +4103,9 @@ function populateActionOptionValues(option) {
   delete option.vallist;
 
   option.value("connection", getActionOptionLabel("connection"));
-  option.value("bypass", "Bypass");
-  option.value("block", "Block");
-  option.value("dns", "DNS");
+  option.value("bypass", getActionOptionLabel("bypass"));
+  option.value("block", getActionOptionLabel("block"));
+  option.value("dns", getActionOptionLabel("dns"));
   if (isZapretInstalledForUi()) {
     option.value("zapret", getActionOptionLabel("zapret"));
   }
