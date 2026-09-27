@@ -560,7 +560,7 @@ function section_action(section) {
 
 function action_captures_traffic(action) {
     return action == "connection" || action == "proxy" || action == "outbound" || action == "vpn" ||
-        action == "block" || action == "zapret" || action == "zapret2" || action == "byedpi";
+        action == "direct" || action == "block" || action == "zapret" || action == "zapret2" || action == "byedpi";
 }
 
 function section_priority_action(section) {

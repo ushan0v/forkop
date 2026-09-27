@@ -2859,6 +2859,9 @@ function add_outbound_for_section(config, section, taken, sections) {
         add_zapret2_outbound(config, section, sections);
     else if (action == "byedpi")
         add_byedpi_outbound(config, section, sections);
+    else if (action == "direct") {
+        /* route-only action */
+    }
     else if (action == "bypass") {
         /* route-only action */
     }

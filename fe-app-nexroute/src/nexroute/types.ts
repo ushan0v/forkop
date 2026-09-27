@@ -212,6 +212,7 @@ export namespace Nexroute {
     | 'proxy'
     | 'outbound'
     | 'vpn'
+    | 'direct'
     | 'bypass'
     | 'block'
     | 'zapret'

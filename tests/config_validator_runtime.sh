@@ -237,15 +237,26 @@ cat >"$WORK_DIR/bad-dns-detour-bypass.json" <<'JSON'
 JSON
 assert_rejects "DNS detour bypass" "$WORK_DIR/bad-dns-detour-bypass.json" "unsupported action 'bypass'"
 
-cat >"$WORK_DIR/bad-direct-action.json" <<'JSON'
+cat >"$WORK_DIR/direct-action.json" <<'JSON'
 {
-  "settings": { ".name": "settings", ".type": "settings" },
+  "settings": {
+    ".name": "settings",
+    ".type": "settings",
+    "dns_server": [ "1.1.1.1" ],
+    "bootstrap_dns_server": [ "1.1.1.1" ]
+  },
   "section": [
-    { ".name": "old", ".type": "section", "enabled": "1", "action": "direct" }
+    {
+      ".name": "direct",
+      ".type": "section",
+      "enabled": "1",
+      "action": "direct",
+      "domain_suffix": [ "direct.example" ]
+    }
   ]
 }
 JSON
-assert_rejects "bad direct action" "$WORK_DIR/bad-direct-action.json" "unsupported action 'direct'"
+validate_fixture "$WORK_DIR/direct-action.json"
 
 cat >"$WORK_DIR/bad-dns-rule-server.json" <<'JSON'
 {

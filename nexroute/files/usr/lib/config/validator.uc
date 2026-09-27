@@ -807,7 +807,7 @@ function rule_action(section) {
 }
 
 function rule_action_supported(action) {
-    return contains([ "connection", "proxy", "outbound", "vpn", "bypass", "block", "dns", "zapret", "zapret2", "byedpi" ], as_string(action));
+    return contains([ "connection", "proxy", "outbound", "vpn", "direct", "bypass", "block", "dns", "zapret", "zapret2", "byedpi" ], as_string(action));
 }
 
 function server_routing_section_action_supported(action) {

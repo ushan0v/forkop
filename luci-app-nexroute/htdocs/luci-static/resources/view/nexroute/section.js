@@ -18,6 +18,7 @@ const ROUTING_ACTIONS = [
   "proxy",
   "outbound",
   "vpn",
+  "direct",
   "bypass",
   "block",
   "zapret",
@@ -4054,6 +4055,8 @@ function getActionOptionLabel(action) {
   switch (`${action}`) {
     case "block":
       return _("Block");
+    case "direct":
+      return _("Direct");
     case "bypass":
       return _("Bypass");
     case "connection":
@@ -4103,6 +4106,7 @@ function populateActionOptionValues(option) {
   delete option.vallist;
 
   option.value("connection", getActionOptionLabel("connection"));
+  option.value("direct", getActionOptionLabel("direct"));
   option.value("bypass", getActionOptionLabel("bypass"));
   option.value("block", getActionOptionLabel("block"));
   option.value("dns", getActionOptionLabel("dns"));
