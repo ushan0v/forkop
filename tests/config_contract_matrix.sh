@@ -6,7 +6,9 @@ STABLE_REF="${NEXROUTE_STABLE_REF:-0.7.19.9}"
 STABLE_REPO="${NEXROUTE_STABLE_REPO:-}"
 MATRIX_SCRIPT="$ROOT_DIR/tests/helpers/config_contract_matrix.js"
 WORK_DIR="$(mktemp -d)"
+PREVIOUS_STEM="$(printf '\146\157\162\153\157\160')"
 LEGACY_STEM="$(printf '\160\157\144\153\157\160')"
+STABLE_REMOTE="${NEXROUTE_STABLE_REMOTE:-https://github.com/ushan0v/${PREVIOUS_STEM}.git}"
 
 cleanup() {
   rm -rf "$WORK_DIR"
@@ -24,12 +26,15 @@ ensure_stable_ref() {
   fi
 
   git -C "$ROOT_DIR" fetch --force --depth=1 origin "refs/tags/$STABLE_REF:refs/tags/$STABLE_REF" >/dev/null 2>&1 ||
+    git -C "$ROOT_DIR" fetch --force --depth=1 "$STABLE_REMOTE" "refs/tags/$STABLE_REF:refs/tags/$STABLE_REF" >/dev/null 2>&1 ||
     fail "stable ref is unavailable and could not be fetched: $STABLE_REF"
 }
 
 prepare_stable_repo() {
   if [ -n "$STABLE_REPO" ]; then
     if [ ! -r "$STABLE_REPO/nexroute/files/etc/config/nexroute" ] &&
+      [ ! -r "$STABLE_REPO/$PREVIOUS_STEM/files/etc/config/$PREVIOUS_STEM" ] &&
+      [ ! -r "$STABLE_REPO/nexroute/files/etc/config/$PREVIOUS_STEM" ] &&
       [ ! -r "$STABLE_REPO/$LEGACY_STEM/files/etc/config/$LEGACY_STEM" ]; then
       fail "stable repo is missing the expected config template: $STABLE_REPO"
     fi
