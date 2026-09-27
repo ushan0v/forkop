@@ -9,12 +9,12 @@ let write_json = common.write_json;
 let array_or_empty = common.array_or_empty;
 let object_or_empty = common.object_or_empty;
 
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
-const RUNTIME_STATE_DIR = getenv("FORKOP_RUNTIME_STATE_DIR") || "/var/run/forkop";
-const SECTION_CACHE_DIR = getenv("FORKOP_SECTION_CACHE_DIR") || RUNTIME_STATE_DIR + "/section-cache";
-const PRIORITY_PID_FILE = getenv("FORKOP_PRIORITY_PID_FILE") || RUNTIME_STATE_DIR + "/priority.pid";
-const PRIORITY_UC = getenv("FORKOP_PRIORITY_UC") || LIB_DIR + "/singbox/priority.uc";
-const DIAGNOSTICS_UC = getenv("FORKOP_DIAGNOSTICS_UC") || LIB_DIR + "/diagnostics/runtime.uc";
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
+const RUNTIME_STATE_DIR = getenv("NEXROUTE_RUNTIME_STATE_DIR") || "/var/run/nexroute";
+const SECTION_CACHE_DIR = getenv("NEXROUTE_SECTION_CACHE_DIR") || RUNTIME_STATE_DIR + "/section-cache";
+const PRIORITY_PID_FILE = getenv("NEXROUTE_PRIORITY_PID_FILE") || RUNTIME_STATE_DIR + "/priority.pid";
+const PRIORITY_UC = getenv("NEXROUTE_PRIORITY_UC") || LIB_DIR + "/singbox/priority.uc";
+const DIAGNOSTICS_UC = getenv("NEXROUTE_DIAGNOSTICS_UC") || LIB_DIR + "/diagnostics/runtime.uc";
 
 function shell_quote(value) {
     return "'" + replace(as_string(value), /'/g, "'\\''") + "'";
@@ -74,7 +74,7 @@ function file_first_line(path) {
 
 function log_message(message, level) {
     level = as_string(level || "info");
-    command_success_from_args([ "logger", "-t", "forkop", "[" + level + "] priority: " + as_string(message) ]);
+    command_success_from_args([ "logger", "-t", "nexroute", "[" + level + "] priority: " + as_string(message) ]);
 }
 
 function now_seconds() {

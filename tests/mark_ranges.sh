@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-VALIDATOR="$FORKOP_LIB/config/validator.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+VALIDATOR="$NEXROUTE_LIB/config/validator.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -42,7 +42,7 @@ assert_mark_range_no_overlap() {
   done
 }
 
-eval "$(ucode -L "$FORKOP_LIB" "$FORKOP_LIB/core/constants.uc" shell-env)"
+eval "$(ucode -L "$NEXROUTE_LIB" "$NEXROUTE_LIB/core/constants.uc" shell-env)"
 
 TAILSCALE_FWMARK_MASK=0x00ff0000
 
@@ -86,15 +86,15 @@ context_json() {
 JSON
 }
 
-FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/fixture.json" "$(context_json)"
+NEXROUTE_LIB="$NEXROUTE_LIB" ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/fixture.json" "$(context_json)"
 
-if FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/fixture.json" "$(context_json "0x01010000")" >/dev/null 2>&1; then
+if NEXROUTE_LIB="$NEXROUTE_LIB" ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/fixture.json" "$(context_json "0x01010000")" >/dev/null 2>&1; then
   fail "legacy Zapret2 route mark base should overlap Tailscale fwmark mask"
 fi
-if FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/fixture.json" "$(context_json "" "0x00100000")" >/dev/null 2>&1; then
+if NEXROUTE_LIB="$NEXROUTE_LIB" ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/fixture.json" "$(context_json "" "0x00100000")" >/dev/null 2>&1; then
   fail "legacy FakeIP mark should overlap Tailscale fwmark mask"
 fi
-if FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/fixture.json" "$(context_json "" "" "0x00200000")" >/dev/null 2>&1; then
+if NEXROUTE_LIB="$NEXROUTE_LIB" ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/fixture.json" "$(context_json "" "" "0x00200000")" >/dev/null 2>&1; then
   fail "legacy outbound mark should overlap Tailscale fwmark mask"
 fi
 

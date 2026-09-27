@@ -1,4 +1,0 @@
-#!/bin/sh
-
-/usr/bin/forkop luci_postinst >/dev/null 2>&1 || true
-exit 0

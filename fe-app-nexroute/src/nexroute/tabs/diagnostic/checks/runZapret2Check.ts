@@ -1,5 +1,5 @@
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { ForkopShellMethods } from '../../../methods';
+import { NexrouteShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { IDiagnosticsChecksItem } from '../../../services';
 import { getCheckItemsMeta } from './getCheckItemsMeta';
@@ -16,7 +16,7 @@ export async function runZapret2Check() {
     items: [],
   });
 
-  const zapret2Status = await ForkopShellMethods.getZapret2Status();
+  const zapret2Status = await NexrouteShellMethods.getZapret2Status();
 
   if (!zapret2Status.success) {
     updateCheckStore({
@@ -39,7 +39,7 @@ export async function runZapret2Check() {
   const expectedProcesses = Number(data.expected_process_count || 0);
   const runningProcesses = Number(data.running_process_count || 0);
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
-  const forkopRuntimeReady =
+  const nexrouteRuntimeReady =
     !hasZapret2Rules ||
     (runningProcesses === expectedProcesses &&
       supervisorProcesses === expectedProcesses);
@@ -83,14 +83,14 @@ export async function runZapret2Check() {
       value: '',
     },
     {
-      state: unexpectedRuntime || !forkopRuntimeReady ? 'error' : 'success',
+      state: unexpectedRuntime || !nexrouteRuntimeReady ? 'error' : 'success',
       key: hasZapret2Rules
-        ? forkopRuntimeReady
-          ? _('Forkop-managed nfqws2 runtime is ready')
-          : _('Forkop-managed nfqws2 runtime is not ready')
+        ? nexrouteRuntimeReady
+          ? _('Nexroute-managed nfqws2 runtime is ready')
+          : _('Nexroute-managed nfqws2 runtime is not ready')
         : unexpectedRuntime
-          ? _('Unexpected Forkop-managed nfqws2 runtime is running')
-          : _('Forkop-managed nfqws2 runtime is not running'),
+          ? _('Unexpected Nexroute-managed nfqws2 runtime is running')
+          : _('Nexroute-managed nfqws2 runtime is not running'),
       value: hasZapret2Rules ? `${runningProcesses}/${expectedProcesses}` : '',
     },
     {
@@ -115,7 +115,7 @@ export async function runZapret2Check() {
           : 'success',
       key: standaloneServiceRunning
         ? hasZapret2Rules
-          ? _('Standalone Zapret2 is active together with Forkop Zapret2 rules')
+          ? _('Standalone Zapret2 is active together with Nexroute Zapret2 rules')
           : _('Standalone Zapret2 service is active')
         : standaloneAutostartRisk
           ? _('Standalone Zapret2 autostart is enabled')

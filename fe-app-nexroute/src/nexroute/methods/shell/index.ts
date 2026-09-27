@@ -1,5 +1,5 @@
 import { callBaseMethod } from './callBaseMethod';
-import { ClashAPI, Forkop } from '../../types';
+import { ClashAPI, Nexroute } from '../../types';
 import { executeShellCommand } from '../../../helpers';
 import { isTransientRpcError } from '../../helpers/isTransientRpcError';
 
@@ -16,7 +16,7 @@ const COMPONENT_ACTION_POLL_INTERVAL_MS = 1500;
 const COMPONENT_ACTION_STATUS_REFRESH_INTERVAL_MS = 15000;
 const COMPONENT_ACTION_SELF_UPDATE_SETTLE_MS = 30000;
 const COMPONENT_ACTION_TRANSIENT_RPC_GRACE_MS = 30000;
-const COMPONENT_ACTION_STATE_DIR = '/var/run/forkop/component-actions';
+const COMPONENT_ACTION_STATE_DIR = '/var/run/nexroute/component-actions';
 const GET_UI_STATE_RPC_TIMEOUT_MS = 3000;
 
 function sleep(ms: number) {
@@ -50,7 +50,7 @@ function parseJsonObjectOutput<T>(output: string): T | null {
 }
 
 function parseComponentActionOutput(output: string) {
-  return parseJsonObjectOutput<Forkop.ComponentActionResult>(output);
+  return parseJsonObjectOutput<Nexroute.ComponentActionResult>(output);
 }
 
 function parseComponentActionResult(
@@ -68,13 +68,13 @@ function parseComponentActionStartResult(
     return null;
   }
 
-  return parsedResponse as unknown as Forkop.ComponentActionStartResult;
+  return parsedResponse as unknown as Nexroute.ComponentActionStartResult;
 }
 
 function parseSubscriptionUpdateStartResult(
   response: Awaited<ReturnType<typeof executeShellCommand>>,
 ) {
-  return parseJsonObjectOutput<Forkop.SubscriptionUpdateStartResult>(
+  return parseJsonObjectOutput<Nexroute.SubscriptionUpdateStartResult>(
     response.stdout,
   );
 }
@@ -82,7 +82,7 @@ function parseSubscriptionUpdateStartResult(
 function parseSubscriptionUpdateJobState(
   response: Awaited<ReturnType<typeof executeShellCommand>>,
 ) {
-  return parseJsonObjectOutput<Forkop.SubscriptionUpdateJobState>(
+  return parseJsonObjectOutput<Nexroute.SubscriptionUpdateJobState>(
     response.stdout,
   );
 }
@@ -90,19 +90,19 @@ function parseSubscriptionUpdateJobState(
 function parseUiActionStartResult(
   response: Awaited<ReturnType<typeof executeShellCommand>>,
 ) {
-  return parseJsonObjectOutput<Forkop.UiActionStartResult>(response.stdout);
+  return parseJsonObjectOutput<Nexroute.UiActionStartResult>(response.stdout);
 }
 
 function parseServiceActionState(
   response: Awaited<ReturnType<typeof executeShellCommand>>,
 ) {
-  return parseJsonObjectOutput<Forkop.ServiceActionState>(response.stdout);
+  return parseJsonObjectOutput<Nexroute.ServiceActionState>(response.stdout);
 }
 
 function parseLatencyActionState(
   response: Awaited<ReturnType<typeof executeShellCommand>>,
 ) {
-  return parseJsonObjectOutput<Forkop.LatencyActionState>(response.stdout);
+  return parseJsonObjectOutput<Nexroute.LatencyActionState>(response.stdout);
 }
 
 function isComponentActionJobId(jobId: string) {
@@ -123,9 +123,9 @@ async function readComponentActionState(jobId: string) {
   }
 }
 
-async function readForkopVersion() {
+async function readNexrouteVersion() {
   const response = await executeShellCommand({
-    command: '/usr/bin/forkop',
+    command: '/usr/bin/nexroute',
     args: ['show_version'],
     timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS,
   });
@@ -139,13 +139,13 @@ async function readForkopVersion() {
 
 async function isComponentActionStillRunning(
   jobId: string,
-  component: Forkop.ComponentName,
-  action: Forkop.ComponentAction,
+  component: Nexroute.ComponentName,
+  action: Nexroute.ComponentAction,
 ) {
-  const response = await callBaseMethod<Forkop.UiState>(
-    Forkop.AvailableMethods.GET_UI_STATE,
+  const response = await callBaseMethod<Nexroute.UiState>(
+    Nexroute.AvailableMethods.GET_UI_STATE,
     [],
-    '/usr/bin/forkop',
+    '/usr/bin/nexroute',
     { timeout: GET_UI_STATE_RPC_TIMEOUT_MS },
   );
 
@@ -163,12 +163,12 @@ async function isComponentActionStillRunning(
 
 function componentActionFailure(
   response: Awaited<ReturnType<typeof executeShellCommand>>,
-  parsedResponse?: Pick<Forkop.ComponentActionResult, 'message'> | null,
+  parsedResponse?: Pick<Nexroute.ComponentActionResult, 'message'> | null,
 ) {
   return {
     success: false,
     error: parsedResponse?.message || response.stderr || _('Failed to execute'),
-  } as Forkop.MethodFailureResponse;
+  } as Nexroute.MethodFailureResponse;
 }
 
 function uiActionFailure(
@@ -179,7 +179,7 @@ function uiActionFailure(
   return {
     success: false,
     error: parsedResponse?.message || response.stderr || fallback,
-  } as Forkop.MethodFailureResponse;
+  } as Nexroute.MethodFailureResponse;
 }
 
 function createTransientRpcGraceTracker(graceMs: number) {
@@ -204,160 +204,160 @@ function createTransientRpcGraceTracker(graceMs: number) {
   };
 }
 
-export const ForkopShellMethods = {
+export const NexrouteShellMethods = {
   checkDNSAvailable: async () =>
-    callBaseMethod<Forkop.DnsCheckResult>(
-      Forkop.AvailableMethods.CHECK_DNS_AVAILABLE,
+    callBaseMethod<Nexroute.DnsCheckResult>(
+      Nexroute.AvailableMethods.CHECK_DNS_AVAILABLE,
     ),
   checkFakeIP: async () =>
-    callBaseMethod<Forkop.FakeIPCheckResult>(
-      Forkop.AvailableMethods.CHECK_FAKEIP,
+    callBaseMethod<Nexroute.FakeIPCheckResult>(
+      Nexroute.AvailableMethods.CHECK_FAKEIP,
     ),
   checkNftRules: async () =>
-    callBaseMethod<Forkop.NftRulesCheckResult>(
-      Forkop.AvailableMethods.CHECK_NFT_RULES,
+    callBaseMethod<Nexroute.NftRulesCheckResult>(
+      Nexroute.AvailableMethods.CHECK_NFT_RULES,
     ),
   checkZapretRuntime: async () =>
-    callBaseMethod<Forkop.ZapretCheckResult>(
-      Forkop.AvailableMethods.CHECK_ZAPRET_RUNTIME,
+    callBaseMethod<Nexroute.ZapretCheckResult>(
+      Nexroute.AvailableMethods.CHECK_ZAPRET_RUNTIME,
     ),
   checkZapret2Runtime: async () =>
-    callBaseMethod<Forkop.Zapret2CheckResult>(
-      Forkop.AvailableMethods.CHECK_ZAPRET2_RUNTIME,
+    callBaseMethod<Nexroute.Zapret2CheckResult>(
+      Nexroute.AvailableMethods.CHECK_ZAPRET2_RUNTIME,
     ),
   checkByedpiRuntime: async () =>
-    callBaseMethod<Forkop.ByedpiCheckResult>(
-      Forkop.AvailableMethods.CHECK_BYEDPI_RUNTIME,
+    callBaseMethod<Nexroute.ByedpiCheckResult>(
+      Nexroute.AvailableMethods.CHECK_BYEDPI_RUNTIME,
     ),
   checkInboundsConfig: async () =>
-    callBaseMethod<Forkop.InboundsConfigCheckResult>(
-      Forkop.AvailableMethods.CHECK_INBOUNDS_CONFIG,
+    callBaseMethod<Nexroute.InboundsConfigCheckResult>(
+      Nexroute.AvailableMethods.CHECK_INBOUNDS_CONFIG,
     ),
   getStatus: async () =>
-    callBaseMethod<Forkop.GetStatus>(Forkop.AvailableMethods.GET_STATUS),
+    callBaseMethod<Nexroute.GetStatus>(Nexroute.AvailableMethods.GET_STATUS),
   getOutboundMetadata: async (section: string) =>
-    callBaseMethod<Forkop.GetOutboundMetadata>(
-      Forkop.AvailableMethods.GET_OUTBOUND_METADATA,
+    callBaseMethod<Nexroute.GetOutboundMetadata>(
+      Nexroute.AvailableMethods.GET_OUTBOUND_METADATA,
       [section],
     ),
   getSubscriptionMetadata: async (section: string) =>
-    callBaseMethod<Forkop.SubscriptionMetadata | Forkop.SubscriptionMetadata[]>(
-      Forkop.AvailableMethods.GET_SUBSCRIPTION_METADATA,
+    callBaseMethod<Nexroute.SubscriptionMetadata | Nexroute.SubscriptionMetadata[]>(
+      Nexroute.AvailableMethods.GET_SUBSCRIPTION_METADATA,
       [section],
     ),
   checkSingBox: async () =>
-    callBaseMethod<Forkop.SingBoxCheckResult>(
-      Forkop.AvailableMethods.CHECK_SING_BOX,
+    callBaseMethod<Nexroute.SingBoxCheckResult>(
+      Nexroute.AvailableMethods.CHECK_SING_BOX,
     ),
   checkInbounds: async () =>
-    callBaseMethod<Forkop.InboundsCheckResult>(
-      Forkop.AvailableMethods.CHECK_INBOUNDS,
+    callBaseMethod<Nexroute.InboundsCheckResult>(
+      Nexroute.AvailableMethods.CHECK_INBOUNDS,
     ),
   getSingBoxStatus: async () =>
-    callBaseMethod<Forkop.GetSingBoxStatus>(
-      Forkop.AvailableMethods.GET_SING_BOX_STATUS,
+    callBaseMethod<Nexroute.GetSingBoxStatus>(
+      Nexroute.AvailableMethods.GET_SING_BOX_STATUS,
     ),
   getZapretStatus: async () =>
-    callBaseMethod<Forkop.GetZapretStatus>(
-      Forkop.AvailableMethods.GET_ZAPRET_STATUS,
+    callBaseMethod<Nexroute.GetZapretStatus>(
+      Nexroute.AvailableMethods.GET_ZAPRET_STATUS,
     ),
   getZapret2Status: async () =>
-    callBaseMethod<Forkop.GetZapret2Status>(
-      Forkop.AvailableMethods.GET_ZAPRET2_STATUS,
+    callBaseMethod<Nexroute.GetZapret2Status>(
+      Nexroute.AvailableMethods.GET_ZAPRET2_STATUS,
     ),
   getByedpiStatus: async () =>
-    callBaseMethod<Forkop.GetByedpiStatus>(
-      Forkop.AvailableMethods.GET_BYEDPI_STATUS,
+    callBaseMethod<Nexroute.GetByedpiStatus>(
+      Nexroute.AvailableMethods.GET_BYEDPI_STATUS,
     ),
   getClashApiProxies: async () =>
-    callBaseMethod<ClashAPI.Proxies>(Forkop.AvailableMethods.CLASH_API, [
-      Forkop.AvailableClashAPIMethods.GET_PROXIES,
+    callBaseMethod<ClashAPI.Proxies>(Nexroute.AvailableMethods.CLASH_API, [
+      Nexroute.AvailableClashAPIMethods.GET_PROXIES,
     ]),
   getClashApiConnections: async () =>
-    callBaseMethod<unknown>(Forkop.AvailableMethods.CLASH_API, [
-      Forkop.AvailableClashAPIMethods.GET_CONNECTIONS,
+    callBaseMethod<unknown>(Nexroute.AvailableMethods.CLASH_API, [
+      Nexroute.AvailableClashAPIMethods.GET_CONNECTIONS,
     ]),
   getClashApiProxyLatency: async (tag: string, timeout = '5000') =>
-    callBaseMethod<Forkop.GetClashApiProxyLatency>(
-      Forkop.AvailableMethods.CLASH_API,
-      [Forkop.AvailableClashAPIMethods.GET_PROXY_LATENCY, tag, timeout],
+    callBaseMethod<Nexroute.GetClashApiProxyLatency>(
+      Nexroute.AvailableMethods.CLASH_API,
+      [Nexroute.AvailableClashAPIMethods.GET_PROXY_LATENCY, tag, timeout],
     ),
   getClashApiProxyLatencies: async (tags: string[]) =>
-    callBaseMethod<Forkop.GetClashApiProxyLatencies>(
-      Forkop.AvailableMethods.CLASH_API,
+    callBaseMethod<Nexroute.GetClashApiProxyLatencies>(
+      Nexroute.AvailableMethods.CLASH_API,
       [
-        Forkop.AvailableClashAPIMethods.GET_PROXY_LATENCIES,
+        Nexroute.AvailableClashAPIMethods.GET_PROXY_LATENCIES,
         JSON.stringify(tags),
         '5000',
       ],
     ),
   getClashApiGroupLatency: async (tag: string) =>
-    callBaseMethod<Forkop.GetClashApiGroupLatency>(
-      Forkop.AvailableMethods.CLASH_API,
-      [Forkop.AvailableClashAPIMethods.GET_GROUP_LATENCY, tag, '10000'],
+    callBaseMethod<Nexroute.GetClashApiGroupLatency>(
+      Nexroute.AvailableMethods.CLASH_API,
+      [Nexroute.AvailableClashAPIMethods.GET_GROUP_LATENCY, tag, '10000'],
     ),
   setClashApiGroupProxy: async (group: string, proxy: string) =>
-    callBaseMethod<unknown>(Forkop.AvailableMethods.CLASH_API, [
-      Forkop.AvailableClashAPIMethods.SET_GROUP_PROXY,
+    callBaseMethod<unknown>(Nexroute.AvailableMethods.CLASH_API, [
+      Nexroute.AvailableClashAPIMethods.SET_GROUP_PROXY,
       group,
       proxy,
     ]),
   closeClashApiConnection: async (connectionId: string) =>
-    callBaseMethod<unknown>(Forkop.AvailableMethods.CLASH_API, [
-      Forkop.AvailableClashAPIMethods.CLOSE_CONNECTION,
+    callBaseMethod<unknown>(Nexroute.AvailableMethods.CLASH_API, [
+      Nexroute.AvailableClashAPIMethods.CLOSE_CONNECTION,
       connectionId,
     ]),
   closeAllClashApiConnections: async () =>
-    callBaseMethod<unknown>(Forkop.AvailableMethods.CLASH_API, [
-      Forkop.AvailableClashAPIMethods.CLOSE_ALL_CONNECTIONS,
+    callBaseMethod<unknown>(Nexroute.AvailableMethods.CLASH_API, [
+      Nexroute.AvailableClashAPIMethods.CLOSE_ALL_CONNECTIONS,
     ]),
   enable: async () =>
     callBaseMethod<unknown>(
-      Forkop.AvailableMethods.ENABLE,
+      Nexroute.AvailableMethods.ENABLE,
       [],
-      '/etc/init.d/forkop',
+      '/etc/init.d/nexroute',
     ),
   disable: async () =>
     callBaseMethod<unknown>(
-      Forkop.AvailableMethods.DISABLE,
+      Nexroute.AvailableMethods.DISABLE,
       [],
-      '/etc/init.d/forkop',
+      '/etc/init.d/nexroute',
     ),
   globalCheck: async (masked = true) =>
-    callBaseMethod<unknown>(Forkop.AvailableMethods.GLOBAL_CHECK, [
+    callBaseMethod<unknown>(Nexroute.AvailableMethods.GLOBAL_CHECK, [
       masked ? 'masked' : 'raw',
     ]),
   showSingBoxConfig: async (masked = true) =>
-    callBaseMethod<unknown>(Forkop.AvailableMethods.SHOW_SING_BOX_CONFIG, [
+    callBaseMethod<unknown>(Nexroute.AvailableMethods.SHOW_SING_BOX_CONFIG, [
       masked ? 'masked' : 'raw',
     ]),
   checkLogs: async () =>
-    callBaseMethod<unknown>(Forkop.AvailableMethods.CHECK_LOGS),
+    callBaseMethod<unknown>(Nexroute.AvailableMethods.CHECK_LOGS),
   checkSingBoxLogs: async () =>
-    callBaseMethod<unknown>(Forkop.AvailableMethods.CHECK_SING_BOX_LOGS),
+    callBaseMethod<unknown>(Nexroute.AvailableMethods.CHECK_SING_BOX_LOGS),
   getSystemInfo: async () =>
-    callBaseMethod<Forkop.GetSystemInfo>(
-      Forkop.AvailableMethods.GET_SYSTEM_INFO,
+    callBaseMethod<Nexroute.GetSystemInfo>(
+      Nexroute.AvailableMethods.GET_SYSTEM_INFO,
     ),
   getServerCapabilities: async () =>
-    callBaseMethod<Forkop.GetServerCapabilities>(
-      Forkop.AvailableMethods.GET_SERVER_CAPABILITIES,
+    callBaseMethod<Nexroute.GetServerCapabilities>(
+      Nexroute.AvailableMethods.GET_SERVER_CAPABILITIES,
     ),
   getUiCapabilities: async () =>
-    callBaseMethod<Forkop.GetUiCapabilities>(
-      Forkop.AvailableMethods.GET_UI_CAPABILITIES,
+    callBaseMethod<Nexroute.GetUiCapabilities>(
+      Nexroute.AvailableMethods.GET_UI_CAPABILITIES,
     ),
   getUiState: async () =>
-    callBaseMethod<Forkop.UiState>(
-      Forkop.AvailableMethods.GET_UI_STATE,
+    callBaseMethod<Nexroute.UiState>(
+      Nexroute.AvailableMethods.GET_UI_STATE,
       [],
-      '/usr/bin/forkop',
+      '/usr/bin/nexroute',
       { timeout: GET_UI_STATE_RPC_TIMEOUT_MS },
     ),
-  serviceActionStart: async (action: Forkop.ServiceAction) => {
+  serviceActionStart: async (action: Nexroute.ServiceAction) => {
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
-      args: [Forkop.AvailableMethods.SERVICE_ACTION_ASYNC, action],
+      command: '/usr/bin/nexroute',
+      args: [Nexroute.AvailableMethods.SERVICE_ACTION_ASYNC, action],
       timeout: UI_ACTION_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseUiActionStartResult(response);
@@ -377,12 +377,12 @@ export const ForkopShellMethods = {
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.UiActionStartResult>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.UiActionStartResult>;
   },
   serviceActionStatus: async (jobId: string) => {
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
-      args: [Forkop.AvailableMethods.SERVICE_ACTION_STATUS, jobId],
+      command: '/usr/bin/nexroute',
+      args: [Nexroute.AvailableMethods.SERVICE_ACTION_STATUS, jobId],
       timeout: UI_ACTION_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseServiceActionState(response);
@@ -398,13 +398,13 @@ export const ForkopShellMethods = {
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.ServiceActionState>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.ServiceActionState>;
   },
   waitServiceActionJob: async (jobId: string, startedAt = Date.now()) => {
     while (Date.now() - startedAt < SERVICE_ACTION_TIMEOUT_MS) {
       await sleep(SERVICE_ACTION_POLL_INTERVAL_MS);
 
-      const response = await ForkopShellMethods.serviceActionStatus(jobId);
+      const response = await NexrouteShellMethods.serviceActionStatus(jobId);
 
       if (!response.success) {
         return response;
@@ -420,18 +420,18 @@ export const ForkopShellMethods = {
     return {
       success: false,
       error: _('Operation timed out'),
-    } as Forkop.MethodFailureResponse;
+    } as Nexroute.MethodFailureResponse;
   },
   latencyTestStart: async (
-    latencyType: Forkop.LatencyActionState['latency_type'],
+    latencyType: Nexroute.LatencyActionState['latency_type'],
     section: string,
     tag: string,
     timeout?: string,
   ) => {
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
+      command: '/usr/bin/nexroute',
       args: [
-        Forkop.AvailableMethods.LATENCY_TEST_ASYNC,
+        Nexroute.AvailableMethods.LATENCY_TEST_ASYNC,
         latencyType,
         section,
         tag,
@@ -456,12 +456,12 @@ export const ForkopShellMethods = {
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.UiActionStartResult>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.UiActionStartResult>;
   },
   latencyTestStatus: async (jobId: string) => {
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
-      args: [Forkop.AvailableMethods.LATENCY_TEST_STATUS, jobId],
+      command: '/usr/bin/nexroute',
+      args: [Nexroute.AvailableMethods.LATENCY_TEST_STATUS, jobId],
       timeout: UI_ACTION_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseLatencyActionState(response);
@@ -477,7 +477,7 @@ export const ForkopShellMethods = {
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.LatencyActionState>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.LatencyActionState>;
   },
   waitLatencyTestJob: async (jobId: string, startedAt = Date.now()) => {
     const transientRpc = createTransientRpcGraceTracker(
@@ -487,7 +487,7 @@ export const ForkopShellMethods = {
     while (Date.now() - startedAt < LATENCY_TEST_TIMEOUT_MS) {
       await sleep(LATENCY_TEST_POLL_INTERVAL_MS);
 
-      const response = await ForkopShellMethods.latencyTestStatus(jobId);
+      const response = await NexrouteShellMethods.latencyTestStatus(jobId);
 
       if (!response.success) {
         if (transientRpc.shouldContinue(response.error)) {
@@ -508,15 +508,15 @@ export const ForkopShellMethods = {
     return {
       success: false,
       error: _('Operation timed out'),
-    } as Forkop.MethodFailureResponse;
+    } as Nexroute.MethodFailureResponse;
   },
   uiActionAck: async (
     kind: 'service' | 'latency' | 'component' | 'subscription',
     jobId: string,
   ) => {
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
-      args: [Forkop.AvailableMethods.UI_ACTION_ACK, kind, jobId],
+      command: '/usr/bin/nexroute',
+      args: [Nexroute.AvailableMethods.UI_ACTION_ACK, kind, jobId],
       timeout: UI_ACTION_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseUiActionStartResult(response);
@@ -528,15 +528,15 @@ export const ForkopShellMethods = {
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.UiActionStartResult>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.UiActionStartResult>;
   },
   componentActionStart: async (
-    component: Forkop.ComponentName,
-    action: Forkop.ComponentAction,
+    component: Nexroute.ComponentName,
+    action: Nexroute.ComponentAction,
   ) => {
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
-      args: [Forkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
+      command: '/usr/bin/nexroute',
+      args: [Nexroute.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseComponentActionStartResult(response);
@@ -552,12 +552,12 @@ export const ForkopShellMethods = {
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.ComponentActionStartResult>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.ComponentActionStartResult>;
   },
   componentActionStatus: async (jobId: string) => {
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
-      args: [Forkop.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
+      command: '/usr/bin/nexroute',
+      args: [Nexroute.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseComponentActionResult(response);
@@ -569,16 +569,16 @@ export const ForkopShellMethods = {
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.ComponentActionResult>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.ComponentActionResult>;
   },
   componentUpdateCheckCache: async () =>
-    callBaseMethod<Forkop.ComponentUpdateCheckCache>(
-      Forkop.AvailableMethods.COMPONENT_UPDATE_CHECK_CACHE,
+    callBaseMethod<Nexroute.ComponentUpdateCheckCache>(
+      Nexroute.AvailableMethods.COMPONENT_UPDATE_CHECK_CACHE,
     ),
   waitComponentActionJob: async (
     jobId: string,
-    component: Forkop.ComponentName,
-    action: Forkop.ComponentAction,
+    component: Nexroute.ComponentName,
+    action: Nexroute.ComponentAction,
     expectedLatestVersion?: string,
   ) => {
     let selfUpdateVersionMatchedAt = 0;
@@ -598,7 +598,7 @@ export const ForkopShellMethods = {
           return {
             success: true,
             data: stateResponse,
-          } as Forkop.MethodSuccessResponse<Forkop.ComponentActionResult>;
+          } as Nexroute.MethodSuccessResponse<Nexroute.ComponentActionResult>;
         }
 
         if (
@@ -611,8 +611,8 @@ export const ForkopShellMethods = {
 
       lastStatusRefreshAt = Date.now();
       const statusResponse = await executeShellCommand({
-        command: '/usr/bin/forkop',
-        args: [Forkop.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
+        command: '/usr/bin/nexroute',
+        args: [Nexroute.AvailableMethods.COMPONENT_ACTION_STATUS, jobId],
         timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS,
       });
       const parsedResponse = parseComponentActionResult(statusResponse);
@@ -634,9 +634,9 @@ export const ForkopShellMethods = {
           continue;
         }
 
-        if (component === 'forkop' && action === 'install') {
+        if (component === 'nexroute' && action === 'install') {
           const installedVersion = expectedLatestVersion
-            ? await readForkopVersion()
+            ? await readNexrouteVersion()
             : '';
 
           if (
@@ -657,13 +657,13 @@ export const ForkopShellMethods = {
                   success: true,
                   component,
                   action,
-                  message: translate('Forkop has been installed'),
+                  message: translate('Nexroute has been installed'),
                   current_version: installedVersion,
                   latest_version: expectedLatestVersion,
                   changed: true,
                   status: 'latest',
                 },
-              } as Forkop.MethodSuccessResponse<Forkop.ComponentActionResult>;
+              } as Nexroute.MethodSuccessResponse<Nexroute.ComponentActionResult>;
             }
           }
 
@@ -681,17 +681,17 @@ export const ForkopShellMethods = {
       return {
         success: true,
         data: parsedResponse,
-      } as Forkop.MethodSuccessResponse<Forkop.ComponentActionResult>;
+      } as Nexroute.MethodSuccessResponse<Nexroute.ComponentActionResult>;
     }
   },
   subscriptionUpdateStart: async (section?: string, sourceIndex?: number) => {
     const startArgs = [
-      Forkop.AvailableMethods.SUBSCRIPTION_UPDATE_ASYNC,
+      Nexroute.AvailableMethods.SUBSCRIPTION_UPDATE_ASYNC,
       ...(section ? [section] : []),
       ...(section && sourceIndex !== undefined ? [String(sourceIndex)] : []),
     ];
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
+      command: '/usr/bin/nexroute',
       args: startArgs,
       timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS,
     });
@@ -708,18 +708,18 @@ export const ForkopShellMethods = {
           parsedResponse?.message ||
           response.stderr ||
           _('Subscription update failed'),
-      } as Forkop.MethodFailureResponse;
+      } as Nexroute.MethodFailureResponse;
     }
 
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.SubscriptionUpdateStartResult>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.SubscriptionUpdateStartResult>;
   },
   subscriptionUpdateStatus: async (jobId: string) => {
     const response = await executeShellCommand({
-      command: '/usr/bin/forkop',
-      args: [Forkop.AvailableMethods.SUBSCRIPTION_UPDATE_STATUS, jobId],
+      command: '/usr/bin/nexroute',
+      args: [Nexroute.AvailableMethods.SUBSCRIPTION_UPDATE_STATUS, jobId],
       timeout: SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseSubscriptionUpdateJobState(response);
@@ -728,13 +728,13 @@ export const ForkopShellMethods = {
       return {
         success: false,
         error: response.stderr || _('Subscription update failed'),
-      } as Forkop.MethodFailureResponse;
+      } as Nexroute.MethodFailureResponse;
     }
 
     return {
       success: true,
       data: parsedResponse,
-    } as Forkop.MethodSuccessResponse<Forkop.SubscriptionUpdateJobState>;
+    } as Nexroute.MethodSuccessResponse<Nexroute.SubscriptionUpdateJobState>;
   },
   waitSubscriptionUpdateJob: async (jobId: string) => {
     const transientRpc = createTransientRpcGraceTracker(
@@ -744,7 +744,7 @@ export const ForkopShellMethods = {
     while (true) {
       await sleep(SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS);
 
-      const response = await ForkopShellMethods.subscriptionUpdateStatus(jobId);
+      const response = await NexrouteShellMethods.subscriptionUpdateStatus(jobId);
 
       if (!response.success) {
         if (transientRpc.shouldContinue(response.error)) {

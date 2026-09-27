@@ -1,27 +1,27 @@
 {
-  "luci-app-forkop": {
-    "description": "Grant UCI and RPC access to LuCI app Forkop",
+  "luci-app-nexroute": {
+    "description": "Grant UCI and RPC access to LuCI app Nexroute",
     "read": {
       "file": {
-        "/etc/init.d/forkop": [
+        "/etc/init.d/nexroute": [
           "exec"
         ],
-        "/var/run/forkop/section-cache/*": [
+        "/var/run/nexroute/section-cache/*": [
           "read"
         ],
-        "/var/run/forkop/component-actions/*": [
+        "/var/run/nexroute/component-actions/*": [
           "read"
         ],
-        "/var/run/forkop/ui-state/*": [
+        "/var/run/nexroute/ui-state/*": [
           "read"
         ],
-        "/var/run/forkop/ui-state/service-actions/*": [
+        "/var/run/nexroute/ui-state/service-actions/*": [
           "read"
         ],
-        "/var/run/forkop/ui-state/latency-actions/*": [
+        "/var/run/nexroute/ui-state/latency-actions/*": [
           "read"
         ],
-        "/usr/bin/forkop": [
+        "/usr/bin/nexroute": [
           "exec"
         ]
       },
@@ -38,23 +38,23 @@
         ]
       },
       "uci": [
-        "forkop"
+        "nexroute"
       ]
     },
     "write": {
       "file": {
-        "/var/run/forkop/ui-state/*": [
+        "/var/run/nexroute/ui-state/*": [
           "write"
         ],
-        "/var/run/forkop/ui-state/service-actions/*": [
+        "/var/run/nexroute/ui-state/service-actions/*": [
           "write"
         ],
-        "/var/run/forkop/ui-state/latency-actions/*": [
+        "/var/run/nexroute/ui-state/latency-actions/*": [
           "write"
         ]
       },
       "uci": [
-        "forkop"
+        "nexroute"
       ]
     }
   }

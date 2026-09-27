@@ -11,8 +11,8 @@ body:
         Спасибо за создание отчета об ошибке!
         
         Перед отправкой, пожалуйста:
-        - Проверьте [существующие issues](https://github.com/ushan0v/forkop/issues)
-        - Просмотрите [README проекта](https://github.com/ushan0v/forkop#readme)
+        - Проверьте [существующие issues](https://github.com/filippxda26/Nexroute/issues)
+        - Просмотрите [README проекта](https://github.com/filippxda26/Nexroute#readme)
 
   - type: textarea
     id: description
@@ -53,7 +53,7 @@ body:
         Информация о вашей системе (заполните всё применимое)
       value: |
         - **OpenWrt версия**: 
-        - **Forkop версия**:
+        - **Nexroute версия**:
         - **Роутер модель**: 
         - **Sing-box версия**: 
       render: markdown
@@ -68,7 +68,7 @@ body:
         Релевантные части конфигурации (удалите чувствительную информацию!)
       placeholder: |
         Например:
-        - Содержимое /etc/config/forkop
+        - Содержимое /etc/config/nexroute
         - Конфигурация sing-box (если релевантно)
         - Дополнительные конфиги, которые потребуются wireless/network/dhcp и т.д.
       render: shell

@@ -2,7 +2,7 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -69,7 +69,7 @@ JSON
 
 output="$WORK_DIR/config.json"
 mkdir -p "$output.section-cache"
-ucode -L "$FORKOP_LIB" "$FORKOP_LIB/singbox/generator.uc" generate-config-fixture \
+ucode -L "$NEXROUTE_LIB" "$NEXROUTE_LIB/singbox/generator.uc" generate-config-fixture \
   "$WORK_DIR/fixture.json" "$output" "127.0.0.1"
 
 urltest_count="$(ucode -e '
@@ -148,7 +148,7 @@ JSON
 
 multi_output="$WORK_DIR/multi-config.json"
 mkdir -p "$multi_output.section-cache"
-ucode -L "$FORKOP_LIB" "$FORKOP_LIB/singbox/generator.uc" generate-config-fixture \
+ucode -L "$NEXROUTE_LIB" "$NEXROUTE_LIB/singbox/generator.uc" generate-config-fixture \
   "$WORK_DIR/multi-fixture.json" "$multi_output" "127.0.0.1"
 
 ucode -e '

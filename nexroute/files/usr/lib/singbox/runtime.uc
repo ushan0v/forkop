@@ -5,39 +5,39 @@ let uci_core = require("core.uci");
 let common = require("core.common");
 let runtime_dns = require("singbox.dns");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
 const TMP_SING_BOX_FOLDER = getenv("TMP_SING_BOX_FOLDER") || "/tmp/sing-box";
 const TMP_RULESET_FOLDER = getenv("TMP_RULESET_FOLDER") || TMP_SING_BOX_FOLDER + "/rulesets";
 const TMP_SUBSCRIPTION_FOLDER = getenv("TMP_SUBSCRIPTION_FOLDER") || TMP_SING_BOX_FOLDER + "/subscriptions";
-const RUNTIME_STATE_DIR = getenv("FORKOP_RUNTIME_STATE_DIR") || "/var/run/forkop";
-const SUBSCRIPTION_UPDATE_STATE_DIR = getenv("FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR") || RUNTIME_STATE_DIR + "/subscription-update";
-const SUBSCRIPTION_LINKS_DIR = getenv("FORKOP_SUBSCRIPTION_LINKS_DIR") || RUNTIME_STATE_DIR + "/subscription-links";
-const SUBSCRIPTION_METADATA_DIR = getenv("FORKOP_SUBSCRIPTION_METADATA_DIR") || RUNTIME_STATE_DIR + "/subscription-metadata";
-const OUTBOUND_METADATA_DIR = getenv("FORKOP_OUTBOUND_METADATA_DIR") || RUNTIME_STATE_DIR + "/outbound-metadata";
-const SECTION_CACHE_DIR = getenv("FORKOP_SECTION_CACHE_DIR") || RUNTIME_STATE_DIR + "/section-cache";
-const RUNTIME_CACHE_FORMAT_FILE = getenv("FORKOP_RUNTIME_CACHE_FORMAT_FILE") || RUNTIME_STATE_DIR + "/cache-format";
-const RUNTIME_CACHE_FORMAT = getenv("FORKOP_RUNTIME_CACHE_FORMAT") || "8";
-const PERSISTENT_SUBSCRIPTION_CACHE_DIR = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR") || "/etc/forkop/subscription-cache";
-const PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE") || PERSISTENT_SUBSCRIPTION_CACHE_DIR + "/cache-format";
-const PERSISTENT_SUBSCRIPTION_CACHE_FORMAT = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT") || "7";
-const PENDING_RELOAD_FILE = getenv("FORKOP_PENDING_RELOAD_FILE") || RUNTIME_STATE_DIR + "/reload.pending";
-const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || "/etc/init.d/forkop";
-const NFT_TABLE_NAME = getenv("NFT_TABLE_NAME") || "ForkopTable";
-const NFT_COMMON_SET_NAME = getenv("NFT_COMMON_SET_NAME") || "forkop_subnets";
-const NFT_COMMON6_SET_NAME = getenv("NFT_COMMON6_SET_NAME") || "forkop_subnets6";
-const NFT_PORT_SET_NAME = getenv("NFT_PORT_SET_NAME") || "forkop_ports";
-const NFT_IP_PORT_SET_NAME = getenv("NFT_IP_PORT_SET_NAME") || "forkop_ip_ports";
-const NFT_IP_PORT6_SET_NAME = getenv("NFT_IP_PORT6_SET_NAME") || "forkop_ip6_ports";
-const NFT_INTERFACE_SET_NAME = getenv("NFT_INTERFACE_SET_NAME") || "forkop_interfaces";
+const RUNTIME_STATE_DIR = getenv("NEXROUTE_RUNTIME_STATE_DIR") || "/var/run/nexroute";
+const SUBSCRIPTION_UPDATE_STATE_DIR = getenv("NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR") || RUNTIME_STATE_DIR + "/subscription-update";
+const SUBSCRIPTION_LINKS_DIR = getenv("NEXROUTE_SUBSCRIPTION_LINKS_DIR") || RUNTIME_STATE_DIR + "/subscription-links";
+const SUBSCRIPTION_METADATA_DIR = getenv("NEXROUTE_SUBSCRIPTION_METADATA_DIR") || RUNTIME_STATE_DIR + "/subscription-metadata";
+const OUTBOUND_METADATA_DIR = getenv("NEXROUTE_OUTBOUND_METADATA_DIR") || RUNTIME_STATE_DIR + "/outbound-metadata";
+const SECTION_CACHE_DIR = getenv("NEXROUTE_SECTION_CACHE_DIR") || RUNTIME_STATE_DIR + "/section-cache";
+const RUNTIME_CACHE_FORMAT_FILE = getenv("NEXROUTE_RUNTIME_CACHE_FORMAT_FILE") || RUNTIME_STATE_DIR + "/cache-format";
+const RUNTIME_CACHE_FORMAT = getenv("NEXROUTE_RUNTIME_CACHE_FORMAT") || "8";
+const PERSISTENT_SUBSCRIPTION_CACHE_DIR = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR") || "/etc/nexroute/subscription-cache";
+const PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE") || PERSISTENT_SUBSCRIPTION_CACHE_DIR + "/cache-format";
+const PERSISTENT_SUBSCRIPTION_CACHE_FORMAT = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT") || "7";
+const PENDING_RELOAD_FILE = getenv("NEXROUTE_PENDING_RELOAD_FILE") || RUNTIME_STATE_DIR + "/reload.pending";
+const SERVICE_INIT = getenv("NEXROUTE_SERVICE_INIT") || "/etc/init.d/nexroute";
+const NFT_TABLE_NAME = getenv("NFT_TABLE_NAME") || "NexrouteTable";
+const NFT_COMMON_SET_NAME = getenv("NFT_COMMON_SET_NAME") || "nexroute_subnets";
+const NFT_COMMON6_SET_NAME = getenv("NFT_COMMON6_SET_NAME") || "nexroute_subnets6";
+const NFT_PORT_SET_NAME = getenv("NFT_PORT_SET_NAME") || "nexroute_ports";
+const NFT_IP_PORT_SET_NAME = getenv("NFT_IP_PORT_SET_NAME") || "nexroute_ip_ports";
+const NFT_IP_PORT6_SET_NAME = getenv("NFT_IP_PORT6_SET_NAME") || "nexroute_ip6_ports";
+const NFT_INTERFACE_SET_NAME = getenv("NFT_INTERFACE_SET_NAME") || "nexroute_interfaces";
 const NFT_LOCALV4_SET_NAME = getenv("NFT_LOCALV4_SET_NAME") || "localv4";
 const NFT_LOCALV6_SET_NAME = getenv("NFT_LOCALV6_SET_NAME") || "localv6";
 const NFT_FAKEIP_MARK = getenv("NFT_FAKEIP_MARK") || "0x04000000";
 const SB_SERVICE_MIXED_INBOUND_ADDRESS = getenv("SB_SERVICE_MIXED_INBOUND_ADDRESS") || "127.0.0.1";
 const SB_SERVICE_MIXED_INBOUND_PORT = getenv("SB_SERVICE_MIXED_INBOUND_PORT") || "4534";
-const SB_VARIANT_STATE_FILE = getenv("SB_VARIANT_STATE_FILE") || "/etc/forkop/sing-box-variant";
-const SB_VERSION_STATE_FILE = getenv("SB_VERSION_STATE_FILE") || "/etc/forkop/sing-box-version";
-const SB_MANAGED_SERVICE_MARKER = getenv("SB_MANAGED_SERVICE_MARKER") || "Forkop managed sing-box service for binary variants";
+const SB_VARIANT_STATE_FILE = getenv("SB_VARIANT_STATE_FILE") || "/etc/nexroute/sing-box-variant";
+const SB_VERSION_STATE_FILE = getenv("SB_VERSION_STATE_FILE") || "/etc/nexroute/sing-box-version";
+const SB_MANAGED_SERVICE_MARKER = getenv("SB_MANAGED_SERVICE_MARKER") || "Nexroute managed sing-box service for binary variants";
 
 function as_string(value) {
     return value == null ? "" : "" + value;
@@ -337,7 +337,7 @@ function sing_box_variant() {
 
 function log_message(message, level) {
     level = as_string(level || "info");
-    command_success_from_args([ "logger", "-t", "forkop", "[" + level + "] " + as_string(message) ]);
+    command_success_from_args([ "logger", "-t", "nexroute", "[" + level + "] " + as_string(message) ]);
 }
 
 function module_env_capture(env, args) {
@@ -423,7 +423,7 @@ function sing_box_compressed_marker_set() {
 }
 
 function install_managed_service_script() {
-    let tmp = "/etc/init.d/sing-box.forkop." + owner_pid();
+    let tmp = "/etc/init.d/sing-box.nexroute." + owner_pid();
     if (!write_file(tmp, managed_service_text()))
         return false;
     if (!command_success_from_args([ "chmod", "0755", tmp ])) {
@@ -587,30 +587,30 @@ function service_listen_address_value(settings) {
             return address;
     }
 
-    log_message("Failed to determine the listening IP address. Please open an issue to report this problem: https://github.com/ushan0v/forkop/issues", "error");
+    log_message("Failed to determine the listening IP address. Please open an issue to report this problem: https://github.com/filippxda26/Nexroute/issues", "error");
     return "";
 }
 
 function subscription_cache_env() {
     return {
-        FORKOP_CONFIG_NAME: CONFIG_NAME,
-        FORKOP_LIB: LIB_DIR,
+        NEXROUTE_CONFIG_NAME: CONFIG_NAME,
+        NEXROUTE_LIB: LIB_DIR,
         TMP_SING_BOX_FOLDER,
         TMP_RULESET_FOLDER,
         TMP_SUBSCRIPTION_FOLDER,
-        FORKOP_RUNTIME_STATE_DIR: RUNTIME_STATE_DIR,
-        FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR: SUBSCRIPTION_UPDATE_STATE_DIR,
-        FORKOP_SUBSCRIPTION_LINKS_DIR: SUBSCRIPTION_LINKS_DIR,
-        FORKOP_SUBSCRIPTION_METADATA_DIR: SUBSCRIPTION_METADATA_DIR,
-        FORKOP_OUTBOUND_METADATA_DIR: OUTBOUND_METADATA_DIR,
-        FORKOP_SECTION_CACHE_DIR: SECTION_CACHE_DIR,
-        FORKOP_RUNTIME_CACHE_FORMAT_FILE: RUNTIME_CACHE_FORMAT_FILE,
-        FORKOP_RUNTIME_CACHE_FORMAT: RUNTIME_CACHE_FORMAT,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR: PERSISTENT_SUBSCRIPTION_CACHE_DIR,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE: PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT: PERSISTENT_SUBSCRIPTION_CACHE_FORMAT,
-        FORKOP_PENDING_RELOAD_FILE: PENDING_RELOAD_FILE,
-        FORKOP_SERVICE_INIT: SERVICE_INIT
+        NEXROUTE_RUNTIME_STATE_DIR: RUNTIME_STATE_DIR,
+        NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR: SUBSCRIPTION_UPDATE_STATE_DIR,
+        NEXROUTE_SUBSCRIPTION_LINKS_DIR: SUBSCRIPTION_LINKS_DIR,
+        NEXROUTE_SUBSCRIPTION_METADATA_DIR: SUBSCRIPTION_METADATA_DIR,
+        NEXROUTE_OUTBOUND_METADATA_DIR: OUTBOUND_METADATA_DIR,
+        NEXROUTE_SECTION_CACHE_DIR: SECTION_CACHE_DIR,
+        NEXROUTE_RUNTIME_CACHE_FORMAT_FILE: RUNTIME_CACHE_FORMAT_FILE,
+        NEXROUTE_RUNTIME_CACHE_FORMAT: RUNTIME_CACHE_FORMAT,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR: PERSISTENT_SUBSCRIPTION_CACHE_DIR,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE: PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT: PERSISTENT_SUBSCRIPTION_CACHE_FORMAT,
+        NEXROUTE_PENDING_RELOAD_FILE: PENDING_RELOAD_FILE,
+        NEXROUTE_SERVICE_INIT: SERVICE_INIT
     };
 }
 

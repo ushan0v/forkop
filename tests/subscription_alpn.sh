@@ -2,7 +2,7 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PARSER="$ROOT_DIR/forkop/files/usr/lib/subscription/parser.uc"
+PARSER="$ROOT_DIR/nexroute/files/usr/lib/subscription/parser.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {

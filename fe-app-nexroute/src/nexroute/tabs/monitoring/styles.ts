@@ -1,26 +1,26 @@
 // language=CSS
-import { FORKOP_UCI_PACKAGE as FORKOP_CBI_PREFIX } from '../../../constants';
+import { NEXROUTE_UCI_PACKAGE as NEXROUTE_CBI_PREFIX } from '../../../constants';
 
 export const styles = `
-#cbi-${FORKOP_CBI_PREFIX}-monitoring-_mount_node {
+#cbi-${NEXROUTE_CBI_PREFIX}-monitoring-_mount_node {
     margin: 16px 0 22px;
     padding: 0;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-monitoring-_mount_node > .cbi-value-title {
+#cbi-${NEXROUTE_CBI_PREFIX}-monitoring-_mount_node > .cbi-value-title {
     display: none;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-monitoring-_mount_node > .cbi-value-field {
+#cbi-${NEXROUTE_CBI_PREFIX}-monitoring-_mount_node > .cbi-value-field {
     margin-left: 0;
     width: 100%;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-monitoring-_mount_node > div {
+#cbi-${NEXROUTE_CBI_PREFIX}-monitoring-_mount_node > div {
     width: 100%;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-monitoring > h3 {
+#cbi-${NEXROUTE_CBI_PREFIX}-monitoring > h3 {
     display: none;
 }
 

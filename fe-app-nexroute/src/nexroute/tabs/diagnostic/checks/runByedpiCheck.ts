@@ -1,5 +1,5 @@
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { ForkopShellMethods } from '../../../methods';
+import { NexrouteShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { IDiagnosticsChecksItem } from '../../../services';
 import { getCheckItemsMeta } from './getCheckItemsMeta';
@@ -16,7 +16,7 @@ export async function runByedpiCheck() {
     items: [],
   });
 
-  const byedpiStatus = await ForkopShellMethods.getByedpiStatus();
+  const byedpiStatus = await NexrouteShellMethods.getByedpiStatus();
 
   if (!byedpiStatus.success) {
     updateCheckStore({
@@ -40,7 +40,7 @@ export async function runByedpiCheck() {
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
   const restartCount = Number(data.restart_count || 0);
   const runtimeUnstable = Boolean(data.runtime_unstable);
-  const forkopRuntimeReady =
+  const nexrouteRuntimeReady =
     !hasByedpiRules ||
     (runningProcesses === expectedProcesses &&
       supervisorProcesses === expectedProcesses);
@@ -81,20 +81,20 @@ export async function runByedpiCheck() {
     },
     {
       state:
-        unexpectedRuntime || !forkopRuntimeReady
+        unexpectedRuntime || !nexrouteRuntimeReady
           ? 'error'
           : runtimeUnstable
             ? 'warning'
             : 'success',
       key: hasByedpiRules
         ? runtimeUnstable
-          ? _('Forkop-managed ciadpi runtime has restarted')
-          : forkopRuntimeReady
-            ? _('Forkop-managed ciadpi runtime is ready')
-            : _('Forkop-managed ciadpi runtime is not ready')
+          ? _('Nexroute-managed ciadpi runtime has restarted')
+          : nexrouteRuntimeReady
+            ? _('Nexroute-managed ciadpi runtime is ready')
+            : _('Nexroute-managed ciadpi runtime is not ready')
         : unexpectedRuntime
-          ? _('Unexpected Forkop-managed ciadpi runtime is running')
-          : _('Forkop-managed ciadpi runtime is not running'),
+          ? _('Unexpected Nexroute-managed ciadpi runtime is running')
+          : _('Nexroute-managed ciadpi runtime is not running'),
       value: hasByedpiRules
         ? runtimeUnstable
           ? `${restartCount}`
@@ -116,7 +116,7 @@ export async function runByedpiCheck() {
           : 'success',
       key: standaloneServiceRunning
         ? hasByedpiRules
-          ? _('Standalone ByeDPI is active together with Forkop ByeDPI rules')
+          ? _('Standalone ByeDPI is active together with Nexroute ByeDPI rules')
           : _('Standalone ByeDPI service is active')
         : standaloneAutostartRisk
           ? _('Standalone ByeDPI autostart is enabled')

@@ -1,5 +1,5 @@
 import { executeShellCommand } from '../../../helpers';
-import { Forkop } from '../../types';
+import { Nexroute } from '../../types';
 
 interface CallBaseMethodOptions {
   allowNonZeroWithStdout?: boolean;
@@ -7,11 +7,11 @@ interface CallBaseMethodOptions {
 }
 
 export async function callBaseMethod<T>(
-  method: Forkop.AvailableMethods,
+  method: Nexroute.AvailableMethods,
   args: string[] = [],
-  command: string = '/usr/bin/forkop',
+  command: string = '/usr/bin/nexroute',
   options: CallBaseMethodOptions = {},
-): Promise<Forkop.MethodResponse<T>> {
+): Promise<Nexroute.MethodResponse<T>> {
   try {
     const response = await executeShellCommand({
       command,

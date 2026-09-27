@@ -1,6 +1,6 @@
 ---
 name: ✨ Запрос новой функции
-description: Предложите новую функцию или улучшение для Forkop
+description: Предложите новую функцию или улучшение для Nexroute
 title: "[FEATURE] "
 labels: ["enhancement", "needs-discussion"]
 assignees: []
@@ -11,14 +11,14 @@ body:
         Спасибо за предложение новой функции!
         
         Перед отправкой, пожалуйста:
-        - Проверьте [существующие запросы](https://github.com/ushan0v/forkop/issues?q=is%3Aissue+label%3Aenhancement)
-        - Убедитесь, что функции не существует в [README проекта](https://github.com/ushan0v/forkop#readme)
+        - Проверьте [существующие запросы](https://github.com/filippxda26/Nexroute/issues?q=is%3Aissue+label%3Aenhancement)
+        - Убедитесь, что функции не существует в [README проекта](https://github.com/filippxda26/Nexroute#readme)
 
   - type: textarea
     id: summary
     attributes:
       label: Краткое описание
-      description: Краткое описание предлагаемой функции для Forkop
+      description: Краткое описание предлагаемой функции для Nexroute
       placeholder: В одном предложении опишите, что вы хотите добавить...
     validations:
       required: true
@@ -40,7 +40,7 @@ body:
       label: 💡 Предлагаемое решение
       description: Четкое и краткое описание того, что вы хотите реализовать
       placeholder: |
-        Я хочу, чтобы Forkop мог [...]
+        Я хочу, чтобы Nexroute мог [...]
         Предлагаю добавить функцию, которая [...]
         Можно было бы улучшить [...] путем [...]
     validations:

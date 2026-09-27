@@ -2,7 +2,7 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PACKAGES_UC="${PACKAGES_UC:-$ROOT_DIR/forkop/files/usr/lib/core/packages.uc}"
+PACKAGES_UC="${PACKAGES_UC:-$ROOT_DIR/nexroute/files/usr/lib/core/packages.uc}"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {

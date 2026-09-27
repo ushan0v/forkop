@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { applyUiStateToStore } from '../uiState.service';
 import { store } from '../store.service';
-import { Forkop } from '../../types';
+import { Nexroute } from '../../types';
 import {
   clearLocalActionOverlay,
   setLocalComponentAction,
@@ -11,12 +11,12 @@ import {
 } from '../localActionOverlay.service';
 
 function createUiState(
-  actions: Partial<Forkop.UiState['actions']> = {},
-  capabilities: Partial<Forkop.UiState['capabilities']> = {},
-): Forkop.UiState {
+  actions: Partial<Nexroute.UiState['actions']> = {},
+  capabilities: Partial<Nexroute.UiState['capabilities']> = {},
+): Nexroute.UiState {
   return {
     service: {
-      forkop: {
+      nexroute: {
         running: 0,
         enabled: 1,
         status: 'starting',
@@ -114,9 +114,9 @@ describe('applyUiStateToStore', () => {
       loading: false,
       failed: false,
       data: {
-        forkopEnabled: 1,
-        forkopRunning: 0,
-        forkopStatus: 'starting',
+        nexrouteEnabled: 1,
+        nexrouteRunning: 0,
+        nexrouteStatus: 'starting',
       },
     });
     expect(state.diagnosticsSystemInfo).toMatchObject({

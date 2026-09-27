@@ -59,18 +59,18 @@ export function shouldResetDiagnosticsChecks({
 export function shouldDisableDiagnosticRunAction({
   providerInfoLoaded,
   servicesInfoLoading,
-  forkopRunning,
+  nexrouteRunning,
   mutatingServiceActionLoading,
 }: {
   providerInfoLoaded: boolean;
   servicesInfoLoading: boolean;
-  forkopRunning: boolean;
+  nexrouteRunning: boolean;
   mutatingServiceActionLoading: boolean;
 }) {
   return (
     !providerInfoLoaded ||
     servicesInfoLoading ||
-    !forkopRunning ||
+    !nexrouteRunning ||
     mutatingServiceActionLoading
   );
 }
@@ -100,43 +100,43 @@ export function getAvailableActionsDisabledState({
 }
 
 export function shouldShowRestartAction({
-  forkopRunning,
+  nexrouteRunning,
   restartLoading,
   startLoading,
   stopLoading,
 }: {
-  forkopRunning: boolean;
+  nexrouteRunning: boolean;
   restartLoading: boolean;
   startLoading: boolean;
   stopLoading: boolean;
 }) {
-  return restartLoading || (forkopRunning && !startLoading && !stopLoading);
+  return restartLoading || (nexrouteRunning && !startLoading && !stopLoading);
 }
 
 export function shouldShowStartAction({
-  forkopRunning,
+  nexrouteRunning,
   restartLoading,
   startLoading,
   stopLoading,
 }: {
-  forkopRunning: boolean;
+  nexrouteRunning: boolean;
   restartLoading: boolean;
   startLoading: boolean;
   stopLoading: boolean;
 }) {
-  return startLoading || (!restartLoading && !forkopRunning && !stopLoading);
+  return startLoading || (!restartLoading && !nexrouteRunning && !stopLoading);
 }
 
 export function shouldShowStopAction({
-  forkopRunning,
+  nexrouteRunning,
   restartLoading,
   startLoading,
   stopLoading,
 }: {
-  forkopRunning: boolean;
+  nexrouteRunning: boolean;
   restartLoading: boolean;
   startLoading: boolean;
   stopLoading: boolean;
 }) {
-  return stopLoading || restartLoading || (forkopRunning && !startLoading);
+  return stopLoading || restartLoading || (nexrouteRunning && !startLoading);
 }

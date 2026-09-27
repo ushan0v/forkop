@@ -6,10 +6,10 @@ function as_string(value) {
     return value == null ? "" : "" + value;
 }
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
-const BIN_PATH = getenv("FORKOP_BIN") || "/usr/bin/forkop";
-const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || "/etc/init.d/forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
+const BIN_PATH = getenv("NEXROUTE_BIN") || "/usr/bin/nexroute";
+const SERVICE_INIT = getenv("NEXROUTE_SERVICE_INIT") || "/etc/init.d/nexroute";
 
 function shell_quote(value) {
     return "'" + replace(as_string(value), /'/g, "'\\''") + "'";
@@ -53,14 +53,14 @@ function restore_dnsmasq_failsafe_on_loader_failure(command) {
 function show_help() {
     print("Usage: ", BIN_PATH, " COMMAND\n\n");
     print("Available commands:\n");
-    print("    start                   Start Forkop service\n");
-    print("    stop                    Stop Forkop service\n");
-    print("    reload                  Reload Forkop configuration\n");
-    print("    restart                 Restart Forkop service\n");
-    print("    enable                  Enable Forkop autostart\n");
-    print("    disable                 Disable Forkop autostart\n");
-    print("    uninstall               Remove Forkop files installed outside opkg/apk\n");
-    print("    main                    Run main Forkop process\n");
+    print("    start                   Start Nexroute service\n");
+    print("    stop                    Stop Nexroute service\n");
+    print("    reload                  Reload Nexroute configuration\n");
+    print("    restart                 Restart Nexroute service\n");
+    print("    enable                  Enable Nexroute autostart\n");
+    print("    disable                 Disable Nexroute autostart\n");
+    print("    uninstall               Remove Nexroute files installed outside opkg/apk\n");
+    print("    main                    Run main Nexroute process\n");
     print("    list_update             Update remote lists\n");
     print("    list_update_if_due      Update remote lists only when the configured interval has elapsed\n");
     print("    subscription_update [rule] [source_index]\n");
@@ -77,27 +77,27 @@ function show_help() {
     print("    check_sing_box          Check sing-box installation and status\n");
     print("    check_inbounds_config   Check whether enabled server inbounds are configured\n");
     print("    check_inbounds          Check server inbounds from the Servers tab\n");
-    print("    check_logs              Show Forkop logs from system journal\n");
+    print("    check_logs              Show Nexroute logs from system journal\n");
     print("    check_sing_box_logs     Show sing-box logs\n");
     print("    check_fakeip            Test sing-box FakeIP DNS\n");
     print("    check_zapret_runtime    Check external zapret provider state\n");
     print("    check_zapret2_runtime   Check external zapret2 provider state\n");
     print("    check_byedpi_runtime    Check external ByeDPI provider state\n");
     print("    neutralize_zapret_defaults\n");
-    print("                            Compatibility no-op; Forkop does not manage standalone zapret\n");
+    print("                            Compatibility no-op; Nexroute does not manage standalone zapret\n");
     print("    clash_api               Clash API interface for managing proxies and groups\n");
-    print("    show_config             Display current Forkop configuration\n");
-    print("    show_version            Show Forkop version\n");
+    print("    show_config             Display current Nexroute configuration\n");
+    print("    show_version            Show Nexroute version\n");
     print("    show_sing_box_config    Show sing-box configuration\n");
     print("    show_sing_box_version   Show sing-box version\n");
-    print("    get_status              Get Forkop service status\n");
+    print("    get_status              Get Nexroute service status\n");
     print("    get_outbound_metadata   Get generated outbound display names and countries\n");
     print("    get_subscription_metadata\n");
     print("                            Get UI-only metadata for a subscription rule\n");
     print("    get_sing_box_status     Get sing-box service status\n");
-    print("    get_zapret_status       Get zapret provider and Forkop-managed nfqws status\n");
-    print("    get_zapret2_status      Get zapret2 provider and Forkop-managed nfqws2 status\n");
-    print("    get_byedpi_status       Get ByeDPI provider and Forkop-managed ciadpi status\n");
+    print("    get_zapret_status       Get zapret provider and Nexroute-managed nfqws status\n");
+    print("    get_zapret2_status      Get zapret2 provider and Nexroute-managed nfqws2 status\n");
+    print("    get_byedpi_status       Get ByeDPI provider and Nexroute-managed ciadpi status\n");
     print("    get_system_info         Get system information in JSON format\n");
     print("    get_server_capabilities Get server UI capabilities in JSON format\n");
     print("    get_ui_capabilities     Get lightweight UI capabilities in JSON format\n");
@@ -111,7 +111,7 @@ function show_help() {
     print("                            Generate a sing-box Reality key pair in JSON format\n");
     print("    get_tls_certificate_sha256 [server]\n");
     print("                            Get a server TLS certificate SHA-256 fingerprint in JSON format\n");
-    print("    component_action        Manage Forkop, sing-box, zapret, zapret2, and ByeDPI components\n");
+    print("    component_action        Manage Nexroute, sing-box, zapret, zapret2, and ByeDPI components\n");
     print("    component_action_async  Start a component action in the background\n");
     print("    component_action_status Get background component action status\n");
     print("    component_updates_if_due Check installed components for updates when due\n");

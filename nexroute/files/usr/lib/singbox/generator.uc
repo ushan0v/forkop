@@ -46,7 +46,7 @@ let url_userinfo = runtime_url.userinfo;
 let url_path = runtime_url.path;
 let url_query_params = runtime_url.query_params;
 
-const CONFIG_NAME = "forkop";
+const CONFIG_NAME = "nexroute";
 
 function parent_dir(path) {
     path = as_string(path);
@@ -197,13 +197,13 @@ function subscription_group_outbound(outbound) {
     if (type(outbound) != "object")
         return false;
     let t = as_string(outbound.type);
-    return (t == "selector" || t == "urltest") && internal_flag(outbound.__forkop_allow_group);
+    return (t == "selector" || t == "urltest") && internal_flag(outbound.__nexroute_allow_group);
 }
 
 function subscription_urltest_group_outbound(outbound) {
     if (type(outbound) != "object")
         return false;
-    return as_string(outbound.type || "") == "urltest" && internal_flag(outbound.__forkop_allow_group);
+    return as_string(outbound.type || "") == "urltest" && internal_flag(outbound.__nexroute_allow_group);
 }
 
 function subscription_outbound_tag(outbound) {
@@ -250,7 +250,7 @@ function subscription_hidden_outbound(outbound, refs, hide_urltest_group_outboun
         return true;
     if (hidden_by_detour && hide_detour_outbounds !== false)
         return true;
-    return internal_flag(outbound.__forkop_hidden) && !hidden_by_urltest && !hidden_by_detour;
+    return internal_flag(outbound.__nexroute_hidden) && !hidden_by_urltest && !hidden_by_detour;
 }
 
 function tag(base, postfix) {
@@ -600,7 +600,7 @@ function copy_subscription_outbound(outbound, new_tag) {
     let copy = {};
     for (let key, value in outbound) {
         if (key != "tag" && key != "remark" && key != "share_link" &&
-            key != "__forkop_hidden" && key != "__forkop_allow_group")
+            key != "__nexroute_hidden" && key != "__nexroute_allow_group")
             copy[key] = value;
     }
     if (as_string(copy.type || "") == "hysteria2" &&

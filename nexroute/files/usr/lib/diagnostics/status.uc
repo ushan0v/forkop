@@ -348,7 +348,7 @@ function mask_option_path(line, token) {
     return substr(line, 0, slash) + "/MASKED'" + substr(line, quote + 1);
 }
 
-function forkop_config_masked_line(line) {
+function nexroute_config_masked_line(line) {
     line = mask_after_token(line, "option proxy_string");
     line = mask_after_token(line, "option hwid");
     line = mask_after_token(line, "option subscription_url");
@@ -402,7 +402,7 @@ function forkop_config_masked_line(line) {
     return line;
 }
 
-function forkop_config_masked(path) {
+function nexroute_config_masked(path) {
     let data = fs.readfile(path);
     if (data == null)
         exit(1);
@@ -426,7 +426,7 @@ function forkop_config_masked(path) {
             delete_token_space(line, "option tailscale_exit_node_allow_lan_access"))
             continue;
 
-        let masked = forkop_config_masked_line(line);
+        let masked = nexroute_config_masked_line(line);
         print(masked, "\n");
         if (index(line, "option outbound_json") >= 0) {
             let first_quote = index(line, "'");
@@ -1371,7 +1371,7 @@ function render_global_sing_box_check() {
 
 function render_global_system_info() {
     let value = object_or_empty(read_stdin_json());
-    let forkop_version = object_value(value, "forkop_version") || "unknown";
+    let nexroute_version = object_value(value, "nexroute_version") || "unknown";
     let luci_app_version = object_value(value, "luci_app_version") || "unknown";
     let sing_box_version = object_value(value, "sing_box_version") || "unknown";
     let zapret_version = object_value(value, "zapret_version") || "unknown";
@@ -1383,7 +1383,7 @@ function render_global_system_info() {
     let sing_box_core = sing_box_core_label(value) || "regular";
     print_line("Sing-box core: " + sing_box_core);
 
-    print_line("\ud83d\udd73\ufe0f Forkop:   " + forkop_version);
+    print_line("\ud83d\udd73\ufe0f Nexroute:   " + nexroute_version);
     print_line("\ud83d\udd73\ufe0f LuCI App:      " + luci_app_version);
     print_line("\ud83d\udce6 Sing-box:      " + format_sing_box_version(value, sing_box_version));
     if (flag_is_one(value.zapret_installed))
@@ -1467,19 +1467,19 @@ function global_nft_other_mark_exists() {
 
 function nft_ruleset_other_mark_lines(table_name) {
     table_name = as_string(table_name);
-    let in_forkop_table = false;
+    let in_nexroute_table = false;
 
     for (let line in split(read_stdin(), "\n")) {
         line = as_string(line);
         if (index(line, "table inet " + table_name) >= 0) {
-            in_forkop_table = true;
+            in_nexroute_table = true;
             continue;
         }
 
         if (match(line, /^table/) != null)
-            in_forkop_table = false;
+            in_nexroute_table = false;
 
-        if (!in_forkop_table && (index(line, "mark set") >= 0 || index(line, "meta mark") >= 0))
+        if (!in_nexroute_table && (index(line, "mark set") >= 0 || index(line, "meta mark") >= 0))
             print_line(line);
     }
 }
@@ -1523,7 +1523,7 @@ function render_matching_log_tail(needle, max_lines) {
         {
             if (needle == "sing-box" && is_udp_unsupported_outbound_log(line)) {
                 if (!udp_http_notice_emitted) {
-                    push(filtered, "UDP traffic through HTTP outbounds is not supported by sing-box; repeated UDP warnings for HTTP outbounds are hidden by Forkop.");
+                    push(filtered, "UDP traffic through HTTP outbounds is not supported by sing-box; repeated UDP warnings for HTTP outbounds are hidden by Nexroute.");
                     udp_http_notice_emitted = true;
                 }
                 continue;
@@ -1541,7 +1541,7 @@ function render_matching_log_tail(needle, max_lines) {
     print_lines(filtered, start, length(filtered));
 }
 
-function render_forkop_logs() {
+function render_nexroute_logs() {
     let lines = split(read_stdin(), "\n");
     let filtered = [];
     let start = -1;
@@ -1550,18 +1550,18 @@ function render_forkop_logs() {
     for (let line in lines) {
         if (line == "")
             continue;
-        if (!line_contains(line, "forkop") && !line_contains(line, "sing-box"))
+        if (!line_contains(line, "nexroute") && !line_contains(line, "sing-box"))
             continue;
 
         if (line_contains(line, "sing-box") && is_udp_unsupported_outbound_log(line)) {
             if (!udp_http_notice_emitted) {
-                push(filtered, "UDP traffic through HTTP outbounds is not supported by sing-box; repeated UDP warnings for HTTP outbounds are hidden by Forkop.");
+                push(filtered, "UDP traffic through HTTP outbounds is not supported by sing-box; repeated UDP warnings for HTTP outbounds are hidden by Nexroute.");
                 udp_http_notice_emitted = true;
             }
             continue;
         }
 
-        if (line_contains(line, "forkop") && line_contains(line, "Starting Forkop"))
+        if (line_contains(line, "nexroute") && line_contains(line, "Starting Nexroute"))
             start = length(filtered);
 
         push(filtered, line);
@@ -1575,7 +1575,7 @@ function render_forkop_logs() {
         return;
     }
 
-    print_line("No 'Starting Forkop' message found, showing last 100 lines");
+    print_line("No 'Starting Nexroute' message found, showing last 100 lines");
     start = length(filtered) > 100 ? length(filtered) - 100 : 0;
     print_lines(filtered, start, length(filtered));
 }
@@ -1636,7 +1636,7 @@ function key_value_file_value(path, key) {
     }
 }
 
-function system_info_cache_valid(path, forkop_version, luci_app_version, ttl, now) {
+function system_info_cache_valid(path, nexroute_version, luci_app_version, ttl, now) {
     let cache = read_json_file(path);
     if (type(cache) != "object")
         return false;
@@ -1648,13 +1648,13 @@ function system_info_cache_valid(path, forkop_version, luci_app_version, ttl, no
     if (now > 0 && cached_at > 0 && ttl > 0 && now - cached_at >= ttl)
         return false;
 
-    return cache.forkop_version == forkop_version && cache.luci_app_version == luci_app_version;
+    return cache.nexroute_version == nexroute_version && cache.luci_app_version == luci_app_version;
 }
 
 function system_info_json() {
     write_json({
-        forkop_version: as_string(ARGV[1]),
-        forkop_latest_version: as_string(ARGV[2]),
+        nexroute_version: as_string(ARGV[1]),
+        nexroute_latest_version: as_string(ARGV[2]),
         luci_app_version: as_string(ARGV[3]),
         sing_box_version: as_string(ARGV[4]),
         sing_box_extended: arg_number(ARGV[5]),
@@ -1911,8 +1911,8 @@ else if (mode == "network-wireguard-route-allowed-peers")
     network_wireguard_route_allowed_peers();
 else if (mode == "wan-config-masked")
     wan_config_masked(ARGV[1]);
-else if (mode == "forkop-config-masked")
-    forkop_config_masked(ARGV[1]);
+else if (mode == "nexroute-config-masked")
+    nexroute_config_masked(ARGV[1]);
 else if (mode == "dhcp-dnsmasq-config")
     dhcp_dnsmasq_config(ARGV[1]);
 else if (mode == "firewall-port-token-contains")
@@ -1991,8 +1991,8 @@ else if (mode == "nft-chain-config-blocks")
     render_nft_chain_config_blocks();
 else if (mode == "nft-chain-counter-status")
     nft_chain_counter_status();
-else if (mode == "forkop-logs")
-    render_forkop_logs();
+else if (mode == "nexroute-logs")
+    render_nexroute_logs();
 else if (mode == "matching-log-tail")
     render_matching_log_tail(ARGV[1], ARGV[2]);
 else if (mode == "file-first-line")

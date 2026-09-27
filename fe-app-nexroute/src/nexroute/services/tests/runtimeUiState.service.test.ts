@@ -8,7 +8,7 @@ vi.mock('../../../helpers', () => ({
   executeShellCommand: mocks.executeShellCommand,
 }));
 
-import { Forkop } from '../../types';
+import { Nexroute } from '../../types';
 import { store } from '../store.service';
 import {
   getCachedRuntimeUiState,
@@ -19,10 +19,10 @@ import {
 function createUiState(
   status = 'running & enabled',
   running = 1,
-): Forkop.UiState {
+): Nexroute.UiState {
   return {
     service: {
-      forkop: {
+      nexroute: {
         running,
         enabled: 1,
         status,
@@ -73,14 +73,14 @@ describe('refreshRuntimeUiState', () => {
     );
 
     expect(mocks.executeShellCommand).toHaveBeenCalledWith({
-      command: '/usr/bin/forkop',
+      command: '/usr/bin/nexroute',
       args: ['get_ui_state'],
       timeout: 3000,
     });
     expect(store.get().servicesInfoWidget.data).toMatchObject({
-      forkopRunning: 0,
-      forkopEnabled: 1,
-      forkopStatus: 'stopped but enabled',
+      nexrouteRunning: 0,
+      nexrouteEnabled: 1,
+      nexrouteStatus: 'stopped but enabled',
     });
   });
 

@@ -2522,7 +2522,7 @@ function xray_add_converted_outbound(result, item, tag_map, visible, display_nam
     if (visible && display_name != "")
         converted.remark = display_name;
     if (!visible)
-        converted.__forkop_hidden = true;
+        converted.__nexroute_hidden = true;
 
     let detour = xray_outbound_detour(item.outbound);
     if (detour != "" && tag_map[detour])
@@ -2562,7 +2562,7 @@ function xray_config_outbounds(config, config_index, config_count, taken) {
                     tag: group_tag,
                     outbounds: urltest_outbounds,
                     remark: group_base != "" ? group_base : group_tag,
-                    __forkop_allow_group: true
+                    __nexroute_allow_group: true
                 };
                 xray_apply_urltest_options(group, plan.urltest_options);
                 push(result, group);
@@ -2687,11 +2687,11 @@ function normalize_sing_box_json_outbounds(candidates) {
     for (let outbound in outbounds) {
         let tag_name = sing_box_outbound_tag(outbound);
         if (sing_box_urltest_group(outbound)) {
-            outbound.__forkop_allow_group = true;
+            outbound.__nexroute_allow_group = true;
             continue;
         }
         if (tag_name != "" && (urltest_refs[tag_name] || detour_refs[tag_name]))
-            outbound.__forkop_hidden = true;
+            outbound.__nexroute_hidden = true;
     }
 
     return outbounds;
@@ -2768,7 +2768,7 @@ function gzip_decode_file(input_file, output_file) {
 }
 
 function try_decode_gzip_content_file(input_file) {
-    let tmp = temp_path("forkop-subscription-gzip");
+    let tmp = temp_path("nexroute-subscription-gzip");
     if (!gzip_decode_file(input_file, tmp)) {
         fs.unlink(tmp);
         return false;
@@ -2798,7 +2798,7 @@ function normalized_skipped_message(path) {
 }
 
 function extract_ui_metadata_file(headers_file, body_file, output_file) {
-    let tmp = temp_path("forkop-subscription-metadata");
+    let tmp = temp_path("nexroute-subscription-metadata");
     let raw = metadata_body_store_with_base64_fallback(body_file).values;
     let headers = metadata_headers_store(headers_file).values;
     for (let key, value in headers)
@@ -2835,7 +2835,7 @@ function normalize_content_data(data, output_file, depth) {
     }
 
     if (index(data, "proxies:") >= 0 && content_is_clash_yaml(data)) {
-        let tmp = temp_path("forkop-subscription-clash");
+        let tmp = temp_path("nexroute-subscription-clash");
         if (!fs.writefile(tmp, data))
             return false;
         let ok = normalize_clash_yaml(tmp, output_file);
@@ -2868,7 +2868,7 @@ function normalize_content_file(input_file, output_file) {
 
 function normalize_content_validated(input_file, output_file) {
     let normalize_input = input_file;
-    let decoded_tmp = temp_path("forkop-subscription-gzip");
+    let decoded_tmp = temp_path("nexroute-subscription-gzip");
     let decoded = gzip_decode_file(input_file, decoded_tmp);
     if (decoded)
         normalize_input = decoded_tmp;

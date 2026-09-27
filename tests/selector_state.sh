@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-LIFECYCLE_UC="$FORKOP_LIB/service/lifecycle.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+LIFECYCLE_UC="$NEXROUTE_LIB/service/lifecycle.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -17,8 +17,8 @@ fail() {
 }
 
 lifecycle_ucode() {
-  FORKOP_RUNTIME_STATE_DIR="$WORK_DIR/run" \
-    ucode -L "$FORKOP_LIB" "$LIFECYCLE_UC" "$@"
+  NEXROUTE_RUNTIME_STATE_DIR="$WORK_DIR/run" \
+    ucode -L "$NEXROUTE_LIB" "$LIFECYCLE_UC" "$@"
 }
 
 json_flatten() {

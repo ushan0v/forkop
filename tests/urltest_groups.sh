@@ -2,10 +2,10 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-PARSER_UC="$FORKOP_LIB/subscription/parser.uc"
-GENERATOR_UC="$FORKOP_LIB/singbox/generator.uc"
-CACHE_UC="$FORKOP_LIB/subscription/cache.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+PARSER_UC="$NEXROUTE_LIB/subscription/parser.uc"
+GENERATOR_UC="$NEXROUTE_LIB/singbox/generator.uc"
+CACHE_UC="$NEXROUTE_LIB/subscription/cache.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -21,7 +21,7 @@ fail() {
 normalize_subscription() {
   local input="$1"
   local output="$2"
-  ucode -L "$FORKOP_LIB" "$PARSER_UC" normalize-content "$input" "$output"
+  ucode -L "$NEXROUTE_LIB" "$PARSER_UC" normalize-content "$input" "$output"
 }
 
 prepare_subscription_cache() {
@@ -42,7 +42,7 @@ generate_config() {
   local output="$2"
   mkdir -p "${output}.section-cache"
   TMP_SUBSCRIPTION_FOLDER="$WORK_DIR/subscriptions" \
-    ucode -L "$FORKOP_LIB" "$GENERATOR_UC" generate-config-fixture \
+    ucode -L "$NEXROUTE_LIB" "$GENERATOR_UC" generate-config-fixture \
       "$fixture" "$output" "127.0.0.1"
 }
 
@@ -286,7 +286,7 @@ if (!reveal_selector || length(reveal_selector.outbounds || []) != 4)
 ' "$xray_config" "$xray_config.section-cache/proxy.json" "$xray_reveal_urltest_config" "$xray_group_name_filter_config" || fail "xray generated URLTest behavior"
 
 xray_metadata="$WORK_DIR/xray-ui-outbound-metadata.json"
-ucode -L "$FORKOP_LIB" "$CACHE_UC" get-outbound-metadata "$xray_config.section-cache" proxy "$WORK_DIR/missing-outbound-metadata.json" >"$xray_metadata"
+ucode -L "$NEXROUTE_LIB" "$CACHE_UC" get-outbound-metadata "$xray_config.section-cache" proxy "$WORK_DIR/missing-outbound-metadata.json" >"$xray_metadata"
 
 ucode -e '
 let fs = require("fs");
@@ -356,8 +356,8 @@ let value = json(fs.readfile(ARGV[0]));
 let flags = {};
 for (let outbound in value.outbounds || [])
     flags[outbound.tag] = {
-        allow: outbound.__forkop_allow_group === true,
-        hidden: outbound.__forkop_hidden === true
+        allow: outbound.__nexroute_allow_group === true,
+        hidden: outbound.__nexroute_hidden === true
     };
 if (!flags["Native Group"].allow)
     die("native sing-box URLTest group was not allowed\n");
@@ -591,7 +591,7 @@ if (!contains(candidates, "Native A") || !contains(candidates, "Detour Only"))
 ' "$singbox_config" "$singbox_config.section-cache/proxy.json" "$singbox_reveal_urltest_config" "$singbox_reveal_detour_config" || fail "native sing-box generated URLTest behavior"
 
 singbox_metadata="$WORK_DIR/singbox-ui-outbound-metadata.json"
-ucode -L "$FORKOP_LIB" "$CACHE_UC" get-outbound-metadata "$singbox_config.section-cache" proxy "$WORK_DIR/missing-outbound-metadata.json" >"$singbox_metadata"
+ucode -L "$NEXROUTE_LIB" "$CACHE_UC" get-outbound-metadata "$singbox_config.section-cache" proxy "$WORK_DIR/missing-outbound-metadata.json" >"$singbox_metadata"
 
 ucode -e '
 let fs = require("fs");

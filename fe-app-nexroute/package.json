@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "format": "prettier --write src",
-    "format:js": "prettier --write ../luci-app-nexroute/htdocs/luci-static/resources/view/forkop",
+    "format:js": "prettier --write ../luci-app-nexroute/htdocs/luci-static/resources/view/nexroute",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "build": "tsc --noEmit && tsup src/main.ts",

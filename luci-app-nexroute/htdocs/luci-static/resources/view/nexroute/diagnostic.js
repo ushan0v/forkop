@@ -4,7 +4,7 @@
 "require ui";
 "require uci";
 "require fs";
-"require view.forkop.main as main";
+"require view.nexroute.main as main";
 
 function createDiagnosticContent(section) {
   const o = section.option(form.DummyValue, "_mount_node");

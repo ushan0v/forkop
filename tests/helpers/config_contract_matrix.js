@@ -150,12 +150,12 @@ function enrichUiValues(fileData, option, block, values) {
 function extractUi(repo, fields) {
   const currentViewDir = path.join(
     repo,
-    "luci-app-forkop",
+    "luci-app-nexroute",
     "htdocs",
     "luci-static",
     "resources",
     "view",
-    "forkop",
+    "nexroute",
   );
   const legacyViewDir = path.join(repo, legacyAppDir, "htdocs", "luci-static", "resources", "view", legacyStem);
   const viewDir = fs.existsSync(currentViewDir) ? currentViewDir : legacyViewDir;
@@ -205,7 +205,7 @@ function extractUi(repo, fields) {
 }
 
 function extractConfigDefaults(repo, fields) {
-  const currentFile = path.join(repo, "forkop", "files", "etc", "config", "forkop");
+  const currentFile = path.join(repo, "nexroute", "files", "etc", "config", "nexroute");
   const legacyFile = path.join(repo, legacyStem, "files", "etc", "config", legacyStem);
   const file = fs.existsSync(currentFile) ? currentFile : legacyFile;
   const data = readFileIfExists(file);
@@ -219,7 +219,7 @@ function extractConfigDefaults(repo, fields) {
 }
 
 function extractBackend(repo, fields) {
-  const backendRoot = fs.existsSync(path.join(repo, "forkop")) ? "forkop" : legacyStem;
+  const backendRoot = fs.existsSync(path.join(repo, "nexroute")) ? "nexroute" : legacyStem;
   const roots = [
     path.join(repo, backendRoot, "files", "usr", "lib"),
     path.join(repo, backendRoot, "files", "usr", "bin"),
@@ -227,14 +227,14 @@ function extractBackend(repo, fields) {
   ];
   const files = roots
     .flatMap((root) => walkFiles(root))
-    .filter((file) => /\.(sh|uc)$/.test(file) || ["forkop", legacyStem].includes(path.basename(file)));
+    .filter((file) => /\.(sh|uc)$/.test(file) || ["nexroute", legacyStem].includes(path.basename(file)));
   const installer = path.join(repo, "install.sh");
   if (fs.existsSync(installer)) files.push(installer);
 
   const shellOptionRe = /\bconfig_(?:get|get_bool|list_foreach)\s+\S+\s+(?:"[^"]+"|'[^']+'|\$[A-Za-z_][A-Za-z0-9_]*|\$\{[^}]+\})\s+["']([A-Za-z0-9_]+)["']/g;
   const ucodeOptionRe = /\b(?:option|list_option|bool_option|int_option)\(\s*[^,\n]+,\s*["']([A-Za-z0-9_]+)["']/g;
   const ucodeStaticOptionKeyArrayRe = /^\s*\[\s*["']([A-Za-z0-9_]+)["']\s*,/gm;
-  const migrationRe = new RegExp(`\\b(?:forkop|${legacyStem})_uci_(?:set_option|set_option_if_missing|delete_option|add_list_unique)\\s+["'$A-Za-z0-9_{}.-]+\\s+["']([A-Za-z0-9_]+)["']`, "g");
+  const migrationRe = new RegExp(`\\b(?:nexroute|${legacyStem})_uci_(?:set_option|set_option_if_missing|delete_option|add_list_unique)\\s+["'$A-Za-z0-9_{}.-]+\\s+["']([A-Za-z0-9_]+)["']`, "g");
   const ucodeMigrationRe = /\b(?:set_option|set_option_if_missing|delete_option|add_list_unique)\(\s*[^,\n]+,\s*[^,\n]+,\s*["']([A-Za-z0-9_]+)["']/g;
 
   for (const file of files) {

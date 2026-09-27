@@ -8,7 +8,7 @@ const validUrls = [
   ['With query', 'https://example.com/?q=test'],
   ['With port', 'http://example.com:8080'],
   ['With subdomain', 'https://sub.example.com'],
-  ['IPv4 host', 'http://127.0.0.1/forkop-subscription-test.json'],
+  ['IPv4 host', 'http://127.0.0.1/nexroute-subscription-test.json'],
   ['IPv4 host with port', 'http://192.168.1.1:8080/sub'],
   ['IPv6 host', 'https://[2001:db8::1]/sub'],
   ['IPv6 host with port', 'https://[2001:db8::1]:8443/sub'],

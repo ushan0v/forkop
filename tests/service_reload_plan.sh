@@ -2,7 +2,7 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RELOAD_UC="$ROOT_DIR/forkop/files/usr/lib/service/reload.uc"
+RELOAD_UC="$ROOT_DIR/nexroute/files/usr/lib/service/reload.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {

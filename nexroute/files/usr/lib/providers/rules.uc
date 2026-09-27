@@ -3,7 +3,7 @@
 let fs = require("fs");
 let uci_core = require("core.uci");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
 
 function as_string(value) {
     return value == null ? "" : "" + value;

@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/usr/bin/nexroute luci_postinst >/dev/null 2>&1 || true
+exit 0

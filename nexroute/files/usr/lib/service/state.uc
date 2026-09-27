@@ -8,10 +8,10 @@ let connections = require("config.connections");
 let zapret_validator = require("providers.zapret.validator");
 let zapret2_validator = require("providers.zapret2.validator");
 let byedpi_validator = require("providers.byedpi.validator");
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
-const DEFAULT_PENDING_RELOAD_FILE = getenv("FORKOP_PENDING_RELOAD_FILE") || "/var/run/forkop/reload.pending";
-const DEFAULT_SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || "/etc/init.d/forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
+const DEFAULT_PENDING_RELOAD_FILE = getenv("NEXROUTE_PENDING_RELOAD_FILE") || "/var/run/nexroute/reload.pending";
+const DEFAULT_SERVICE_INIT = getenv("NEXROUTE_SERVICE_INIT") || "/etc/init.d/nexroute";
 const ZAPRET_DEFAULT_NFQWS_OPT = getenv("ZAPRET_DEFAULT_NFQWS_OPT") || "";
 const ZAPRET2_DEFAULT_NFQWS2_OPT = getenv("ZAPRET2_DEFAULT_NFQWS2_OPT") || "";
 const BYEDPI_DEFAULT_CMD_OPTS = getenv("BYEDPI_DEFAULT_CMD_OPTS") || "";
@@ -263,7 +263,7 @@ function run_pending_reload_if_requested(path, init_script) {
     if (!consume_pending_reload(path))
         return;
 
-    command_success_from_args([ "logger", "-t", "forkop", "[info] Applying pending Forkop reload" ]);
+    command_success_from_args([ "logger", "-t", "nexroute", "[info] Applying pending Nexroute reload" ]);
     system(shell_quote(init_script) + " reload pending >/dev/null 2>&1 1000>&- &");
 }
 
@@ -359,7 +359,7 @@ function cleanup_rule_condition_cache(path) {
     path = as_string(path);
     if (path != "")
         command_success_from_args([ "rm", "-rf", path ]);
-    system("rm -rf /tmp/forkop-rule-cache.* >/dev/null 2>&1");
+    system("rm -rf /tmp/nexroute-rule-cache.* >/dev/null 2>&1");
 }
 
 function cleanup_reload_state_snapshots(path) {
@@ -454,7 +454,7 @@ function hup_sing_box_runtime() {
     if (pid <= 0 || !pid_is_sing_box(pid))
         exit(1);
 
-    command_success_from_args([ "logger", "-t", "forkop", "[info] Applying DNS failover with sing-box SIGHUP reload" ]);
+    command_success_from_args([ "logger", "-t", "nexroute", "[info] Applying DNS failover with sing-box SIGHUP reload" ]);
     if (!command_success_from_args([ "kill", "-HUP", as_string(pid) ]))
         exit(1);
 }
@@ -545,20 +545,20 @@ function sing_box_runtime_reload_needed(config_hash_before, config_hash_after, f
 
 function reload_sing_box_runtime(previous_pid, config_hash_before, config_hash_after, force) {
     if (!sing_box_runtime_reload_needed(config_hash_before, config_hash_after, force)) {
-        command_success_from_args([ "logger", "-t", "forkop", "[info] sing-box reload skipped: configuration is unchanged" ]);
+        command_success_from_args([ "logger", "-t", "nexroute", "[info] sing-box reload skipped: configuration is unchanged" ]);
         return;
     }
 
     previous_pid = sing_box_reload_previous_pid(previous_pid, config_hash_before, config_hash_after);
-    command_success_from_args([ "logger", "-t", "forkop", "[info] Reloading sing-box runtime" ]);
+    command_success_from_args([ "logger", "-t", "nexroute", "[info] Reloading sing-box runtime" ]);
     if (!command_success_from_args([ "/etc/init.d/sing-box", "reload" ])) {
-        command_success_from_args([ "logger", "-t", "forkop", "[fatal] Failed to reload sing-box. Aborted." ]);
+        command_success_from_args([ "logger", "-t", "nexroute", "[fatal] Failed to reload sing-box. Aborted." ]);
         exit(1);
     }
 
-    let timeout = getenv("FORKOP_SING_BOX_RELOAD_PID_TIMEOUT") || "15";
+    let timeout = getenv("NEXROUTE_SING_BOX_RELOAD_PID_TIMEOUT") || "15";
     if (previous_pid > 0 && !wait_sing_box_pid_replacement(previous_pid, timeout)) {
-        command_success_from_args([ "logger", "-t", "forkop", "[fatal] sing-box reload did not replace the running process. Aborted." ]);
+        command_success_from_args([ "logger", "-t", "nexroute", "[fatal] sing-box reload did not replace the running process. Aborted." ]);
         exit(1);
     }
 }
@@ -579,7 +579,7 @@ function sing_box_service_stable(min_age) {
     return age != null && age >= min_age;
 }
 
-function forkop_runtime_network_configured(rt_table, nft_table, mark) {
+function nexroute_runtime_network_configured(rt_table, nft_table, mark) {
     return command_success_from_args([ "nft", "list", "table", "inet", nft_table ]) &&
         command_success_from_args([ "ucode", "-L", LIB_DIR, LIB_DIR + "/nft/apply.uc", "tproxy-route-rule-present", rt_table, mark ]);
 }
@@ -593,27 +593,27 @@ function sing_box_runtime_ports_ready() {
     );
 }
 
-function forkop_running(rt_table, nft_table, mark) {
+function nexroute_running(rt_table, nft_table, mark) {
     return sing_box_service_running() && sing_box_runtime_ports_ready() &&
-        forkop_runtime_network_configured(rt_table, nft_table, mark);
+        nexroute_runtime_network_configured(rt_table, nft_table, mark);
 }
 
-function forkop_stably_running(rt_table, nft_table, mark, min_age) {
+function nexroute_stably_running(rt_table, nft_table, mark, min_age) {
     return sing_box_service_stable(min_age) && sing_box_runtime_ports_ready() &&
-        forkop_runtime_network_configured(rt_table, nft_table, mark);
+        nexroute_runtime_network_configured(rt_table, nft_table, mark);
 }
 
-function wait_forkop_stable_start(rt_table, nft_table, mark, min_age, timeout) {
+function wait_nexroute_stable_start(rt_table, nft_table, mark, min_age, timeout) {
     timeout = int(timeout || 8);
     while (timeout > 0) {
-        if (forkop_stably_running(rt_table, nft_table, mark, min_age))
+        if (nexroute_stably_running(rt_table, nft_table, mark, min_age))
             return true;
 
         command_success_from_args([ "sleep", "1" ]);
         timeout--;
     }
 
-    return forkop_stably_running(rt_table, nft_table, mark, min_age);
+    return nexroute_stably_running(rt_table, nft_table, mark, min_age);
 }
 
 function whitespace_fields(value) {
@@ -831,10 +831,10 @@ function dnsmasq_signature_body(settings, dnsmasq, legacy_dnsmasq_present) {
     body = signature_add_value(body, "dhcp.@dnsmasq[0].server", option(dnsmasq, "server", ""));
     body = signature_add_value(body, "dhcp.@dnsmasq[0].noresolv", option(dnsmasq, "noresolv", ""));
     body = signature_add_value(body, "dhcp.@dnsmasq[0].cachesize", option(dnsmasq, "cachesize", ""));
-    body = signature_add_value(body, "dhcp.@dnsmasq[0].forkop_server", option(dnsmasq, "forkop_server", ""));
-    body = signature_add_value(body, "dhcp.@dnsmasq[0].forkop_noresolv", option(dnsmasq, "forkop_noresolv", ""));
-    body = signature_add_value(body, "dhcp.@dnsmasq[0].forkop_cachesize", option(dnsmasq, "forkop_cachesize", ""));
-    body = signature_add_value(body, "dhcp.forkop.present", arg_bool(legacy_dnsmasq_present) ? "1" : "0");
+    body = signature_add_value(body, "dhcp.@dnsmasq[0].nexroute_server", option(dnsmasq, "nexroute_server", ""));
+    body = signature_add_value(body, "dhcp.@dnsmasq[0].nexroute_noresolv", option(dnsmasq, "nexroute_noresolv", ""));
+    body = signature_add_value(body, "dhcp.@dnsmasq[0].nexroute_cachesize", option(dnsmasq, "nexroute_cachesize", ""));
+    body = signature_add_value(body, "dhcp.nexroute.present", arg_bool(legacy_dnsmasq_present) ? "1" : "0");
 
     return body;
 }
@@ -1712,9 +1712,9 @@ function uci_dnsmasq() {
         server: uci_get("dhcp.@dnsmasq[0].server"),
         noresolv: uci_get("dhcp.@dnsmasq[0].noresolv"),
         cachesize: uci_get("dhcp.@dnsmasq[0].cachesize"),
-        forkop_server: uci_get("dhcp.@dnsmasq[0].forkop_server"),
-        forkop_noresolv: uci_get("dhcp.@dnsmasq[0].forkop_noresolv"),
-        forkop_cachesize: uci_get("dhcp.@dnsmasq[0].forkop_cachesize")
+        nexroute_server: uci_get("dhcp.@dnsmasq[0].nexroute_server"),
+        nexroute_noresolv: uci_get("dhcp.@dnsmasq[0].nexroute_noresolv"),
+        nexroute_cachesize: uci_get("dhcp.@dnsmasq[0].nexroute_cachesize")
     };
 }
 
@@ -1728,7 +1728,7 @@ function current_reload_state_values(format) {
         sections,
         uci_servers(),
         uci_dnsmasq(),
-        uci_exists("dhcp.forkop"),
+        uci_exists("dhcp.nexroute"),
         mwan3_active()
     );
 }
@@ -1855,12 +1855,12 @@ else if (mode == "sing-box-reload-previous-pid-fixture")
     print(sing_box_reload_previous_pid(ARGV[1], ARGV[2], ARGV[3]), "\n");
 else if (mode == "sing-box-runtime-reload-needed-fixture")
     exit(sing_box_runtime_reload_needed(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
-else if (mode == "forkop-running")
-    exit(forkop_running(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
-else if (mode == "forkop-stably-running")
-    exit(forkop_stably_running(ARGV[1], ARGV[2], ARGV[3], ARGV[4]) ? 0 : 1);
-else if (mode == "wait-forkop-stable-start")
-    exit(wait_forkop_stable_start(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]) ? 0 : 1);
+else if (mode == "nexroute-running")
+    exit(nexroute_running(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
+else if (mode == "nexroute-stably-running")
+    exit(nexroute_stably_running(ARGV[1], ARGV[2], ARGV[3], ARGV[4]) ? 0 : 1);
+else if (mode == "wait-nexroute-stable-start")
+    exit(wait_nexroute_stable_start(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]) ? 0 : 1);
 else if (mode == "list-has-remote-references" || mode == "list-has-remote-sing-box-rulesets")
     exit(list_has_remote_references(ARGV[1]) ? 0 : 1);
 else if (mode == "community-service-has-subnet-list")
@@ -1880,7 +1880,7 @@ else if (mode == "service-trigger-signature-fixture") {
     exit(print_signature_hash(service_trigger_signature_body(fixture_settings(data))) ? 0 : 1);
 }
 else if (mode == "dnsmasq-signature")
-    exit(print_signature_hash(dnsmasq_signature_body(uci_settings(), uci_dnsmasq(), uci_exists("dhcp.forkop"))) ? 0 : 1);
+    exit(print_signature_hash(dnsmasq_signature_body(uci_settings(), uci_dnsmasq(), uci_exists("dhcp.nexroute"))) ? 0 : 1);
 else if (mode == "dnsmasq-signature-fixture") {
     let data = fixture_data(ARGV[1]);
     exit(print_signature_hash(dnsmasq_signature_body(fixture_settings(data), fixture_dnsmasq(data), fixture_legacy_dnsmasq_present(data))) ? 0 : 1);

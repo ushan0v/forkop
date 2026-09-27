@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-GENERATOR="$FORKOP_LIB/singbox/generator.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+GENERATOR="$NEXROUTE_LIB/singbox/generator.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -49,7 +49,7 @@ cat >"$WORK_DIR/subscriptions/source-subscription-1.json" <<'JSON'
       "outbounds": [ "nested-entry", "independent" ],
       "url": "https://www.gstatic.com/generate_204",
       "interval": "3m",
-      "__forkop_allow_group": true
+      "__nexroute_allow_group": true
     }
   ]
 }
@@ -100,7 +100,7 @@ cat >"$WORK_DIR/fixture.json" <<'JSON'
 JSON
 
 TMP_SUBSCRIPTION_FOLDER="$WORK_DIR/subscriptions" \
-  ucode -L "$FORKOP_LIB" "$GENERATOR" generate-config-fixture \
+  ucode -L "$NEXROUTE_LIB" "$GENERATOR" generate-config-fixture \
     "$WORK_DIR/fixture.json" "$WORK_DIR/output.json" "127.0.0.1"
 
 ucode -e '

@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
-VALIDATOR="$FORKOP_LIB/config/validator.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
+VALIDATOR="$NEXROUTE_LIB/config/validator.uc"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -33,7 +33,7 @@ if (input.settings.dns_server === undefined) input.settings.dns_server = ['77.88
 if (input.settings.bootstrap_dns_server === undefined) input.settings.bootstrap_dns_server = ['77.88.8.8'];
 fs.writeFileSync(process.argv[3], JSON.stringify(input));
 JS
-  FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-runtime-fixture "$normalized" "$context"
+  NEXROUTE_LIB="$NEXROUTE_LIB" ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-runtime-fixture "$normalized" "$context"
 }
 
 assert_rejects() {
@@ -440,7 +440,7 @@ cat >"$WORK_DIR/bad-byedpi.json" <<'JSON'
   ]
 }
 JSON
-if output="$(FORKOP_LIB="$FORKOP_LIB" ucode -L "$FORKOP_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/bad-byedpi.json" "$provider_context" 2>/dev/null)"; then
+if output="$(NEXROUTE_LIB="$NEXROUTE_LIB" ucode -L "$NEXROUTE_LIB" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/bad-byedpi.json" "$provider_context" 2>/dev/null)"; then
   fail "bad byedpi should be rejected"
 fi
 printf '%s\n' "$output" | grep -Fq "ByeDPI listen address and port are assigned" ||
@@ -448,10 +448,10 @@ printf '%s\n' "$output" | grep -Fq "ByeDPI listen address and port are assigned"
 
 runtime_lib="$WORK_DIR/runtime-lib"
 mkdir -p "$runtime_lib"
-ln -s "$FORKOP_LIB/core" "$runtime_lib/core"
-ln -s "$FORKOP_LIB/config" "$runtime_lib/config"
-ln -s "$FORKOP_LIB/subscription" "$runtime_lib/subscription"
-ln -s "$FORKOP_LIB/providers" "$runtime_lib/providers"
+ln -s "$NEXROUTE_LIB/core" "$runtime_lib/core"
+ln -s "$NEXROUTE_LIB/config" "$runtime_lib/config"
+ln -s "$NEXROUTE_LIB/subscription" "$runtime_lib/subscription"
+ln -s "$NEXROUTE_LIB/providers" "$runtime_lib/providers"
 touch "$WORK_DIR/ciadpi-provider"
 cat >"$WORK_DIR/bad-byedpi-runtime-state.json" <<'JSON'
 {
@@ -477,7 +477,7 @@ env \
   ZAPRET2_QUEUE_RANGE_SIZE="16" \
   NFT_FAKEIP_MARK="0x00000800" \
   NFT_OUTBOUND_MARK="0x00000400" \
-  FORKOP_LIB="$runtime_lib" \
+  NEXROUTE_LIB="$runtime_lib" \
   ucode -L "$runtime_lib" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/bad-byedpi-runtime-state.json" "{}"
 chmod 755 "$WORK_DIR/ciadpi-provider"
 if output="$(env \
@@ -495,7 +495,7 @@ if output="$(env \
   ZAPRET2_QUEUE_RANGE_SIZE="16" \
   NFT_FAKEIP_MARK="0x00000800" \
   NFT_OUTBOUND_MARK="0x00000400" \
-  FORKOP_LIB="$runtime_lib" \
+  NEXROUTE_LIB="$runtime_lib" \
   ucode -L "$runtime_lib" "$VALIDATOR" validate-runtime-fixture "$WORK_DIR/bad-byedpi-runtime-state.json" "{}" 2>/dev/null)"; then
   fail "executable byedpi provider should enable strategy validation"
 fi

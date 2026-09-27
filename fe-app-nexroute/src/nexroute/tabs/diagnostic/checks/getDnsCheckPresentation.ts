@@ -1,9 +1,9 @@
-import type { Forkop } from '../../../types';
+import type { Nexroute } from '../../../types';
 import { getMeta } from '../helpers/getMeta';
 
 type DnsCheckState = 'error' | 'success' | 'warning';
 
-export function getDnsCheckPresentation(data: Forkop.DnsCheckResult) {
+export function getDnsCheckPresentation(data: Nexroute.DnsCheckResult) {
   const dhcpManagedManually = Boolean(data.dont_touch_dhcp);
   const dhcpCheckOk = dhcpManagedManually || Boolean(data.dhcp_config_status);
 

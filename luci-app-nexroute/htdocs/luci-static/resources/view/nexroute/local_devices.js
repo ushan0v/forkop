@@ -2,7 +2,7 @@
 "require baseclass";
 "require rpc";
 "require ui";
-"require view.forkop.main as main";
+"require view.nexroute.main as main";
 
 const callHostHints = rpc.declare({
   object: "luci-rpc",

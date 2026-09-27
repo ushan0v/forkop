@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../../methods', () => ({
-  ForkopShellMethods: {
+  NexrouteShellMethods: {
     getZapretStatus: mocks.getZapretStatus,
     getZapret2Status: mocks.getZapret2Status,
     getByedpiStatus: mocks.getByedpiStatus,

@@ -1,15 +1,15 @@
-import { ForkopShellMethods } from '../methods';
+import { NexrouteShellMethods } from '../methods';
 import { logger } from '../services/logger.service';
 import { store } from '../services/store.service';
 import { refreshRuntimeUiState } from '../services/runtimeUiState.service';
-import { Forkop } from '../types';
+import { Nexroute } from '../types';
 
 let latestServicesInfoRequestId = 0;
 
 function getSettledMethodResponse<T>(
   scope: string,
-  result: PromiseSettledResult<Forkop.MethodResponse<T>>,
-): Forkop.MethodResponse<T> {
+  result: PromiseSettledResult<Nexroute.MethodResponse<T>>,
+): Nexroute.MethodResponse<T> {
   if (result.status === 'fulfilled') {
     return result.value;
   }
@@ -34,34 +34,34 @@ export async function fetchServicesInfo() {
     return uiState;
   }
 
-  const [forkopResult, singboxResult] = await Promise.allSettled([
-    ForkopShellMethods.getStatus(),
-    ForkopShellMethods.getSingBoxStatus(),
+  const [nexrouteResult, singboxResult] = await Promise.allSettled([
+    NexrouteShellMethods.getStatus(),
+    NexrouteShellMethods.getSingBoxStatus(),
   ]);
 
   if (requestId !== latestServicesInfoRequestId) {
     return;
   }
 
-  const forkop = getSettledMethodResponse('getStatus', forkopResult);
+  const nexroute = getSettledMethodResponse('getStatus', nexrouteResult);
   const singbox = getSettledMethodResponse('getSingBoxStatus', singboxResult);
   const previousData = store.get().servicesInfoWidget.data;
 
   store.set({
     servicesInfoWidget: {
       loading: false,
-      failed: !forkop.success || !singbox.success,
+      failed: !nexroute.success || !singbox.success,
       data: {
         singbox: singbox.success ? singbox.data.running : previousData.singbox,
-        forkopRunning: forkop.success
-          ? forkop.data.running
-          : previousData.forkopRunning,
-        forkopEnabled: forkop.success
-          ? forkop.data.enabled
-          : previousData.forkopEnabled,
-        forkopStatus: forkop.success
-          ? forkop.data.status
-          : previousData.forkopStatus,
+        nexrouteRunning: nexroute.success
+          ? nexroute.data.running
+          : previousData.nexrouteRunning,
+        nexrouteEnabled: nexroute.success
+          ? nexroute.data.enabled
+          : previousData.nexrouteEnabled,
+        nexrouteStatus: nexroute.success
+          ? nexroute.data.status
+          : previousData.nexrouteStatus,
       },
     },
   });

@@ -3,9 +3,9 @@
 "require uci";
 "require baseclass";
 "require tools.widgets as widgets";
-"require view.forkop.main as main";
+"require view.nexroute.main as main";
 
-const UCI_PACKAGE = main.FORKOP_UCI_PACKAGE;
+const UCI_PACKAGE = main.NEXROUTE_UCI_PACKAGE;
 
 function isSingBoxDuration(value) {
   return /^(?=.*[1-9])([0-9]+(?:\.[0-9]+)?(?:ns|us|ms|s|m|h|d))+$/.test(value);
@@ -124,8 +124,8 @@ function configureDnsList(option, choices, defaultValue) {
 }
 
 function configureDnsFailoverVisibility(option, dnsOption, bootstrapOption) {
-  option.depends("dns_server", "__forkop_multiple_dns__");
-  option.depends("bootstrap_dns_server", "__forkop_multiple_dns__");
+  option.depends("dns_server", "__nexroute_multiple_dns__");
+  option.depends("bootstrap_dns_server", "__nexroute_multiple_dns__");
   option.retain = true;
   option.checkDepends = function (section_id) {
     return (
@@ -395,7 +395,7 @@ function createSettingsContent(section, capabilities) {
     form.Value,
     "badwan_reload_delay",
     _("Interface Monitoring Delay"),
-    _("Delay in milliseconds before reloading Forkop after interface UP"),
+    _("Delay in milliseconds before reloading Nexroute after interface UP"),
   );
   o.depends("enable_badwan_interface_monitoring", "1");
   o.default = "2000";
@@ -599,7 +599,7 @@ function createSettingsContent(section, capabilities) {
     form.Flag,
     "dont_touch_dhcp",
     _("Dont Touch My DHCP!"),
-    _("Forkop will not modify your DHCP configuration"),
+    _("Nexroute will not modify your DHCP configuration"),
   );
   o.default = "0";
   o.rmempty = false;

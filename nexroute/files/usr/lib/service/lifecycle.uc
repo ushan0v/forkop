@@ -13,62 +13,62 @@ function constant_value(name, fallback) {
     return value == null ? as_string(fallback) : as_string(value);
 }
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || constant_value("FORKOP_CONFIG_NAME", "forkop");
-const CONFIG_FILE = getenv("FORKOP_CONFIG_FILE") || "/etc/config/" + CONFIG_NAME;
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
-const BIN_PATH = getenv("FORKOP_BIN") || constant_value("FORKOP_BIN", "/usr/bin/forkop");
-const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || constant_value("FORKOP_SERVICE_INIT", "/etc/init.d/forkop");
-const SERVICE_NAME = getenv("FORKOP_SERVICE_NAME") || constant_value("FORKOP_SERVICE_NAME", "forkop");
-const LUCI_VIEW_DIR = getenv("FORKOP_LUCI_VIEW_DIR") || constant_value("FORKOP_LUCI_VIEW_DIR", "/www/luci-static/resources/view/forkop");
-const LUCI_I18N_DOMAIN = getenv("FORKOP_LUCI_I18N_DOMAIN") || constant_value("FORKOP_LUCI_I18N_DOMAIN", "forkop");
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || constant_value("NEXROUTE_CONFIG_NAME", "nexroute");
+const CONFIG_FILE = getenv("NEXROUTE_CONFIG_FILE") || "/etc/config/" + CONFIG_NAME;
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
+const BIN_PATH = getenv("NEXROUTE_BIN") || constant_value("NEXROUTE_BIN", "/usr/bin/nexroute");
+const SERVICE_INIT = getenv("NEXROUTE_SERVICE_INIT") || constant_value("NEXROUTE_SERVICE_INIT", "/etc/init.d/nexroute");
+const SERVICE_NAME = getenv("NEXROUTE_SERVICE_NAME") || constant_value("NEXROUTE_SERVICE_NAME", "nexroute");
+const LUCI_VIEW_DIR = getenv("NEXROUTE_LUCI_VIEW_DIR") || constant_value("NEXROUTE_LUCI_VIEW_DIR", "/www/luci-static/resources/view/nexroute");
+const LUCI_I18N_DOMAIN = getenv("NEXROUTE_LUCI_I18N_DOMAIN") || constant_value("NEXROUTE_LUCI_I18N_DOMAIN", "nexroute");
 
-const RUNTIME_STATE_DIR = getenv("FORKOP_RUNTIME_STATE_DIR") || "/var/run/forkop";
-const SYSTEM_INFO_CACHE_FILE = getenv("FORKOP_SYSTEM_INFO_CACHE_FILE") || RUNTIME_STATE_DIR + "/system-info.json";
-const RELOAD_STATE_FILE = getenv("FORKOP_RELOAD_STATE_FILE") || RUNTIME_STATE_DIR + "/reload-state";
-const RELOAD_STATE_SNAPSHOT_FILE = getenv("FORKOP_RELOAD_STATE_SNAPSHOT_FILE") || RUNTIME_STATE_DIR + "/reload-state.snapshot." + clock()[0] + "." + clock()[1];
-const PENDING_RELOAD_FILE = getenv("FORKOP_PENDING_RELOAD_FILE") || RUNTIME_STATE_DIR + "/reload.pending";
-const SERVICE_TRIGGER_SYNC_FILE = getenv("FORKOP_SERVICE_TRIGGER_SYNC_FILE") || RUNTIME_STATE_DIR + "/service-triggers.sync";
-const SUBSCRIPTION_UPDATE_STATE_DIR = getenv("FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR") || RUNTIME_STATE_DIR + "/subscription-update";
-const SUBSCRIPTION_LINKS_DIR = getenv("FORKOP_SUBSCRIPTION_LINKS_DIR") || RUNTIME_STATE_DIR + "/subscription-links";
-const SUBSCRIPTION_METADATA_DIR = getenv("FORKOP_SUBSCRIPTION_METADATA_DIR") || RUNTIME_STATE_DIR + "/subscription-metadata";
-const OUTBOUND_METADATA_DIR = getenv("FORKOP_OUTBOUND_METADATA_DIR") || RUNTIME_STATE_DIR + "/outbound-metadata";
-const SECTION_CACHE_DIR = getenv("FORKOP_SECTION_CACHE_DIR") || RUNTIME_STATE_DIR + "/section-cache";
-const RULE_CONDITION_CACHE_DIR = getenv("FORKOP_RULE_CONDITION_CACHE_DIR") || RUNTIME_STATE_DIR + "/rule-condition-cache";
-const RUNTIME_CACHE_FORMAT_FILE = getenv("FORKOP_RUNTIME_CACHE_FORMAT_FILE") || RUNTIME_STATE_DIR + "/cache-format";
-const PERSISTENT_SUBSCRIPTION_CACHE_DIR = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR") || "/etc/forkop/subscription-cache";
-const PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE") || PERSISTENT_SUBSCRIPTION_CACHE_DIR + "/cache-format";
-const PERSISTENT_SUBSCRIPTION_CACHE_FORMAT = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT") || "7";
-const SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE = getenv("FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE") || RUNTIME_STATE_DIR + "/subscription-bootstrap-retry.pid";
-const DNS_FAILOVER_STATE_FILE = getenv("FORKOP_DNS_FAILOVER_STATE_FILE") || RUNTIME_STATE_DIR + "/dns-failover.json";
-const DNS_FAILOVER_PID_FILE = getenv("FORKOP_DNS_FAILOVER_PID_FILE") || RUNTIME_STATE_DIR + "/dns-failover.pid";
-const SUBSCRIPTION_UPDATE_LOCK_DIR = getenv("FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR") || RUNTIME_STATE_DIR + "/subscription-update.lock";
-const RELOAD_LOCK_DIR = getenv("FORKOP_RELOAD_LOCK_DIR") || "/var/run/forkop.reload.lock";
-const INTERNAL_CONFIG_TRIGGER_GUARD = getenv("FORKOP_INTERNAL_CONFIG_TRIGGER_GUARD") || "/var/run/forkop.internal-config-change";
+const RUNTIME_STATE_DIR = getenv("NEXROUTE_RUNTIME_STATE_DIR") || "/var/run/nexroute";
+const SYSTEM_INFO_CACHE_FILE = getenv("NEXROUTE_SYSTEM_INFO_CACHE_FILE") || RUNTIME_STATE_DIR + "/system-info.json";
+const RELOAD_STATE_FILE = getenv("NEXROUTE_RELOAD_STATE_FILE") || RUNTIME_STATE_DIR + "/reload-state";
+const RELOAD_STATE_SNAPSHOT_FILE = getenv("NEXROUTE_RELOAD_STATE_SNAPSHOT_FILE") || RUNTIME_STATE_DIR + "/reload-state.snapshot." + clock()[0] + "." + clock()[1];
+const PENDING_RELOAD_FILE = getenv("NEXROUTE_PENDING_RELOAD_FILE") || RUNTIME_STATE_DIR + "/reload.pending";
+const SERVICE_TRIGGER_SYNC_FILE = getenv("NEXROUTE_SERVICE_TRIGGER_SYNC_FILE") || RUNTIME_STATE_DIR + "/service-triggers.sync";
+const SUBSCRIPTION_UPDATE_STATE_DIR = getenv("NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR") || RUNTIME_STATE_DIR + "/subscription-update";
+const SUBSCRIPTION_LINKS_DIR = getenv("NEXROUTE_SUBSCRIPTION_LINKS_DIR") || RUNTIME_STATE_DIR + "/subscription-links";
+const SUBSCRIPTION_METADATA_DIR = getenv("NEXROUTE_SUBSCRIPTION_METADATA_DIR") || RUNTIME_STATE_DIR + "/subscription-metadata";
+const OUTBOUND_METADATA_DIR = getenv("NEXROUTE_OUTBOUND_METADATA_DIR") || RUNTIME_STATE_DIR + "/outbound-metadata";
+const SECTION_CACHE_DIR = getenv("NEXROUTE_SECTION_CACHE_DIR") || RUNTIME_STATE_DIR + "/section-cache";
+const RULE_CONDITION_CACHE_DIR = getenv("NEXROUTE_RULE_CONDITION_CACHE_DIR") || RUNTIME_STATE_DIR + "/rule-condition-cache";
+const RUNTIME_CACHE_FORMAT_FILE = getenv("NEXROUTE_RUNTIME_CACHE_FORMAT_FILE") || RUNTIME_STATE_DIR + "/cache-format";
+const PERSISTENT_SUBSCRIPTION_CACHE_DIR = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR") || "/etc/nexroute/subscription-cache";
+const PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE") || PERSISTENT_SUBSCRIPTION_CACHE_DIR + "/cache-format";
+const PERSISTENT_SUBSCRIPTION_CACHE_FORMAT = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT") || "7";
+const SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE = getenv("NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE") || RUNTIME_STATE_DIR + "/subscription-bootstrap-retry.pid";
+const DNS_FAILOVER_STATE_FILE = getenv("NEXROUTE_DNS_FAILOVER_STATE_FILE") || RUNTIME_STATE_DIR + "/dns-failover.json";
+const DNS_FAILOVER_PID_FILE = getenv("NEXROUTE_DNS_FAILOVER_PID_FILE") || RUNTIME_STATE_DIR + "/dns-failover.pid";
+const SUBSCRIPTION_UPDATE_LOCK_DIR = getenv("NEXROUTE_SUBSCRIPTION_UPDATE_LOCK_DIR") || RUNTIME_STATE_DIR + "/subscription-update.lock";
+const RELOAD_LOCK_DIR = getenv("NEXROUTE_RELOAD_LOCK_DIR") || "/var/run/nexroute.reload.lock";
+const INTERNAL_CONFIG_TRIGGER_GUARD = getenv("NEXROUTE_INTERNAL_CONFIG_TRIGGER_GUARD") || "/var/run/nexroute.internal-config-change";
 
-const LIST_UPDATE_CRON_MARKER = getenv("FORKOP_LIST_UPDATE_CRON_MARKER") || "# forkop-list-update";
-const SUBSCRIPTION_UPDATE_CRON_MARKER = getenv("FORKOP_SUBSCRIPTION_UPDATE_CRON_MARKER") || "# forkop-subscription-update";
-const COMPONENT_UPDATE_CHECK_CRON_MARKER = getenv("FORKOP_COMPONENT_UPDATE_CHECK_CRON_MARKER") || "# forkop-component-update-check";
-const RELOAD_STATE_FORMAT = int(getenv("FORKOP_RELOAD_STATE_FORMAT") || "1");
-const RUNTIME_CACHE_FORMAT = int(getenv("FORKOP_RUNTIME_CACHE_FORMAT") || "8");
-const RUNTIME_STABLE_MIN_AGE = int(getenv("FORKOP_RUNTIME_STABLE_MIN_AGE") || "2");
-const SING_BOX_START_STABLE_MIN_AGE = int(getenv("FORKOP_SING_BOX_START_STABLE_MIN_AGE") || "8");
-const SING_BOX_START_VERIFY_TIMEOUT = int(getenv("FORKOP_SING_BOX_START_VERIFY_TIMEOUT") || "10");
-const NFT_POPULATE_ENABLED_DEFAULT = int(getenv("FORKOP_NFT_POPULATE_ENABLED") || "1");
+const LIST_UPDATE_CRON_MARKER = getenv("NEXROUTE_LIST_UPDATE_CRON_MARKER") || "# nexroute-list-update";
+const SUBSCRIPTION_UPDATE_CRON_MARKER = getenv("NEXROUTE_SUBSCRIPTION_UPDATE_CRON_MARKER") || "# nexroute-subscription-update";
+const COMPONENT_UPDATE_CHECK_CRON_MARKER = getenv("NEXROUTE_COMPONENT_UPDATE_CHECK_CRON_MARKER") || "# nexroute-component-update-check";
+const RELOAD_STATE_FORMAT = int(getenv("NEXROUTE_RELOAD_STATE_FORMAT") || "1");
+const RUNTIME_CACHE_FORMAT = int(getenv("NEXROUTE_RUNTIME_CACHE_FORMAT") || "8");
+const RUNTIME_STABLE_MIN_AGE = int(getenv("NEXROUTE_RUNTIME_STABLE_MIN_AGE") || "2");
+const SING_BOX_START_STABLE_MIN_AGE = int(getenv("NEXROUTE_SING_BOX_START_STABLE_MIN_AGE") || "8");
+const SING_BOX_START_VERIFY_TIMEOUT = int(getenv("NEXROUTE_SING_BOX_START_VERIFY_TIMEOUT") || "10");
+const NFT_POPULATE_ENABLED_DEFAULT = int(getenv("NEXROUTE_NFT_POPULATE_ENABLED") || "1");
 
 const TMP_SING_BOX_FOLDER = getenv("TMP_SING_BOX_FOLDER") || constant_value("TMP_SING_BOX_FOLDER", "/tmp/sing-box");
 const TMP_RULESET_FOLDER = getenv("TMP_RULESET_FOLDER") || constant_value("TMP_RULESET_FOLDER", TMP_SING_BOX_FOLDER + "/rulesets");
 const TMP_SUBSCRIPTION_FOLDER = getenv("TMP_SUBSCRIPTION_FOLDER") || constant_value("TMP_SUBSCRIPTION_FOLDER", TMP_SING_BOX_FOLDER + "/subscriptions");
 
-const RT_TABLE_NAME = constant_value("RT_TABLE_NAME", "forkop");
-const NFT_TABLE_NAME = constant_value("NFT_TABLE_NAME", "ForkopTable");
+const RT_TABLE_NAME = constant_value("RT_TABLE_NAME", "nexroute");
+const NFT_TABLE_NAME = constant_value("NFT_TABLE_NAME", "NexrouteTable");
 const NFT_LOCALV4_SET_NAME = constant_value("NFT_LOCALV4_SET_NAME", "localv4");
 const NFT_LOCALV6_SET_NAME = constant_value("NFT_LOCALV6_SET_NAME", "localv6");
-const NFT_COMMON_SET_NAME = constant_value("NFT_COMMON_SET_NAME", "forkop_subnets");
-const NFT_COMMON6_SET_NAME = constant_value("NFT_COMMON6_SET_NAME", "forkop_subnets6");
-const NFT_PORT_SET_NAME = constant_value("NFT_PORT_SET_NAME", "forkop_ports");
-const NFT_IP_PORT_SET_NAME = constant_value("NFT_IP_PORT_SET_NAME", "forkop_ip_ports");
-const NFT_IP_PORT6_SET_NAME = constant_value("NFT_IP_PORT6_SET_NAME", "forkop_ip6_ports");
-const NFT_INTERFACE_SET_NAME = constant_value("NFT_INTERFACE_SET_NAME", "forkop_interfaces");
+const NFT_COMMON_SET_NAME = constant_value("NFT_COMMON_SET_NAME", "nexroute_subnets");
+const NFT_COMMON6_SET_NAME = constant_value("NFT_COMMON6_SET_NAME", "nexroute_subnets6");
+const NFT_PORT_SET_NAME = constant_value("NFT_PORT_SET_NAME", "nexroute_ports");
+const NFT_IP_PORT_SET_NAME = constant_value("NFT_IP_PORT_SET_NAME", "nexroute_ip_ports");
+const NFT_IP_PORT6_SET_NAME = constant_value("NFT_IP_PORT6_SET_NAME", "nexroute_ip6_ports");
+const NFT_INTERFACE_SET_NAME = constant_value("NFT_INTERFACE_SET_NAME", "nexroute_interfaces");
 const NFT_FAKEIP_MARK = constant_value("NFT_FAKEIP_MARK", "0x04000000");
 const NFT_OUTBOUND_MARK = constant_value("NFT_OUTBOUND_MARK", "0x08000000");
 
@@ -78,8 +78,8 @@ const SB_TPROXY_INBOUND6_ADDRESS = constant_value("SB_TPROXY_INBOUND6_ADDRESS", 
 const SB_TPROXY_INBOUND_PORT = constant_value("SB_TPROXY_INBOUND_PORT", "1602");
 const SB_SERVICE_MIXED_INBOUND_ADDRESS = constant_value("SB_SERVICE_MIXED_INBOUND_ADDRESS", "127.0.0.1");
 const SB_SERVICE_MIXED_INBOUND_PORT = constant_value("SB_SERVICE_MIXED_INBOUND_PORT", "4534");
-const SB_VARIANT_STATE_FILE = constant_value("SB_VARIANT_STATE_FILE", "/etc/forkop/sing-box-variant");
-const SB_VERSION_STATE_FILE = constant_value("SB_VERSION_STATE_FILE", "/etc/forkop/sing-box-version");
+const SB_VARIANT_STATE_FILE = constant_value("SB_VARIANT_STATE_FILE", "/etc/nexroute/sing-box-variant");
+const SB_VERSION_STATE_FILE = constant_value("SB_VERSION_STATE_FILE", "/etc/nexroute/sing-box-version");
 
 const ZAPRET_PROVIDER_NFQWS_BIN = constant_value("ZAPRET_PROVIDER_NFQWS_BIN", "/opt/zapret/nfq/nfqws");
 const ZAPRET_ROUTE_MARK_BASE = constant_value("ZAPRET_ROUTE_MARK_BASE", "0x01000000");
@@ -112,8 +112,8 @@ const BYEDPI_UC = LIB_DIR + "/providers/byedpi/runtime.uc";
 const PACKAGES_UC = LIB_DIR + "/core/packages.uc";
 
 let start_subscription_update_lock_held = false;
-let subscription_caches_prepared = getenv("FORKOP_SUBSCRIPTION_CACHES_PREPARED") || "0";
-let subscription_runtime_no_refresh = getenv("FORKOP_SUBSCRIPTION_RUNTIME_NO_REFRESH") || "0";
+let subscription_caches_prepared = getenv("NEXROUTE_SUBSCRIPTION_CACHES_PREPARED") || "0";
+let subscription_runtime_no_refresh = getenv("NEXROUTE_SUBSCRIPTION_RUNTIME_NO_REFRESH") || "0";
 let subscription_deferred_sections = "";
 let nft_populate_enabled = NFT_POPULATE_ENABLED_DEFAULT;
 let rule_condition_cache_enabled = 0;
@@ -254,29 +254,29 @@ function log_message(message, level) {
 
 function lifecycle_env() {
     return {
-        FORKOP_CONFIG_NAME: CONFIG_NAME,
-        FORKOP_LIB: LIB_DIR,
-        FORKOP_BIN: BIN_PATH,
-        FORKOP_SERVICE_INIT: SERVICE_INIT,
-        FORKOP_RUNTIME_STATE_DIR: RUNTIME_STATE_DIR,
-        FORKOP_SYSTEM_INFO_CACHE_FILE: SYSTEM_INFO_CACHE_FILE,
-        FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR: SUBSCRIPTION_UPDATE_STATE_DIR,
-        FORKOP_SUBSCRIPTION_LINKS_DIR: SUBSCRIPTION_LINKS_DIR,
-        FORKOP_SUBSCRIPTION_METADATA_DIR: SUBSCRIPTION_METADATA_DIR,
-        FORKOP_OUTBOUND_METADATA_DIR: OUTBOUND_METADATA_DIR,
-        FORKOP_SECTION_CACHE_DIR: SECTION_CACHE_DIR,
-        FORKOP_RULE_CONDITION_CACHE_DIR: RULE_CONDITION_CACHE_DIR,
-        FORKOP_RUNTIME_CACHE_FORMAT_FILE: RUNTIME_CACHE_FORMAT_FILE,
-        FORKOP_RUNTIME_CACHE_FORMAT: as_string(RUNTIME_CACHE_FORMAT),
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR: PERSISTENT_SUBSCRIPTION_CACHE_DIR,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE: PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT: PERSISTENT_SUBSCRIPTION_CACHE_FORMAT,
-        FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE: SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE,
-        FORKOP_DNS_FAILOVER_STATE_FILE: DNS_FAILOVER_STATE_FILE,
-        FORKOP_DNS_FAILOVER_PID_FILE: DNS_FAILOVER_PID_FILE,
-        FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR: SUBSCRIPTION_UPDATE_LOCK_DIR,
-        FORKOP_PENDING_RELOAD_FILE: PENDING_RELOAD_FILE,
-        FORKOP_RELOAD_LOCK_DIR: RELOAD_LOCK_DIR,
+        NEXROUTE_CONFIG_NAME: CONFIG_NAME,
+        NEXROUTE_LIB: LIB_DIR,
+        NEXROUTE_BIN: BIN_PATH,
+        NEXROUTE_SERVICE_INIT: SERVICE_INIT,
+        NEXROUTE_RUNTIME_STATE_DIR: RUNTIME_STATE_DIR,
+        NEXROUTE_SYSTEM_INFO_CACHE_FILE: SYSTEM_INFO_CACHE_FILE,
+        NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR: SUBSCRIPTION_UPDATE_STATE_DIR,
+        NEXROUTE_SUBSCRIPTION_LINKS_DIR: SUBSCRIPTION_LINKS_DIR,
+        NEXROUTE_SUBSCRIPTION_METADATA_DIR: SUBSCRIPTION_METADATA_DIR,
+        NEXROUTE_OUTBOUND_METADATA_DIR: OUTBOUND_METADATA_DIR,
+        NEXROUTE_SECTION_CACHE_DIR: SECTION_CACHE_DIR,
+        NEXROUTE_RULE_CONDITION_CACHE_DIR: RULE_CONDITION_CACHE_DIR,
+        NEXROUTE_RUNTIME_CACHE_FORMAT_FILE: RUNTIME_CACHE_FORMAT_FILE,
+        NEXROUTE_RUNTIME_CACHE_FORMAT: as_string(RUNTIME_CACHE_FORMAT),
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR: PERSISTENT_SUBSCRIPTION_CACHE_DIR,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE: PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT: PERSISTENT_SUBSCRIPTION_CACHE_FORMAT,
+        NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE: SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE,
+        NEXROUTE_DNS_FAILOVER_STATE_FILE: DNS_FAILOVER_STATE_FILE,
+        NEXROUTE_DNS_FAILOVER_PID_FILE: DNS_FAILOVER_PID_FILE,
+        NEXROUTE_SUBSCRIPTION_UPDATE_LOCK_DIR: SUBSCRIPTION_UPDATE_LOCK_DIR,
+        NEXROUTE_PENDING_RELOAD_FILE: PENDING_RELOAD_FILE,
+        NEXROUTE_RELOAD_LOCK_DIR: RELOAD_LOCK_DIR,
         TMP_SING_BOX_FOLDER: TMP_SING_BOX_FOLDER,
         TMP_RULESET_FOLDER: TMP_RULESET_FOLDER,
         TMP_SUBSCRIPTION_FOLDER: TMP_SUBSCRIPTION_FOLDER,
@@ -287,7 +287,7 @@ function lifecycle_env() {
         ZAPRET_PROVIDER_NFQWS_BIN: ZAPRET_PROVIDER_NFQWS_BIN,
         ZAPRET2_PROVIDER_NFQWS2_BIN: ZAPRET2_PROVIDER_NFQWS2_BIN,
         BYEDPI_BIN: BYEDPI_BIN,
-        FORKOP_RULE_CONDITION_CACHE_ENABLED: as_string(rule_condition_cache_enabled)
+        NEXROUTE_RULE_CONDITION_CACHE_ENABLED: as_string(rule_condition_cache_enabled)
     };
 }
 
@@ -530,7 +530,7 @@ function dnsmasq_restore_fail_safe() {
     return dns_apply_status([ "failsafe-restore" ]);
 }
 
-function dnsmasq_has_forkop_managed_state() {
+function dnsmasq_has_nexroute_managed_state() {
     return dns_apply_success([ "has-managed-state" ]);
 }
 
@@ -671,7 +671,7 @@ function prepare_subscription_caches(mode) {
 function start_main() {
     let status;
 
-    log_message("Starting Forkop", "info");
+    log_message("Starting Nexroute", "info");
 
     status = validate_start_config();
     if (status != 0)
@@ -722,7 +722,7 @@ function start_main() {
     }
 
     status = module_status(STATE_UC, [
-        "wait-forkop-stable-start",
+        "wait-nexroute-stable-start",
         RT_TABLE_NAME,
         NFT_TABLE_NAME,
         NFT_FAKEIP_MARK,
@@ -762,7 +762,7 @@ function start_impl() {
         if (status != 0)
             return status;
     }
-    else if (dnsmasq_has_forkop_managed_state()) {
+    else if (dnsmasq_has_nexroute_managed_state()) {
         status = dnsmasq_restore(true);
         if (status != 0)
             return status;
@@ -797,7 +797,7 @@ function start_impl() {
 function stop_main() {
     let status = 0;
 
-    log_message("Stopping Forkop", "info");
+    log_message("Stopping Nexroute", "info");
     module_success(DNS_FAILOVER_UC, [ "stop-runtime" ]);
     module_success(PRIORITY_UC, [ "stop-runtime" ]);
     module_success(SUBSCRIPTION_CACHE_UC, [ "stop-deferred-bootstrap-worker" ]);
@@ -832,7 +832,7 @@ function stop_main() {
 function cleanup_failed_runtime() {
     let status = 0;
 
-    log_message("Cleaning up Forkop runtime after failed start/reload", "info");
+    log_message("Cleaning up Nexroute runtime after failed start/reload", "info");
 
     let stop_status = stop_main();
     if (stop_status != 0)
@@ -847,7 +847,7 @@ function cleanup_failed_runtime() {
         status = mark_status;
 
     if (status != 0)
-        log_message("Failed to fully clean up Forkop runtime after start/reload failure", "warn");
+        log_message("Failed to fully clean up Nexroute runtime after start/reload failure", "warn");
 
     return status;
 }
@@ -877,7 +877,7 @@ function start() {
     mark_pending_reload_if_config_changed(startup_config_fingerprint, "config_changed_during_start");
 
     status = module_status(STATE_UC, [
-        "wait-forkop-stable-start",
+        "wait-nexroute-stable-start",
         RT_TABLE_NAME,
         NFT_TABLE_NAME,
         NFT_FAKEIP_MARK,
@@ -885,7 +885,7 @@ function start() {
         "8"
     ]);
     if (status != 0) {
-        log_message("Startup verification failed after Forkop was started; rolling back DNS changes", "warn");
+        log_message("Startup verification failed after Nexroute was started; rolling back DNS changes", "warn");
         cleanup_failed_runtime();
         return status;
     }
@@ -901,7 +901,7 @@ function stop_impl() {
         if (dns_status != 0)
             status = dns_status;
     }
-    else if (dnsmasq_has_forkop_managed_state()) {
+    else if (dnsmasq_has_nexroute_managed_state()) {
         let dns_status = dnsmasq_restore(true);
         if (dns_status != 0)
             status = dns_status;
@@ -935,7 +935,7 @@ function restart_runtime_for_reload() {
     let status;
     let selector_state = capture_selector_state();
 
-    log_message("Reload requires a full Forkop runtime restart", "info");
+    log_message("Reload requires a full Nexroute runtime restart", "info");
 
     status = stop_main();
     if (status != 0)
@@ -948,7 +948,7 @@ function restart_runtime_for_reload() {
     }
 
     status = module_status(STATE_UC, [
-        "wait-forkop-stable-start",
+        "wait-nexroute-stable-start",
         RT_TABLE_NAME,
         NFT_TABLE_NAME,
         NFT_FAKEIP_MARK,
@@ -956,7 +956,7 @@ function restart_runtime_for_reload() {
         "8"
     ]);
     if (status != 0) {
-        log_message("Reload runtime restart verification failed after Forkop was started; rolling back DNS changes", "fatal");
+        log_message("Reload runtime restart verification failed after Nexroute was started; rolling back DNS changes", "fatal");
         cleanup_failed_runtime();
         return status;
     }
@@ -1107,7 +1107,7 @@ function reload(reason) {
     let reload_config_fingerprint = external_config_fingerprint();
     rule_condition_cache_enabled = force_runtime_reload;
 
-    log_message("Reloading Forkop", "info");
+    log_message("Reloading Nexroute", "info");
 
     status = validate_start_config();
     if (status != 0)
@@ -1117,8 +1117,8 @@ function reload(reason) {
     if (status != 0)
         return status;
 
-    if (!module_success(STATE_UC, [ "forkop-running", RT_TABLE_NAME, NFT_TABLE_NAME, NFT_FAKEIP_MARK ])) {
-        log_message("Runtime state is incomplete; restarting Forkop runtime", "info");
+    if (!module_success(STATE_UC, [ "nexroute-running", RT_TABLE_NAME, NFT_TABLE_NAME, NFT_FAKEIP_MARK ])) {
+        log_message("Runtime state is incomplete; restarting Nexroute runtime", "info");
         return finish_reload_status(restart_runtime_for_reload(), reload_config_fingerprint);
     }
 
@@ -1149,11 +1149,11 @@ function reload(reason) {
         return abort_reload(status, false);
     }
 
-    let dnsmasq_managed_state = dnsmasq_has_forkop_managed_state() ? 1 : 0;
+    let dnsmasq_managed_state = dnsmasq_has_nexroute_managed_state() ? 1 : 0;
     let list_update_sources = module_success(STATE_UC, [ "has-list-update-sources" ]) ? 1 : 0;
     let nft_list_update_sources = module_success(STATE_UC, [ "has-nft-list-update-sources" ]) ? 1 : 0;
     let runtime_cache_needs_rebuild = 0;
-    if (as_string(getenv("FORKOP_RUNTIME_CACHE_INVALIDATED") || "0") == "1" ||
+    if (as_string(getenv("NEXROUTE_RUNTIME_CACHE_INVALIDATED") || "0") == "1" ||
         module_success(SUBSCRIPTION_CACHE_UC, [ "runtime-cache-needs-rebuild", SECTION_CACHE_DIR ]))
         runtime_cache_needs_rebuild = 1;
 
@@ -1171,7 +1171,7 @@ function reload(reason) {
 
     if (plan_result.status != 0) {
         if (plan_result.status == 2) {
-            log_message("Reload state is unavailable; restarting Forkop runtime", "info");
+            log_message("Reload state is unavailable; restarting Nexroute runtime", "info");
             return finish_reload_status(restart_runtime_for_reload(), reload_config_fingerprint);
         }
         return abort_reload(plan_result.status, false);
@@ -1238,7 +1238,7 @@ function reload(reason) {
         if (status != 0)
             return abort_reload(status, true);
         status = module_status(STATE_UC, [
-            "wait-forkop-stable-start",
+            "wait-nexroute-stable-start",
             RT_TABLE_NAME,
             NFT_TABLE_NAME,
             NFT_FAKEIP_MARK,
@@ -1246,7 +1246,7 @@ function reload(reason) {
             as_string(SING_BOX_START_VERIFY_TIMEOUT)
         ]);
         if (status != 0) {
-            log_message("Reload verification failed after sing-box was reloaded; stopping Forkop runtime", "fatal");
+            log_message("Reload verification failed after sing-box was reloaded; stopping Nexroute runtime", "fatal");
             cleanup_failed_runtime();
             return status;
         }
@@ -1310,7 +1310,7 @@ function reload(reason) {
 }
 
 function reload_tracked(reason) {
-    if (as_string(getenv("FORKOP_UI_ACTION_TRACKED") || "0") == "1")
+    if (as_string(getenv("NEXROUTE_UI_ACTION_TRACKED") || "0") == "1")
         return reload(reason);
 
     let job_id = trim(module_output(UI_UC, [ "service-action-begin-if-idle", "reload", "runtime_reload" ]));
@@ -1325,7 +1325,7 @@ function reload_tracked(reason) {
 }
 
 function restart() {
-    log_message("Restarting Forkop", "info");
+    log_message("Restarting Nexroute", "info");
 
     let selector_state = capture_selector_state();
     let status = stop_impl();
@@ -1339,7 +1339,7 @@ function restart() {
     }
 
     if (module_success(STATE_UC, [
-        "forkop-stably-running",
+        "nexroute-stably-running",
         RT_TABLE_NAME,
         NFT_TABLE_NAME,
         NFT_FAKEIP_MARK,
@@ -1349,7 +1349,7 @@ function restart() {
         return 0;
     }
 
-    log_message("Restart verification failed after Forkop was started; stopping Forkop runtime", "fatal");
+    log_message("Restart verification failed after Nexroute was started; stopping Nexroute runtime", "fatal");
     cleanup_failed_runtime();
     return 1;
 }
@@ -1367,7 +1367,7 @@ function package_manager_remove_if_installed(package_name) {
 }
 
 function uninstall() {
-    log_message("Uninstalling Forkop", "info");
+    log_message("Uninstalling Nexroute", "info");
 
     if (fs.stat(SERVICE_INIT) != null) {
         stop();
@@ -1376,13 +1376,13 @@ function uninstall() {
 
     dnsmasq_restore_fail_safe();
 
-    if (fs.stat("/etc/init.d/forkop") != null) {
-        command_success_from_args([ "/etc/init.d/forkop", "stop" ]);
-        command_success_from_args([ "/etc/init.d/forkop", "disable" ]);
+    if (fs.stat("/etc/init.d/nexroute") != null) {
+        command_success_from_args([ "/etc/init.d/nexroute", "stop" ]);
+        command_success_from_args([ "/etc/init.d/nexroute", "disable" ]);
     }
 
-    package_manager_remove_if_installed("luci-i18n-forkop-ru");
-    package_manager_remove_if_installed("luci-app-forkop");
+    package_manager_remove_if_installed("luci-i18n-nexroute-ru");
+    package_manager_remove_if_installed("luci-app-nexroute");
 
     if (module_success(SINGBOX_UC, [ "managed-service-installed" ])) {
         module_success(SINGBOX_UC, [ "remove-managed-service-script" ]);
@@ -1390,13 +1390,13 @@ function uninstall() {
         remove_file("/usr/lib/libcronet.so");
     }
 
-    command_success_from_args([ "rm", "-rf", "/usr/lib/forkop" ]);
+    command_success_from_args([ "rm", "-rf", "/usr/lib/nexroute" ]);
     command_success_from_args([ "rm", "-rf", LUCI_VIEW_DIR ]);
     remove_file(SERVICE_INIT);
     remove_file(BIN_PATH);
-    remove_file("/usr/share/luci/menu.d/luci-app-forkop.json");
-    remove_file("/usr/share/rpcd/acl.d/luci-app-forkop.json");
-    remove_file("/etc/uci-defaults/50_luci-forkop");
+    remove_file("/usr/share/luci/menu.d/luci-app-nexroute.json");
+    remove_file("/usr/share/rpcd/acl.d/luci-app-nexroute.json");
+    remove_file("/etc/uci-defaults/50_luci-nexroute");
     command_success_from_args([ "find", "/usr/lib/lua/luci/i18n", "-maxdepth", "1", "-type", "f", "-name", LUCI_I18N_DOMAIN + ".*.lmo", "-delete" ]);
     remove_file("/usr/lib/lua/luci/i18n/" + LUCI_I18N_DOMAIN + ".ru.lua");
     remove_file("/usr/lib/lua/luci/i18n/" + LUCI_I18N_DOMAIN + ".en.lua");

@@ -12,9 +12,9 @@ let object_or_empty = common.object_or_empty;
 let option = common.option;
 let read_json_file = common.read_json_file;
 
-const DNS_FAILOVER_STATE_FILE = getenv("FORKOP_DNS_FAILOVER_STATE_FILE") || "/var/run/forkop/dns-failover.json";
-const DNS_HEALTH_ADDRESS = getenv("FORKOP_DNS_HEALTH_ADDRESS") || "127.0.0.42";
-const DNS_HEALTH_PORT_BASE = int(getenv("FORKOP_DNS_HEALTH_PORT_BASE") || "10053");
+const DNS_FAILOVER_STATE_FILE = getenv("NEXROUTE_DNS_FAILOVER_STATE_FILE") || "/var/run/nexroute/dns-failover.json";
+const DNS_HEALTH_ADDRESS = getenv("NEXROUTE_DNS_HEALTH_ADDRESS") || "127.0.0.42";
+const DNS_HEALTH_PORT_BASE = int(getenv("NEXROUTE_DNS_HEALTH_PORT_BASE") || "10053");
 
 function server_list(settings, key, fallback) {
     let result = [];

@@ -1,5 +1,5 @@
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
-import { ForkopShellMethods } from '../../../methods';
+import { NexrouteShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { getMeta } from '../helpers/getMeta';
 import { getDashboardSections } from '../../../methods/custom/getDashboardSections';
@@ -71,7 +71,7 @@ export async function runSectionsCheck() {
         const isSubscription = section.proxyConfigType === 'subscription';
 
         if (selectedOutbound?.code) {
-          const latencyProxy = await ForkopShellMethods.getClashApiProxyLatency(
+          const latencyProxy = await NexrouteShellMethods.getClashApiProxyLatency(
             selectedOutbound.code,
             section.latencyTestTimeout,
           );
@@ -91,7 +91,7 @@ export async function runSectionsCheck() {
           };
         }
 
-        const latencyGroup = await ForkopShellMethods.getClashApiGroupLatency(
+        const latencyGroup = await NexrouteShellMethods.getClashApiGroupLatency(
           section.code,
         );
         const success = latencyGroup.success && !latencyGroup.data.message;
@@ -125,7 +125,7 @@ export async function runSectionsCheck() {
       }
 
       const selectedOutbound = section.outbounds[0];
-      const latencyProxy = await ForkopShellMethods.getClashApiProxyLatency(
+      const latencyProxy = await NexrouteShellMethods.getClashApiProxyLatency(
         section.code,
         section.latencyTestTimeout,
       );

@@ -31,7 +31,7 @@ export function renderWikiDisclaimer(kind: 'default' | 'error' | 'warning') {
       text: _('Open Project Page'),
       onClick: () =>
         window.open(
-          'https://github.com/ushan0v/forkop#readme',
+          'https://github.com/filippxda26/Nexroute#readme',
           '_blank',
           'noopener,noreferrer',
         ),

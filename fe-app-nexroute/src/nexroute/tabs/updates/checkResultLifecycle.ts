@@ -1,10 +1,10 @@
-import type { Forkop } from '../../types';
+import type { Nexroute } from '../../types';
 
 export function shouldPreserveCompletedCheckResultOnNextMount({
   action,
   mounted,
 }: {
-  action: Forkop.ComponentAction;
+  action: Nexroute.ComponentAction;
   mounted: boolean;
 }) {
   return action === 'check_update' && !mounted;
@@ -27,7 +27,7 @@ export function shouldResetCheckResultsOnMount({
 }
 
 export function shouldRefreshComponentStateBeforeRender(
-  uiState?: Pick<Forkop.UiState, 'actions'>,
+  uiState?: Pick<Nexroute.UiState, 'actions'>,
 ) {
   return Boolean(
     uiState?.actions.component.some((state) => state.running === true),

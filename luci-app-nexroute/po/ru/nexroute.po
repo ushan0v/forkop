@@ -1,11 +1,11 @@
-# RU translations for FORKOP package.
-# Copyright (C) 2026 THE FORKOP COPYRIGHT HOLDER
-# This file is distributed under the same license as the FORKOP package.
+# RU translations for NEXROUTE package.
+# Copyright (C) 2026 THE NEXROUTE COPYRIGHT HOLDER
+# This file is distributed under the same license as the NEXROUTE package.
 # ushan0v, 2026.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: FORKOP\n"
+"Project-Id-Version: NEXROUTE\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-07-18 07:01+0300\n"
 "PO-Revision-Date: 2026-07-18 07:01+0300\n"
@@ -209,8 +209,8 @@ msgstr "Встроенные наборы правил"
 msgid "By flag emoji from name"
 msgstr "По эмодзи флага из названия"
 
-msgid "ByeDPI listen address and port are assigned by Forkop and must not be set in the strategy."
-msgstr "Адрес и порт прослушивания ByeDPI назначаются Forkop и не должны задаваться в стратегии."
+msgid "ByeDPI listen address and port are assigned by Nexroute and must not be set in the strategy."
+msgstr "Адрес и порт прослушивания ByeDPI назначаются Nexroute и не должны задаваться в стратегии."
 
 msgid "ByeDPI option does not accept a compact value: %s"
 msgstr "Опция ByeDPI не принимает компактное значение: %s"
@@ -344,8 +344,8 @@ msgstr "Условия"
 msgid "Config File Path"
 msgstr "Путь к файлу конфигурации"
 
-msgid "Configuration for Forkop service"
-msgstr "Настройки сервиса Forkop"
+msgid "Configuration for Nexroute service"
+msgstr "Настройки сервиса Nexroute"
 
 msgid "Configure User-Agent in the item settings"
 msgstr "Настройте User-Agent в настройках элемента"
@@ -395,8 +395,8 @@ msgstr "Дашборд сейчас недоступен"
 msgid "Default address for checking server availability and latency. URLTest uses its own address."
 msgstr "Адрес по умолчанию для проверки доступности и задержки серверов. Для URLTest используется собственный адрес."
 
-msgid "Delay in milliseconds before reloading Forkop after interface UP"
-msgstr "Задержка в миллисекундах перед перезапуском Forkop после поднятия интерфейса"
+msgid "Delay in milliseconds before reloading Nexroute after interface UP"
+msgstr "Задержка в миллисекундах перед перезапуском Nexroute после поднятия интерфейса"
 
 msgid "Delay value cannot be empty"
 msgstr "Значение задержки не может быть пустым"
@@ -440,8 +440,8 @@ msgstr "Отключить QUIC"
 msgid "Disable the QUIC protocol to improve compatibility or fix issues with video streaming"
 msgstr "Отключить QUIC протокол для улучшения совместимости или исправления видео стриминга"
 
-msgid "Disabling interception is incompatible with action=zapret2 because Forkop sends matched traffic through NFQUEUE."
-msgstr "Отключение перехвата несовместимо с action=zapret2, потому что Forkop отправляет совпавший трафик через NFQUEUE."
+msgid "Disabling interception is incompatible with action=zapret2 because Nexroute sends matched traffic through NFQUEUE."
+msgstr "Отключение перехвата несовместимо с action=zapret2, потому что Nexroute отправляет совпавший трафик через NFQUEUE."
 
 msgid "Display name"
 msgstr "Отображаемое имя"
@@ -683,11 +683,11 @@ msgstr "Истекает"
 msgid "Expose this section as a local HTTP+SOCKS proxy"
 msgstr "Открыть эту секцию как локальный HTTP+SOCKS прокси"
 
-msgid "External nfqws config files bypass Forkop queue management and explicit validation."
-msgstr "Внешние конфиги nfqws обходят управление очередями и явную валидацию Forkop."
+msgid "External nfqws config files bypass Nexroute queue management and explicit validation."
+msgstr "Внешние конфиги nfqws обходят управление очередями и явную валидацию Nexroute."
 
-msgid "External nfqws2 config files bypass Forkop queue management and explicit validation."
-msgstr "Внешние конфиги nfqws2 обходят управление очередями и явную валидацию Forkop."
+msgid "External nfqws2 config files bypass Nexroute queue management and explicit validation."
+msgstr "Внешние конфиги nfqws2 обходят управление очередями и явную валидацию Nexroute."
 
 msgid "Failed to close connection"
 msgstr "Не удалось закрыть подключение"
@@ -737,62 +737,62 @@ msgstr "Исправьте подсвеченные поля и сохранит
 msgid "Forced device routing"
 msgstr "Принудительная маршрутизация устройств"
 
-msgid "Forkop Error"
-msgstr "Ошибка Forkop"
+msgid "Nexroute Error"
+msgstr "Ошибка Nexroute"
 
-msgid "Forkop manages ciadpi pid files itself, so pidfile options are not allowed here."
-msgstr "Forkop сам управляет pid-файлами ciadpi, поэтому параметры pidfile здесь запрещены."
+msgid "Nexroute manages ciadpi pid files itself, so pidfile options are not allowed here."
+msgstr "Nexroute сам управляет pid-файлами ciadpi, поэтому параметры pidfile здесь запрещены."
 
-msgid "Forkop manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Forkop сам управляет жизненным циклом ciadpi, поэтому режим daemon здесь запрещён."
+msgid "Nexroute manages the ciadpi process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом ciadpi, поэтому режим daemon здесь запрещён."
 
-msgid "Forkop manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Forkop сам управляет жизненным циклом nfqws, поэтому режим daemon здесь запрещён."
+msgid "Nexroute manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом nfqws, поэтому режим daemon здесь запрещён."
 
-msgid "Forkop manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
-msgstr "Forkop сам управляет жизненным циклом nfqws2, поэтому режим daemon здесь запрещён."
+msgid "Nexroute manages the nfqws2 process lifecycle itself, so daemon mode is not allowed here."
+msgstr "Nexroute сам управляет жизненным циклом nfqws2, поэтому режим daemon здесь запрещён."
 
-msgid "Forkop service is stopped. Start the service to display connections."
-msgstr "Служба Forkop остановлена. Запустите сервис для отображения подключений."
+msgid "Nexroute service is stopped. Start the service to display connections."
+msgstr "Служба Nexroute остановлена. Запустите сервис для отображения подключений."
 
-msgid "Forkop service is stopped. Start the service to display the dashboard."
-msgstr "Служба Forkop остановлена. Запустите сервис для отображения дашборда."
+msgid "Nexroute service is stopped. Start the service to display the dashboard."
+msgstr "Служба Nexroute остановлена. Запустите сервис для отображения дашборда."
 
-msgid "Forkop Settings"
-msgstr "Настройки Forkop"
+msgid "Nexroute Settings"
+msgstr "Настройки Nexroute"
 
-msgid "Forkop will not modify your DHCP configuration"
-msgstr "Forkop не будет изменять вашу конфигурацию DHCP"
+msgid "Nexroute will not modify your DHCP configuration"
+msgstr "Nexroute не будет изменять вашу конфигурацию DHCP"
 
-msgid "Forkop-managed ciadpi runtime has restarted"
-msgstr "ciadpi Forkop перезапускался"
+msgid "Nexroute-managed ciadpi runtime has restarted"
+msgstr "ciadpi Nexroute перезапускался"
 
-msgid "Forkop-managed ciadpi runtime is not ready"
-msgstr "ciadpi Forkop не готов"
+msgid "Nexroute-managed ciadpi runtime is not ready"
+msgstr "ciadpi Nexroute не готов"
 
-msgid "Forkop-managed ciadpi runtime is not running"
-msgstr "ciadpi Forkop не запущен"
+msgid "Nexroute-managed ciadpi runtime is not running"
+msgstr "ciadpi Nexroute не запущен"
 
-msgid "Forkop-managed ciadpi runtime is ready"
-msgstr "ciadpi Forkop готов"
+msgid "Nexroute-managed ciadpi runtime is ready"
+msgstr "ciadpi Nexroute готов"
 
-msgid "Forkop-managed nfqws runtime is not ready"
-msgstr "NFQWS Forkop не готов"
+msgid "Nexroute-managed nfqws runtime is not ready"
+msgstr "NFQWS Nexroute не готов"
 
-msgid "Forkop-managed nfqws runtime is not running"
-msgstr "NFQWS Forkop не запущен"
+msgid "Nexroute-managed nfqws runtime is not running"
+msgstr "NFQWS Nexroute не запущен"
 
-msgid "Forkop-managed nfqws runtime is ready"
-msgstr "NFQWS Forkop готов"
+msgid "Nexroute-managed nfqws runtime is ready"
+msgstr "NFQWS Nexroute готов"
 
-msgid "Forkop-managed nfqws2 runtime is not ready"
-msgstr "NFQWS2 Forkop не готов"
+msgid "Nexroute-managed nfqws2 runtime is not ready"
+msgstr "NFQWS2 Nexroute не готов"
 
-msgid "Forkop-managed nfqws2 runtime is not running"
-msgstr "NFQWS2 Forkop не запущен"
+msgid "Nexroute-managed nfqws2 runtime is not running"
+msgstr "NFQWS2 Nexroute не запущен"
 
-msgid "Forkop-managed nfqws2 runtime is ready"
-msgstr "NFQWS2 Forkop готов"
+msgid "Nexroute-managed nfqws2 runtime is ready"
+msgstr "NFQWS2 Nexroute готов"
 
 msgid "Fronting IP"
 msgstr "IP фронтинга"
@@ -803,8 +803,8 @@ msgstr "Порт фронтинга"
 msgid "Fronting proxy protocol"
 msgstr "Proxy protocol для фронтинга"
 
-msgid "Fuzzing is not supported here because Forkop needs deterministic runtime validation."
-msgstr "Fuzzing здесь не поддерживается, потому что Forkop нужна предсказуемая runtime-валидация."
+msgid "Fuzzing is not supported here because Nexroute needs deterministic runtime validation."
+msgstr "Fuzzing здесь не поддерживается, потому что Nexroute нужна предсказуемая runtime-валидация."
 
 msgid "Generate HWID from router hardware information for this subscription"
 msgstr "Генерировать HWID из аппаратной информации роутера для этой подписки"
@@ -1547,8 +1547,8 @@ msgstr "Выбор ресурсов по IP или CIDR внутри nfqws зд�
 msgid "Resource selection by IP or CIDR inside nfqws2 is not supported here; sing-box selects resources before NFQUEUE."
 msgstr "Выбор ресурсов по IP или CIDR внутри nfqws2 здесь не поддерживается; sing-box выбирает ресурсы до NFQUEUE."
 
-msgid "Restart Forkop"
-msgstr "Перезапустить Forkop"
+msgid "Restart Nexroute"
+msgstr "Перезапустить Nexroute"
 
 msgid "Resume updates"
 msgstr "Продолжить обновление"
@@ -1817,8 +1817,8 @@ msgstr "Укажите разные файлы"
 msgid "Standalone ByeDPI autostart is enabled"
 msgstr "Автозапуск отдельной службы ByeDPI включен"
 
-msgid "Standalone ByeDPI is active together with Forkop ByeDPI rules"
-msgstr "Отдельная служба ByeDPI активна вместе с правилами ByeDPI в Forkop"
+msgid "Standalone ByeDPI is active together with Nexroute ByeDPI rules"
+msgstr "Отдельная служба ByeDPI активна вместе с правилами ByeDPI в Nexroute"
 
 msgid "Standalone ByeDPI service is active"
 msgstr "Отдельная служба ByeDPI активна"
@@ -1826,8 +1826,8 @@ msgstr "Отдельная служба ByeDPI активна"
 msgid "Standalone ByeDPI service is inactive"
 msgstr "Отдельная служба ByeDPI неактивна"
 
-msgid "Standalone Zapret is active together with Forkop Zapret rules"
-msgstr "Отдельная служба Zapret активна вместе с правилами Zapret в Forkop"
+msgid "Standalone Zapret is active together with Nexroute Zapret rules"
+msgstr "Отдельная служба Zapret активна вместе с правилами Zapret в Nexroute"
 
 msgid "Standalone Zapret service is active"
 msgstr "Отдельная служба Zapret активна"
@@ -1838,8 +1838,8 @@ msgstr "Отдельная служба Zapret неактивна"
 msgid "Standalone Zapret2 autostart is enabled"
 msgstr "Автозапуск отдельной службы Zapret2 включён"
 
-msgid "Standalone Zapret2 is active together with Forkop Zapret2 rules"
-msgstr "Отдельная служба Zapret2 активна вместе с правилами Zapret2 в Forkop"
+msgid "Standalone Zapret2 is active together with Nexroute Zapret2 rules"
+msgstr "Отдельная служба Zapret2 активна вместе с правилами Zapret2 в Nexroute"
 
 msgid "Standalone Zapret2 service is active"
 msgstr "Отдельная служба Zapret2 активна"
@@ -1847,14 +1847,14 @@ msgstr "Отдельная служба Zapret2 активна"
 msgid "Standalone Zapret2 service is inactive"
 msgstr "Отдельная служба Zapret2 неактивна"
 
-msgid "Start Forkop"
-msgstr "Запустить Forkop"
+msgid "Start Nexroute"
+msgstr "Запустить Nexroute"
 
 msgid "Stop checking when URLTest group is not used. Use sing-box duration format like 1d, 12h or 30m."
 msgstr "Останавливать проверку если URLTest группа не используется. Используйте формат длительности sing-box, например 1d, 12h или 30m."
 
-msgid "Stop Forkop"
-msgstr "Остановить Forkop"
+msgid "Stop Nexroute"
+msgstr "Остановить Nexroute"
 
 msgid "Subnets from the list will be extracted and added to nftables"
 msgstr "IP-адреса и подсети из списка будут извлечены и добавлены в nftables"
@@ -1928,11 +1928,11 @@ msgstr "Тестировать серверы, имена которых сов�
 msgid "Testing URL"
 msgstr "URL проверки"
 
-msgid "The desync fwmark is managed by Forkop for loop prevention and must not be overridden here."
-msgstr "Desync fwmark управляется Forkop для защиты от циклов и не должен переопределяться здесь."
+msgid "The desync fwmark is managed by Nexroute for loop prevention and must not be overridden here."
+msgstr "Desync fwmark управляется Nexroute для защиты от циклов и не должен переопределяться здесь."
 
-msgid "The NFQUEUE number is assigned by Forkop for each rule and must not be overridden here."
-msgstr "Номер NFQUEUE назначается Forkop для каждого правила и не должен переопределяться здесь."
+msgid "The NFQUEUE number is assigned by Nexroute for each rule and must not be overridden here."
+msgstr "Номер NFQUEUE назначается Nexroute для каждого правила и не должен переопределяться здесь."
 
 msgid "The rule applies to the domain and all its subdomains. Use full:, keyword:, or regex: prefixes for exact match, keyword match, or regular expression."
 msgstr "Правило применяется к домену и всем его поддоменам. Для полного совпадения, совпадению по слову или регулярному выражению используйте префиксы full:, keyword: или regex:."
@@ -1997,8 +1997,8 @@ msgstr "Трафик этого уровня пойдёт напрямую."
 msgid "Traffic Total"
 msgstr "Всего трафика"
 
-msgid "Transparent proxy mode is incompatible with action=byedpi because Forkop connects to ciadpi through SOCKS."
-msgstr "Режим прозрачного прокси несовместим с action=byedpi, потому что Forkop подключается к ciadpi через SOCKS."
+msgid "Transparent proxy mode is incompatible with action=byedpi because Nexroute connects to ciadpi through SOCKS."
+msgstr "Режим прозрачного прокси несовместим с action=byedpi, потому что Nexroute подключается к ciadpi через SOCKS."
 
 msgid "Transport"
 msgstr "Транспорт"
@@ -2045,14 +2045,14 @@ msgstr "Таймаут недоступности"
 msgid "Unexpected ByeDPI strategy argument: %s"
 msgstr "Неожиданный аргумент стратегии ByeDPI: %s"
 
-msgid "Unexpected Forkop-managed ciadpi runtime is running"
-msgstr "Обнаружен лишний ciadpi Forkop"
+msgid "Unexpected Nexroute-managed ciadpi runtime is running"
+msgstr "Обнаружен лишний ciadpi Nexroute"
 
-msgid "Unexpected Forkop-managed nfqws runtime is running"
-msgstr "Обнаружен лишний NFQWS Forkop"
+msgid "Unexpected Nexroute-managed nfqws runtime is running"
+msgstr "Обнаружен лишний NFQWS Nexroute"
 
-msgid "Unexpected Forkop-managed nfqws2 runtime is running"
-msgstr "Обнаружен лишний NFQWS2 Forkop"
+msgid "Unexpected Nexroute-managed nfqws2 runtime is running"
+msgstr "Обнаружен лишний NFQWS2 Nexroute"
 
 msgid "Unexpected standalone token. Use explicit flags such as --name or --name=value."
 msgstr "Неожиданный отдельный токен. Используйте явные флаги вида --имя или --имя=значение."
@@ -2216,8 +2216,8 @@ msgstr "WAN"
 msgid "WAN public IP"
 msgstr "Публичный WAN IP"
 
-msgid "What Forkop should do when this section matches"
-msgstr "Что Forkop должен делать при совпадении этой секции"
+msgid "What Nexroute should do when this section matches"
+msgstr "Что Nexroute должен делать при совпадении этой секции"
 
 msgid "When switching to another level, test every server and select the fastest instead of the first working one."
 msgstr "При переходе на другой уровень тестировать все сервера и выбирать самый быстрый, а не первый работающий."
@@ -2234,8 +2234,8 @@ msgstr "Да"
 msgid "You can select Output Network Interface, by default autodetect"
 msgstr "Вы можете выбрать выходной сетевой интерфейс, по умолчанию он определяется автоматически."
 
-msgid "Zapret hostlist templates are not supported here because Forkop does not expand them for per-rule NFQWS strategies."
-msgstr "Шаблоны hostlist zapret здесь не поддерживаются, потому что Forkop не разворачивает их для per-rule стратегий NFQWS."
+msgid "Zapret hostlist templates are not supported here because Nexroute does not expand them for per-rule NFQWS strategies."
+msgstr "Шаблоны hostlist zapret здесь не поддерживаются, потому что Nexroute не разворачивает их для per-rule стратегий NFQWS."
 
 msgid "Zapret package is installed"
 msgstr "Пакет Zapret установлен"
@@ -2255,8 +2255,8 @@ msgstr "sing-box outbound для Zapret настроен"
 msgid "Zapret sing-box outbound is not configured"
 msgstr "sing-box outbound для Zapret не настроен"
 
-msgid "Zapret2 hostlist templates are not supported here because Forkop does not expand them for per-rule NFQWS2 strategies."
-msgstr "Шаблоны hostlist Zapret2 здесь не поддерживаются, потому что Forkop не разворачивает их для per-rule стратегий NFQWS2."
+msgid "Zapret2 hostlist templates are not supported here because Nexroute does not expand them for per-rule NFQWS2 strategies."
+msgstr "Шаблоны hostlist Zapret2 здесь не поддерживаются, потому что Nexroute не разворачивает их для per-rule стратегий NFQWS2."
 
 msgid "Zapret2 package is installed"
 msgstr "Пакет Zapret2 установлен"

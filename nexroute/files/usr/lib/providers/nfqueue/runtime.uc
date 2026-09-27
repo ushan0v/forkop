@@ -5,10 +5,10 @@ let constants = require("core.constants");
 let uci_core = require("core.uci");
 let runtime_constants = require("singbox.constants");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || constants.FORKOP_CONFIG_NAME || "forkop";
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || constants.NEXROUTE_CONFIG_NAME || "nexroute";
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
 const SB_TPROXY_INBOUND_TAG = getenv("SB_TPROXY_INBOUND_TAG") || constants.SB_TPROXY_INBOUND_TAG || "tproxy-in";
-const NFT_TABLE_NAME = getenv("NFT_TABLE_NAME") || constants.NFT_TABLE_NAME || "ForkopTable";
+const NFT_TABLE_NAME = getenv("NFT_TABLE_NAME") || constants.NFT_TABLE_NAME || "NexrouteTable";
 
 function as_string(value) {
     return value == null ? "" : "" + value;
@@ -76,7 +76,7 @@ function module_success(args) {
 
 function log_message(message, level) {
     level = as_string(level || "info");
-    command_success_from_args([ "logger", "-t", "forkop", "[" + level + "] " + as_string(message) ]);
+    command_success_from_args([ "logger", "-t", "nexroute", "[" + level + "] " + as_string(message) ]);
 }
 
 function object_or_empty(value) {
@@ -466,7 +466,7 @@ function start_runtime(cfg) {
 
     cleanup_legacy_runtime(cfg);
     if (!ensure_runtime_dirs(cfg)) {
-        log_message("Failed to prepare the Forkop " + cfg.status_label + " state directory in " + cfg.state_dir + ". Aborted.", "fatal");
+        log_message("Failed to prepare the Nexroute " + cfg.status_label + " state directory in " + cfg.state_dir + ". Aborted.", "fatal");
         exit(1);
     }
 
@@ -594,15 +594,15 @@ function status_json(cfg) {
     if (configured && !provider)
         message = "action=" + cfg.action + " is configured, but " + cfg.status_label + " provider is not available at " + cfg.provider_bin;
     else if (queue_overlap)
-        message = "external NFQUEUE rules overlap with the Forkop " + cfg.status_label + " range " + cfg.queue_base + "-" + queue_range_end(cfg);
+        message = "external NFQUEUE rules overlap with the Nexroute " + cfg.status_label + " range " + cfg.queue_base + "-" + queue_range_end(cfg);
     else if (legacy_runtime)
         message = "legacy zapret runtime paths are still present and should be migrated";
     else if (running > expected || supervisors > expected)
-        message = "unexpected Forkop-managed " + cfg.binary_name + " processes are running without matching action=" + cfg.action + " rules";
+        message = "unexpected Nexroute-managed " + cfg.binary_name + " processes are running without matching action=" + cfg.action + " rules";
     else if (configured && !ready)
-        message = "action=" + cfg.action + " is configured, but the Forkop-managed " + cfg.binary_name + " runtime is not ready";
+        message = "action=" + cfg.action + " is configured, but the Nexroute-managed " + cfg.binary_name + " runtime is not ready";
     else if (standalone_conflict)
-        message = "standalone " + cfg.status_label + " is active together with Forkop action=" + cfg.action + "; queues are separate, but packet-level policy overlap is possible";
+        message = "standalone " + cfg.status_label + " is active together with Nexroute action=" + cfg.action + "; queues are separate, but packet-level policy overlap is possible";
     else if (!configured && !provider && pkg)
         message = cfg.status_label + " package is installed, but the provider binary is not available at " + cfg.provider_bin;
     else if (!configured && !provider)

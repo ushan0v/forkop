@@ -5,7 +5,7 @@ let core_ip = require("core.ip");
 let core_url = require("core.url");
 let uci = require("core.uci");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
 
 function as_string(value) {
     return value == null ? "" : "" + value;
@@ -46,7 +46,7 @@ function output(command) {
 
 function log(message, level) {
     level = as_string(level || "info");
-    run("logger -t " + shell_quote("forkop") + " " + shell_quote("[" + level + "] " + as_string(message)));
+    run("logger -t " + shell_quote("nexroute") + " " + shell_quote("[" + level + "] " + as_string(message)));
 }
 
 function fatal(message) {
@@ -862,7 +862,7 @@ function server_prepare_tls_defaults(section, protocol, security) {
     let key_path = config_get(section, "tls_key_path", "");
     if (certificate_path == "" || key_path == "") {
         let safe_name = safe_filename_string(section);
-        let default_dir = "/etc/forkop/server-certs";
+        let default_dir = "/etc/nexroute/server-certs";
         if (certificate_path == "")
             certificate_path = default_dir + "/" + safe_name + ".crt";
         if (key_path == "")
@@ -968,7 +968,7 @@ function prepare_server_defaults(section) {
     if (protocol == "tailscale") {
         let safe_name = safe_filename_string(section);
         server_default_set_option(section, "tailscale_control_url", "https://controlplane.tailscale.com");
-        server_default_set_option(section, "tailscale_hostname", "forkop-" + safe_name);
+        server_default_set_option(section, "tailscale_hostname", "nexroute-" + safe_name);
         server_default_set_option(section, "tailscale_advertise_exit_node", "1");
     }
 

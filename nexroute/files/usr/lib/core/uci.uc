@@ -5,8 +5,8 @@ let common = require("core.common");
 
 let as_string = common.as_string;
 
-const UCI_STATE_FILE = getenv("FORKOP_UCI_STATE_FILE") || getenv("UCI_STATE") || "";
-const UCI_LOG_FILE = getenv("FORKOP_UCI_LOG_FILE") || getenv("UCI_LOG") || "";
+const UCI_STATE_FILE = getenv("NEXROUTE_UCI_STATE_FILE") || getenv("UCI_STATE") || "";
+const UCI_LOG_FILE = getenv("NEXROUTE_UCI_LOG_FILE") || getenv("UCI_LOG") || "";
 
 let runtime_cursor = false;
 let loaded_packages = {};

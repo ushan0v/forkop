@@ -2,8 +2,8 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RULESETS_UC="$ROOT_DIR/forkop/files/usr/lib/singbox/rulesets.uc"
-FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
+RULESETS_UC="$ROOT_DIR/nexroute/files/usr/lib/singbox/rulesets.uc"
+NEXROUTE_LIB="$ROOT_DIR/nexroute/files/usr/lib"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -19,32 +19,32 @@ assert_eq() {
 }
 
 assert_eq srs \
-  "$(ucode -L "$FORKOP_LIB" "$RULESETS_UC" file-extension 'https://example.com/path/rule.srs?token=1#x')" \
+  "$(ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" file-extension 'https://example.com/path/rule.srs?token=1#x')" \
   "ruleset file extension"
-ucode -L "$FORKOP_LIB" "$RULESETS_UC" is-community youtube >/dev/null ||
+ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" is-community youtube >/dev/null ||
   fail "youtube should be a community ruleset"
-if ucode -L "$FORKOP_LIB" "$RULESETS_UC" is-community unknown_service >/dev/null 2>&1; then
+if ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" is-community unknown_service >/dev/null 2>&1; then
   fail "unknown service should not be a community ruleset"
 fi
 assert_eq domains \
-  "$(ucode -L "$FORKOP_LIB" "$RULESETS_UC" kind-from-reference-hint 'https://example.com/geosite-custom.srs')" \
+  "$(ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" kind-from-reference-hint 'https://example.com/geosite-custom.srs')" \
   "domain ruleset hint"
 assert_eq subnets \
-  "$(ucode -L "$FORKOP_LIB" "$RULESETS_UC" kind-from-reference-hint '/tmp/geoip-cidr.json')" \
+  "$(ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" kind-from-reference-hint '/tmp/geoip-cidr.json')" \
   "subnet ruleset hint"
 assert_eq unknown \
-  "$(ucode -L "$FORKOP_LIB" "$RULESETS_UC" kind-from-reference-hint '/tmp/custom.srs')" \
+  "$(ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" kind-from-reference-hint '/tmp/custom.srs')" \
   "unknown ruleset hint"
 assert_eq source \
-  "$(ucode -L "$FORKOP_LIB" "$RULESETS_UC" remote-format 'https://example.com/rules.json')" \
+  "$(ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" remote-format 'https://example.com/rules.json')" \
   "json remote ruleset format"
 assert_eq binary \
-  "$(ucode -L "$FORKOP_LIB" "$RULESETS_UC" remote-format 'https://example.com/rules.srs')" \
+  "$(ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" remote-format 'https://example.com/rules.srs')" \
   "srs remote ruleset format"
 assert_eq binary \
-  "$(ucode -L "$FORKOP_LIB" "$RULESETS_UC" remote-format 'https://example.com/rules.unknown')" \
+  "$(ucode -L "$NEXROUTE_LIB" "$RULESETS_UC" remote-format 'https://example.com/rules.unknown')" \
   "unknown remote ruleset format"
 
-ucode -L "$FORKOP_LIB" -e 'let rulesets = require("singbox.rulesets"); if (rulesets.kind_from_reference_hint("geoip") != "subnets") exit(1);'
+ucode -L "$NEXROUTE_LIB" -e 'let rulesets = require("singbox.rulesets"); if (rulesets.kind_from_reference_hint("geoip") != "subnets") exit(1);'
 
 printf 'singbox rulesets checks passed\n'

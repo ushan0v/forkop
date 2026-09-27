@@ -8,7 +8,7 @@ if (!lang) {
 }
 
 const callsPath = 'locales/calls.json';
-const poPath = `locales/forkop.${lang}.po`;
+const poPath = `locales/nexroute.${lang}.po`;
 
 function getGitUser() {
   try {
@@ -37,14 +37,14 @@ function getHeader(lang) {
       : 'nplurals=2; plural=(n != 1);';
 
   return [
-    `# ${lang.toUpperCase()} translations for FORKOP package.`,
-    `# Copyright (C) ${now.getFullYear()} THE FORKOP COPYRIGHT HOLDER`,
-    `# This file is distributed under the same license as the FORKOP package.`,
+    `# ${lang.toUpperCase()} translations for NEXROUTE package.`,
+    `# Copyright (C) ${now.getFullYear()} THE NEXROUTE COPYRIGHT HOLDER`,
+    `# This file is distributed under the same license as the NEXROUTE package.`,
     `# ${translator}, ${now.getFullYear()}.`,
     '#',
     'msgid ""',
     'msgstr ""',
-    `"Project-Id-Version: FORKOP\\n"`,
+    `"Project-Id-Version: NEXROUTE\\n"`,
     `"Report-Msgid-Bugs-To: \\n"`,
     `"POT-Creation-Date: ${date} ${time}${tzOffset}\\n"`,
     `"PO-Revision-Date: ${date} ${time}${tzOffset}\\n"`,

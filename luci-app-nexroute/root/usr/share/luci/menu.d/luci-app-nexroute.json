@@ -1,0 +1,14 @@
+{
+  "admin/services/nexroute": {
+    "title": "Nexroute",
+    "order": 42,
+    "action": {
+      "type": "view",
+      "path": "nexroute/nexroute"
+    },
+    "depends": {
+			"acl": [ "luci-app-nexroute" ],
+			"uci": { "nexroute": true }
+		}
+  }
+}

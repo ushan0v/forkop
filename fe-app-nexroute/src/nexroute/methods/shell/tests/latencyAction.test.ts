@@ -8,9 +8,9 @@ vi.mock('../../../../helpers', () => ({
   executeShellCommand: mocks.executeShellCommand,
 }));
 
-import { ForkopShellMethods } from '../index';
+import { NexrouteShellMethods } from '../index';
 
-describe('ForkopShellMethods.latencyAction', () => {
+describe('NexrouteShellMethods.latencyAction', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.executeShellCommand.mockReset();
@@ -52,7 +52,7 @@ describe('ForkopShellMethods.latencyAction', () => {
       });
     });
 
-    const responsePromise = ForkopShellMethods.waitLatencyTestJob('job-1');
+    const responsePromise = NexrouteShellMethods.waitLatencyTestJob('job-1');
 
     await vi.advanceTimersByTimeAsync(2000);
 
@@ -76,7 +76,7 @@ describe('ForkopShellMethods.latencyAction', () => {
       code: 0,
     });
 
-    await ForkopShellMethods.latencyTestStart(
+    await NexrouteShellMethods.latencyTestStart(
       'proxy',
       'AWG',
       'AWG-out',
@@ -84,7 +84,7 @@ describe('ForkopShellMethods.latencyAction', () => {
     );
 
     expect(mocks.executeShellCommand).toHaveBeenCalledWith({
-      command: '/usr/bin/forkop',
+      command: '/usr/bin/nexroute',
       args: ['latency_test_async', 'proxy', 'AWG', 'AWG-out', '10000'],
       timeout: 15000,
     });

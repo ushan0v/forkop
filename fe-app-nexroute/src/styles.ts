@@ -1,10 +1,10 @@
 // language=CSS
-import { DashboardTab } from './forkop/tabs/dashboard';
-import { DiagnosticTab } from './forkop/tabs/diagnostic';
-import { MonitoringTab } from './forkop/tabs/monitoring';
-import { UpdatesTab } from './forkop/tabs/updates';
+import { DashboardTab } from './nexroute/tabs/dashboard';
+import { DiagnosticTab } from './nexroute/tabs/diagnostic';
+import { MonitoringTab } from './nexroute/tabs/monitoring';
+import { UpdatesTab } from './nexroute/tabs/updates';
 import { PartialStyles } from './partials';
-import { FORKOP_UCI_PACKAGE as FORKOP_CBI_PREFIX } from './constants';
+import { NEXROUTE_UCI_PACKAGE as NEXROUTE_CBI_PREFIX } from './constants';
 
 export const GlobalStyles = `
 ${DashboardTab.styles}
@@ -15,49 +15,49 @@ ${PartialStyles}
 
 
 /* Hide extra H3 for settings tab */
-#cbi-${FORKOP_CBI_PREFIX}-settings > h3 {
+#cbi-${NEXROUTE_CBI_PREFIX}-settings > h3 {
     display: none;
 }
 
 /* Hide extra H3 for rules tab */
-#cbi-${FORKOP_CBI_PREFIX}-section > h3:nth-child(1) {
+#cbi-${NEXROUTE_CBI_PREFIX}-section > h3:nth-child(1) {
     display: none;
 }
 
 /* Vertical align for remove rule action button */
-#cbi-${FORKOP_CBI_PREFIX}-section > .cbi-section-remove {
+#cbi-${NEXROUTE_CBI_PREFIX}-section > .cbi-section-remove {
     margin-bottom: -32px;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-actions > div {
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-actions > div {
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-actions {
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-actions {
     text-align: right;
 }
 
 /* Rule reorder visuals */
-#cbi-${FORKOP_CBI_PREFIX}-section {
+#cbi-${NEXROUTE_CBI_PREFIX}-section {
     position: relative;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-table-row {
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-table-row {
     position: relative;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-table-row.placeholder {
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-table-row.placeholder {
     opacity: 1;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-table-row.placeholder em {
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-table-row.placeholder em {
     font-style: italic;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-above::after,
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-below::after {
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-table-row.drag-over-above::after,
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-table-row.drag-over-below::after {
     content: '';
     position: absolute;
     left: 10px;
@@ -69,11 +69,11 @@ ${PartialStyles}
     z-index: 2;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-above::after {
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-table-row.drag-over-above::after {
     top: -1px;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-below::after {
+#cbi-${NEXROUTE_CBI_PREFIX}-section .cbi-section-table-row.drag-over-below::after {
     bottom: -1px;
 }
 

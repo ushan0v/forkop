@@ -5,30 +5,30 @@ let uci_core = require("core.uci");
 let connections = require("config.connections");
 let subscription_share_link = require("subscription.share_link");
 
-const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
-const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
+const CONFIG_NAME = getenv("NEXROUTE_CONFIG_NAME") || "nexroute";
+const LIB_DIR = getenv("NEXROUTE_LIB") || "/usr/lib/nexroute";
 const TMP_SING_BOX_FOLDER = getenv("TMP_SING_BOX_FOLDER") || "/tmp/sing-box";
 const TMP_RULESET_FOLDER = getenv("TMP_RULESET_FOLDER") || TMP_SING_BOX_FOLDER + "/rulesets";
 const TMP_SUBSCRIPTION_FOLDER = getenv("TMP_SUBSCRIPTION_FOLDER") || TMP_SING_BOX_FOLDER + "/subscriptions";
-const FORKOP_RUNTIME_STATE_DIR = getenv("FORKOP_RUNTIME_STATE_DIR") || "/var/run/forkop";
-const FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR = getenv("FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR") || FORKOP_RUNTIME_STATE_DIR + "/subscription-update";
-const FORKOP_SUBSCRIPTION_LINKS_DIR = getenv("FORKOP_SUBSCRIPTION_LINKS_DIR") || FORKOP_RUNTIME_STATE_DIR + "/subscription-links";
-const FORKOP_SUBSCRIPTION_METADATA_DIR = getenv("FORKOP_SUBSCRIPTION_METADATA_DIR") || FORKOP_RUNTIME_STATE_DIR + "/subscription-metadata";
-const FORKOP_OUTBOUND_METADATA_DIR = getenv("FORKOP_OUTBOUND_METADATA_DIR") || FORKOP_RUNTIME_STATE_DIR + "/outbound-metadata";
-const FORKOP_SECTION_CACHE_DIR = getenv("FORKOP_SECTION_CACHE_DIR") || FORKOP_RUNTIME_STATE_DIR + "/section-cache";
-const FORKOP_RUNTIME_CACHE_FORMAT_FILE = getenv("FORKOP_RUNTIME_CACHE_FORMAT_FILE") || FORKOP_RUNTIME_STATE_DIR + "/cache-format";
-const FORKOP_RUNTIME_CACHE_FORMAT = getenv("FORKOP_RUNTIME_CACHE_FORMAT") || "8";
-const FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR") || "/etc/forkop/subscription-cache";
-const FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE") || FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR + "/cache-format";
-const FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT = getenv("FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT") || "7";
-const FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE = getenv("FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE") || FORKOP_RUNTIME_STATE_DIR + "/subscription-bootstrap-retry.pid";
-const FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR = getenv("FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR") || FORKOP_RUNTIME_STATE_DIR + "/subscription-update.lock";
-const FORKOP_PENDING_RELOAD_FILE = getenv("FORKOP_PENDING_RELOAD_FILE") || FORKOP_RUNTIME_STATE_DIR + "/reload.pending";
-const FORKOP_SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || "/etc/init.d/forkop";
+const NEXROUTE_RUNTIME_STATE_DIR = getenv("NEXROUTE_RUNTIME_STATE_DIR") || "/var/run/nexroute";
+const NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR = getenv("NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR") || NEXROUTE_RUNTIME_STATE_DIR + "/subscription-update";
+const NEXROUTE_SUBSCRIPTION_LINKS_DIR = getenv("NEXROUTE_SUBSCRIPTION_LINKS_DIR") || NEXROUTE_RUNTIME_STATE_DIR + "/subscription-links";
+const NEXROUTE_SUBSCRIPTION_METADATA_DIR = getenv("NEXROUTE_SUBSCRIPTION_METADATA_DIR") || NEXROUTE_RUNTIME_STATE_DIR + "/subscription-metadata";
+const NEXROUTE_OUTBOUND_METADATA_DIR = getenv("NEXROUTE_OUTBOUND_METADATA_DIR") || NEXROUTE_RUNTIME_STATE_DIR + "/outbound-metadata";
+const NEXROUTE_SECTION_CACHE_DIR = getenv("NEXROUTE_SECTION_CACHE_DIR") || NEXROUTE_RUNTIME_STATE_DIR + "/section-cache";
+const NEXROUTE_RUNTIME_CACHE_FORMAT_FILE = getenv("NEXROUTE_RUNTIME_CACHE_FORMAT_FILE") || NEXROUTE_RUNTIME_STATE_DIR + "/cache-format";
+const NEXROUTE_RUNTIME_CACHE_FORMAT = getenv("NEXROUTE_RUNTIME_CACHE_FORMAT") || "8";
+const NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR") || "/etc/nexroute/subscription-cache";
+const NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE") || NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR + "/cache-format";
+const NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT = getenv("NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT") || "7";
+const NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE = getenv("NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE") || NEXROUTE_RUNTIME_STATE_DIR + "/subscription-bootstrap-retry.pid";
+const NEXROUTE_SUBSCRIPTION_UPDATE_LOCK_DIR = getenv("NEXROUTE_SUBSCRIPTION_UPDATE_LOCK_DIR") || NEXROUTE_RUNTIME_STATE_DIR + "/subscription-update.lock";
+const NEXROUTE_PENDING_RELOAD_FILE = getenv("NEXROUTE_PENDING_RELOAD_FILE") || NEXROUTE_RUNTIME_STATE_DIR + "/reload.pending";
+const NEXROUTE_SERVICE_INIT = getenv("NEXROUTE_SERVICE_INIT") || "/etc/init.d/nexroute";
 const SB_SERVICE_MIXED_INBOUND_ADDRESS = getenv("SB_SERVICE_MIXED_INBOUND_ADDRESS") || "127.0.0.1";
 const SB_SERVICE_MIXED_INBOUND_PORT = getenv("SB_SERVICE_MIXED_INBOUND_PORT") || "4534";
-const SB_VARIANT_STATE_FILE = getenv("SB_VARIANT_STATE_FILE") || "/etc/forkop/sing-box-variant";
-const SB_VERSION_STATE_FILE = getenv("SB_VERSION_STATE_FILE") || "/etc/forkop/sing-box-version";
+const SB_VARIANT_STATE_FILE = getenv("SB_VARIANT_STATE_FILE") || "/etc/nexroute/sing-box-variant";
+const SB_VERSION_STATE_FILE = getenv("SB_VERSION_STATE_FILE") || "/etc/nexroute/sing-box-version";
 const ZAPRET_PROVIDER_NFQWS_BIN = getenv("ZAPRET_PROVIDER_NFQWS_BIN") || "/opt/zapret/nfq/nfqws";
 const ZAPRET2_PROVIDER_NFQWS2_BIN = getenv("ZAPRET2_PROVIDER_NFQWS2_BIN") || "/opt/zapret2/nfq2/nfqws2";
 const BYEDPI_BIN = getenv("BYEDPI_BIN") || "/usr/bin/ciadpi";
@@ -246,14 +246,14 @@ function subscription_metadata_path(section) {
     section = as_string(section);
     if (!cache_section_is_safe(section))
         return "";
-    return FORKOP_SUBSCRIPTION_METADATA_DIR + "/" + section + ".json";
+    return NEXROUTE_SUBSCRIPTION_METADATA_DIR + "/" + section + ".json";
 }
 
 function outbound_metadata_path(section) {
     section = as_string(section);
     if (!cache_section_is_safe(section))
         return "";
-    return FORKOP_OUTBOUND_METADATA_DIR + "/" + section + ".json";
+    return NEXROUTE_OUTBOUND_METADATA_DIR + "/" + section + ".json";
 }
 
 function section_has_subscription_urls(section) {
@@ -598,7 +598,7 @@ function run_silent(command) {
 
 function log_message(message, level) {
     level = as_string(level || "info");
-    command_success_from_args([ "logger", "-t", "forkop", "[" + level + "] " + as_string(message) ]);
+    command_success_from_args([ "logger", "-t", "nexroute", "[" + level + "] " + as_string(message) ]);
 }
 
 function ensure_dir(path) {
@@ -613,40 +613,40 @@ function ensure_runtime_dirs() {
     ensure_dir(TMP_SING_BOX_FOLDER);
     ensure_dir(TMP_RULESET_FOLDER);
     ensure_dir(TMP_SUBSCRIPTION_FOLDER);
-    ensure_dir(FORKOP_RUNTIME_STATE_DIR);
-    ensure_dir(FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR);
-    ensure_dir(FORKOP_SUBSCRIPTION_METADATA_DIR);
-    ensure_dir(FORKOP_OUTBOUND_METADATA_DIR);
-    ensure_dir(FORKOP_SECTION_CACHE_DIR);
+    ensure_dir(NEXROUTE_RUNTIME_STATE_DIR);
+    ensure_dir(NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR);
+    ensure_dir(NEXROUTE_SUBSCRIPTION_METADATA_DIR);
+    ensure_dir(NEXROUTE_OUTBOUND_METADATA_DIR);
+    ensure_dir(NEXROUTE_SECTION_CACHE_DIR);
 }
 
 function clear_subscription_runtime_cache() {
     run_silent("rm -rf " +
         shell_quote(TMP_SUBSCRIPTION_FOLDER) + " " +
-        shell_quote(FORKOP_SUBSCRIPTION_LINKS_DIR) + " " +
-        shell_quote(FORKOP_SUBSCRIPTION_METADATA_DIR) + " " +
-        shell_quote(FORKOP_OUTBOUND_METADATA_DIR) + " " +
-        shell_quote(FORKOP_SECTION_CACHE_DIR));
+        shell_quote(NEXROUTE_SUBSCRIPTION_LINKS_DIR) + " " +
+        shell_quote(NEXROUTE_SUBSCRIPTION_METADATA_DIR) + " " +
+        shell_quote(NEXROUTE_OUTBOUND_METADATA_DIR) + " " +
+        shell_quote(NEXROUTE_SECTION_CACHE_DIR));
 }
 
 function ensure_runtime_cache_format() {
-    ensure_dir(FORKOP_RUNTIME_STATE_DIR);
+    ensure_dir(NEXROUTE_RUNTIME_STATE_DIR);
 
-    if (file_first_line_value(FORKOP_RUNTIME_CACHE_FORMAT_FILE) != FORKOP_RUNTIME_CACHE_FORMAT) {
+    if (file_first_line_value(NEXROUTE_RUNTIME_CACHE_FORMAT_FILE) != NEXROUTE_RUNTIME_CACHE_FORMAT) {
         log_message("Runtime subscription cache format changed; clearing old subscription cache", "info");
-        if (file_first_line_value(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE) == FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT)
-            subscription_share_link.populate_subscription_dir(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR);
+        if (file_first_line_value(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE) == NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT)
+            subscription_share_link.populate_subscription_dir(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR);
         clear_subscription_runtime_cache();
         ensure_runtime_dirs();
-        write_file(FORKOP_RUNTIME_CACHE_FORMAT_FILE, FORKOP_RUNTIME_CACHE_FORMAT + "\n");
+        write_file(NEXROUTE_RUNTIME_CACHE_FORMAT_FILE, NEXROUTE_RUNTIME_CACHE_FORMAT + "\n");
     }
 
-    if (file_first_line_value(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE) != FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT) {
-        run_silent("rm -rf " + shell_quote(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR));
-        ensure_dir(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR);
-        chmod_path(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR, "700");
-        write_file(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE, FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT + "\n");
-        chmod_path(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE, "600");
+    if (file_first_line_value(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE) != NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT) {
+        run_silent("rm -rf " + shell_quote(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR));
+        ensure_dir(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR);
+        chmod_path(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR, "700");
+        write_file(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE, NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT + "\n");
+        chmod_path(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE, "600");
     }
 }
 
@@ -854,7 +854,7 @@ function provider_action_is_available(action) {
 }
 
 function section_current_usable_cache_by_name(sections, section, default_user_agent) {
-    return section_current_usable_cache(find_section(sections, section), TMP_SUBSCRIPTION_FOLDER, FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR, default_user_agent);
+    return section_current_usable_cache(find_section(sections, section), TMP_SUBSCRIPTION_FOLDER, NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR, default_user_agent);
 }
 
 function section_has_non_subscription_connection_sources(section) {
@@ -919,11 +919,11 @@ function cache_candidate_paths() {
     let result = [];
     for (let dir in [
         TMP_SUBSCRIPTION_FOLDER,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR,
-        FORKOP_SECTION_CACHE_DIR,
-        FORKOP_SUBSCRIPTION_LINKS_DIR,
-        FORKOP_SUBSCRIPTION_METADATA_DIR,
-        FORKOP_OUTBOUND_METADATA_DIR
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR,
+        NEXROUTE_SECTION_CACHE_DIR,
+        NEXROUTE_SUBSCRIPTION_LINKS_DIR,
+        NEXROUTE_SUBSCRIPTION_METADATA_DIR,
+        NEXROUTE_OUTBOUND_METADATA_DIR
     ]) {
         let entries = fs.lsdir(dir);
         if (type(entries) != "array")
@@ -951,11 +951,11 @@ function prune_stale_subscription_caches_for_sections(sections) {
             path,
             keep,
             TMP_SUBSCRIPTION_FOLDER,
-            FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR,
-            FORKOP_SECTION_CACHE_DIR,
-            FORKOP_SUBSCRIPTION_LINKS_DIR,
-            FORKOP_SUBSCRIPTION_METADATA_DIR,
-            FORKOP_OUTBOUND_METADATA_DIR
+            NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR,
+            NEXROUTE_SECTION_CACHE_DIR,
+            NEXROUTE_SUBSCRIPTION_LINKS_DIR,
+            NEXROUTE_SUBSCRIPTION_METADATA_DIR,
+            NEXROUTE_OUTBOUND_METADATA_DIR
         );
         if (!state_list_contains(keep_names, cache_name))
             unlink_path(path);
@@ -1334,7 +1334,7 @@ function get_subscription_metadata(cache_dir, section, legacy_path) {
 }
 
 function persistent_metadata_path(source_section) {
-    return FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR + "/" + as_string(source_section) + ".metadata.json";
+    return NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR + "/" + as_string(source_section) + ".metadata.json";
 }
 
 function remove_subscription_source_runtime_cache(source_section) {
@@ -1351,13 +1351,13 @@ function persist_subscription_cache(source_section, subscription_json_path, subs
     if (!cache_section_is_safe(source_section) || !subscription_cache_is_usable(subscription_json_path))
         return false;
 
-    ensure_dir(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR);
-    chmod_path(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR, "700");
+    ensure_dir(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR);
+    chmod_path(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR, "700");
 
-    let persistent_json = source_json_path(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR, source_section);
-    let persistent_url = source_url_path(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR, source_section);
-    let persistent_user_agent = source_user_agent_path(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR, source_section);
-    let persistent_hwid = source_hwid_path(FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR, source_section);
+    let persistent_json = source_json_path(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR, source_section);
+    let persistent_url = source_url_path(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR, source_section);
+    let persistent_user_agent = source_user_agent_path(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR, source_section);
+    let persistent_hwid = source_hwid_path(NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR, source_section);
     let persistent_metadata = persistent_metadata_path(source_section);
     let previous_url = read_text(persistent_url);
     let previous_user_agent = read_text(persistent_user_agent);
@@ -1400,7 +1400,7 @@ function append_available_cached_metadata(array_path, section, source_index, sou
 
     let before = length(array_or_empty(read_json(array_path)));
     append_persistent_source_metadata(array_path, source_index, source_section) ||
-        append_cached_metadata(array_path, FORKOP_SECTION_CACHE_DIR, section, FORKOP_SUBSCRIPTION_METADATA_DIR + "/" + section + ".json", source_index, source_section);
+        append_cached_metadata(array_path, NEXROUTE_SECTION_CACHE_DIR, section, NEXROUTE_SUBSCRIPTION_METADATA_DIR + "/" + section + ".json", source_index, source_section);
     return length(array_or_empty(read_json(array_path))) > before;
 }
 
@@ -1742,7 +1742,7 @@ function cached_source_status(source_section, parsed) {
     restore_persistent_subscription_cache(
         source_section,
         TMP_SUBSCRIPTION_FOLDER,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR,
         parsed.url,
         parsed.user_agent,
         parsed.hwid,
@@ -1817,7 +1817,7 @@ function update_subscription_source(section_name_value, index_value, entry, phas
 }
 
 function subscription_update_timestamp_path(section_name_value) {
-    return FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR + "/" + as_string(section_name_value) + ".timestamp";
+    return NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR + "/" + as_string(section_name_value) + ".timestamp";
 }
 
 function current_timestamp_value() {
@@ -1830,7 +1830,7 @@ function write_subscription_update_timestamp(section_name_value) {
     if (timestamp == "")
         return;
 
-    ensure_dir(FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR);
+    ensure_dir(NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR);
     write_file(subscription_update_timestamp_path(section_name_value), timestamp + "\n");
 }
 
@@ -1855,9 +1855,9 @@ function finalize_subscription_section_metadata(section_name_value, metadata_tmp
 
     if (!superseded) {
         if (length(array_or_empty(read_json(metadata_tmpfile))) > 0)
-            write_subscription_metadata(FORKOP_SECTION_CACHE_DIR, FORKOP_RUNTIME_CACHE_FORMAT, section_name_value, metadata_tmpfile);
+            write_subscription_metadata(NEXROUTE_SECTION_CACHE_DIR, NEXROUTE_RUNTIME_CACHE_FORMAT, section_name_value, metadata_tmpfile);
         else
-            write_subscription_metadata(FORKOP_SECTION_CACHE_DIR, FORKOP_RUNTIME_CACHE_FORMAT, section_name_value, "");
+            write_subscription_metadata(NEXROUTE_SECTION_CACHE_DIR, NEXROUTE_RUNTIME_CACHE_FORMAT, section_name_value, "");
     }
 
     unlink_path(metadata_tmpfile);
@@ -2020,13 +2020,13 @@ function subscription_update_selected_source(sections, section_name_value, sourc
 
     if (update_result == 0 || update_result == 2)
         write_source_metadata(
-            FORKOP_SECTION_CACHE_DIR,
-            FORKOP_RUNTIME_CACHE_FORMAT,
+            NEXROUTE_SECTION_CACHE_DIR,
+            NEXROUTE_RUNTIME_CACHE_FORMAT,
             section_name_value,
             source_index,
             source_section,
             metadata_output_path,
-            FORKOP_SUBSCRIPTION_METADATA_DIR + "/" + section_name_value + ".json"
+            NEXROUTE_SUBSCRIPTION_METADATA_DIR + "/" + section_name_value + ".json"
         );
 
     unlink_path(metadata_output_path);
@@ -2189,9 +2189,9 @@ function prepare_subscription_cache_section(state, section) {
 
     let metadata_count = length(array_or_empty(read_json(metadata_tmpfile)));
     if (metadata_count > 0)
-        write_subscription_metadata(FORKOP_SECTION_CACHE_DIR, FORKOP_RUNTIME_CACHE_FORMAT, section_name_value, metadata_tmpfile);
+        write_subscription_metadata(NEXROUTE_SECTION_CACHE_DIR, NEXROUTE_RUNTIME_CACHE_FORMAT, section_name_value, metadata_tmpfile);
     else
-        write_subscription_metadata(FORKOP_SECTION_CACHE_DIR, FORKOP_RUNTIME_CACHE_FORMAT, section_name_value, "");
+        write_subscription_metadata(NEXROUTE_SECTION_CACHE_DIR, NEXROUTE_RUNTIME_CACHE_FORMAT, section_name_value, "");
     unlink_path(metadata_tmpfile);
 }
 
@@ -2205,7 +2205,7 @@ function prepare_subscription_caches(phase, already_prepared, no_refresh) {
     phase = as_string(phase || "startup");
     let sections = uci_sections();
 
-    if (prepared_runtime_cache_should_skip(sections, FORKOP_SECTION_CACHE_DIR, phase, already_prepared)) {
+    if (prepared_runtime_cache_should_skip(sections, NEXROUTE_SECTION_CACHE_DIR, phase, already_prepared)) {
         print("\n");
         return 0;
     }
@@ -2259,12 +2259,12 @@ function state_ucode_status(args) {
 }
 
 function mark_pending_subscription_recovery_reload() {
-    state_ucode_status([ "mark-pending-reload", FORKOP_PENDING_RELOAD_FILE, "subscription_deferred_recovery" ]);
+    state_ucode_status([ "mark-pending-reload", NEXROUTE_PENDING_RELOAD_FILE, "subscription_deferred_recovery" ]);
 }
 
 function trigger_subscription_recovery_reload(worker) {
     if (worker)
-        command_status_from_args([ FORKOP_SERVICE_INIT, "reload", "subscription_deferred_recovery" ]);
+        command_status_from_args([ NEXROUTE_SERVICE_INIT, "reload", "subscription_deferred_recovery" ]);
     else
         mark_pending_subscription_recovery_reload();
 }
@@ -2307,26 +2307,26 @@ function subscription_bootstrap_retry_result(deferred_sections) {
 
 function worker_env() {
     return {
-        FORKOP_CONFIG_NAME: CONFIG_NAME,
-        FORKOP_LIB: LIB_DIR,
+        NEXROUTE_CONFIG_NAME: CONFIG_NAME,
+        NEXROUTE_LIB: LIB_DIR,
         TMP_SING_BOX_FOLDER,
         TMP_RULESET_FOLDER,
         TMP_SUBSCRIPTION_FOLDER,
-        FORKOP_RUNTIME_STATE_DIR,
-        FORKOP_SUBSCRIPTION_UPDATE_STATE_DIR,
-        FORKOP_SUBSCRIPTION_LINKS_DIR,
-        FORKOP_SUBSCRIPTION_METADATA_DIR,
-        FORKOP_OUTBOUND_METADATA_DIR,
-        FORKOP_SECTION_CACHE_DIR,
-        FORKOP_RUNTIME_CACHE_FORMAT_FILE,
-        FORKOP_RUNTIME_CACHE_FORMAT,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE,
-        FORKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT,
-        FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE,
-        FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR,
-        FORKOP_PENDING_RELOAD_FILE,
-        FORKOP_SERVICE_INIT,
+        NEXROUTE_RUNTIME_STATE_DIR,
+        NEXROUTE_SUBSCRIPTION_UPDATE_STATE_DIR,
+        NEXROUTE_SUBSCRIPTION_LINKS_DIR,
+        NEXROUTE_SUBSCRIPTION_METADATA_DIR,
+        NEXROUTE_OUTBOUND_METADATA_DIR,
+        NEXROUTE_SECTION_CACHE_DIR,
+        NEXROUTE_RUNTIME_CACHE_FORMAT_FILE,
+        NEXROUTE_RUNTIME_CACHE_FORMAT,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_DIR,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE,
+        NEXROUTE_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT,
+        NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE,
+        NEXROUTE_SUBSCRIPTION_UPDATE_LOCK_DIR,
+        NEXROUTE_PENDING_RELOAD_FILE,
+        NEXROUTE_SERVICE_INIT,
         SB_SERVICE_MIXED_INBOUND_ADDRESS,
         SB_SERVICE_MIXED_INBOUND_PORT,
         SB_VARIANT_STATE_FILE,
@@ -2349,7 +2349,7 @@ function start_deferred_subscription_bootstrap_retry_worker(deferred_sections) {
         return;
 
     ensure_runtime_dirs();
-    let existing_pid = trim(file_first_line_value(FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE));
+    let existing_pid = trim(file_first_line_value(NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE));
     if (pid_running(existing_pid)) {
         log_message("Subscription bootstrap retry worker is already running with PID " + existing_pid, "debug");
         return;
@@ -2357,17 +2357,17 @@ function start_deferred_subscription_bootstrap_retry_worker(deferred_sections) {
 
     let pid = launch_self_worker([ "deferred-bootstrap-worker", deferred_sections ]);
     if (pid != "")
-        write_file(FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE, pid + "\n");
+        write_file(NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE, pid + "\n");
     log_message("Started subscription bootstrap retry worker for rule(s): " + deferred_sections, "info");
 }
 
 function stop_deferred_subscription_bootstrap_retry_worker() {
-    let pid = trim(file_first_line_value(FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE));
+    let pid = trim(file_first_line_value(NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE));
     if (pid_running(pid)) {
         command_success_from_args([ "kill", pid ]);
         log_message("Stopped subscription bootstrap retry worker", "info");
     }
-    unlink_path(FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE);
+    unlink_path(NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE);
 }
 
 function run_deferred_subscription_bootstrap(deferred_sections) {
@@ -2393,7 +2393,7 @@ function run_deferred_subscription_bootstrap(deferred_sections) {
 
     let result = subscription_bootstrap_retry_result(deferred_sections);
     if (result.recovered != "") {
-        log_message("Recovered deferred subscription rule(s): " + result.recovered + "; scheduling Forkop reload", "info");
+        log_message("Recovered deferred subscription rule(s): " + result.recovered + "; scheduling Nexroute reload", "info");
         trigger_subscription_recovery_reload(false);
     }
 
@@ -2414,23 +2414,23 @@ function deferred_subscription_bootstrap_retry_worker(remaining_sections) {
         }
 
         ensure_runtime_dirs();
-        if (!state_ucode_status([ "acquire-runtime-dir-lock", FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR, current_pid() ])) {
+        if (!state_ucode_status([ "acquire-runtime-dir-lock", NEXROUTE_SUBSCRIPTION_UPDATE_LOCK_DIR, current_pid() ])) {
             log_message("Subscription bootstrap retry skipped because another subscription update is running", "debug");
             continue;
         }
 
         let result = subscription_bootstrap_retry_result(remaining_sections);
-        state_ucode_status([ "release-runtime-dir-lock", FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR ]);
+        state_ucode_status([ "release-runtime-dir-lock", NEXROUTE_SUBSCRIPTION_UPDATE_LOCK_DIR ]);
 
         if (result.recovered != "") {
-            log_message("Recovered deferred subscription rule(s): " + result.recovered + "; reloading Forkop", "info");
+            log_message("Recovered deferred subscription rule(s): " + result.recovered + "; reloading Nexroute", "info");
             trigger_subscription_recovery_reload(true);
         }
 
         remaining_sections = result.remaining;
     }
 
-    unlink_path(FORKOP_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE);
+    unlink_path(NEXROUTE_SUBSCRIPTION_BOOTSTRAP_RETRY_PID_FILE);
 }
 
 let mode = ARGV[0] || "";

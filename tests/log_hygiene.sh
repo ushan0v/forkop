@@ -12,8 +12,8 @@ reject_runtime_pattern() {
   local pattern="$1"
   local label="$2"
 
-  if rg -n --fixed-strings "$pattern" "$ROOT_DIR/forkop/files" >/dev/null 2>&1; then
-    rg -n --fixed-strings "$pattern" "$ROOT_DIR/forkop/files" >&2
+  if rg -n --fixed-strings "$pattern" "$ROOT_DIR/nexroute/files" >/dev/null 2>&1; then
+    rg -n --fixed-strings "$pattern" "$ROOT_DIR/nexroute/files" >&2
     fail "$label"
   fi
 }
@@ -22,8 +22,8 @@ reject_runtime_regex() {
   local pattern="$1"
   local label="$2"
 
-  if rg -n "$pattern" "$ROOT_DIR/forkop/files" >/dev/null 2>&1; then
-    rg -n "$pattern" "$ROOT_DIR/forkop/files" >&2
+  if rg -n "$pattern" "$ROOT_DIR/nexroute/files" >/dev/null 2>&1; then
+    rg -n "$pattern" "$ROOT_DIR/nexroute/files" >&2
     fail "$label"
   fi
 }
@@ -44,7 +44,7 @@ reject_runtime_pattern "Current sing-box config hash:" \
   "sing-box config logs must not emit duplicate hash lines"
 reject_runtime_pattern "Temporary sing-box config hash:" \
   "sing-box config logs must not emit duplicate hash lines"
-reject_runtime_pattern "Forkop did not reach a stable running state after start" \
+reject_runtime_pattern "Nexroute did not reach a stable running state after start" \
   "startup rollback logs must not be fatal secondary errors"
 reject_runtime_pattern "Flush nft" \
   "stop logs must not expose routine nft cleanup as user-facing info"

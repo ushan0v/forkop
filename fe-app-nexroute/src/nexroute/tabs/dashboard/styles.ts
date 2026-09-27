@@ -1,30 +1,30 @@
 // language=CSS
-import { FORKOP_UCI_PACKAGE as FORKOP_CBI_PREFIX } from '../../../constants';
+import { NEXROUTE_UCI_PACKAGE as NEXROUTE_CBI_PREFIX } from '../../../constants';
 
 export const styles = `
 @font-face {
     font-family: "Twemoji Country Flags";
-    src: url("/luci-static/resources/view/forkop/fonts/TwemojiCountryFlags.woff2") format("woff2");
+    src: url("/luci-static/resources/view/nexroute/fonts/TwemojiCountryFlags.woff2") format("woff2");
     font-display: swap;
     font-style: normal;
     font-weight: normal;
     unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-dashboard-_mount_node > .cbi-value-title {
+#cbi-${NEXROUTE_CBI_PREFIX}-dashboard-_mount_node > .cbi-value-title {
     display: none;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-dashboard-_mount_node > .cbi-value-field {
+#cbi-${NEXROUTE_CBI_PREFIX}-dashboard-_mount_node > .cbi-value-field {
     margin-left: 0;
     width: 100%;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-dashboard-_mount_node > div {
+#cbi-${NEXROUTE_CBI_PREFIX}-dashboard-_mount_node > div {
     width: 100%;
 }
 
-#cbi-${FORKOP_CBI_PREFIX}-dashboard > h3 {
+#cbi-${NEXROUTE_CBI_PREFIX}-dashboard > h3 {
     display: none;
 }
 

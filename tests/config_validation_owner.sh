@@ -2,30 +2,30 @@
 set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FORKOP_FILES="$ROOT_DIR/forkop/files"
-FORKOP_BIN="$FORKOP_FILES/usr/bin/forkop"
-FORKOP_LIB="$FORKOP_FILES/usr/lib"
-CLI_UC="$FORKOP_BIN"
-VALIDATOR="$FORKOP_LIB/config/validator.uc"
-RULE_CONFIG="$FORKOP_LIB/config/rule.uc"
-GENERATOR="$FORKOP_LIB/singbox/generator.uc"
-SECTION_JS="$ROOT_DIR/luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js"
-LIFECYCLE="$FORKOP_LIB/service/lifecycle.uc"
+NEXROUTE_FILES="$ROOT_DIR/nexroute/files"
+NEXROUTE_BIN="$NEXROUTE_FILES/usr/bin/nexroute"
+NEXROUTE_LIB="$NEXROUTE_FILES/usr/lib"
+CLI_UC="$NEXROUTE_BIN"
+VALIDATOR="$NEXROUTE_LIB/config/validator.uc"
+RULE_CONFIG="$NEXROUTE_LIB/config/rule.uc"
+GENERATOR="$NEXROUTE_LIB/singbox/generator.uc"
+SECTION_JS="$ROOT_DIR/luci-app-nexroute/htdocs/luci-static/resources/view/nexroute/section.js"
+LIFECYCLE="$NEXROUTE_LIB/service/lifecycle.uc"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
   exit 1
 }
 
-[ ! -e "$FORKOP_LIB/config_validation.sh" ] ||
+[ ! -e "$NEXROUTE_LIB/config_validation.sh" ] ||
   fail "config_validation.sh shell owner must be removed"
 
-if grep -R -n "config_validation.sh" "$FORKOP_FILES" >/dev/null 2>&1; then
+if grep -R -n "config_validation.sh" "$NEXROUTE_FILES" >/dev/null 2>&1; then
   fail "runtime files must not reference config_validation.sh"
 fi
 
-legacy_symbols='(^|[^A-Za-z0-9_])(config_validate_runtime|check_requirements|commit_forkop_config|mwan3_is_active|get_inline_remote_ruleset_format|detect_inline_ruleset_reference_kind)([^A-Za-z0-9_]|$)'
-if grep -R -n -E "$legacy_symbols" "$FORKOP_BIN" "$FORKOP_LIB" --include='*.sh' >/dev/null 2>&1; then
+legacy_symbols='(^|[^A-Za-z0-9_])(config_validate_runtime|check_requirements|commit_nexroute_config|mwan3_is_active|get_inline_remote_ruleset_format|detect_inline_ruleset_reference_kind)([^A-Za-z0-9_]|$)'
+if grep -R -n -E "$legacy_symbols" "$NEXROUTE_BIN" "$NEXROUTE_LIB" --include='*.sh' >/dev/null 2>&1; then
   fail "runtime shell must not keep config_validation.sh symbols"
 fi
 
@@ -46,8 +46,8 @@ grep -Fq 'return appendUniqueDomainTextValues(textValue, values);' "$SECTION_JS"
 if grep -n -E 'require\("uci"\)\.cursor|uci -q|uci", "-q"|command_output\("uci' "$VALIDATOR" >/dev/null 2>&1; then
   fail "config validator must not own direct UCI cursor or CLI access"
 fi
-grep -Fq '#!/usr/bin/ucode' "$FORKOP_BIN" ||
-  fail "forkop entrypoint must be a direct ucode executable"
+grep -Fq '#!/usr/bin/ucode' "$NEXROUTE_BIN" ||
+  fail "nexroute entrypoint must be a direct ucode executable"
 grep -Fq 'service/lifecycle.uc' "$CLI_UC" ||
   fail "service/cli.uc must dispatch service lifecycle through service/lifecycle.uc"
 if grep -n -E 'MIGRATION_UC|config[./]migration|"migrate"' "$LIFECYCLE" >/dev/null 2>&1; then
