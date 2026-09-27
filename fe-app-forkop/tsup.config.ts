@@ -5,7 +5,7 @@ import path from 'path';
 export default defineConfig({
     entry: ['src/main.ts'],
     format: ['esm'], // пусть tsup генерит export {...}
-    outDir: '../luci-app-forkop/htdocs/luci-static/resources/view/forkop',
+    outDir: '../luci-app-nexroute/htdocs/luci-static/resources/view/forkop',
     outExtension: () => ({ js: '.js' }),
     dts: false,
     clean: false,
@@ -18,7 +18,7 @@ export default defineConfig({
     },
     onSuccess: () => {
         const outDir =
-            '../luci-app-forkop/htdocs/luci-static/resources/view/forkop';
+            '../luci-app-nexroute/htdocs/luci-static/resources/view/forkop';
         const file = path.join(outDir, 'main.js');
         let code = fs.readFileSync(file, 'utf8');
 
