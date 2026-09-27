@@ -2463,7 +2463,8 @@ function push_dns_matcher_rule(config, rule) {
 }
 
 function section_dns_server(section) {
-    return option(section, "action", "") == "bypass"
+    let action = option(section, "action", "");
+    return action == "direct" || action == "bypass"
         ? runtime_constants.DNS_SERVER_TAG
         : runtime_constants.FAKEIP_DNS_SERVER_TAG;
 }
@@ -2515,7 +2516,8 @@ function add_section_dns_matcher_rule(config, section, matchers, rewrite_ttl) {
     let source_ip_cidr = legacy_condition_values(section, "source_ip_cidr");
     add_source_dns_matchers(matchers, source_ip_cidr);
 
-    if (option(section, "action", "") == "bypass" && length(source_ip_cidr) > 0) {
+    let action = option(section, "action", "");
+    if ((action == "direct" || action == "bypass") && length(source_ip_cidr) > 0) {
         add_source_aware_bypass_dns_rules(config, matchers, rewrite_ttl);
         return;
     }
@@ -2536,7 +2538,7 @@ function source_aware_dns_sources(sections) {
         if (connections.has_dns_matchers(section))
             for (let value in legacy_condition_values(section, "source_ip_cidr"))
                 push(candidates, value);
-        if (action == "bypass" || action == "dns")
+        if (action == "direct" || action == "bypass" || action == "dns")
             for (let value in list_option(section, "fully_routed_ips"))
                 push(candidates, value);
 
@@ -2715,7 +2717,8 @@ function add_fully_routed_ips_rules(config, section) {
     if (length(source_ip_cidr) == 0)
         return;
 
-    if (option(section, "action", "") == "bypass") {
+    let action = option(section, "action", "");
+    if (action == "direct" || action == "bypass") {
         let dns_matchers = {};
         add_source_dns_matchers(dns_matchers, source_ip_cidr);
         add_source_aware_bypass_dns_rules(
@@ -2989,7 +2992,7 @@ function add_server_routes(config, servers, sections) {
             if (routing_section == null)
                 runtime_generate_unsupported("server references missing routing section " + routing_section_name);
             let action = option(routing_section, "action", "");
-            if (action == "bypass" || action == "block")
+            if (action == "direct" || action == "bypass" || action == "block")
                 runtime_generate_unsupported("server routing section " + routing_section_name + " cannot use action " + action);
             let target = runtime_route.target(routing_section, outbound_tag(routing_section[".name"]));
             if (target.unsupported)

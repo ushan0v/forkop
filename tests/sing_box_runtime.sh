@@ -386,6 +386,13 @@ cat >"$WORK_DIR/runtime-matchers-fixture.json" <<'JSON'
       "enabled": "1",
       "action": "bypass",
       "domain": [ "source-priority.test" ]
+    },
+    {
+      ".name": "direct_action",
+      ".type": "section",
+      "enabled": "1",
+      "action": "direct",
+      "domain_suffix": [ "direct.example" ]
     }
   ]
 }
@@ -1308,6 +1315,8 @@ assert(dns_rule(matchers, r => contains(r.domain_suffix, "commented.example")).s
 assert(dns_rule(matchers, r => contains(r.domain, "exact-comment.example")).server == "fakeip-server", "commented full domain generated");
 assert(dns_rule(matchers, r => contains(r.domain_keyword, "clip")).server == "fakeip-server", "commented keyword generated");
 assert(index(sprintf("%J", matchers), "ignored.example") < 0 && index(sprintf("%J", matchers), "ignored-full.example") < 0, "domain comments excluded from generated config");
+assert(route_rule(matchers, r => r.outbound == "bypass-out" && contains(r.domain_suffix, "direct.example")) != null, "direct action uses bypass fast-path fallback");
+assert(dns_rule(matchers, r => r.server == "dns-server" && contains(r.domain_suffix, "direct.example")) != null, "direct action keeps real DNS");
 assert(route_rule(matchers, r => r.outbound == "bypass-out" && contains(r.domain_suffix, "example.org") && contains(r.source_ip_cidr, "10.0.0.3/32")) != null, "bypass fallback route");
 assert(route_rule(matchers, r => r.outbound == "proxy-out" && contains(r.domain_suffix, "xn--80aswg.xn--p1ai")) != null, "IDN suffix converted for route rule");
 assert(route_rule(matchers, r => r.outbound == "proxy-out" && contains(r.domain, "xn--e1afmkfd.xn--80akhbyknj4f")) != null, "IDN full domain converted for route rule");

@@ -560,12 +560,12 @@ function section_action(section) {
 
 function action_captures_traffic(action) {
     return action == "connection" || action == "proxy" || action == "outbound" || action == "vpn" ||
-        action == "direct" || action == "block" || action == "zapret" || action == "zapret2" || action == "byedpi";
+        action == "block" || action == "zapret" || action == "zapret2" || action == "byedpi";
 }
 
 function section_priority_action(section) {
     let action = section_action(section);
-    if (action == "bypass")
+    if (action == "direct" || action == "bypass")
         return "bypass";
     if (action_captures_traffic(action))
         return "capture";
@@ -1604,7 +1604,7 @@ function source_aware_dns_values(sections, deferred_sections) {
             }
         }
 
-        if (action == "bypass" || action == "dns") {
+        if (action == "direct" || action == "bypass" || action == "dns") {
             for (let value in list_option(section, "fully_routed_ips")) {
                 value = trim(as_string(value));
                 if (value != "" && !seen[value]) {

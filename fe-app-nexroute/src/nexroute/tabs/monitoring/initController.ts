@@ -263,18 +263,6 @@ function getRouteTagFromRule(rule?: string): string {
   return normalizeString(match?.[1]).replace(/^['"]|['"]$/g, '');
 }
 
-function isHiddenMonitoringConnection(
-  connection: ClashConnection,
-): boolean {
-  const chains = Array.isArray(connection.chains) ? connection.chains : [];
-
-  if (chains.some((tag) => normalizeString(tag) === 'direct-out')) {
-    return true;
-  }
-
-  return getRouteTagFromRule(connection.rule) === 'direct-out';
-}
-
 function parseStartedAt(connection: MonitoredConnection): number {
   const startedAt = Date.parse(connection.start || '');
   return Number.isFinite(startedAt) ? startedAt : connection.lastSeenAt;
@@ -542,12 +530,6 @@ function applyConnectionsPayload(payload: ClashConnectionsPayload) {
   rawConnections.forEach((rawConnection) => {
     const id = normalizeString(rawConnection.id);
     if (!id) {
-      return;
-    }
-
-    if (isHiddenMonitoringConnection(rawConnection)) {
-      activeConnections.delete(id);
-      closedConnections.delete(id);
       return;
     }
 

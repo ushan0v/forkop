@@ -52,9 +52,7 @@ function target(section, outbound_tag_name) {
     if (connections.is_connections_action(action) ||
         action == "byedpi" || action == "zapret" || action == "zapret2")
         return { action: "route", outbound: outbound_tag_name };
-    if (action == "direct")
-        return { action: "route", outbound: runtime_constants.DIRECT_OUTBOUND_TAG };
-    if (action == "bypass")
+    if (action == "direct" || action == "bypass")
         return { action: "route", outbound: runtime_constants.BYPASS_OUTBOUND_TAG };
     if (action == "block")
         return { action: "reject" };
