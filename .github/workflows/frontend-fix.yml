@@ -1,0 +1,57 @@
+name: Format and verify Nexroute frontend
+
+on:
+  push:
+    paths:
+      - '.github/workflows/frontend-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        working-directory: fe-app-nexroute
+        run: yarn install --frozen-lockfile
+
+      - name: Format frontend
+        working-directory: fe-app-nexroute
+        run: yarn format
+
+      - name: Lint frontend
+        working-directory: fe-app-nexroute
+        run: yarn lint --max-warnings=0
+
+      - name: Test frontend
+        working-directory: fe-app-nexroute
+        run: yarn test --run
+
+      - name: Build frontend
+        working-directory: fe-app-nexroute
+        run: yarn build
+
+      - name: Commit generated formatting and build output
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fe-app-nexroute luci-app-nexroute
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+          git commit -m "Format and rebuild Nexroute frontend"
+          git push
