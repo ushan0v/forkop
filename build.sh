@@ -7,7 +7,7 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0") <version> [output-directory]
 
-Build Forkop IPK and APK packages. The version must use x.y.z format.
+Build Nexroute IPK and APK packages. The version must use x.y.z format.
 EOF
 }
 
@@ -36,11 +36,11 @@ SDK_DIR="${SDK_DIR:-$SDK_CACHE_DIR/extracted}"
 IPK_SDK_URL="${IPK_SDK_URL:-https://downloads.openwrt.org/releases/24.10.6/targets/x86/64/openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst}"
 APK_SDK_URL="${APK_SDK_URL:-https://downloads.openwrt.org/releases/25.12.3/targets/x86/64/openwrt-sdk-25.12.3-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst}"
 
-BACKEND_DESCRIPTION="Rule-based Forkop backend with hybrid sing-box + zapret orchestration"
-APP_DESCRIPTION="Rule-based Forkop LuCI app with hybrid sing-box + zapret orchestration"
+BACKEND_DESCRIPTION="Rule-based Nexroute backend with hybrid sing-box + zapret orchestration"
+APP_DESCRIPTION="Rule-based Nexroute LuCI app with hybrid sing-box + zapret orchestration"
 I18N_DESCRIPTION="Translation for luci-app-forkop - Русский (Russian)"
-MAINTAINER="ushan0v <ushan0v@users.noreply.github.com>"
-PROJECT_URL="https://github.com/ushan0v/forkop"
+MAINTAINER="filippxda26 <filippxda26@users.noreply.github.com>"
+PROJECT_URL="https://github.com/filippxda26/Nexroute"
 BACKEND_DEPENDS_IPK="libc, ca-bundle, kmod-inet-diag, kmod-netlink-diag, kmod-tun, curl, ucode, ucode-mod-fs, ucode-mod-uci, kmod-nft-tproxy, coreutils-base64, bind-dig, nftables, kmod-nft-nat, ip-full"
 BACKEND_DEPENDS_APK="bind-dig ca-bundle coreutils-base64 curl ip-full kmod-inet-diag kmod-netlink-diag kmod-nft-nat kmod-nft-tproxy kmod-tun libc nftables ucode ucode-mod-fs ucode-mod-uci !https-dns-proxy !nextdns !luci-app-passwall !luci-app-passwall2"
 BACKEND_CONFLICTS_IPK="https-dns-proxy, nextdns, luci-app-passwall, luci-app-passwall2"
@@ -169,10 +169,10 @@ build_backend_root() {
   make_dir "$output_root/usr/bin"
   make_dir "$output_root/usr/lib/forkop"
 
-  install -m 0755 "$ROOT_DIR/forkop/files/etc/init.d/forkop" "$output_root/etc/init.d/forkop"
-  install -m 0644 "$ROOT_DIR/forkop/files/etc/config/forkop" "$output_root/etc/config/forkop"
-  install -m 0755 "$ROOT_DIR/forkop/files/usr/bin/forkop" "$output_root/usr/bin/forkop"
-  cp -a "$ROOT_DIR/forkop/files/usr/lib/." "$output_root/usr/lib/forkop/"
+  install -m 0755 "$ROOT_DIR/nexroute/files/etc/init.d/forkop" "$output_root/etc/init.d/forkop"
+  install -m 0644 "$ROOT_DIR/nexroute/files/etc/config/forkop" "$output_root/etc/config/forkop"
+  install -m 0755 "$ROOT_DIR/nexroute/files/usr/bin/forkop" "$output_root/usr/bin/forkop"
+  cp -a "$ROOT_DIR/nexroute/files/usr/lib/." "$output_root/usr/lib/forkop/"
 
   sed -i -e "s/__COMPILED_VERSION_VARIABLE__/${RELEASE_VERSION}/g" \
     "$output_root/usr/lib/forkop/core/constants.uc"
@@ -187,8 +187,8 @@ build_app_root() {
   rm -rf "$output_root"
   make_dir "$output_root/www"
 
-  cp -a "$ROOT_DIR/luci-app-forkop/htdocs/." "$output_root/www/"
-  cp -a "$ROOT_DIR/luci-app-forkop/root/." "$output_root/"
+  cp -a "$ROOT_DIR/luci-app-nexroute/htdocs/." "$output_root/www/"
+  cp -a "$ROOT_DIR/luci-app-nexroute/root/." "$output_root/"
   sed -i -e "s/__COMPILED_VERSION_VARIABLE__/${RELEASE_VERSION}/g" \
     "$output_root/www/luci-static/resources/view/forkop/main.js"
 
@@ -209,7 +209,7 @@ build_i18n_root() {
 uci set luci.languages.ru='Русский (Russian)'; uci commit luci
 EOF
 
-  "$po2lmo_bin" "$ROOT_DIR/luci-app-forkop/po/ru/forkop.po" "$lmo_path"
+  "$po2lmo_bin" "$ROOT_DIR/luci-app-nexroute/po/ru/forkop.po" "$lmo_path"
 
   normalize_package_root_modes "$output_root"
   find "$output_root/etc/uci-defaults" -type f -exec chmod 0755 {} + 2>/dev/null || true
@@ -655,7 +655,7 @@ main() {
   mkdir -p "$BUILD_DIR" "$SDK_CACHE_DIR"
   exec 9>"$SDK_CACHE_DIR/.build.lock"
   if ! flock -n 9; then
-    echo "Another Forkop package build is already running" >&2
+    echo "Another Nexroute package build is already running" >&2
     exit 1
   fi
   output_dir="$OUTPUT_DIR"
