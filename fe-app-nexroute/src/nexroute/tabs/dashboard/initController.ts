@@ -84,7 +84,8 @@ async function fetchDashboardSectionsOnce(mountId: number) {
   });
 
   try {
-    const { data, success } = await CustomNexrouteMethods.getDashboardSections();
+    const { data, success } =
+      await CustomNexrouteMethods.getDashboardSections();
 
     if (
       !dashboardMounted ||
@@ -1310,7 +1311,8 @@ async function handleUpdateSubscription(section: Nexroute.OutboundGroup) {
 
     followedSubscriptionJobs.add(jobId);
     ownsJobFollow = true;
-    const response = await NexrouteShellMethods.waitSubscriptionUpdateJob(jobId);
+    const response =
+      await NexrouteShellMethods.waitSubscriptionUpdateJob(jobId);
     await completeSubscriptionUpdateJob(jobId, section.sectionName, response);
   } catch (error) {
     logger.error('[DASHBOARD]', 'handleUpdateSubscription: failed', error);

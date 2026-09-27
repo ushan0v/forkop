@@ -861,11 +861,7 @@ var FLAG_EMOJI_PATTERN = /([\u{1f1e6}-\u{1f1ff}]{2}|\u{1f3f4}[\u{e0061}-\u{e007a
 var EXACT_FLAG_EMOJI_PATTERN = /^([\u{1f1e6}-\u{1f1ff}]{2}|\u{1f3f4}[\u{e0061}-\u{e007a}]+\u{e007f})$/u;
 function renderFlagEmojis(value) {
   return value.split(FLAG_EMOJI_PATTERN).filter(Boolean).map(
-    (part) => EXACT_FLAG_EMOJI_PATTERN.test(part) ? E(
-      "span",
-      { class: "fkp_dashboard-page__flag-emoji" },
-      part
-    ) : part
+    (part) => EXACT_FLAG_EMOJI_PATTERN.test(part) ? E("span", { class: "fkp_dashboard-page__flag-emoji" }, part) : part
   );
 }
 
@@ -2657,10 +2653,7 @@ var NexrouteShellMethods = {
     Nexroute.AvailableMethods.GET_OUTBOUND_METADATA,
     [section]
   ),
-  getSubscriptionMetadata: async (section) => callBaseMethod(
-    Nexroute.AvailableMethods.GET_SUBSCRIPTION_METADATA,
-    [section]
-  ),
+  getSubscriptionMetadata: async (section) => callBaseMethod(Nexroute.AvailableMethods.GET_SUBSCRIPTION_METADATA, [section]),
   checkSingBox: async () => callBaseMethod(
     Nexroute.AvailableMethods.CHECK_SING_BOX
   ),
@@ -2887,7 +2880,11 @@ var NexrouteShellMethods = {
   componentActionStart: async (component, action) => {
     const response = await executeShellCommand({
       command: "/usr/bin/nexroute",
-      args: [Nexroute.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
+      args: [
+        Nexroute.AvailableMethods.COMPONENT_ACTION_ASYNC,
+        component,
+        action
+      ],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseComponentActionStartResult(response);
@@ -8234,7 +8231,9 @@ async function runZapret2Check() {
     },
     {
       state: standaloneConflict ? "error" : standaloneAutostartRisk ? "warning" : "success",
-      key: standaloneServiceRunning ? hasZapret2Rules ? _("Standalone Zapret2 is active together with Nexroute Zapret2 rules") : _("Standalone Zapret2 service is active") : standaloneAutostartRisk ? _("Standalone Zapret2 autostart is enabled") : _("Standalone Zapret2 service is inactive"),
+      key: standaloneServiceRunning ? hasZapret2Rules ? _(
+        "Standalone Zapret2 is active together with Nexroute Zapret2 rules"
+      ) : _("Standalone Zapret2 service is active") : standaloneAutostartRisk ? _("Standalone Zapret2 autostart is enabled") : _("Standalone Zapret2 service is inactive"),
       value: ""
     }
   ];
@@ -9702,7 +9701,9 @@ function isLocalMutatingServiceActionLoading() {
   return hasLocalMutatingServiceActionLoading(actions);
 }
 function isMutatingServiceActionLoading() {
-  return isLocalMutatingServiceActionLoading() || isServiceTransitionStatus(store.get().servicesInfoWidget.data.nexrouteStatus);
+  return isLocalMutatingServiceActionLoading() || isServiceTransitionStatus(
+    store.get().servicesInfoWidget.data.nexrouteStatus
+  );
 }
 function getNexrouteStatusText(running, enabled) {
   if (running) {
@@ -14128,11 +14129,11 @@ return baseclass.extend({
   DOMAIN_LIST_OPTIONS,
   DashboardTab,
   DiagnosticTab,
+  LATENCY_TEST_URL_OPTIONS,
+  MonitoringTab,
   NEXROUTE_ACTION_PROVIDERS_AVAILABILITY_EVENT,
   NEXROUTE_UCI_PACKAGE,
   NexrouteShellMethods,
-  LATENCY_TEST_URL_OPTIONS,
-  MonitoringTab,
   UpdatesTab,
   applyUiStateToStore,
   bulkValidate,

@@ -241,10 +241,9 @@ export const NexrouteShellMethods = {
       [section],
     ),
   getSubscriptionMetadata: async (section: string) =>
-    callBaseMethod<Nexroute.SubscriptionMetadata | Nexroute.SubscriptionMetadata[]>(
-      Nexroute.AvailableMethods.GET_SUBSCRIPTION_METADATA,
-      [section],
-    ),
+    callBaseMethod<
+      Nexroute.SubscriptionMetadata | Nexroute.SubscriptionMetadata[]
+    >(Nexroute.AvailableMethods.GET_SUBSCRIPTION_METADATA, [section]),
   checkSingBox: async () =>
     callBaseMethod<Nexroute.SingBoxCheckResult>(
       Nexroute.AvailableMethods.CHECK_SING_BOX,
@@ -536,7 +535,11 @@ export const NexrouteShellMethods = {
   ) => {
     const response = await executeShellCommand({
       command: '/usr/bin/nexroute',
-      args: [Nexroute.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
+      args: [
+        Nexroute.AvailableMethods.COMPONENT_ACTION_ASYNC,
+        component,
+        action,
+      ],
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseComponentActionStartResult(response);
@@ -744,7 +747,8 @@ export const NexrouteShellMethods = {
     while (true) {
       await sleep(SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS);
 
-      const response = await NexrouteShellMethods.subscriptionUpdateStatus(jobId);
+      const response =
+        await NexrouteShellMethods.subscriptionUpdateStatus(jobId);
 
       if (!response.success) {
         if (transientRpc.shouldContinue(response.error)) {

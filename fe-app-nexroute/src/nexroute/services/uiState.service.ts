@@ -104,8 +104,10 @@ function applyActionState(actions: UiActionMap = {}) {
     current.sectionsWidget.latencyProgressSections;
   const subscriptionUpdatingSections: Record<string, boolean> = {};
   const latencyFetchingSections: Record<string, boolean> = {};
-  const latencyProgressSections: Record<string, Nexroute.LatencyActionProgress> =
-    {};
+  const latencyProgressSections: Record<
+    string,
+    Nexroute.LatencyActionProgress
+  > = {};
   const updatesActions = getEmptyUpdatesActions();
   const diagnosticsActions = getEmptyDiagnosticsActions();
 

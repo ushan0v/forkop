@@ -156,7 +156,9 @@ function isLocalMutatingServiceActionLoading() {
 function isMutatingServiceActionLoading() {
   return (
     isLocalMutatingServiceActionLoading() ||
-    isServiceTransitionStatus(store.get().servicesInfoWidget.data.nexrouteStatus)
+    isServiceTransitionStatus(
+      store.get().servicesInfoWidget.data.nexrouteStatus,
+    )
   );
 }
 
@@ -737,7 +739,8 @@ async function handleShowSingBoxConfig() {
   setDiagnosticActionLoading('showSingBoxConfig', true);
 
   try {
-    const showSingBoxConfig = await NexrouteShellMethods.showSingBoxConfig(false);
+    const showSingBoxConfig =
+      await NexrouteShellMethods.showSingBoxConfig(false);
 
     if (showSingBoxConfig.success) {
       const rawSingBoxConfigText = stringifySingBoxConfig(

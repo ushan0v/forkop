@@ -46,7 +46,8 @@ import {
 } from '../../services/runtimeUiState.service';
 import { Nexroute } from '../../types';
 
-type UpdateStatus = StoreType['updatesChecks'][Nexroute.ComponentName]['status'];
+type UpdateStatus =
+  StoreType['updatesChecks'][Nexroute.ComponentName]['status'];
 
 interface ComponentActionButton {
   key: UpdatesActionKey;
@@ -532,7 +533,9 @@ async function completeComponentActionJob(
   });
 }
 
-async function followComponentActionState(state: Nexroute.ComponentActionResult) {
+async function followComponentActionState(
+  state: Nexroute.ComponentActionResult,
+) {
   const jobId = state.job_id;
   const key = getComponentActionKey(state.component, state.action);
 

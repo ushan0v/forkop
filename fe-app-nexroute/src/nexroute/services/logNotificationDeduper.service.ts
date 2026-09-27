@@ -1,4 +1,5 @@
-const LOG_NOTIFICATION_STORAGE_KEY = 'nexroute:shown-log-error-notifications:v1';
+const LOG_NOTIFICATION_STORAGE_KEY =
+  'nexroute:shown-log-error-notifications:v1';
 const MAX_STORED_LOG_NOTIFICATIONS = 500;
 
 export type NexrouteLogNotification =

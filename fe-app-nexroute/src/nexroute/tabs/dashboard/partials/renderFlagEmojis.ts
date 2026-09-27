@@ -9,11 +9,7 @@ export function renderFlagEmojis(value: string): (HTMLElement | string)[] {
     .filter(Boolean)
     .map((part) =>
       EXACT_FLAG_EMOJI_PATTERN.test(part)
-        ? E(
-            'span',
-            { class: 'fkp_dashboard-page__flag-emoji' },
-            part,
-          )
+        ? E('span', { class: 'fkp_dashboard-page__flag-emoji' }, part)
         : part,
     );
 }

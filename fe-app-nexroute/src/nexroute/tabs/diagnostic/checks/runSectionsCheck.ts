@@ -71,10 +71,11 @@ export async function runSectionsCheck() {
         const isSubscription = section.proxyConfigType === 'subscription';
 
         if (selectedOutbound?.code) {
-          const latencyProxy = await NexrouteShellMethods.getClashApiProxyLatency(
-            selectedOutbound.code,
-            section.latencyTestTimeout,
-          );
+          const latencyProxy =
+            await NexrouteShellMethods.getClashApiProxyLatency(
+              selectedOutbound.code,
+              section.latencyTestTimeout,
+            );
           const proxySuccess =
             latencyProxy.success && !latencyProxy.data.message;
 
