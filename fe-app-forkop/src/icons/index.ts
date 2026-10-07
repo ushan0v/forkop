@@ -20,3 +20,4 @@ export * from './renderCopyIcon24';
 export * from './renderLinkIcon24';
 export * from './renderDownloadIcon24';
 export * from './renderInfoIcon24';
+export * from './renderClockIcon24';

@@ -3,10 +3,12 @@ import {
   renderCopyIcon24,
   renderLinkIcon24,
   renderInfoIcon24,
+  renderClockIcon24,
 } from '../../../../icons';
 import { isCopyableProxyLink, svgEl } from '../../../../helpers';
 import { prettyBytes } from '../../../../helpers/prettyBytes';
 import { Forkop } from '../../../types';
+import { ForkopShellMethods } from '../../../methods/shell';
 import { renderFlagEmojis } from './renderFlagEmojis';
 
 interface IRenderSectionsProps {
@@ -275,7 +277,7 @@ function renderDefaultState({
     }
   }
 
-  function renderOutbound(outbound: Forkop.Outbound) {
+  function renderOutbound(outbound: Forkop.Outbound, index = 0) {
     function getLatencyClass() {
       if (!outbound.latency) {
         return 'fkp_dashboard-page__outbound-grid__item__latency--empty';
@@ -291,6 +293,131 @@ function renderDefaultState({
 
       return 'fkp_dashboard-page__outbound-grid__item__latency--red';
     }
+
+    let latencyBadge: HTMLElement | null = null;
+    let pinging = false;
+
+    const onSinglePing = async (event?: MouseEvent) => {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      if (pinging || latencyFetching || !outbound.code) return;
+      pinging = true;
+      if (latencyBadge) {
+        latencyBadge.className =
+          'fkp_dashboard-page__outbound-grid__item__latency fkp_dashboard-page__outbound-grid__item__latency--empty fkp_dashboard-page__outbound-grid__item__latency--busy';
+        latencyBadge.replaceChildren(
+          E(
+            'span',
+            { style: 'display: inline-flex; width: 14px; height: 14px;' },
+            [renderLoaderCircleIcon24()],
+          ),
+        );
+      }
+      try {
+        const res = await ForkopShellMethods.getClashApiProxyLatency(
+          outbound.code,
+          '4000',
+        );
+        if (
+          res &&
+          res.success &&
+          res.data &&
+          typeof (res.data as { delay?: number }).delay === 'number' &&
+          !(res.data as { message?: string }).message
+        ) {
+          outbound.latency = (res.data as { delay: number }).delay;
+          if (latencyBadge) {
+            latencyBadge.className = `fkp_dashboard-page__outbound-grid__item__latency ${getLatencyClass()}`;
+            latencyBadge.textContent = `${outbound.latency}ms`;
+          }
+        } else {
+          outbound.latency = 0;
+          if (latencyBadge) {
+            latencyBadge.className =
+              'fkp_dashboard-page__outbound-grid__item__latency fkp_dashboard-page__outbound-grid__item__latency--empty';
+            latencyBadge.textContent = 'N/A';
+          }
+        }
+      } catch (_e) {
+        outbound.latency = 0;
+        if (latencyBadge) {
+          latencyBadge.className =
+            'fkp_dashboard-page__outbound-grid__item__latency fkp_dashboard-page__outbound-grid__item__latency--empty';
+          latencyBadge.textContent = 'N/A';
+        }
+      } finally {
+        pinging = false;
+        if (latencyBadge && !latencyFetching) {
+          latencyBadge.classList.remove(
+            'fkp_dashboard-page__outbound-grid__item__latency--busy',
+          );
+        }
+      }
+    };
+
+    const completedCount = Number(latencyProgress?.completed ?? 0);
+    const hasFinished = Boolean(outbound.latency && outbound.latency > 0);
+    const isPinging = Boolean(
+      latencyFetching && !hasFinished && index < completedCount + 25,
+    );
+    const isQueued = Boolean(
+      latencyFetching && !hasFinished && index >= completedCount + 25,
+    );
+    const isBusy = isPinging || isQueued || pinging;
+
+    let badgeContent: string | HTMLElement[] = outbound.latency
+      ? `${outbound.latency}ms`
+      : 'N/A';
+    if (isPinging) {
+      badgeContent = [
+        E(
+          'span',
+          { style: 'display: inline-flex; width: 14px; height: 14px;' },
+          [renderLoaderCircleIcon24()],
+        ),
+      ];
+    } else if (isQueued) {
+      badgeContent = [
+        E(
+          'span',
+          {
+            style:
+              'display: inline-flex; width: 14px; height: 14px; opacity: 0.5;',
+          },
+          [renderClockIcon24()],
+        ),
+      ];
+    }
+
+    const badgeClasses = [
+      'fkp_dashboard-page__outbound-grid__item__latency',
+      isBusy
+        ? 'fkp_dashboard-page__outbound-grid__item__latency--empty'
+        : getLatencyClass(),
+      isBusy || latencyFetching
+        ? 'fkp_dashboard-page__outbound-grid__item__latency--busy'
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    latencyBadge = E(
+      'div',
+      {
+        class: badgeClasses,
+        title: isPinging
+          ? _('Testing latency...')
+          : isQueued
+            ? _('In queue...')
+            : latencyFetching
+              ? _('Testing latency...')
+              : _('Click to test latency'),
+        click: onSinglePing,
+      },
+      badgeContent,
+    );
 
     const canCopyLink =
       Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
@@ -350,63 +477,72 @@ function renderDefaultState({
           : []),
         E('div', { class: 'fkp_dashboard-page__outbound-grid__item__header' }, [
           E('b', {}, renderFlagEmojis(outbound.displayName)),
-          ...(canCopyLink
-            ? [
-                E(
-                  'button',
-                  {
-                    type: 'button',
-                    class:
-                      'btn fkp_dashboard-page__outbound-grid__item__copy-button',
-                    title: _('Copy proxy link'),
-                    'aria-label': _('Copy proxy link'),
-                    click: (event: MouseEvent) => {
-                      event.stopPropagation();
-                      onCopyOutbound(section, outbound);
-                    },
-                  },
-                  renderCopyIcon24(),
-                ),
-              ]
-            : []),
-          ...(outbound.urlTestInfo
-            ? [
-                E(
-                  'button',
-                  {
-                    type: 'button',
-                    class:
-                      'btn fkp_dashboard-page__outbound-grid__item__copy-button',
-                    title: _('URLTest details'),
-                    'aria-label': _('URLTest details'),
-                    click: (event: MouseEvent) => {
-                      event.stopPropagation();
-                      onShowUrlTestInfo(outbound);
-                    },
-                  },
-                  renderInfoIcon24(),
-                ),
-              ]
-            : []),
-          ...(outbound.priorityInfo
-            ? [
-                E(
-                  'button',
-                  {
-                    type: 'button',
-                    class:
-                      'btn fkp_dashboard-page__outbound-grid__item__copy-button',
-                    title: _('Priority details'),
-                    'aria-label': _('Priority details'),
-                    click: (event: MouseEvent) => {
-                      event.stopPropagation();
-                      onShowPriorityInfo(outbound);
-                    },
-                  },
-                  renderInfoIcon24(),
-                ),
-              ]
-            : []),
+          E(
+            'div',
+            {
+              style:
+                'display: flex; gap: 4px; align-items: center; flex: 0 0 auto;',
+            },
+            [
+              ...(canCopyLink
+                ? [
+                    E(
+                      'button',
+                      {
+                        type: 'button',
+                        class:
+                          'btn fkp_dashboard-page__outbound-grid__item__copy-button',
+                        title: _('Copy proxy link'),
+                        'aria-label': _('Copy proxy link'),
+                        click: (event: MouseEvent) => {
+                          event.stopPropagation();
+                          onCopyOutbound(section, outbound);
+                        },
+                      },
+                      renderCopyIcon24(),
+                    ),
+                  ]
+                : []),
+              ...(outbound.urlTestInfo
+                ? [
+                    E(
+                      'button',
+                      {
+                        type: 'button',
+                        class:
+                          'btn fkp_dashboard-page__outbound-grid__item__copy-button',
+                        title: _('URLTest details'),
+                        'aria-label': _('URLTest details'),
+                        click: (event: MouseEvent) => {
+                          event.stopPropagation();
+                          onShowUrlTestInfo(outbound);
+                        },
+                      },
+                      renderInfoIcon24(),
+                    ),
+                  ]
+                : []),
+              ...(outbound.priorityInfo
+                ? [
+                    E(
+                      'button',
+                      {
+                        type: 'button',
+                        class:
+                          'btn fkp_dashboard-page__outbound-grid__item__copy-button',
+                        title: _('Priority details'),
+                        'aria-label': _('Priority details'),
+                        click: (event: MouseEvent) => {
+                          event.stopPropagation();
+                          onShowPriorityInfo(outbound);
+                        },
+                      },
+                      renderInfoIcon24(),
+                    ),
+                  ]
+                : []),
+            ],
+          ),
         ]),
         E('div', { class: 'fkp_dashboard-page__outbound-grid__item__footer' }, [
           E(
@@ -414,11 +550,7 @@ function renderDefaultState({
             { class: 'fkp_dashboard-page__outbound-grid__item__type' },
             [outbound.type].filter(Boolean),
           ),
-          E(
-            'div',
-            { class: getLatencyClass() },
-            outbound.latency ? `${outbound.latency}ms` : 'N/A',
-          ),
+          latencyBadge,
         ]),
       ],
     );
@@ -491,7 +623,9 @@ function renderDefaultState({
     ]),
     E('div', { class: 'fkp_dashboard-page__outbound-grid' }, [
       ...metadataNodes,
-      ...section.outbounds.map((outbound) => renderOutbound(outbound)),
+      ...section.outbounds.map((outbound, index) =>
+        renderOutbound(outbound, index),
+      ),
     ]),
   ]);
 }

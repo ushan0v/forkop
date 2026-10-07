@@ -238,6 +238,22 @@ function setLatencyFetching(
     ...sectionsWidget.latencyProgressSections,
   };
 
+  let data = sectionsWidget.data;
+  if (fetching && Array.isArray(data)) {
+    data = data.map((sec) => {
+      if (sec.sectionName === sectionName && Array.isArray(sec.outbounds)) {
+        return {
+          ...sec,
+          outbounds: sec.outbounds.map((ob) => ({
+            ...ob,
+            latency: 0,
+          })),
+        };
+      }
+      return sec;
+    });
+  }
+
   if (fetching) {
     latencyFetchingSections[sectionName] = true;
     if (progress) {
@@ -251,6 +267,7 @@ function setLatencyFetching(
   store.set({
     sectionsWidget: {
       ...sectionsWidget,
+      data,
       latencyFetchingSections,
       latencyProgressSections,
     },
@@ -1365,6 +1382,10 @@ function canUpdateLatencyProgressInline(
     shallowRecordEqual(
       prev.selectorSwitchingSections,
       next.selectorSwitchingSections,
+    ) &&
+    shallowRecordEqual(
+      prev.latencyProgressSections,
+      next.latencyProgressSections,
     )
   );
 }

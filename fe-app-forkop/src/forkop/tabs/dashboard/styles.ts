@@ -429,6 +429,33 @@ export const styles = `
     overflow-wrap: anywhere;
 }
 
+.fkp_dashboard-page__outbound-grid__item__latency {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    margin: -2px -6px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 500;
+    transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.fkp_dashboard-page__outbound-grid__item__latency:hover {
+    background-color: rgba(128, 128, 128, 0.2);
+    opacity: 0.9;
+}
+
+.fkp_dashboard-page__outbound-grid__item__latency:active {
+    transform: scale(0.95);
+}
+
+.fkp_dashboard-page__outbound-grid__item__latency--busy {
+    cursor: default;
+    pointer-events: none;
+}
+
 .fkp_dashboard-page__outbound-grid__item__latency--empty {
     color: var(--primary-color-low, lightgray);
 }
