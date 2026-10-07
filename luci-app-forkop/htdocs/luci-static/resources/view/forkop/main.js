@@ -1757,6 +1757,28 @@ function renderInfoIcon24() {
   );
 }
 
+// src/icons/renderClockIcon24.ts
+function renderClockIcon24() {
+  const NS = "http://www.w3.org/2000/svg";
+  return svgEl(
+    "svg",
+    {
+      xmlns: NS,
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": "2",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      class: "lucide lucide-clock"
+    },
+    [
+      svgEl("circle", { cx: "12", cy: "12", r: "10" }),
+      svgEl("polyline", { points: "12 6 12 12 16 14" })
+    ]
+  );
+}
+
 // src/helpers/prettyBytes.ts
 function prettyBytes(n) {
   const UNITS = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
@@ -1767,616 +1789,6 @@ function prettyBytes(n) {
   n = Number((n / Math.pow(1e3, exponent)).toPrecision(3));
   const unit = UNITS[exponent];
   return n + " " + unit;
-}
-
-// src/forkop/tabs/dashboard/partials/renderSections.ts
-function renderFailedState() {
-  return E(
-    "div",
-    {
-      class: "fkp_dashboard-page__outbound-section centered",
-      style: "height: 127px"
-    },
-    E("span", {}, [E("span", {}, _("Dashboard currently unavailable"))])
-  );
-}
-function renderLoadingState() {
-  return E("div", {
-    id: "dashboard-sections-grid-skeleton",
-    class: "fkp_dashboard-page__outbound-section skeleton",
-    style: "height: 127px"
-  });
-}
-function isValidHttpUrl(url) {
-  return Boolean(url && /^https?:\/\/\S+$/i.test(url));
-}
-function formatBytes(value) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    return void 0;
-  }
-  return prettyBytes(value);
-}
-function formatDate(seconds) {
-  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) {
-    return void 0;
-  }
-  const date = new Date(seconds * 1e3);
-  if (Number.isNaN(date.getTime())) {
-    return void 0;
-  }
-  return date.toLocaleDateString(void 0, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-}
-function renderMetadataAction(label, url) {
-  if (!isValidHttpUrl(url)) {
-    return void 0;
-  }
-  return E(
-    "a",
-    {
-      class: "btn fkp_dashboard-page__subscription-meta__action",
-      href: url,
-      target: "_blank",
-      rel: "noopener noreferrer",
-      title: label,
-      "aria-label": label
-    },
-    renderLinkIcon24()
-  );
-}
-function renderSubscriptionMetadata(metadata) {
-  if (!metadata || Object.keys(metadata).length <= 1) {
-    return void 0;
-  }
-  const title = metadata.title || metadata.fileName;
-  const traffic = metadata.traffic;
-  const used = formatBytes(traffic?.used) || "0 B";
-  const total = traffic?.isUnlimited ? "\u221E" : formatBytes(traffic?.total) || "0 B";
-  const expire = formatDate(metadata.expire);
-  const refillDate = formatDate(metadata.refillDate);
-  const rows = [
-    traffic ? {
-      label: _("Traffic"),
-      value: `${used} / ${total}`
-    } : void 0,
-    expire ? { label: _("Expires"), value: expire } : void 0,
-    refillDate ? { label: _("Refill"), value: refillDate } : void 0
-  ].filter(Boolean);
-  const actions = [
-    renderMetadataAction("Profile", metadata.webPageUrl),
-    renderMetadataAction("Support", metadata.supportUrl),
-    renderMetadataAction("More details", metadata.announceUrl)
-  ].filter(Boolean);
-  return E("div", { class: "fkp_dashboard-page__subscription-meta" }, [
-    E("div", { class: "fkp_dashboard-page__subscription-meta__main" }, [
-      E(
-        "div",
-        { class: "fkp_dashboard-page__subscription-meta__heading" },
-        _("Subscription info:")
-      ),
-      title ? E(
-        "div",
-        { class: "fkp_dashboard-page__subscription-meta__title" },
-        title
-      ) : "",
-      rows.length ? E(
-        "div",
-        { class: "fkp_dashboard-page__subscription-meta__facts" },
-        rows.map(
-          (row) => E(
-            "div",
-            { class: "fkp_dashboard-page__subscription-meta__fact" },
-            [
-              E(
-                "span",
-                {
-                  class: "fkp_dashboard-page__subscription-meta__fact-key"
-                },
-                row.label
-              ),
-              E(
-                "span",
-                {
-                  class: "fkp_dashboard-page__subscription-meta__fact-value"
-                },
-                row.value
-              )
-            ]
-          )
-        )
-      ) : "",
-      actions.length ? E(
-        "div",
-        { class: "fkp_dashboard-page__subscription-meta__actions" },
-        actions
-      ) : ""
-    ]),
-    metadata.announce ? E(
-      "blockquote",
-      { class: "fkp_dashboard-page__subscription-meta__announce" },
-      metadata.announce
-    ) : ""
-  ]);
-}
-function renderSubscriptionUpdateAction(section, subscriptionUpdating, onUpdateSubscription) {
-  if (!section.subscriptionSourceCount) {
-    return void 0;
-  }
-  return E(
-    "button",
-    {
-      type: "button",
-      class: "btn fkp_dashboard-page__outbound-section__subscription-update",
-      "aria-label": _("Update subscriptions"),
-      disabled: subscriptionUpdating ? true : void 0,
-      click: (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (subscriptionUpdating) {
-          return;
-        }
-        onUpdateSubscription(section);
-      }
-    },
-    subscriptionUpdating ? [renderLoaderCircleIcon24(), _("Update subscriptions")] : _("Update subscriptions")
-  );
-}
-function getLatencyTestLabel(latencyProgress) {
-  const total = Math.trunc(Number(latencyProgress?.total ?? 0));
-  if (!Number.isFinite(total) || total <= 0) {
-    return _("Test latency");
-  }
-  const completedValue = Number(latencyProgress?.completed ?? 0);
-  const completed = Number.isFinite(completedValue) ? Math.trunc(completedValue) : 0;
-  return `${_("Test latency")}: ${Math.min(
-    Math.max(0, completed),
-    total
-  )}/${total}`;
-}
-function renderDefaultState({
-  section,
-  onChooseOutbound,
-  onCopyOutbound,
-  onShowUrlTestInfo,
-  onShowPriorityInfo,
-  onTestLatency,
-  onUpdateSubscription,
-  latencyFetching,
-  latencyProgress,
-  subscriptionUpdating,
-  selectorSwitchingTag
-}) {
-  function testLatency() {
-    if (section.withTagSelect) {
-      return onTestLatency(
-        section.latencyTestCodes?.length ? section.latencyTestCodes : section.latencyTestCode || section.code
-      );
-    }
-    if (section.outbounds.length) {
-      return onTestLatency(section.outbounds[0].code);
-    }
-  }
-  function renderOutbound(outbound) {
-    function getLatencyClass() {
-      if (!outbound.latency) {
-        return "fkp_dashboard-page__outbound-grid__item__latency--empty";
-      }
-      if (outbound.latency < 800) {
-        return "fkp_dashboard-page__outbound-grid__item__latency--green";
-      }
-      if (outbound.latency < 1500) {
-        return "fkp_dashboard-page__outbound-grid__item__latency--yellow";
-      }
-      return "fkp_dashboard-page__outbound-grid__item__latency--red";
-    }
-    const canCopyLink = Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
-    const selectorSwitching = Boolean(selectorSwitchingTag);
-    const outboundSwitching = selectorSwitchingTag === outbound.code;
-    const canChooseOutbound = section.withTagSelect && outbound.runtimeAvailable !== false && !selectorSwitching && !outbound.selected;
-    const className = [
-      "fkp_dashboard-page__outbound-grid__item",
-      outbound.selected ? "fkp_dashboard-page__outbound-grid__item--active" : "",
-      canChooseOutbound ? "fkp_dashboard-page__outbound-grid__item--selectable" : "",
-      section.withTagSelect && !canChooseOutbound ? "fkp_dashboard-page__outbound-grid__item--disabled" : "",
-      outboundSwitching ? "fkp_dashboard-page__outbound-grid__item--switching" : ""
-    ].filter(Boolean).join(" ");
-    return E(
-      "div",
-      {
-        class: className,
-        "aria-busy": outboundSwitching ? "true" : void 0,
-        "aria-disabled": section.withTagSelect && !canChooseOutbound ? "true" : void 0,
-        click: () => canChooseOutbound && onChooseOutbound(section.sectionName, section.code, outbound.code)
-      },
-      [
-        ...outboundSwitching ? [
-          svgEl(
-            "svg",
-            { class: "fkp_dashboard-page__outbound-grid__item__snake" },
-            [
-              svgEl("rect", {
-                width: "100%",
-                height: "100%",
-                fill: "none",
-                rx: 4,
-                ry: 4,
-                pathLength: 100
-              })
-            ]
-          )
-        ] : [],
-        E("div", { class: "fkp_dashboard-page__outbound-grid__item__header" }, [
-          E("b", {}, renderFlagEmojis(outbound.displayName)),
-          ...canCopyLink ? [
-            E(
-              "button",
-              {
-                type: "button",
-                class: "btn fkp_dashboard-page__outbound-grid__item__copy-button",
-                title: _("Copy proxy link"),
-                "aria-label": _("Copy proxy link"),
-                click: (event) => {
-                  event.stopPropagation();
-                  onCopyOutbound(section, outbound);
-                }
-              },
-              renderCopyIcon24()
-            )
-          ] : [],
-          ...outbound.urlTestInfo ? [
-            E(
-              "button",
-              {
-                type: "button",
-                class: "btn fkp_dashboard-page__outbound-grid__item__copy-button",
-                title: _("URLTest details"),
-                "aria-label": _("URLTest details"),
-                click: (event) => {
-                  event.stopPropagation();
-                  onShowUrlTestInfo(outbound);
-                }
-              },
-              renderInfoIcon24()
-            )
-          ] : [],
-          ...outbound.priorityInfo ? [
-            E(
-              "button",
-              {
-                type: "button",
-                class: "btn fkp_dashboard-page__outbound-grid__item__copy-button",
-                title: _("Priority details"),
-                "aria-label": _("Priority details"),
-                click: (event) => {
-                  event.stopPropagation();
-                  onShowPriorityInfo(outbound);
-                }
-              },
-              renderInfoIcon24()
-            )
-          ] : []
-        ]),
-        E("div", { class: "fkp_dashboard-page__outbound-grid__item__footer" }, [
-          E(
-            "div",
-            { class: "fkp_dashboard-page__outbound-grid__item__type" },
-            [outbound.type].filter(Boolean)
-          ),
-          E(
-            "div",
-            { class: getLatencyClass() },
-            outbound.latency ? `${outbound.latency}ms` : "N/A"
-          )
-        ])
-      ]
-    );
-  }
-  const metadataNodes = (section.subscriptionMetadata || []).map((metadata) => renderSubscriptionMetadata(metadata)).filter(Boolean);
-  const subscriptionUpdateAction = renderSubscriptionUpdateAction(
-    section,
-    subscriptionUpdating,
-    onUpdateSubscription
-  );
-  return E("div", { class: "fkp_dashboard-page__outbound-section" }, [
-    // Title with test latency
-    E("div", { class: "fkp_dashboard-page__outbound-section__title-section" }, [
-      E(
-        "div",
-        {
-          class: "fkp_dashboard-page__outbound-section__title-section__title"
-        },
-        section.displayName
-      ),
-      E(
-        "div",
-        {
-          class: "fkp_dashboard-page__outbound-section__title-section__actions"
-        },
-        [
-          ...subscriptionUpdateAction ? [subscriptionUpdateAction] : [],
-          E(
-            "button",
-            {
-              type: "button",
-              class: "btn dashboard-sections-grid-item-test-latency",
-              "data-latency-section": section.sectionName,
-              disabled: latencyFetching ? true : void 0,
-              click: (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (latencyFetching) {
-                  return;
-                }
-                testLatency();
-              }
-            },
-            latencyFetching ? [
-              renderLoaderCircleIcon24(),
-              E(
-                "span",
-                {
-                  class: "dashboard-sections-grid-item-test-latency__label"
-                },
-                getLatencyTestLabel(latencyProgress)
-              )
-            ] : E(
-              "span",
-              {
-                class: "dashboard-sections-grid-item-test-latency__label"
-              },
-              _("Test latency")
-            )
-          )
-        ]
-      )
-    ]),
-    E("div", { class: "fkp_dashboard-page__outbound-grid" }, [
-      ...metadataNodes,
-      ...section.outbounds.map((outbound) => renderOutbound(outbound))
-    ])
-  ]);
-}
-function renderSections(props) {
-  if (props.failed) {
-    return renderFailedState();
-  }
-  if (props.loading) {
-    return renderLoadingState();
-  }
-  return renderDefaultState(props);
-}
-
-// src/forkop/tabs/dashboard/partials/renderWidget.ts
-function renderFailedState2() {
-  return E(
-    "div",
-    {
-      id: "",
-      style: "height: 78px",
-      class: "fkp_dashboard-page__widgets-section__item centered"
-    },
-    _("Currently unavailable")
-  );
-}
-function renderLoadingState2() {
-  return E(
-    "div",
-    {
-      id: "",
-      style: "height: 78px",
-      class: "fkp_dashboard-page__widgets-section__item skeleton"
-    },
-    ""
-  );
-}
-function renderDefaultState2({ title, items }) {
-  return E("div", { class: "fkp_dashboard-page__widgets-section__item" }, [
-    E(
-      "b",
-      { class: "fkp_dashboard-page__widgets-section__item__title" },
-      title
-    ),
-    ...items.map(
-      (item) => E(
-        "div",
-        {
-          class: `fkp_dashboard-page__widgets-section__item__row ${item?.attributes?.class || ""}`
-        },
-        [
-          E(
-            "span",
-            { class: "fkp_dashboard-page__widgets-section__item__row__key" },
-            `${item.key}: `
-          ),
-          E(
-            "span",
-            { class: "fkp_dashboard-page__widgets-section__item__row__value" },
-            item.value
-          )
-        ]
-      )
-    )
-  ]);
-}
-function renderWidget(props) {
-  if (props.loading) {
-    return renderLoadingState2();
-  }
-  if (props.failed) {
-    return renderFailedState2();
-  }
-  return renderDefaultState2(props);
-}
-
-// src/forkop/tabs/dashboard/render.ts
-function render() {
-  return E(
-    "div",
-    {
-      id: "dashboard-status",
-      class: "fkp_dashboard-page"
-    },
-    [
-      E(
-        "div",
-        {
-          class: "fkp_dashboard-page__service-stopped",
-          role: "status"
-        },
-        _(
-          "Forkop service is stopped. Start the service to display the dashboard."
-        )
-      ),
-      E("div", { class: "fkp_dashboard-page__content" }, [
-        // Widgets section
-        E("div", { class: "fkp_dashboard-page__widgets-section" }, [
-          E(
-            "div",
-            { id: "dashboard-widget-traffic" },
-            renderWidget({
-              loading: true,
-              failed: false,
-              title: "",
-              items: []
-            })
-          ),
-          E(
-            "div",
-            { id: "dashboard-widget-traffic-total" },
-            renderWidget({
-              loading: true,
-              failed: false,
-              title: "",
-              items: []
-            })
-          ),
-          E(
-            "div",
-            { id: "dashboard-widget-system-info" },
-            renderWidget({
-              loading: true,
-              failed: false,
-              title: "",
-              items: []
-            })
-          ),
-          E(
-            "div",
-            { id: "dashboard-widget-service-info" },
-            renderWidget({
-              loading: true,
-              failed: false,
-              title: "",
-              items: []
-            })
-          )
-        ]),
-        // All outbounds
-        E(
-          "div",
-          { id: "dashboard-sections-grid" },
-          renderSections({
-            loading: true,
-            failed: false,
-            section: {
-              code: "",
-              sectionName: "",
-              displayName: "",
-              outbounds: [],
-              withTagSelect: false
-            },
-            onTestLatency: () => {
-            },
-            onChooseOutbound: () => {
-            },
-            onCopyOutbound: () => {
-            },
-            onShowUrlTestInfo: () => {
-            },
-            onShowPriorityInfo: () => {
-            },
-            onUpdateSubscription: () => {
-            },
-            latencyFetching: false,
-            latencyProgress: void 0,
-            subscriptionUpdating: false,
-            selectorSwitchingTag: void 0
-          })
-        )
-      ])
-    ]
-  );
-}
-
-// src/helpers/showToast.ts
-function showToast(message, type, duration = 3e3) {
-  let container = document.querySelector(".toast-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.className = "toast-container";
-    document.body.appendChild(container);
-  }
-  const toast = document.createElement("div");
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => toast.classList.add("visible"), 100);
-  setTimeout(() => {
-    toast.classList.remove("visible");
-    setTimeout(() => toast.remove(), 300);
-  }, duration);
-}
-
-// src/helpers/copyToClipboard.ts
-function copyToClipboard(text) {
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  document.body.appendChild(textarea);
-  textarea.select();
-  try {
-    document.execCommand("copy");
-    showToast(_("Copied"), "success");
-  } catch (_err) {
-    showToast(_("Failed to copy!"), "error");
-    console.error("copyToClipboard - e", _err);
-  }
-  document.body.removeChild(textarea);
-}
-
-// src/forkop/methods/custom/getConfigSections.ts
-async function getConfigSections() {
-  return uci.load(FORKOP_UCI_PACKAGE).then(() => uci.sections(FORKOP_UCI_PACKAGE));
-}
-
-// src/forkop/runtimeTags.ts
-var RESERVED_RUNTIME_TAGS = /* @__PURE__ */ new Set([
-  "dns-server",
-  "fakeip-server",
-  "bootstrap-dns-server",
-  "fakeip-dns-rule-tag",
-  "fakeip-ruleset-dns-rule-tag",
-  "service-fakeip-dns-rule-tag",
-  "tproxy-in",
-  "tproxy6-in",
-  "dns-in",
-  "service-mixed-in",
-  "direct-out",
-  "bypass-out"
-]);
-function allocateRuntimeTag(base, postfix) {
-  let suffix = 1;
-  let candidate = `${base}-${postfix}`;
-  while (RESERVED_RUNTIME_TAGS.has(candidate)) {
-    candidate = `${base}-${postfix}-${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
-}
-function getOutboundTagBySection(sectionName) {
-  return allocateRuntimeTag(sectionName, "out");
 }
 
 // src/forkop/methods/shell/callBaseMethod.ts
@@ -3056,6 +2468,717 @@ var ForkopShellMethods = {
     }
   }
 };
+
+// src/forkop/tabs/dashboard/partials/renderSections.ts
+function renderFailedState() {
+  return E(
+    "div",
+    {
+      class: "fkp_dashboard-page__outbound-section centered",
+      style: "height: 127px"
+    },
+    E("span", {}, [E("span", {}, _("Dashboard currently unavailable"))])
+  );
+}
+function renderLoadingState() {
+  return E("div", {
+    id: "dashboard-sections-grid-skeleton",
+    class: "fkp_dashboard-page__outbound-section skeleton",
+    style: "height: 127px"
+  });
+}
+function isValidHttpUrl(url) {
+  return Boolean(url && /^https?:\/\/\S+$/i.test(url));
+}
+function formatBytes(value) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return void 0;
+  }
+  return prettyBytes(value);
+}
+function formatDate(seconds) {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) {
+    return void 0;
+  }
+  const date = new Date(seconds * 1e3);
+  if (Number.isNaN(date.getTime())) {
+    return void 0;
+  }
+  return date.toLocaleDateString(void 0, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+}
+function renderMetadataAction(label, url) {
+  if (!isValidHttpUrl(url)) {
+    return void 0;
+  }
+  return E(
+    "a",
+    {
+      class: "btn fkp_dashboard-page__subscription-meta__action",
+      href: url,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      title: label,
+      "aria-label": label
+    },
+    renderLinkIcon24()
+  );
+}
+function renderSubscriptionMetadata(metadata) {
+  if (!metadata || Object.keys(metadata).length <= 1) {
+    return void 0;
+  }
+  const title = metadata.title || metadata.fileName;
+  const traffic = metadata.traffic;
+  const used = formatBytes(traffic?.used) || "0 B";
+  const total = traffic?.isUnlimited ? "\u221E" : formatBytes(traffic?.total) || "0 B";
+  const expire = formatDate(metadata.expire);
+  const refillDate = formatDate(metadata.refillDate);
+  const rows = [
+    traffic ? {
+      label: _("Traffic"),
+      value: `${used} / ${total}`
+    } : void 0,
+    expire ? { label: _("Expires"), value: expire } : void 0,
+    refillDate ? { label: _("Refill"), value: refillDate } : void 0
+  ].filter(Boolean);
+  const actions = [
+    renderMetadataAction("Profile", metadata.webPageUrl),
+    renderMetadataAction("Support", metadata.supportUrl),
+    renderMetadataAction("More details", metadata.announceUrl)
+  ].filter(Boolean);
+  return E("div", { class: "fkp_dashboard-page__subscription-meta" }, [
+    E("div", { class: "fkp_dashboard-page__subscription-meta__main" }, [
+      E(
+        "div",
+        { class: "fkp_dashboard-page__subscription-meta__heading" },
+        _("Subscription info:")
+      ),
+      title ? E(
+        "div",
+        { class: "fkp_dashboard-page__subscription-meta__title" },
+        title
+      ) : "",
+      rows.length ? E(
+        "div",
+        { class: "fkp_dashboard-page__subscription-meta__facts" },
+        rows.map(
+          (row) => E(
+            "div",
+            { class: "fkp_dashboard-page__subscription-meta__fact" },
+            [
+              E(
+                "span",
+                {
+                  class: "fkp_dashboard-page__subscription-meta__fact-key"
+                },
+                row.label
+              ),
+              E(
+                "span",
+                {
+                  class: "fkp_dashboard-page__subscription-meta__fact-value"
+                },
+                row.value
+              )
+            ]
+          )
+        )
+      ) : "",
+      actions.length ? E(
+        "div",
+        { class: "fkp_dashboard-page__subscription-meta__actions" },
+        actions
+      ) : ""
+    ]),
+    metadata.announce ? E(
+      "blockquote",
+      { class: "fkp_dashboard-page__subscription-meta__announce" },
+      metadata.announce
+    ) : ""
+  ]);
+}
+function renderSubscriptionUpdateAction(section, subscriptionUpdating, onUpdateSubscription) {
+  if (!section.subscriptionSourceCount) {
+    return void 0;
+  }
+  return E(
+    "button",
+    {
+      type: "button",
+      class: "btn fkp_dashboard-page__outbound-section__subscription-update",
+      "aria-label": _("Update subscriptions"),
+      disabled: subscriptionUpdating ? true : void 0,
+      click: (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (subscriptionUpdating) {
+          return;
+        }
+        onUpdateSubscription(section);
+      }
+    },
+    subscriptionUpdating ? [renderLoaderCircleIcon24(), _("Update subscriptions")] : _("Update subscriptions")
+  );
+}
+function getLatencyTestLabel(latencyProgress) {
+  const total = Math.trunc(Number(latencyProgress?.total ?? 0));
+  if (!Number.isFinite(total) || total <= 0) {
+    return _("Test latency");
+  }
+  const completedValue = Number(latencyProgress?.completed ?? 0);
+  const completed = Number.isFinite(completedValue) ? Math.trunc(completedValue) : 0;
+  return `${_("Test latency")}: ${Math.min(
+    Math.max(0, completed),
+    total
+  )}/${total}`;
+}
+function renderDefaultState({
+  section,
+  onChooseOutbound,
+  onCopyOutbound,
+  onShowUrlTestInfo,
+  onShowPriorityInfo,
+  onTestLatency,
+  onUpdateSubscription,
+  latencyFetching,
+  latencyProgress,
+  subscriptionUpdating,
+  selectorSwitchingTag
+}) {
+  function testLatency() {
+    if (section.withTagSelect) {
+      return onTestLatency(
+        section.latencyTestCodes?.length ? section.latencyTestCodes : section.latencyTestCode || section.code
+      );
+    }
+    if (section.outbounds.length) {
+      return onTestLatency(section.outbounds[0].code);
+    }
+  }
+  function renderOutbound(outbound, index = 0) {
+    function getLatencyClass() {
+      if (!outbound.latency) {
+        return "fkp_dashboard-page__outbound-grid__item__latency--empty";
+      }
+      if (outbound.latency < 800) {
+        return "fkp_dashboard-page__outbound-grid__item__latency--green";
+      }
+      if (outbound.latency < 1500) {
+        return "fkp_dashboard-page__outbound-grid__item__latency--yellow";
+      }
+      return "fkp_dashboard-page__outbound-grid__item__latency--red";
+    }
+    let latencyBadge = null;
+    let pinging = false;
+    const onSinglePing = async (event) => {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      if (pinging || latencyFetching || !outbound.code) return;
+      pinging = true;
+      if (latencyBadge) {
+        latencyBadge.className = "fkp_dashboard-page__outbound-grid__item__latency fkp_dashboard-page__outbound-grid__item__latency--empty fkp_dashboard-page__outbound-grid__item__latency--busy";
+        latencyBadge.replaceChildren(
+          E(
+            "span",
+            { style: "display: inline-flex; width: 14px; height: 14px;" },
+            [renderLoaderCircleIcon24()]
+          )
+        );
+      }
+      try {
+        const res = await ForkopShellMethods.getClashApiProxyLatency(
+          outbound.code,
+          "4000"
+        );
+        if (res && res.success && res.data && typeof res.data.delay === "number" && !res.data.message) {
+          outbound.latency = res.data.delay;
+          if (latencyBadge) {
+            latencyBadge.className = `fkp_dashboard-page__outbound-grid__item__latency ${getLatencyClass()}`;
+            latencyBadge.textContent = `${outbound.latency}ms`;
+          }
+        } else {
+          outbound.latency = 0;
+          if (latencyBadge) {
+            latencyBadge.className = "fkp_dashboard-page__outbound-grid__item__latency fkp_dashboard-page__outbound-grid__item__latency--empty";
+            latencyBadge.textContent = "N/A";
+          }
+        }
+      } catch (_e) {
+        outbound.latency = 0;
+        if (latencyBadge) {
+          latencyBadge.className = "fkp_dashboard-page__outbound-grid__item__latency fkp_dashboard-page__outbound-grid__item__latency--empty";
+          latencyBadge.textContent = "N/A";
+        }
+      } finally {
+        pinging = false;
+        if (latencyBadge && !latencyFetching) {
+          latencyBadge.classList.remove(
+            "fkp_dashboard-page__outbound-grid__item__latency--busy"
+          );
+        }
+      }
+    };
+    const completedCount = Number(latencyProgress?.completed ?? 0);
+    const hasFinished = Boolean(outbound.latency && outbound.latency > 0);
+    const isPinging = Boolean(
+      latencyFetching && !hasFinished && index < completedCount + 25
+    );
+    const isQueued = Boolean(
+      latencyFetching && !hasFinished && index >= completedCount + 25
+    );
+    const isBusy = isPinging || isQueued || pinging;
+    let badgeContent = outbound.latency ? `${outbound.latency}ms` : "N/A";
+    if (isPinging) {
+      badgeContent = [
+        E(
+          "span",
+          { style: "display: inline-flex; width: 14px; height: 14px;" },
+          [renderLoaderCircleIcon24()]
+        )
+      ];
+    } else if (isQueued) {
+      badgeContent = [
+        E(
+          "span",
+          {
+            style: "display: inline-flex; width: 14px; height: 14px; opacity: 0.5;"
+          },
+          [renderClockIcon24()]
+        )
+      ];
+    }
+    const badgeClasses = [
+      "fkp_dashboard-page__outbound-grid__item__latency",
+      isBusy ? "fkp_dashboard-page__outbound-grid__item__latency--empty" : getLatencyClass(),
+      isBusy || latencyFetching ? "fkp_dashboard-page__outbound-grid__item__latency--busy" : ""
+    ].filter(Boolean).join(" ");
+    latencyBadge = E(
+      "div",
+      {
+        class: badgeClasses,
+        title: isPinging ? _("Testing latency...") : isQueued ? _("In queue...") : latencyFetching ? _("Testing latency...") : _("Click to test latency"),
+        click: onSinglePing
+      },
+      badgeContent
+    );
+    const canCopyLink = Boolean(outbound.canCopyLink) || isCopyableProxyLink(outbound.link);
+    const selectorSwitching = Boolean(selectorSwitchingTag);
+    const outboundSwitching = selectorSwitchingTag === outbound.code;
+    const canChooseOutbound = section.withTagSelect && outbound.runtimeAvailable !== false && !selectorSwitching && !outbound.selected;
+    const className = [
+      "fkp_dashboard-page__outbound-grid__item",
+      outbound.selected ? "fkp_dashboard-page__outbound-grid__item--active" : "",
+      canChooseOutbound ? "fkp_dashboard-page__outbound-grid__item--selectable" : "",
+      section.withTagSelect && !canChooseOutbound ? "fkp_dashboard-page__outbound-grid__item--disabled" : "",
+      outboundSwitching ? "fkp_dashboard-page__outbound-grid__item--switching" : ""
+    ].filter(Boolean).join(" ");
+    return E(
+      "div",
+      {
+        class: className,
+        "aria-busy": outboundSwitching ? "true" : void 0,
+        "aria-disabled": section.withTagSelect && !canChooseOutbound ? "true" : void 0,
+        click: () => canChooseOutbound && onChooseOutbound(section.sectionName, section.code, outbound.code)
+      },
+      [
+        ...outboundSwitching ? [
+          svgEl(
+            "svg",
+            { class: "fkp_dashboard-page__outbound-grid__item__snake" },
+            [
+              svgEl("rect", {
+                width: "100%",
+                height: "100%",
+                fill: "none",
+                rx: 4,
+                ry: 4,
+                pathLength: 100
+              })
+            ]
+          )
+        ] : [],
+        E("div", { class: "fkp_dashboard-page__outbound-grid__item__header" }, [
+          E("b", {}, renderFlagEmojis(outbound.displayName)),
+          E(
+            "div",
+            {
+              style: "display: flex; gap: 4px; align-items: center; flex: 0 0 auto;"
+            },
+            [
+              ...canCopyLink ? [
+                E(
+                  "button",
+                  {
+                    type: "button",
+                    class: "btn fkp_dashboard-page__outbound-grid__item__copy-button",
+                    title: _("Copy proxy link"),
+                    "aria-label": _("Copy proxy link"),
+                    click: (event) => {
+                      event.stopPropagation();
+                      onCopyOutbound(section, outbound);
+                    }
+                  },
+                  renderCopyIcon24()
+                )
+              ] : [],
+              ...outbound.urlTestInfo ? [
+                E(
+                  "button",
+                  {
+                    type: "button",
+                    class: "btn fkp_dashboard-page__outbound-grid__item__copy-button",
+                    title: _("URLTest details"),
+                    "aria-label": _("URLTest details"),
+                    click: (event) => {
+                      event.stopPropagation();
+                      onShowUrlTestInfo(outbound);
+                    }
+                  },
+                  renderInfoIcon24()
+                )
+              ] : [],
+              ...outbound.priorityInfo ? [
+                E(
+                  "button",
+                  {
+                    type: "button",
+                    class: "btn fkp_dashboard-page__outbound-grid__item__copy-button",
+                    title: _("Priority details"),
+                    "aria-label": _("Priority details"),
+                    click: (event) => {
+                      event.stopPropagation();
+                      onShowPriorityInfo(outbound);
+                    }
+                  },
+                  renderInfoIcon24()
+                )
+              ] : []
+            ]
+          )
+        ]),
+        E("div", { class: "fkp_dashboard-page__outbound-grid__item__footer" }, [
+          E(
+            "div",
+            { class: "fkp_dashboard-page__outbound-grid__item__type" },
+            [outbound.type].filter(Boolean)
+          ),
+          latencyBadge
+        ])
+      ]
+    );
+  }
+  const metadataNodes = (section.subscriptionMetadata || []).map((metadata) => renderSubscriptionMetadata(metadata)).filter(Boolean);
+  const subscriptionUpdateAction = renderSubscriptionUpdateAction(
+    section,
+    subscriptionUpdating,
+    onUpdateSubscription
+  );
+  return E("div", { class: "fkp_dashboard-page__outbound-section" }, [
+    // Title with test latency
+    E("div", { class: "fkp_dashboard-page__outbound-section__title-section" }, [
+      E(
+        "div",
+        {
+          class: "fkp_dashboard-page__outbound-section__title-section__title"
+        },
+        section.displayName
+      ),
+      E(
+        "div",
+        {
+          class: "fkp_dashboard-page__outbound-section__title-section__actions"
+        },
+        [
+          ...subscriptionUpdateAction ? [subscriptionUpdateAction] : [],
+          E(
+            "button",
+            {
+              type: "button",
+              class: "btn dashboard-sections-grid-item-test-latency",
+              "data-latency-section": section.sectionName,
+              disabled: latencyFetching ? true : void 0,
+              click: (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (latencyFetching) {
+                  return;
+                }
+                testLatency();
+              }
+            },
+            latencyFetching ? [
+              renderLoaderCircleIcon24(),
+              E(
+                "span",
+                {
+                  class: "dashboard-sections-grid-item-test-latency__label"
+                },
+                getLatencyTestLabel(latencyProgress)
+              )
+            ] : E(
+              "span",
+              {
+                class: "dashboard-sections-grid-item-test-latency__label"
+              },
+              _("Test latency")
+            )
+          )
+        ]
+      )
+    ]),
+    E("div", { class: "fkp_dashboard-page__outbound-grid" }, [
+      ...metadataNodes,
+      ...section.outbounds.map(
+        (outbound, index) => renderOutbound(outbound, index)
+      )
+    ])
+  ]);
+}
+function renderSections(props) {
+  if (props.failed) {
+    return renderFailedState();
+  }
+  if (props.loading) {
+    return renderLoadingState();
+  }
+  return renderDefaultState(props);
+}
+
+// src/forkop/tabs/dashboard/partials/renderWidget.ts
+function renderFailedState2() {
+  return E(
+    "div",
+    {
+      id: "",
+      style: "height: 78px",
+      class: "fkp_dashboard-page__widgets-section__item centered"
+    },
+    _("Currently unavailable")
+  );
+}
+function renderLoadingState2() {
+  return E(
+    "div",
+    {
+      id: "",
+      style: "height: 78px",
+      class: "fkp_dashboard-page__widgets-section__item skeleton"
+    },
+    ""
+  );
+}
+function renderDefaultState2({ title, items }) {
+  return E("div", { class: "fkp_dashboard-page__widgets-section__item" }, [
+    E(
+      "b",
+      { class: "fkp_dashboard-page__widgets-section__item__title" },
+      title
+    ),
+    ...items.map(
+      (item) => E(
+        "div",
+        {
+          class: `fkp_dashboard-page__widgets-section__item__row ${item?.attributes?.class || ""}`
+        },
+        [
+          E(
+            "span",
+            { class: "fkp_dashboard-page__widgets-section__item__row__key" },
+            `${item.key}: `
+          ),
+          E(
+            "span",
+            { class: "fkp_dashboard-page__widgets-section__item__row__value" },
+            item.value
+          )
+        ]
+      )
+    )
+  ]);
+}
+function renderWidget(props) {
+  if (props.loading) {
+    return renderLoadingState2();
+  }
+  if (props.failed) {
+    return renderFailedState2();
+  }
+  return renderDefaultState2(props);
+}
+
+// src/forkop/tabs/dashboard/render.ts
+function render() {
+  return E(
+    "div",
+    {
+      id: "dashboard-status",
+      class: "fkp_dashboard-page"
+    },
+    [
+      E(
+        "div",
+        {
+          class: "fkp_dashboard-page__service-stopped",
+          role: "status"
+        },
+        _(
+          "Forkop service is stopped. Start the service to display the dashboard."
+        )
+      ),
+      E("div", { class: "fkp_dashboard-page__content" }, [
+        // Widgets section
+        E("div", { class: "fkp_dashboard-page__widgets-section" }, [
+          E(
+            "div",
+            { id: "dashboard-widget-traffic" },
+            renderWidget({
+              loading: true,
+              failed: false,
+              title: "",
+              items: []
+            })
+          ),
+          E(
+            "div",
+            { id: "dashboard-widget-traffic-total" },
+            renderWidget({
+              loading: true,
+              failed: false,
+              title: "",
+              items: []
+            })
+          ),
+          E(
+            "div",
+            { id: "dashboard-widget-system-info" },
+            renderWidget({
+              loading: true,
+              failed: false,
+              title: "",
+              items: []
+            })
+          ),
+          E(
+            "div",
+            { id: "dashboard-widget-service-info" },
+            renderWidget({
+              loading: true,
+              failed: false,
+              title: "",
+              items: []
+            })
+          )
+        ]),
+        // All outbounds
+        E(
+          "div",
+          { id: "dashboard-sections-grid" },
+          renderSections({
+            loading: true,
+            failed: false,
+            section: {
+              code: "",
+              sectionName: "",
+              displayName: "",
+              outbounds: [],
+              withTagSelect: false
+            },
+            onTestLatency: () => {
+            },
+            onChooseOutbound: () => {
+            },
+            onCopyOutbound: () => {
+            },
+            onShowUrlTestInfo: () => {
+            },
+            onShowPriorityInfo: () => {
+            },
+            onUpdateSubscription: () => {
+            },
+            latencyFetching: false,
+            latencyProgress: void 0,
+            subscriptionUpdating: false,
+            selectorSwitchingTag: void 0
+          })
+        )
+      ])
+    ]
+  );
+}
+
+// src/helpers/showToast.ts
+function showToast(message, type, duration = 3e3) {
+  let container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.classList.add("visible"), 100);
+  setTimeout(() => {
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+// src/helpers/copyToClipboard.ts
+function copyToClipboard(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand("copy");
+    showToast(_("Copied"), "success");
+  } catch (_err) {
+    showToast(_("Failed to copy!"), "error");
+    console.error("copyToClipboard - e", _err);
+  }
+  document.body.removeChild(textarea);
+}
+
+// src/forkop/methods/custom/getConfigSections.ts
+async function getConfigSections() {
+  return uci.load(FORKOP_UCI_PACKAGE).then(() => uci.sections(FORKOP_UCI_PACKAGE));
+}
+
+// src/forkop/runtimeTags.ts
+var RESERVED_RUNTIME_TAGS = /* @__PURE__ */ new Set([
+  "dns-server",
+  "fakeip-server",
+  "bootstrap-dns-server",
+  "fakeip-dns-rule-tag",
+  "fakeip-ruleset-dns-rule-tag",
+  "service-fakeip-dns-rule-tag",
+  "tproxy-in",
+  "tproxy6-in",
+  "dns-in",
+  "service-mixed-in",
+  "direct-out",
+  "bypass-out"
+]);
+function allocateRuntimeTag(base, postfix) {
+  let suffix = 1;
+  let candidate = `${base}-${postfix}`;
+  while (RESERVED_RUNTIME_TAGS.has(candidate)) {
+    candidate = `${base}-${postfix}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+function getOutboundTagBySection(sectionName) {
+  return allocateRuntimeTag(sectionName, "out");
+}
 
 // src/forkop/methods/custom/getDashboardSections.ts
 var DASHBOARD_SECTION_CACHE_DIR = "/var/run/forkop/section-cache";
@@ -5593,6 +5716,21 @@ function setLatencyFetching(sectionName, fetching, local = false, progress) {
   const latencyProgressSections = {
     ...sectionsWidget.latencyProgressSections
   };
+  let data = sectionsWidget.data;
+  if (fetching && Array.isArray(data)) {
+    data = data.map((sec) => {
+      if (sec.sectionName === sectionName && Array.isArray(sec.outbounds)) {
+        return {
+          ...sec,
+          outbounds: sec.outbounds.map((ob) => ({
+            ...ob,
+            latency: 0
+          }))
+        };
+      }
+      return sec;
+    });
+  }
   if (fetching) {
     latencyFetchingSections[sectionName] = true;
     if (progress) {
@@ -5605,6 +5743,7 @@ function setLatencyFetching(sectionName, fetching, local = false, progress) {
   store.set({
     sectionsWidget: {
       ...sectionsWidget,
+      data,
       latencyFetchingSections,
       latencyProgressSections
     }
@@ -6472,6 +6611,9 @@ function canUpdateLatencyProgressInline(prev, next) {
   ) && shallowRecordEqual(
     prev.selectorSwitchingSections,
     next.selectorSwitchingSections
+  ) && shallowRecordEqual(
+    prev.latencyProgressSections,
+    next.latencyProgressSections
   );
 }
 function findLatencyTestButton(container, sectionName) {
@@ -7265,6 +7407,33 @@ var styles = `
 .fkp_dashboard-page__outbound-grid__item__type {
     min-width: 0;
     overflow-wrap: anywhere;
+}
+
+.fkp_dashboard-page__outbound-grid__item__latency {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    margin: -2px -6px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 500;
+    transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.fkp_dashboard-page__outbound-grid__item__latency:hover {
+    background-color: rgba(128, 128, 128, 0.2);
+    opacity: 0.9;
+}
+
+.fkp_dashboard-page__outbound-grid__item__latency:active {
+    transform: scale(0.95);
+}
+
+.fkp_dashboard-page__outbound-grid__item__latency--busy {
+    cursor: default;
+    pointer-events: none;
 }
 
 .fkp_dashboard-page__outbound-grid__item__latency--empty {
