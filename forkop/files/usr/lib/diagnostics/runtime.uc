@@ -1690,19 +1690,44 @@ function clash_api(action, arg1, arg2, arg3) {
             if (lc(as_string(proxy_types[proxy_tag])) == "urltest")
                 push(ordered_proxy_tags, proxy_tag);
 
+        let timeout_val = as_string(arg2 || "2500");
+        let encoded_test_url = clash_urlencode(test_url);
+        let cfg_path = "/tmp/forkop_latency_" + (progress_path != "" ? replace(progress_path, /[^a-zA-Z0-9]/g, "_") : "batch") + ".cfg";
+
+        let cfg_content = "";
         for (let proxy_tag in ordered_proxy_tags) {
-            let args = [ "curl", "-G", "-s", clash_latency_endpoint(base_url, proxy_tag, proxy_types[proxy_tag]) ];
-            for (let item in auth) push(args, item);
-            push(args, "--data-urlencode");
-            push(args, "url=" + test_url);
-            push(args, "--data-urlencode");
-            push(args, "timeout=" + as_string(arg2 || "5000"));
-            if (status_capture([ "stdin-json" ], command_output(command_from_args(args))).status != 0)
-                failed++;
+            let endpoint = clash_latency_endpoint(base_url, proxy_tag, proxy_types[proxy_tag]);
+            let full_url = (match(endpoint, /^http:\/\//) ? "" : "http://") + endpoint + "?url=" + encoded_test_url + "&timeout=" + timeout_val;
+            cfg_content += "url = \"" + full_url + "\"\n";
+        }
+        fs.writefile(cfg_path, cfg_content);
+
+        let curl_cmd = [ "curl", "-s", "-Z", "--parallel-max", "25" ];
+        for (let item in auth) push(curl_cmd, item);
+        push(curl_cmd, "-K", cfg_path);
+
+        let p = fs.popen(command_from_args(curl_cmd));
+        let line;
+        while ((line = p.read("line")) != null) {
+            line = trim(as_string(line));
+            if (line == "") continue;
             count++;
-            if (progress_path != "")
+            try {
+                let jdata = json(line);
+                if (jdata.message || !jdata.delay)
+                    failed++;
+            } catch (e) {
+                failed++;
+            }
+            if (progress_path != "" && (count % 5 == 0 || count == total))
                 module_success(SERVICE_UI_UC, [ "latency-progress-state", progress_path, count, total, failed ]);
         }
+        p.close();
+        fs.unlink(cfg_path);
+
+        count = total;
+        if (progress_path != "")
+            module_success(SERVICE_UI_UC, [ "latency-progress-state", progress_path, count, total, failed ]);
         let result = status_capture([ "clash-proxy-latencies-result", count, failed ], null);
         if (result.output != "")
             print(result.output);
