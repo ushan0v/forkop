@@ -44,6 +44,7 @@ const DNS_FAILOVER_PID_FILE = getenv("FORKOP_DNS_FAILOVER_PID_FILE") || RUNTIME_
 const SUBSCRIPTION_UPDATE_LOCK_DIR = getenv("FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR") || RUNTIME_STATE_DIR + "/subscription-update.lock";
 const RELOAD_LOCK_DIR = getenv("FORKOP_RELOAD_LOCK_DIR") || "/var/run/forkop.reload.lock";
 const INTERNAL_CONFIG_TRIGGER_GUARD = getenv("FORKOP_INTERNAL_CONFIG_TRIGGER_GUARD") || "/var/run/forkop.internal-config-change";
+const SELECTOR_STATE_FILE = getenv("FORKOP_SELECTOR_STATE_FILE") || constant_value("FORKOP_SELECTOR_STATE_FILE", "/etc/forkop/selector-state.json");
 
 const LIST_UPDATE_CRON_MARKER = getenv("FORKOP_LIST_UPDATE_CRON_MARKER") || "# forkop-list-update";
 const SUBSCRIPTION_UPDATE_CRON_MARKER = getenv("FORKOP_SUBSCRIPTION_UPDATE_CRON_MARKER") || "# forkop-subscription-update";
@@ -277,6 +278,7 @@ function lifecycle_env() {
         FORKOP_SUBSCRIPTION_UPDATE_LOCK_DIR: SUBSCRIPTION_UPDATE_LOCK_DIR,
         FORKOP_PENDING_RELOAD_FILE: PENDING_RELOAD_FILE,
         FORKOP_RELOAD_LOCK_DIR: RELOAD_LOCK_DIR,
+        FORKOP_SELECTOR_STATE_FILE: SELECTOR_STATE_FILE,
         TMP_SING_BOX_FOLDER: TMP_SING_BOX_FOLDER,
         TMP_RULESET_FOLDER: TMP_RULESET_FOLDER,
         TMP_SUBSCRIPTION_FOLDER: TMP_SUBSCRIPTION_FOLDER,
@@ -424,8 +426,21 @@ function clash_api_json(action, arg1, arg2, arg3) {
     }
 }
 
+function save_selector_state(snapshot) {
+    snapshot = object_or_empty(snapshot);
+    if (length(keys(snapshot)) == 0)
+        return;
+    let existing = object_or_empty(read_json_file(SELECTOR_STATE_FILE));
+    for (let group, proxy in snapshot)
+        existing[as_string(group)] = as_string(proxy);
+    ensure_dir(replace(SELECTOR_STATE_FILE, /\/[^\/]*$/, ""));
+    fs.writefile(SELECTOR_STATE_FILE, sprintf("%J\n", existing));
+}
+
 function capture_selector_state() {
-    return selector_state_from_proxies_payload(clash_api_json("get_proxies"));
+    let state = selector_state_from_proxies_payload(clash_api_json("get_proxies"));
+    save_selector_state(state);
+    return state;
 }
 
 function restore_selector_state(snapshot) {
@@ -890,11 +905,15 @@ function start() {
         return status;
     }
 
+    restore_selector_state(read_json_file(SELECTOR_STATE_FILE));
+
     return 0;
 }
 
 function stop_impl() {
     let status = 0;
+
+    capture_selector_state();
 
     if (!setting_bool("dont_touch_dhcp", false)) {
         let dns_status = dnsmasq_restore(false);

@@ -1426,6 +1426,11 @@ function add_proxy_selector(config, section, selector_tags, urltest_candidate_ta
         selector_default = length(urltest_tags) > 0 ? urltest_tags[0] : priority_tags[0];
     }
 
+    let saved_state = object_or_empty(read_json_file(runtime_constants.SELECTOR_STATE_FILE));
+    let saved_proxy = saved_state[selector_tag];
+    if (saved_proxy != null && string_array_contains(selector_outbounds, saved_proxy))
+        selector_default = saved_proxy;
+
     if (length(selector_outbounds) == 0)
         runtime_generate_unsupported("dashboard server filtering produced no usable outbounds");
 

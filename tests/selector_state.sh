@@ -22,7 +22,7 @@ lifecycle_ucode() {
 }
 
 json_flatten() {
-  tr -d '[:space:]'
+  tr -d ' \t\r\n'
 }
 
 cat >"$WORK_DIR/before.json" <<'JSON'
