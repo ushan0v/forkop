@@ -1627,6 +1627,14 @@ function latency_test_url() {
     return value == "" ? DEFAULT_LATENCY_TEST_URL : value;
 }
 
+function save_selector_state_entry(group, proxy) {
+    let file = constants.FORKOP_SELECTOR_STATE_FILE || "/etc/forkop/selector-state.json";
+    let state = object_or_empty(read_json_file(file));
+    state[as_string(group)] = as_string(proxy);
+    ensure_dir(replace(file, /\/[^\/]*$/, ""));
+    fs.writefile(file, sprintf("%J\n", state));
+}
+
 function clash_api(action, arg1, arg2, arg3) {
     let base_url = clash_api_url();
     let test_url = latency_test_url();
@@ -1732,6 +1740,8 @@ function clash_api(action, arg1, arg2, arg3) {
         let result = status_capture([ "clash-set-group-proxy-result", arg1, arg2 ], command_output(command_from_args(args)));
         if (result.output != "")
             print(result.output);
+        if (result.status == 0)
+            save_selector_state_entry(arg1, arg2);
         return result.status;
     }
 

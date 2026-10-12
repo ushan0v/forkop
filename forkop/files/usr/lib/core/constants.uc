@@ -26,6 +26,7 @@ function constants_map() {
     c.FORKOP_LUCI_VIEW_NAMESPACE = env("FORKOP_LUCI_VIEW_NAMESPACE", "forkop");
     c.FORKOP_LUCI_VIEW_DIR = env("FORKOP_LUCI_VIEW_DIR", "/www/luci-static/resources/view/" + c.FORKOP_LUCI_VIEW_NAMESPACE);
     c.FORKOP_LUCI_I18N_DOMAIN = env("FORKOP_LUCI_I18N_DOMAIN", "forkop");
+    c.FORKOP_SELECTOR_STATE_FILE = env("FORKOP_SELECTOR_STATE_FILE", "/etc/forkop/selector-state.json");
 
     c.RESOLV_CONF = env("RESOLV_CONF", "/etc/resolv.conf");
     c.CHECK_PROXY_IP_DOMAIN = env("CHECK_PROXY_IP_DOMAIN", "ip.podkop.fyi");
