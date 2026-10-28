@@ -139,6 +139,7 @@ declare global {
     ) => void;
     devices?: NetworkDevice[];
     interfaceDeviceMap?: Record<string, NetworkDevice>;
+    outgoingDeviceNames?: string[];
   }
 
   interface ChildItemModalContext {

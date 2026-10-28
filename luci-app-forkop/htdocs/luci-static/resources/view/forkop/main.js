@@ -23764,7 +23764,7 @@ function validateFallbackGroupItemsBeforeSave(section_id, values) {
   return true;
 }
 
-// src/forkop/tabs/sections/outgoingDevices.ts
+// src/forkop/cbi/outgoingDevices.ts
 var callNetworkInterfaceDump3 = rpc.declare({
   object: "network.interface",
   method: "dump",
@@ -29541,31 +29541,22 @@ function addNetworkOptions(section2) {
     widgets.DeviceSelect,
     "output_network_interface",
     _("Output Network Interface"),
-    _("Select the network interface to which the traffic will originate")
+    _("An OpenWrt uplink or tunnel interface")
   );
   o.noaliases = true;
   o.multiple = false;
   o.depends("enable_output_network_interface", "1");
-  o.filter = function(section_id, value) {
-    const blockedInterfaces = ["br-lan"];
-    if (blockedInterfaces.includes(value)) {
-      return false;
-    }
-    if (value.startsWith("lan")) {
-      return false;
-    }
-    if (value.startsWith("tun") || value.startsWith("wg") || value.startsWith("vpn") || value.startsWith("awg") || value.startsWith("oc")) {
-      return false;
-    }
-    const device = this.devices.find(
-      (dev) => dev.getName() === value
-    );
-    if (!device) {
-      return true;
-    }
-    const type = device.getType();
-    const isWireless = type === "wifi" || type === "wireless" || type.includes("wlan");
-    return !isWireless;
+  o.load = function(section_id) {
+    return Promise.all([
+      widgets.DeviceSelect.prototype.load.call(this, section_id),
+      network.getDevices().then(loadOutgoingDevices)
+    ]).then(([value, choices]) => {
+      this.outgoingDeviceNames = choices.map((choice) => choice.name);
+      return value;
+    });
+  };
+  o.filter = function(_section_id, value) {
+    return (this.outgoingDeviceNames ?? []).includes(value);
   };
   o = section2.option(
     form.Flag,

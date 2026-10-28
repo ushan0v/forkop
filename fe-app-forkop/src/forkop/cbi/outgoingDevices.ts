@@ -1,4 +1,4 @@
-// The devices a section can send its traffic out of: those of the router's uplinks and tunnels.
+// The devices the core's traffic can be bound to: those of the router's uplinks and tunnels.
 // A LAN port, a bridge member, or the port under a VLAN or PPPoE has no route to the internet of
 // its own, so a socket bound to it gets no answer.
 

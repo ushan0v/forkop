@@ -35,7 +35,7 @@ const DSA_PORTS = {
   'radio0.network1': 'wifi',
 };
 
-describe('the devices a section can send its traffic out of', () => {
+describe("the devices the core's traffic can be bound to", () => {
   it('offers the VLAN of the WAN, not the port under it, the CPU port or the LAN', () => {
     const result = outgoingDevices(
       [

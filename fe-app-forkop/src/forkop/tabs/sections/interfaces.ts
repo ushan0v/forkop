@@ -14,7 +14,7 @@ import {
 } from '../../cbi/dnsServers';
 import { SettingsDynamicList } from '../../cbi/dynamicList';
 import { showChildItemSettingsModal } from '../../cbi/modal';
-import { loadOutgoingDevices, OutgoingDevice } from './outgoingDevices';
+import { loadOutgoingDevices, OutgoingDevice } from '../../cbi/outgoingDevices';
 import {
   refreshLiveChoiceWidgets,
   validateSectionChildName,
