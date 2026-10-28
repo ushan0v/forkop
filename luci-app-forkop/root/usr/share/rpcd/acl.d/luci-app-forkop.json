@@ -33,7 +33,9 @@
       },
       "uci": [
         "dhcp",
-        "forkop"
+        "firewall",
+        "forkop",
+        "network"
       ]
     },
     "write": {

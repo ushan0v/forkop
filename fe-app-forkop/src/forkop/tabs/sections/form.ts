@@ -382,7 +382,7 @@ export function createSectionContent(section: CBISection) {
     InterfaceSettingsDynamicList,
     'interfaces',
     _('Network Interface'),
-    _('An OpenWrt network interface'),
+    _('An OpenWrt uplink or tunnel interface'),
   );
   o.depends('action', 'connection');
   o.rmempty = true;

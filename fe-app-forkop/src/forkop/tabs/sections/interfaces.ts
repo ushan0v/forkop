@@ -14,7 +14,7 @@ import {
 } from '../../cbi/dnsServers';
 import { SettingsDynamicList } from '../../cbi/dynamicList';
 import { showChildItemSettingsModal } from '../../cbi/modal';
-import { CONNECTIONS_BLOCKED_INTERFACES } from './constants';
+import { loadOutgoingDevices, OutgoingDevice } from './outgoingDevices';
 import {
   refreshLiveChoiceWidgets,
   validateSectionChildName,
@@ -23,38 +23,28 @@ import { refreshDnsDetourSectionOptionValues } from './references';
 import { currentOptionValue, optionMapValue } from './subscriptions/model';
 import { E } from '../../../helpers/element';
 
-function isConnectionNetworkInterfaceAllowed(
-  deviceName: string,
-  device: NetworkDevice | null,
+// LuCI's DeviceSelect shows a device this way, its interfaces in parentheses.
+function renderNetworkInterfaceChoice(
+  choice: OutgoingDevice,
+  device: NetworkDevice | undefined,
 ) {
-  if (CONNECTIONS_BLOCKED_INTERFACES.includes(deviceName)) {
-    return false;
-  }
-
-  if (!device) {
-    return true;
-  }
-
-  const type = device.getType();
-  const isWireless =
-    type === 'wifi' || type === 'wireless' || type.indexOf('wlan') >= 0;
-
-  return !isWireless;
-}
-
-function renderNetworkInterfaceChoice(device: NetworkDevice) {
-  const name = device.getName();
-  const type = device.getType();
+  const type = device ? device.getType() : 'ethernet';
+  const title = device
+    ? device.getI18n()
+    : '%s: "%s"'.format(_('Absent Interface'), choice.name);
+  const networks = choice.networks.length
+    ? ' (%s)'.format(choice.networks.join(', '))
+    : '';
 
   return E([
     E('img', {
-      title: device.getI18n(),
+      title,
       src: L.resource(
-        'icons/%s%s.svg'.format(type, device.isUp() ? '' : '_disabled'),
+        'icons/%s%s.svg'.format(type, device?.isUp() ? '' : '_disabled'),
       ),
     }),
-    E('span', { class: 'hide-open' }, [name]),
-    E('span', { class: 'hide-close' }, [device.getI18n()]),
+    E('span', { class: 'hide-open' }, [choice.name]),
+    E('span', { class: 'hide-close' }, [title + networks]),
   ]);
 }
 
@@ -75,25 +65,25 @@ function renderNetworkInterfaceListItem(
   ]);
 }
 
-function refreshNetworkInterfaceOptionValues(option: CBIOption) {
+function refreshNetworkInterfaceOptionValues(
+  option: CBIOption,
+  choices: OutgoingDevice[],
+) {
   option.keylist = [];
   option.vallist = [];
   option.interfaceDeviceMap = {};
 
   (option.devices || []).forEach((device) => {
-    const name = device.getName();
-    const type = device.getType();
-
-    if (
-      name === 'lo' ||
-      type === 'alias' ||
-      !isConnectionNetworkInterfaceAllowed(name, device)
-    ) {
-      return;
-    }
-
-    option.value(name, renderNetworkInterfaceChoice(device));
-    option.interfaceDeviceMap![name] = device;
+    option.interfaceDeviceMap![device.getName()] = device;
+  });
+  choices.forEach((choice) => {
+    option.value(
+      choice.name,
+      renderNetworkInterfaceChoice(
+        choice,
+        option.interfaceDeviceMap![choice.name],
+      ),
+    );
   });
 }
 
@@ -102,9 +92,12 @@ export const InterfaceSettingsDynamicList = SettingsDynamicList.extend({
     return network.getDevices().then(
       L.bind(function (this: CBIOption, devices: NetworkDevice[]) {
         this.devices = devices || [];
-        refreshNetworkInterfaceOptionValues(this);
-
-        return this.super('load', section_id);
+        return loadOutgoingDevices(this.devices).then(
+          L.bind(function (this: CBIOption, choices: OutgoingDevice[]) {
+            refreshNetworkInterfaceOptionValues(this, choices);
+            return this.super('load', section_id);
+          }, this),
+        );
       }, this),
     );
   },

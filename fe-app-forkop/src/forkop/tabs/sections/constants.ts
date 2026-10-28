@@ -12,17 +12,6 @@ export const JSON_ENDPOINT_PLACEHOLDER = [
   '}',
 ].join('\n');
 
-export const CONNECTIONS_BLOCKED_INTERFACES = [
-  'br-lan',
-  'eth0',
-  'eth1',
-  'wan',
-  'phy0-ap0',
-  'phy1-ap0',
-  'pppoe-wan',
-  'lan',
-];
-
 // Groups arrange the section's own servers and draw members from these; a section with none of
 // them is left out of the runtime, so it is refused on save.
 export const CONNECTION_OUTBOUND_SOURCES = [

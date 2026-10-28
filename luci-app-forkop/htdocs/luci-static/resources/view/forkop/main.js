@@ -19279,16 +19279,6 @@ var JSON_ENDPOINT_PLACEHOLDER = [
   '  "private_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="',
   "}"
 ].join("\n");
-var CONNECTIONS_BLOCKED_INTERFACES = [
-  "br-lan",
-  "eth0",
-  "eth1",
-  "wan",
-  "phy0-ap0",
-  "phy1-ap0",
-  "pppoe-wan",
-  "lan"
-];
 var CONNECTION_OUTBOUND_SOURCES = [
   "connection_link",
   "subscription_url",
@@ -23774,30 +23764,120 @@ function validateFallbackGroupItemsBeforeSave(section_id, values) {
   return true;
 }
 
-// src/forkop/tabs/sections/interfaces.ts
-function isConnectionNetworkInterfaceAllowed(deviceName, device) {
-  if (CONNECTIONS_BLOCKED_INTERFACES.includes(deviceName)) {
-    return false;
-  }
-  if (!device) {
-    return true;
-  }
-  const type = device.getType();
-  const isWireless = type === "wifi" || type === "wireless" || type.indexOf("wlan") >= 0;
-  return !isWireless;
+// src/forkop/tabs/sections/outgoingDevices.ts
+var callNetworkInterfaceDump3 = rpc.declare({
+  object: "network.interface",
+  method: "dump",
+  expect: { interface: [] }
+});
+var TUNNEL_PROTOCOLS = [
+  "wireguard",
+  "amneziawg",
+  "openvpn",
+  "openconnect",
+  "vpnc",
+  "sstp",
+  "l2tp",
+  "pptp",
+  "gre",
+  "gretap",
+  "grev6",
+  "grev6tap",
+  "ipip",
+  "6in4",
+  "6to4",
+  "6rd",
+  "dslite",
+  "vti",
+  "vtiv6",
+  "xfrm",
+  "vxlan",
+  "vxlan6"
+];
+var PPP_PROTOCOLS = ["ppp", "pppoe", "pppoa", "pptp", "l2tp", "3g"];
+var TUNNEL_DEVICE_NAME = /^(tun|tap|wg|awg|ovpn|tailscale|zt)/;
+var TUNNEL_DEVICE_TYPES = ["wireguard", "tunnel"];
+var DEVICE_NAME = /^[^\s:/%@]{1,15}$/;
+function hasDefaultRoute(networkInterface) {
+  return (networkInterface.route ?? []).some(
+    (route) => route.mask === 0 && (route.target === "0.0.0.0" || route.target === "::")
+  );
 }
-function renderNetworkInterfaceChoice(device) {
-  const name = device.getName();
-  const type = device.getType();
+function layer3Device(networkInterface, pppName2) {
+  if (networkInterface.l3_device) {
+    return networkInterface.l3_device;
+  }
+  const proto = networkInterface.proto ?? "";
+  if (PPP_PROTOCOLS.includes(proto)) {
+    return pppName2(networkInterface.interface) || `${proto}-${networkInterface.interface}`;
+  }
+  const device = networkInterface.device ?? "";
+  return DEVICE_NAME.test(device) ? device : "";
+}
+function outgoingDevices(interfaces, devices, masqueradeNetworks2, pppName2 = () => "") {
+  const networksOf = /* @__PURE__ */ new Map();
+  const offered = /* @__PURE__ */ new Set();
+  interfaces.forEach((networkInterface) => {
+    const device = layer3Device(networkInterface, pppName2);
+    if (!device || device === "lo") {
+      return;
+    }
+    networksOf.set(device, [
+      ...networksOf.get(device) ?? [],
+      networkInterface.interface
+    ]);
+    if (masqueradeNetworks2.includes(networkInterface.interface) || hasDefaultRoute(networkInterface) || TUNNEL_PROTOCOLS.includes(networkInterface.proto ?? "")) {
+      offered.add(device);
+    }
+  });
+  devices.forEach((device) => {
+    if (TUNNEL_DEVICE_TYPES.includes(device.type) || TUNNEL_DEVICE_NAME.test(device.name)) {
+      offered.add(device.name);
+    }
+  });
+  const known = devices.map((device) => device.name);
+  return [
+    ...known.filter((name) => offered.has(name)),
+    ...[...offered].filter((name) => !known.includes(name))
+  ].map((name) => ({ name, networks: networksOf.get(name) ?? [] }));
+}
+function masqueradeNetworks() {
+  return uci.sections("firewall", "zone").filter((zone) => zone.masq === "1").flatMap((zone) => L.toArray(zone.network));
+}
+function pppName(name) {
+  return `${uci.get("network", name, "pppname") ?? ""}`.trim();
+}
+function loadOutgoingDevices(devices) {
+  return Promise.all([
+    callNetworkInterfaceDump3(),
+    uci.load("firewall").catch(() => null)
+  ]).then(
+    ([interfaces]) => outgoingDevices(
+      Array.isArray(interfaces) ? interfaces : [],
+      devices.map((device) => ({
+        name: device.getName(),
+        type: device.getType()
+      })),
+      masqueradeNetworks(),
+      pppName
+    )
+  );
+}
+
+// src/forkop/tabs/sections/interfaces.ts
+function renderNetworkInterfaceChoice(choice, device) {
+  const type = device ? device.getType() : "ethernet";
+  const title = device ? device.getI18n() : '%s: "%s"'.format(_("Absent Interface"), choice.name);
+  const networks = choice.networks.length ? " (%s)".format(choice.networks.join(", ")) : "";
   return textE([
     textE("img", {
-      title: device.getI18n(),
+      title,
       src: L.resource(
-        "icons/%s%s.svg".format(type, device.isUp() ? "" : "_disabled")
+        "icons/%s%s.svg".format(type, device?.isUp() ? "" : "_disabled")
       )
     }),
-    textE("span", { class: "hide-open" }, [name]),
-    textE("span", { class: "hide-close" }, [device.getI18n()])
+    textE("span", { class: "hide-open" }, [choice.name]),
+    textE("span", { class: "hide-close" }, [title + networks])
   ]);
 }
 function renderNetworkInterfaceListItem(device, fallbackName) {
@@ -23812,18 +23892,21 @@ function renderNetworkInterfaceListItem(device, fallbackName) {
     textE("span", {}, [name])
   ]);
 }
-function refreshNetworkInterfaceOptionValues(option2) {
+function refreshNetworkInterfaceOptionValues(option2, choices) {
   option2.keylist = [];
   option2.vallist = [];
   option2.interfaceDeviceMap = {};
   (option2.devices || []).forEach((device) => {
-    const name = device.getName();
-    const type = device.getType();
-    if (name === "lo" || type === "alias" || !isConnectionNetworkInterfaceAllowed(name, device)) {
-      return;
-    }
-    option2.value(name, renderNetworkInterfaceChoice(device));
-    option2.interfaceDeviceMap[name] = device;
+    option2.interfaceDeviceMap[device.getName()] = device;
+  });
+  choices.forEach((choice) => {
+    option2.value(
+      choice.name,
+      renderNetworkInterfaceChoice(
+        choice,
+        option2.interfaceDeviceMap[choice.name]
+      )
+    );
   });
 }
 var InterfaceSettingsDynamicList = SettingsDynamicList.extend({
@@ -23831,8 +23914,12 @@ var InterfaceSettingsDynamicList = SettingsDynamicList.extend({
     return network.getDevices().then(
       L.bind(function(devices) {
         this.devices = devices || [];
-        refreshNetworkInterfaceOptionValues(this);
-        return this.super("load", section_id);
+        return loadOutgoingDevices(this.devices).then(
+          L.bind(function(choices) {
+            refreshNetworkInterfaceOptionValues(this, choices);
+            return this.super("load", section_id);
+          }, this)
+        );
       }, this)
     );
   },
@@ -27452,7 +27539,7 @@ function createSectionContent(section2) {
     InterfaceSettingsDynamicList,
     "interfaces",
     _("Network Interface"),
-    _("An OpenWrt network interface")
+    _("An OpenWrt uplink or tunnel interface")
   );
   o.depends("action", "connection");
   o.rmempty = true;
