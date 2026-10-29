@@ -513,12 +513,13 @@ describe('the group details dialogs', () => {
     const buttons: FakeNode[] = [];
     (function collect(node: FakeNode | string) {
       if (typeof node === 'string') return;
-      if (node.type === 'button' && textOf(node) === 'Test download speed')
+      if (node.type === 'button' && textOf(node) === 'Measure server speeds')
         buttons.push(node);
       node.children.forEach(collect);
     })(dialog);
     expect(buttons).toHaveLength(1);
     expect(buttons[0].attrs.disabled).toBeUndefined();
+    expect(buttons[0].attrs.title).toContain('every server in this group');
   });
 
   function fallbackSection(levels: string[]) {

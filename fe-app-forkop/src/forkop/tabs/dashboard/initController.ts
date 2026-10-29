@@ -1083,29 +1083,6 @@ function renderUrlTestInfoModal(info?: Forkop.UrlTestInfo) {
               ? _('Rank by speed, use latency for similar speeds')
               : _('Qualify by speed, choose by latency'),
           ),
-          E(
-            'button',
-            {
-              class: 'btn cbi-button cbi-button-action',
-              disabled: info.bandwidth.running ? true : undefined,
-              click: async (event: Event) => {
-                const button = event.currentTarget as HTMLButtonElement;
-                button.disabled = true;
-                try {
-                  const response = await startClashApiBandwidthTest(info.code);
-                  if (!response.success)
-                    showToast(_('Failed to start download test'), 'error');
-                } catch {
-                  showToast(_('Failed to start download test'), 'error');
-                } finally {
-                  button.disabled = false;
-                }
-              },
-            },
-            info.bandwidth.running
-              ? _('Testing download speed…')
-              : _('Test download speed'),
-          ),
         ]
       : []),
     E(
@@ -1125,8 +1102,50 @@ function renderUrlTestInfoModal(info?: Forkop.UrlTestInfo) {
     E('div', { class: 'fkp_dashboard-page__urltest-details__outbounds' }, [
       E(
         'div',
-        { class: 'fkp_dashboard-page__urltest-details__outbounds-title' },
-        _('Nodes'),
+        { class: 'fkp_dashboard-page__urltest-details__outbounds-heading' },
+        [
+          E(
+            'div',
+            { class: 'fkp_dashboard-page__urltest-details__outbounds-title' },
+            _('Nodes'),
+          ),
+          ...(info.bandwidth
+            ? [
+                E(
+                  'button',
+                  {
+                    type: 'button',
+                    class: 'btn cbi-button cbi-button-action',
+                    title: _(
+                      'Measure download speed through every server in this group using the configured test URL.',
+                    ),
+                    disabled: info.bandwidth.running ? true : undefined,
+                    click: async (event: Event) => {
+                      const button = event.currentTarget as HTMLButtonElement;
+                      button.disabled = true;
+                      try {
+                        const response = await startClashApiBandwidthTest(
+                          info.code,
+                        );
+                        if (!response.success)
+                          showToast(
+                            _('Failed to start download test'),
+                            'error',
+                          );
+                      } catch {
+                        showToast(_('Failed to start download test'), 'error');
+                      } finally {
+                        button.disabled = false;
+                      }
+                    },
+                  },
+                  info.bandwidth.running
+                    ? _('Testing download speed…')
+                    : _('Measure server speeds'),
+                ),
+              ]
+            : []),
+        ],
       ),
       E(
         'div',

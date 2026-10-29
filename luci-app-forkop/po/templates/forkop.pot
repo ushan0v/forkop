@@ -5348,7 +5348,7 @@ msgstr ""
 msgid "Testing download speed…"
 msgstr ""
 
-msgid "Test download speed"
+msgid "Measure server speeds"
 msgstr ""
 
 msgid "Qualified"
@@ -5406,4 +5406,7 @@ msgid "Selected server test interval"
 msgstr ""
 
 msgid "Similar-speed tolerance (%)"
+msgstr ""
+
+msgid "Measure download speed through every server in this group using the configured test URL."
 msgstr ""

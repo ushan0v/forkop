@@ -10951,27 +10951,6 @@ function renderUrlTestInfoModal(info) {
         "p",
         {},
         info.bandwidth.strategy === "throughput" ? _("Rank by speed, use latency for similar speeds") : _("Qualify by speed, choose by latency")
-      ),
-      textE(
-        "button",
-        {
-          class: "btn cbi-button cbi-button-action",
-          disabled: info.bandwidth.running ? true : void 0,
-          click: async (event) => {
-            const button = event.currentTarget;
-            button.disabled = true;
-            try {
-              const response = await startClashApiBandwidthTest(info.code);
-              if (!response.success)
-                showToast(_("Failed to start download test"), "error");
-            } catch {
-              showToast(_("Failed to start download test"), "error");
-            } finally {
-              button.disabled = false;
-            }
-          }
-        },
-        info.bandwidth.running ? _("Testing download speed\u2026") : _("Test download speed")
       )
     ] : [],
     textE(
@@ -10991,8 +10970,46 @@ function renderUrlTestInfoModal(info) {
     textE("div", { class: "fkp_dashboard-page__urltest-details__outbounds" }, [
       textE(
         "div",
-        { class: "fkp_dashboard-page__urltest-details__outbounds-title" },
-        _("Nodes")
+        { class: "fkp_dashboard-page__urltest-details__outbounds-heading" },
+        [
+          textE(
+            "div",
+            { class: "fkp_dashboard-page__urltest-details__outbounds-title" },
+            _("Nodes")
+          ),
+          ...info.bandwidth ? [
+            textE(
+              "button",
+              {
+                type: "button",
+                class: "btn cbi-button cbi-button-action",
+                title: _(
+                  "Measure download speed through every server in this group using the configured test URL."
+                ),
+                disabled: info.bandwidth.running ? true : void 0,
+                click: async (event) => {
+                  const button = event.currentTarget;
+                  button.disabled = true;
+                  try {
+                    const response = await startClashApiBandwidthTest(
+                      info.code
+                    );
+                    if (!response.success)
+                      showToast(
+                        _("Failed to start download test"),
+                        "error"
+                      );
+                  } catch {
+                    showToast(_("Failed to start download test"), "error");
+                  } finally {
+                    button.disabled = false;
+                  }
+                }
+              },
+              info.bandwidth.running ? _("Testing download speed\u2026") : _("Measure server speeds")
+            )
+          ] : []
+        ]
       ),
       textE(
         "div",
@@ -12519,6 +12536,19 @@ dropdown does; it carries the section's own outline and header band. */
 
 .fkp_dashboard-page__urltest-details__selected-type {
     color: var(--text-color-medium, #666);
+}
+
+.fkp_dashboard-page__urltest-details__outbounds-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.fkp_dashboard-page__urltest-details__outbounds-heading > .fkp_dashboard-page__urltest-details__outbounds-title {
+    margin-bottom: 0;
 }
 
 .fkp_dashboard-page__urltest-details__outbounds-title {

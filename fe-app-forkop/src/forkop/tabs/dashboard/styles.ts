@@ -777,6 +777,19 @@ dropdown does; it carries the section's own outline and header band. */
     color: var(--text-color-medium, #666);
 }
 
+.fkp_dashboard-page__urltest-details__outbounds-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.fkp_dashboard-page__urltest-details__outbounds-heading > .fkp_dashboard-page__urltest-details__outbounds-title {
+    margin-bottom: 0;
+}
+
 .fkp_dashboard-page__urltest-details__outbounds-title {
     margin-bottom: 8px;
     font-weight: 600;

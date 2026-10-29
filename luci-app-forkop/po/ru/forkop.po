@@ -2909,8 +2909,8 @@ msgstr "Не удалось запустить проверку скорости
 msgid "Testing download speed…"
 msgstr "Проверка скорости скачивания…"
 
-msgid "Test download speed"
-msgstr "Проверить скорость скачивания"
+msgid "Measure server speeds"
+msgstr "Измерить скорость серверов"
 
 msgid "Qualified"
 msgstr "Допущен"
@@ -2968,3 +2968,6 @@ msgstr "Интервал проверки выбранного сервера"
 
 msgid "Similar-speed tolerance (%)"
 msgstr "Допуск близких скоростей (%)"
+
+msgid "Measure download speed through every server in this group using the configured test URL."
+msgstr "Измеряет скорость скачивания через каждый сервер этой группы по указанному в настройках адресу проверки."
