@@ -1077,6 +1077,13 @@ function renderUrlTestInfoModal(info?: Forkop.UrlTestInfo) {
             `${_('Minimum download speed (Mbps)')}: ${info.bandwidth.minimum_mbps}. ${_('If no servers qualify, latency selection remains available.')}`,
           ),
           E(
+            'p',
+            {},
+            info.bandwidth.strategy === 'throughput'
+              ? _('Rank by speed, use latency for similar speeds')
+              : _('Qualify by speed, choose by latency'),
+          ),
+          E(
             'button',
             {
               class: 'btn cbi-button cbi-button-action',

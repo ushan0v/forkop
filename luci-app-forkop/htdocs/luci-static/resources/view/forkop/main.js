@@ -10948,6 +10948,11 @@ function renderUrlTestInfoModal(info) {
         `${_("Minimum download speed (Mbps)")}: ${info.bandwidth.minimum_mbps}. ${_("If no servers qualify, latency selection remains available.")}`
       ),
       textE(
+        "p",
+        {},
+        info.bandwidth.strategy === "throughput" ? _("Rank by speed, use latency for similar speeds") : _("Qualify by speed, choose by latency")
+      ),
+      textE(
         "button",
         {
           class: "btn cbi-button cbi-button-action",
@@ -27160,7 +27165,11 @@ function urlTestSettingsKeys() {
     "bandwidth_timeout",
     "bandwidth_sample_mib",
     "bandwidth_minimum_mbps",
-    "bandwidth_confirmations"
+    "bandwidth_confirmations",
+    "bandwidth_strategy",
+    "bandwidth_speed_tolerance",
+    "bandwidth_adaptive",
+    "bandwidth_selected_interval"
   ];
 }
 function urlTestChildDefaults() {
@@ -27178,7 +27187,11 @@ function urlTestChildDefaults() {
     bandwidth_timeout: "10s",
     bandwidth_sample_mib: "32",
     bandwidth_minimum_mbps: "50",
-    bandwidth_confirmations: "2"
+    bandwidth_confirmations: "2",
+    bandwidth_strategy: "qualify",
+    bandwidth_speed_tolerance: "20",
+    bandwidth_adaptive: "0",
+    bandwidth_selected_interval: "10m"
   };
 }
 function defaultUrlTestSettings(name) {
@@ -27229,11 +27242,30 @@ function addUrlTestItemOptions(itemSection, options = {}) {
     "bandwidth_enabled",
     _("Qualify servers by download speed"),
     _(
-      "Download tests consume traffic. Latency chooses among qualified servers; if none qualify, all working servers remain available. Results reset when the core restarts."
+      "Download tests consume traffic. The selection policy controls speed ranking and latency. Results reset when the core restarts."
     )
   );
   o.default = "0";
   o.rmempty = false;
+  o = itemSection.option(
+    form.ListValue,
+    "bandwidth_strategy",
+    _("Speed selection policy")
+  );
+  o.value("qualify", _("Qualify by speed, choose by latency"));
+  o.value("throughput", _("Rank by speed, use latency for similar speeds"));
+  o.default = "qualify";
+  o.retain = true;
+  o.depends("bandwidth_enabled", "1");
+  o = itemSection.option(
+    form.Flag,
+    "bandwidth_adaptive",
+    _("Adaptive speed checks")
+  );
+  o.default = "0";
+  o.rmempty = false;
+  o.retain = true;
+  o.depends("bandwidth_enabled", "1");
   o = itemSection.option(form.Value, "bandwidth_url", _("Download URL"));
   o.default = "https://proof.ovh.net/files/100Mb.dat";
   o.retain = true;
@@ -27245,7 +27277,8 @@ function addUrlTestItemOptions(itemSection, options = {}) {
   };
   for (const [key, label, defaultValue] of [
     ["bandwidth_interval", _("Speed test interval"), "6h"],
-    ["bandwidth_timeout", _("Speed test timeout"), "10s"]
+    ["bandwidth_timeout", _("Speed test timeout"), "10s"],
+    ["bandwidth_selected_interval", _("Selected server test interval"), "10m"]
   ]) {
     o = itemSection.option(form.Value, key, label);
     o.default = defaultValue;
@@ -27256,6 +27289,7 @@ function addUrlTestItemOptions(itemSection, options = {}) {
     };
   }
   for (const [key, label, defaultValue, maximum] of [
+    ["bandwidth_speed_tolerance", _("Similar-speed tolerance (%)"), "20", 100],
     ["bandwidth_sample_mib", _("Download limit per server (MiB)"), "32", 512],
     [
       "bandwidth_minimum_mbps",

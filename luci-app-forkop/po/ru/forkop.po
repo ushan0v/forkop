@@ -2924,8 +2924,8 @@ msgstr "Не проверен"
 msgid "Qualify servers by download speed"
 msgstr "Отбирать серверы по скорости скачивания"
 
-msgid "Download tests consume traffic. Latency chooses among qualified servers; if none qualify, all working servers remain available. Results reset when the core restarts."
-msgstr "Проверки расходуют трафик. Выбор по задержке — среди прошедших отбор серверов. Если таких нет, доступны все рабочие серверы. При перезапуске ядра результаты сбрасываются."
+msgid "Download tests consume traffic. The selection policy controls speed ranking and latency. Results reset when the core restarts."
+msgstr "Проверки расходуют трафик. Правило выбора определяет приоритет скорости и задержки. При перезапуске ядра результаты сбрасываются."
 
 msgid "Download URL"
 msgstr "URL для скачивания"
@@ -2950,3 +2950,21 @@ msgstr "Мбит/с"
 
 msgid "Test failed"
 msgstr "Ошибка проверки"
+
+msgid "Speed selection policy"
+msgstr "Правило выбора по скорости"
+
+msgid "Qualify by speed, choose by latency"
+msgstr "Отбор по скорости, выбор по задержке"
+
+msgid "Rank by speed, use latency for similar speeds"
+msgstr "Рейтинг по скорости, при близких значениях — задержка"
+
+msgid "Adaptive speed checks"
+msgstr "Адаптивные проверки скорости"
+
+msgid "Selected server test interval"
+msgstr "Интервал проверки выбранного сервера"
+
+msgid "Similar-speed tolerance (%)"
+msgstr "Допуск близких скоростей (%)"

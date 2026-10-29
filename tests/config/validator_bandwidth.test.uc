@@ -24,6 +24,9 @@ t.test("invalid bandwidth settings are refused before generating a core config",
         { bandwidth_sample_mib: "0" }, { bandwidth_sample_mib: "513" }, { bandwidth_sample_mib: "1.5" },
         { bandwidth_minimum_mbps: "0" }, { bandwidth_minimum_mbps: "-1" },
         { bandwidth_confirmations: "11" }, { bandwidth_confirmations: "NaN" }
+        , { bandwidth_strategy: "random" }, { bandwidth_speed_tolerance: "101" },
+        { bandwidth_adaptive: "1", bandwidth_selected_interval: "1s" },
+        { bandwidth_adaptive: "1", bandwidth_selected_interval: "7h" }
     ])
         t.ok(v.run(data(options)).error != null, sprintf("accepted %J", options));
 });

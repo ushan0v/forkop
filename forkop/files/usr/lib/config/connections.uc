@@ -598,6 +598,10 @@ function urltest_bandwidth_options(section, value) {
         return null;
     return {
         enabled: true,
+        strategy: option(child, "bandwidth_strategy", "qualify"),
+        speed_tolerance: int(option(child, "bandwidth_speed_tolerance", "20"), 10),
+        adaptive: bool_option(child, "bandwidth_adaptive", false),
+        selected_interval: option(child, "bandwidth_selected_interval", "10m"),
         url: option(child, "bandwidth_url", ""),
         interval: option(child, "bandwidth_interval", "6h"),
         timeout: option(child, "bandwidth_timeout", "10s"),

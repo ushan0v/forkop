@@ -20,7 +20,12 @@ t.test("ordinary URLTest does not emit the optional bandwidth schema", () => {
 
 t.test("bandwidth settings reach the native core without rewriting member filters", () => {
     let result = build({ bandwidth_enabled: "1", bandwidth_url: "https://download.example/file", bandwidth_sample_mib: "64", bandwidth_minimum_mbps: "80", bandwidth_confirmations: "3" });
-    t.eq(result.bandwidth_test, { enabled: true, url: "https://download.example/file", interval: "6h", timeout: "10s", max_bytes: 67108864, minimum_mbps: 80, confirmations: 3 });
+    t.eq(result.bandwidth_test, { enabled: true, strategy: "qualify", speed_tolerance: 20, adaptive: false, selected_interval: "10m", url: "https://download.example/file", interval: "6h", timeout: "10s", max_bytes: 67108864, minimum_mbps: 80, confirmations: 3 });
     t.eq(result.outbounds, [ "proxy/Node" ]);
+});
+
+t.test("adaptive throughput policy reaches the core", () => {
+    let b = build({ bandwidth_enabled: "1", bandwidth_url: "https://download.example/file", bandwidth_strategy: "throughput", bandwidth_adaptive: "1", bandwidth_selected_interval: "15m", bandwidth_speed_tolerance: "30" }).bandwidth_test;
+    t.eq([ b.strategy, b.adaptive, b.selected_interval, b.speed_tolerance ], [ "throughput", true, "15m", 30 ]);
 });
 t.done();

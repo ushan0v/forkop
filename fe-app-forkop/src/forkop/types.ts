@@ -34,6 +34,8 @@ export namespace ClashAPI {
     running: boolean;
     minimum_mbps: number;
     results: Record<string, BandwidthResult>;
+    strategy?: 'qualify' | 'throughput';
+    mode?: 'full' | 'selected' | 'recovery';
   }
 
   export interface Proxies {

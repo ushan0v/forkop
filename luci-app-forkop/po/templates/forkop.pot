@@ -5363,7 +5363,7 @@ msgstr ""
 msgid "Qualify servers by download speed"
 msgstr ""
 
-msgid "Download tests consume traffic. Latency chooses among qualified servers; if none qualify, all working servers remain available. Results reset when the core restarts."
+msgid "Download tests consume traffic. The selection policy controls speed ranking and latency. Results reset when the core restarts."
 msgstr ""
 
 msgid "Download URL"
@@ -5388,4 +5388,22 @@ msgid "Mbps"
 msgstr ""
 
 msgid "Test failed"
+msgstr ""
+
+msgid "Speed selection policy"
+msgstr ""
+
+msgid "Qualify by speed, choose by latency"
+msgstr ""
+
+msgid "Rank by speed, use latency for similar speeds"
+msgstr ""
+
+msgid "Adaptive speed checks"
+msgstr ""
+
+msgid "Selected server test interval"
+msgstr ""
+
+msgid "Similar-speed tolerance (%)"
 msgstr ""

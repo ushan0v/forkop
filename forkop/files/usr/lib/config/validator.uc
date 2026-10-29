@@ -1066,6 +1066,17 @@ function validate_rule(section, sections, context) {
             validate_http_url_option(connections.urltest_testing_url(section, urltest_id), "'Check URL' of " + urltest);
             let bandwidth = connections.urltest_bandwidth_options(section, urltest_id);
             if (bandwidth != null) {
+                if (index([ "qualify", "throughput" ], bandwidth.strategy) < 0)
+                    fail_validation("Invalid bandwidth selection strategy of " + urltest);
+                let speed_tolerance = connections.option(connections.urltest_child(section, urltest_id), "bandwidth_speed_tolerance", "20");
+                if (match(speed_tolerance, /^[0-9]+$/) == null || +speed_tolerance < 1 || +speed_tolerance > 100)
+                    fail_validation("Invalid bandwidth speed tolerance of " + urltest);
+                if (bandwidth.adaptive) {
+                    validate_required_duration_option(bandwidth.selected_interval, "'Selected server test interval' of " + urltest);
+                    let selected_seconds = core_common.duration_to_seconds(bandwidth.selected_interval);
+                    if (selected_seconds < 60 || selected_seconds > core_common.duration_to_seconds(bandwidth.interval))
+                        fail_validation("Selected server test interval must be between 1m and the full speed test interval of " + urltest);
+                }
                 validate_http_url_option(bandwidth.url, "'Download URL' of " + urltest);
                 if (match(bandwidth.url, /^https?:\/\/[^\/]*@|#/i) != null)
                     fail_validation("The download URL of " + urltest + " must not contain credentials or a fragment");
