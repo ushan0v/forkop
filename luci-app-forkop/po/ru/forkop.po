@@ -2896,3 +2896,57 @@ msgstr "вчера %s"
 
 msgid "Your own certificate"
 msgstr "Свой сертификат"
+
+msgid "Minimum download speed (Mbps)"
+msgstr "Минимальная скорость скачивания (Мбит/с)"
+
+msgid "If no servers qualify, latency selection remains available."
+msgstr "Если ни один сервер не прошёл отбор, выбор по задержке остаётся доступен."
+
+msgid "Failed to start download test"
+msgstr "Не удалось запустить проверку скорости"
+
+msgid "Testing download speed…"
+msgstr "Проверка скорости скачивания…"
+
+msgid "Test download speed"
+msgstr "Проверить скорость скачивания"
+
+msgid "Qualified"
+msgstr "Допущен"
+
+msgid "Not qualified"
+msgstr "Не допущен"
+
+msgid "Not tested"
+msgstr "Не проверен"
+
+msgid "Qualify servers by download speed"
+msgstr "Отбирать серверы по скорости скачивания"
+
+msgid "Download tests consume traffic. Latency chooses among qualified servers; if none qualify, all working servers remain available. Results reset when the core restarts."
+msgstr "Проверки расходуют трафик. Выбор по задержке — среди прошедших отбор серверов. Если таких нет, доступны все рабочие серверы. При перезапуске ядра результаты сбрасываются."
+
+msgid "Download URL"
+msgstr "URL для скачивания"
+
+msgid "Use an HTTP(S) URL without credentials or fragment"
+msgstr "HTTP(S)-адрес без учётных данных и фрагмента"
+
+msgid "Speed test interval"
+msgstr "Интервал проверки скорости"
+
+msgid "Speed test timeout"
+msgstr "Таймаут проверки скорости"
+
+msgid "Download limit per server (MiB)"
+msgstr "Лимит скачивания на сервер (МиБ)"
+
+msgid "Consecutive results before admission or removal"
+msgstr "Число результатов подряд для допуска или исключения"
+
+msgid "Mbps"
+msgstr "Мбит/с"
+
+msgid "Test failed"
+msgstr "Ошибка проверки"

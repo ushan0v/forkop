@@ -489,6 +489,38 @@ describe('the group details dialogs', () => {
     expect(textOf(dialog)).toContain('50ms');
   });
 
+  it('shows measured throughput and qualification in URLTest details', async () => {
+    const data = urlTestSection(20);
+    const info = data.outbounds[0].urlTestInfo!;
+    info.bandwidth = { running: true, minimum_mbps: 50, results: {} };
+    info.outbounds[0].bandwidth = {
+      time: '2026-10-29T10:00:00Z',
+      mbps: 123.4,
+      bytes: 33554432,
+      admitted: true,
+    };
+    await openDashboard([data]);
+    const dialog = await openUrlTestDetails();
+    expect(textOf(dialog)).toContain('123.4 Mbps');
+    expect(textOf(dialog)).toContain('Qualified');
+    expect(textOf(dialog)).toContain('Testing download speed…');
+    const updated = urlTestSection(20);
+    updated.outbounds[0].urlTestInfo!.bandwidth = {
+      ...info.bandwidth,
+      running: false,
+    };
+    await publish([updated]);
+    const buttons: FakeNode[] = [];
+    (function collect(node: FakeNode | string) {
+      if (typeof node === 'string') return;
+      if (node.type === 'button' && textOf(node) === 'Test download speed')
+        buttons.push(node);
+      node.children.forEach(collect);
+    })(dialog);
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].attrs.disabled).toBeUndefined();
+  });
+
   function fallbackSection(levels: string[]) {
     return section('chain', {
       outbounds: [

@@ -19,6 +19,21 @@ export namespace ClashAPI {
       outbounds?: string[];
     }>;
     fixed?: string;
+    bandwidth?: BandwidthStatus;
+  }
+
+  export interface BandwidthResult {
+    time: string;
+    mbps: number;
+    bytes: number;
+    admitted: boolean;
+    error?: string;
+  }
+
+  export interface BandwidthStatus {
+    running: boolean;
+    minimum_mbps: number;
+    results: Record<string, BandwidthResult>;
   }
 
   export interface Proxies {
@@ -146,6 +161,7 @@ export namespace Forkop {
     type: string;
     selected: boolean;
     subscriptionTag?: string;
+    bandwidth?: ClashAPI.BandwidthResult;
   }
 
   export interface UrlTestInfo {
@@ -160,6 +176,7 @@ export namespace Forkop {
     idleTimeout?: string;
     interruptExistConnections?: boolean;
     outbounds: UrlTestMember[];
+    bandwidth?: ClashAPI.BandwidthStatus;
   }
 
   export interface FallbackMember extends UrlTestMember {

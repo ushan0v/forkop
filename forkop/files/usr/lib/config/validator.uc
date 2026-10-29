@@ -1064,6 +1064,24 @@ function validate_rule(section, sections, context) {
             validate_required_duration_option(check_interval, "'Check interval' of " + urltest);
             validate_urltest_tolerance_value(connections.urltest_tolerance(section, urltest_id), urltest);
             validate_http_url_option(connections.urltest_testing_url(section, urltest_id), "'Check URL' of " + urltest);
+            let bandwidth = connections.urltest_bandwidth_options(section, urltest_id);
+            if (bandwidth != null) {
+                validate_http_url_option(bandwidth.url, "'Download URL' of " + urltest);
+                if (match(bandwidth.url, /^https?:\/\/[^\/]*@|#/i) != null)
+                    fail_validation("The download URL of " + urltest + " must not contain credentials or a fragment");
+                validate_required_duration_option(bandwidth.interval, "'Speed test interval' of " + urltest);
+                validate_required_duration_option(bandwidth.timeout, "'Speed test timeout' of " + urltest);
+                let interval_seconds = core_common.duration_to_seconds(bandwidth.interval);
+                let timeout_seconds = core_common.duration_to_seconds(bandwidth.timeout);
+                if (interval_seconds < 60 || interval_seconds > 604800 || timeout_seconds < 1 || timeout_seconds > 60)
+                    fail_validation("Invalid bandwidth test interval (1m..168h) or timeout (1s..1m) of " + urltest);
+                let child = connections.urltest_child(section, urltest_id);
+                for (let field, range in { bandwidth_sample_mib: [ 1, 512, "32" ], bandwidth_minimum_mbps: [ 1, 100000, "50" ], bandwidth_confirmations: [ 1, 10, "2" ] }) {
+                    let value = connections.option(child, field, range[2]);
+                    if (match(value, /^[0-9]+$/) == null || +value < range[0] || +value > range[1])
+                        fail_validation("Invalid '" + field + "' of " + urltest);
+                }
+            }
             if (!expected_status_valid(connections.urltest_expected_status(section, urltest_id)))
                 fail_validation("Invalid 'Expected status' of " + urltest + ". Use *, status codes, or ranges such as 204/200-299");
             let idle_timeout = connections.urltest_idle_timeout(section, urltest_id);

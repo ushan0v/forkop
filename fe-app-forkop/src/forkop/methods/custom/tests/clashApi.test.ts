@@ -28,6 +28,27 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
+it('starts a bounded group download test with a bodyless POST through the CLI fallback', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
+  );
+  mocks.clashApi.mockResolvedValue({
+    success: true,
+    data: {
+      status: 202,
+      body: '{"running":true,"minimum_mbps":50,"results":{}}',
+    },
+  });
+  const { startClashApiBandwidthTest } = await import('../clashApi');
+  expect((await startClashApiBandwidthTest('main/auto')).success).toBe(true);
+  expect(mocks.clashApi).toHaveBeenCalledWith(
+    'POST',
+    '/proxies/main%2Fauto/bandwidth',
+    '',
+  );
+});
+
 it('chooses the CLI before sending concurrent first mutations to an unreachable controller', async () => {
   const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
   vi.stubGlobal('fetch', fetchMock);

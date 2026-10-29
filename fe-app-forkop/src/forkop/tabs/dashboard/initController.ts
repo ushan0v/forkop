@@ -24,7 +24,10 @@ import { sectionLatencyTarget } from './sectionLatencyTarget';
 import { exitNodeName } from './exitNodeName';
 import type { ExitPanelState } from './partials/renderExitPanel';
 import { getClashApiSecret } from '../../methods/custom/getClashApiSecret';
-import { resetClashApiTransport } from '../../methods/custom/clashApi';
+import {
+  resetClashApiTransport,
+  startClashApiBandwidthTest,
+} from '../../methods/custom/clashApi';
 import { Forkop } from '../../types';
 import { getLocalStorage } from '../../services/browserStorage.service';
 import { isActiveLuciTab } from '../../helpers/isActiveLuciTab';
@@ -1066,6 +1069,38 @@ function renderUrlTestInfoModal(info?: Forkop.UrlTestInfo) {
   ];
 
   return [
+    ...(info.bandwidth
+      ? [
+          E(
+            'p',
+            {},
+            `${_('Minimum download speed (Mbps)')}: ${info.bandwidth.minimum_mbps}. ${_('If no servers qualify, latency selection remains available.')}`,
+          ),
+          E(
+            'button',
+            {
+              class: 'btn cbi-button cbi-button-action',
+              disabled: info.bandwidth.running ? true : undefined,
+              click: async (event: Event) => {
+                const button = event.currentTarget as HTMLButtonElement;
+                button.disabled = true;
+                try {
+                  const response = await startClashApiBandwidthTest(info.code);
+                  if (!response.success)
+                    showToast(_('Failed to start download test'), 'error');
+                } catch {
+                  showToast(_('Failed to start download test'), 'error');
+                } finally {
+                  button.disabled = false;
+                }
+              },
+            },
+            info.bandwidth.running
+              ? _('Testing download speed…')
+              : _('Test download speed'),
+          ),
+        ]
+      : []),
     E(
       'dl',
       { class: 'fkp_dashboard-page__urltest-details__params' },
@@ -1132,6 +1167,21 @@ function renderUrlTestInfoModal(info?: Forkop.UrlTestInfo) {
                         { class: latencyClassName(member.latency) },
                         formatUrlTestLatency(member.latency),
                       ),
+                      ...(info.bandwidth
+                        ? [
+                            E(
+                              'span',
+                              {
+                                title: member.bandwidth
+                                  ? `${member.bandwidth.time}${member.bandwidth.error ? `: ${member.bandwidth.error}` : ''}`
+                                  : '',
+                              },
+                              member.bandwidth
+                                ? `${member.bandwidth.bytes ? `${member.bandwidth.mbps.toFixed(1)} ${_('Mbps')}` : _('N/A')} · ${member.bandwidth.admitted ? _('Qualified') : _('Not qualified')}${member.bandwidth.error ? ` · ${_('Test failed')}` : ''}`
+                                : _('Not tested'),
+                            ),
+                          ]
+                        : []),
                     ],
                   ),
                 ],

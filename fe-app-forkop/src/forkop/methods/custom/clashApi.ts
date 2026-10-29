@@ -476,3 +476,11 @@ export function closeAllClashApiConnections() {
     CLASH_API_MUTATION_TIMEOUT_MS,
   );
 }
+
+export function startClashApiBandwidthTest(tag: string) {
+  return requestClashApi<ClashAPI.BandwidthStatus>(
+    `/proxies/${encodeURIComponent(tag)}/bandwidth`,
+    { method: 'POST' },
+    CLASH_API_MUTATION_TIMEOUT_MS,
+  );
+}

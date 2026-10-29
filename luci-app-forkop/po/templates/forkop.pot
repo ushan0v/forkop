@@ -5335,3 +5335,57 @@ msgstr ""
 #: luci-app-forkop/htdocs/luci-static/resources/view/forkop/main.js:28720
 msgid "Your own certificate"
 msgstr ""
+
+msgid "Minimum download speed (Mbps)"
+msgstr ""
+
+msgid "If no servers qualify, latency selection remains available."
+msgstr ""
+
+msgid "Failed to start download test"
+msgstr ""
+
+msgid "Testing download speed…"
+msgstr ""
+
+msgid "Test download speed"
+msgstr ""
+
+msgid "Qualified"
+msgstr ""
+
+msgid "Not qualified"
+msgstr ""
+
+msgid "Not tested"
+msgstr ""
+
+msgid "Qualify servers by download speed"
+msgstr ""
+
+msgid "Download tests consume traffic. Latency chooses among qualified servers; if none qualify, all working servers remain available. Results reset when the core restarts."
+msgstr ""
+
+msgid "Download URL"
+msgstr ""
+
+msgid "Use an HTTP(S) URL without credentials or fragment"
+msgstr ""
+
+msgid "Speed test interval"
+msgstr ""
+
+msgid "Speed test timeout"
+msgstr ""
+
+msgid "Download limit per server (MiB)"
+msgstr ""
+
+msgid "Consecutive results before admission or removal"
+msgstr ""
+
+msgid "Mbps"
+msgstr ""
+
+msgid "Test failed"
+msgstr ""

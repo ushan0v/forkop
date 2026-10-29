@@ -56,6 +56,13 @@ function urlTestSettingsKeys() {
     'exclude_outbounds',
     'exclude_types',
     'exclude_regex',
+    'bandwidth_enabled',
+    'bandwidth_url',
+    'bandwidth_interval',
+    'bandwidth_timeout',
+    'bandwidth_sample_mib',
+    'bandwidth_minimum_mbps',
+    'bandwidth_confirmations',
   ];
 }
 
@@ -68,6 +75,13 @@ export function urlTestChildDefaults() {
     idle_timeout: '30m',
     interrupt_exist_connections: '0',
     server_filter_mode: 'all',
+    bandwidth_enabled: '0',
+    bandwidth_url: 'https://proof.ovh.net/files/100Mb.dat',
+    bandwidth_interval: '6h',
+    bandwidth_timeout: '10s',
+    bandwidth_sample_mib: '32',
+    bandwidth_minimum_mbps: '50',
+    bandwidth_confirmations: '2',
   };
 }
 
@@ -127,6 +141,70 @@ function addUrlTestItemOptions(
   };
 
   addGroupHealthCheckTailOptions(itemSection, '30m', 'check_interval');
+
+  o = itemSection.option(
+    form.Flag,
+    'bandwidth_enabled',
+    _('Qualify servers by download speed'),
+    _(
+      'Download tests consume traffic. Latency chooses among qualified servers; if none qualify, all working servers remain available. Results reset when the core restarts.',
+    ),
+  );
+  o.default = '0';
+  o.rmempty = false;
+
+  o = itemSection.option(form.Value, 'bandwidth_url', _('Download URL'));
+  o.default = 'https://proof.ovh.net/files/100Mb.dat';
+  o.retain = true;
+  o.depends('bandwidth_enabled', '1');
+  o.validate = function (_itemId: string, value: unknown) {
+    const valid = validateUrlField(value);
+    if (valid !== true) return valid;
+    return (
+      !/^https?:\/\/[^/]*@|#/i.test(`${value}`) ||
+      _('Use an HTTP(S) URL without credentials or fragment')
+    );
+  };
+
+  for (const [key, label, defaultValue] of [
+    ['bandwidth_interval', _('Speed test interval'), '6h'],
+    ['bandwidth_timeout', _('Speed test timeout'), '10s'],
+  ]) {
+    o = itemSection.option(form.Value, key, label);
+    o.default = defaultValue;
+    o.retain = true;
+    o.depends('bandwidth_enabled', '1');
+    o.validate = function (_itemId: string, value: unknown) {
+      return validateRequiredSingBoxDuration(value);
+    };
+  }
+  for (const [key, label, defaultValue, maximum] of [
+    ['bandwidth_sample_mib', _('Download limit per server (MiB)'), '32', 512],
+    [
+      'bandwidth_minimum_mbps',
+      _('Minimum download speed (Mbps)'),
+      '50',
+      100000,
+    ],
+    [
+      'bandwidth_confirmations',
+      _('Consecutive results before admission or removal'),
+      '2',
+      10,
+    ],
+  ] as const) {
+    o = itemSection.option(form.Value, key, label);
+    o.default = defaultValue;
+    o.retain = true;
+    o.depends('bandwidth_enabled', '1');
+    o.validate = function (_itemId: string, value: unknown) {
+      return /^[0-9]+$/.test(`${value}`) &&
+        Number(value) >= 1 &&
+        Number(value) <= maximum
+        ? true
+        : message.wholeNumber(1, maximum);
+    };
+  }
 
   addServerFilterOptions(itemSection, parentSectionForItem, {
     groupContext: true,

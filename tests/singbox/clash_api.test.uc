@@ -104,6 +104,15 @@ t.test("the reply is handed back as the controller sent it, its status and its b
     received();
 });
 
+t.test("only the bodyless bandwidth POST is allowlisted", () => {
+    config(controller.endpoint);
+    controller.reply({ status: 202, body: "{\"running\":true}" });
+    t.eq(clash.request("POST", "/proxies/main%2FAuto/bandwidth", ""), { status: 202, body: "{\"running\":true}" });
+    t.eq(call([ "clash_api", "POST", "/proxies/main%2FAuto/bandwidth", "{}" ]).status, 1);
+    t.eq(call([ "clash_api", "POST", "/proxies/main%2FAuto/delay", "" ]).status, 1);
+    received();
+});
+
 t.test("a controller that is not there, answers no HTTP or drops the reply fails the request, naming it", () => {
     for (let reply in [ { raw: "" }, { raw: "SSH-2.0-dropbear\r\n" }, { raw: "HTTP/1.0 200 OK\r\nContent-Type: application/json" } ]) {
         config(controller.endpoint);

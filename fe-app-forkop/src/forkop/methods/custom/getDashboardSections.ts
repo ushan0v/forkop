@@ -702,6 +702,7 @@ function buildUrlTestInfo({
           latency: childEntry?.value?.history?.[0]?.delay || 0,
           type: getOutboundDisplayType(childEntry),
           selected: selectedCode === childCode,
+          bandwidth: entry?.value.bandwidth?.results[childCode],
         },
       ];
     }),
@@ -721,6 +722,7 @@ function buildUrlTestInfo({
     tolerance: config.tolerance,
     idleTimeout: entry?.value.idle_timeout || config.idleTimeout || '30m',
     interruptExistConnections: config.interruptExistConnections,
+    bandwidth: entry?.value.bandwidth,
     outbounds,
   };
 }

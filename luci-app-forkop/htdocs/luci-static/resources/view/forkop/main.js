@@ -2222,6 +2222,13 @@ function closeAllClashApiConnections() {
     CLASH_API_MUTATION_TIMEOUT_MS
   );
 }
+function startClashApiBandwidthTest(tag) {
+  return requestClashApi(
+    `/proxies/${encodeURIComponent(tag)}/bandwidth`,
+    { method: "POST" },
+    CLASH_API_MUTATION_TIMEOUT_MS
+  );
+}
 
 // src/helpers/isCopyableProxyLink.ts
 var COPYABLE_PROXY_URI_RE = /^(anytls|http2|http3|https?|naive\+https|naive\+quic|mieru|mierus|vless|vmess|trojan|ss|hysteria|hysteria2|hy2|tuic|socks|socks4|socks4a|socks5|tt):\/\//i;
@@ -2684,7 +2691,8 @@ function buildUrlTestInfo({
           ...presentation,
           latency: childEntry?.value?.history?.[0]?.delay || 0,
           type: getOutboundDisplayType(childEntry),
-          selected: selectedCode === childCode
+          selected: selectedCode === childCode,
+          bandwidth: entry?.value.bandwidth?.results[childCode]
         }
       ];
     })
@@ -2701,6 +2709,7 @@ function buildUrlTestInfo({
     tolerance: config.tolerance,
     idleTimeout: entry?.value.idle_timeout || config.idleTimeout || "30m",
     interruptExistConnections: config.interruptExistConnections,
+    bandwidth: entry?.value.bandwidth,
     outbounds
   };
 }
@@ -10932,6 +10941,34 @@ function renderUrlTestInfoModal(info) {
     }
   ];
   return [
+    ...info.bandwidth ? [
+      textE(
+        "p",
+        {},
+        `${_("Minimum download speed (Mbps)")}: ${info.bandwidth.minimum_mbps}. ${_("If no servers qualify, latency selection remains available.")}`
+      ),
+      textE(
+        "button",
+        {
+          class: "btn cbi-button cbi-button-action",
+          disabled: info.bandwidth.running ? true : void 0,
+          click: async (event) => {
+            const button = event.currentTarget;
+            button.disabled = true;
+            try {
+              const response = await startClashApiBandwidthTest(info.code);
+              if (!response.success)
+                showToast(_("Failed to start download test"), "error");
+            } catch {
+              showToast(_("Failed to start download test"), "error");
+            } finally {
+              button.disabled = false;
+            }
+          }
+        },
+        info.bandwidth.running ? _("Testing download speed\u2026") : _("Test download speed")
+      )
+    ] : [],
     textE(
       "dl",
       { class: "fkp_dashboard-page__urltest-details__params" },
@@ -10989,7 +11026,16 @@ function renderUrlTestInfoModal(info) {
                     "span",
                     { class: latencyClassName(member.latency) },
                     formatUrlTestLatency(member.latency)
-                  )
+                  ),
+                  ...info.bandwidth ? [
+                    textE(
+                      "span",
+                      {
+                        title: member.bandwidth ? `${member.bandwidth.time}${member.bandwidth.error ? `: ${member.bandwidth.error}` : ""}` : ""
+                      },
+                      member.bandwidth ? `${member.bandwidth.bytes ? `${member.bandwidth.mbps.toFixed(1)} ${_("Mbps")}` : _("N/A")} \xB7 ${member.bandwidth.admitted ? _("Qualified") : _("Not qualified")}${member.bandwidth.error ? ` \xB7 ${_("Test failed")}` : ""}` : _("Not tested")
+                    )
+                  ] : []
                 ]
               )
             ]
@@ -27107,7 +27153,14 @@ function urlTestSettingsKeys() {
     "include_regex",
     "exclude_outbounds",
     "exclude_types",
-    "exclude_regex"
+    "exclude_regex",
+    "bandwidth_enabled",
+    "bandwidth_url",
+    "bandwidth_interval",
+    "bandwidth_timeout",
+    "bandwidth_sample_mib",
+    "bandwidth_minimum_mbps",
+    "bandwidth_confirmations"
   ];
 }
 function urlTestChildDefaults() {
@@ -27118,7 +27171,14 @@ function urlTestChildDefaults() {
     expected_status: "*",
     idle_timeout: "30m",
     interrupt_exist_connections: "0",
-    server_filter_mode: "all"
+    server_filter_mode: "all",
+    bandwidth_enabled: "0",
+    bandwidth_url: "https://proof.ovh.net/files/100Mb.dat",
+    bandwidth_interval: "6h",
+    bandwidth_timeout: "10s",
+    bandwidth_sample_mib: "32",
+    bandwidth_minimum_mbps: "50",
+    bandwidth_confirmations: "2"
   };
 }
 function defaultUrlTestSettings(name) {
@@ -27164,6 +27224,60 @@ function addUrlTestItemOptions(itemSection, options = {}) {
     return validateUrlTestTolerance(value);
   };
   addGroupHealthCheckTailOptions(itemSection, "30m", "check_interval");
+  o = itemSection.option(
+    form.Flag,
+    "bandwidth_enabled",
+    _("Qualify servers by download speed"),
+    _(
+      "Download tests consume traffic. Latency chooses among qualified servers; if none qualify, all working servers remain available. Results reset when the core restarts."
+    )
+  );
+  o.default = "0";
+  o.rmempty = false;
+  o = itemSection.option(form.Value, "bandwidth_url", _("Download URL"));
+  o.default = "https://proof.ovh.net/files/100Mb.dat";
+  o.retain = true;
+  o.depends("bandwidth_enabled", "1");
+  o.validate = function(_itemId, value) {
+    const valid = validateUrlField(value);
+    if (valid !== true) return valid;
+    return !/^https?:\/\/[^/]*@|#/i.test(`${value}`) || _("Use an HTTP(S) URL without credentials or fragment");
+  };
+  for (const [key, label, defaultValue] of [
+    ["bandwidth_interval", _("Speed test interval"), "6h"],
+    ["bandwidth_timeout", _("Speed test timeout"), "10s"]
+  ]) {
+    o = itemSection.option(form.Value, key, label);
+    o.default = defaultValue;
+    o.retain = true;
+    o.depends("bandwidth_enabled", "1");
+    o.validate = function(_itemId, value) {
+      return validateRequiredSingBoxDuration(value);
+    };
+  }
+  for (const [key, label, defaultValue, maximum] of [
+    ["bandwidth_sample_mib", _("Download limit per server (MiB)"), "32", 512],
+    [
+      "bandwidth_minimum_mbps",
+      _("Minimum download speed (Mbps)"),
+      "50",
+      1e5
+    ],
+    [
+      "bandwidth_confirmations",
+      _("Consecutive results before admission or removal"),
+      "2",
+      10
+    ]
+  ]) {
+    o = itemSection.option(form.Value, key, label);
+    o.default = defaultValue;
+    o.retain = true;
+    o.depends("bandwidth_enabled", "1");
+    o.validate = function(_itemId, value) {
+      return /^[0-9]+$/.test(`${value}`) && Number(value) >= 1 && Number(value) <= maximum ? true : message.wholeNumber(1, maximum);
+    };
+  }
   addServerFilterOptions(itemSection, parentSectionForItem, {
     groupContext: true,
     modeLabel: _("Server filter"),

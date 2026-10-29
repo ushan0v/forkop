@@ -592,6 +592,21 @@ function urltest_expected_status(section, value) {
     return option(urltest_child(section, value), "expected_status", "*");
 }
 
+function urltest_bandwidth_options(section, value) {
+    let child = urltest_child(section, value);
+    if (!bool_option(child, "bandwidth_enabled", false))
+        return null;
+    return {
+        enabled: true,
+        url: option(child, "bandwidth_url", ""),
+        interval: option(child, "bandwidth_interval", "6h"),
+        timeout: option(child, "bandwidth_timeout", "10s"),
+        max_bytes: int(option(child, "bandwidth_sample_mib", "32"), 10) * 1048576,
+        minimum_mbps: int(option(child, "bandwidth_minimum_mbps", "50"), 10),
+        confirmations: int(option(child, "bandwidth_confirmations", "2"), 10)
+    };
+}
+
 function urltest_display_name(section, value) {
     return option(urltest_child(section, value), "name", as_string(value));
 }
@@ -764,6 +779,7 @@ return {
     interface_domain_resolver_dns_detour_enabled,
     interface_domain_resolver_dns_detour_section,
     urltest_check_interval,
+    urltest_child,
     urltest_tolerance,
     urltest_testing_url,
     urltest_expected_status,
@@ -772,6 +788,7 @@ return {
     urltest_interrupt_exist_connections,
     urltest_filter_mode,
     urltest_include_outbounds,
+    urltest_bandwidth_options,
     urltest_include_regex,
     urltest_exclude_outbounds,
     urltest_exclude_regex,

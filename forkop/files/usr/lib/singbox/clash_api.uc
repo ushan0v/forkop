@@ -70,6 +70,11 @@ function allowed(method, path, body) {
     if (method == "DELETE")
         return body == "" && (path == "/connections" || length(segments(path, "/connections/")) == 1);
 
+    if (method == "POST") {
+        let target = segments(path, "/proxies/");
+        return body == "" && length(target) == 2 && target[1] == "bandwidth";
+    }
+
     if (method == "PUT") {
         // A refresh of every rule provider, and of one proxy provider.
         if (path == "/providers/rules" || length(segments(path, "/providers/proxies/")) == 1)

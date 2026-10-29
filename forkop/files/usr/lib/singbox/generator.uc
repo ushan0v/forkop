@@ -947,6 +947,10 @@ function build_urltest_outbound(section, item, urltest_candidate_tags, candidate
     if (idle_timeout != "")
         urltest_outbound.idle_timeout = idle_timeout;
 
+    let bandwidth = connections.urltest_bandwidth_options(section, urltest_id);
+    if (bandwidth != null)
+        urltest_outbound.bandwidth_test = bandwidth;
+
     return urltest_outbound;
 }
 

@@ -57,6 +57,7 @@ function proxy(
     idle_timeout: options.idle_timeout,
     groups: options.groups,
     fixed: options.fixed,
+    bandwidth: options.bandwidth,
   };
 }
 
@@ -539,6 +540,18 @@ describe('getDashboardSections', () => {
         all: ['Office/Node A', 'Office/Node B'],
         url: 'https://runtime.example/204',
         interval: '45s',
+        bandwidth: {
+          running: false,
+          minimum_mbps: 50,
+          results: {
+            'Office/Node A': {
+              time: '2026-10-29T10:00:00Z',
+              mbps: 123,
+              bytes: 33554432,
+              admitted: true,
+            },
+          },
+        },
       }),
       'Office/Rescue': proxy('Fallback', {
         name: 'Office/Rescue',
@@ -579,6 +592,12 @@ describe('getDashboardSections', () => {
       },
     });
     expect(result.data[0].code).toBe('Office');
+    expect(urltest.urlTestInfo?.bandwidth?.minimum_mbps).toBe(50);
+    expect(
+      urltest.urlTestInfo?.outbounds.find(
+        (node) => node.code === 'Office/Node A',
+      )?.bandwidth,
+    ).toMatchObject({ mbps: 123, admitted: true });
     expect(fallback).toMatchObject({
       code: 'Office/Rescue',
       displayName: 'Rescue',
