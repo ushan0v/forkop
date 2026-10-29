@@ -197,6 +197,23 @@ export namespace Forkop {
     outbounds: Outbound[];
   }
 
+  // A server hosted on the router, as the applied configuration has it; the core
+  // reports a client by its user or, without one, by the address it connects from.
+  export interface DashboardServer {
+    sectionName: string;
+    tag: string;
+    protocol: string;
+    port: string;
+    clients: DashboardServerClient[];
+  }
+
+  export interface DashboardServerClient {
+    sectionName: string;
+    name: string;
+    users: string[];
+    addresses: string[];
+  }
+
   interface SubscriptionTraffic {
     upload?: number;
     download?: number;
@@ -283,6 +300,7 @@ export namespace Forkop {
     protocol?: string;
     server?: string;
     wireguard_address?: string | string[];
+    listen_port?: string;
     id?: string;
     url?: string;
     uri?: string;

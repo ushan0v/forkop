@@ -939,6 +939,27 @@ its own name's length. */
 }
 
 /* Too narrow for the two-column parameter list. */
+.fkp_dashboard-page__server-client__status {
+    flex: 0 0 auto;
+    color: var(--text-color-medium, inherit);
+    white-space: nowrap;
+}
+
+.fkp_dashboard-page__server-client__status--online {
+    color: var(--success-color-medium, green);
+}
+
+.fkp_dashboard-page__server-client__speed {
+    justify-self: end;
+    text-align: right;
+    white-space: pre;
+}
+
+.fkp_dashboard-page__server-client__empty {
+    padding: 10px;
+    color: var(--text-color-medium, inherit);
+}
+
 @media (max-width: 560px) {
     .fkp_dashboard-page__urltest-details__params {
         grid-template-columns: 1fr;

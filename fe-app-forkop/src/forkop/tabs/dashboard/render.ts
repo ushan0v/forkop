@@ -52,6 +52,7 @@ export function render() {
             }),
           ),
         ]),
+        E('div', { id: 'dashboard-servers-grid' }),
         E('div', { id: 'dashboard-sections-toolbar' }),
         E(
           'div',

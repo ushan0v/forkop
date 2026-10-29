@@ -1,15 +1,15 @@
 # RU translations for FORKOP package.
 # Copyright (C) 2026 THE FORKOP COPYRIGHT HOLDER
 # This file is distributed under the same license as the FORKOP package.
-# ushan0v, 2026.
+# Jyn, 2026.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: FORKOP\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-27 16:04+0300\n"
-"PO-Revision-Date: 2026-10-27 16:04+0300\n"
-"Last-Translator: ushan0v\n"
+"POT-Creation-Date: 2026-10-29 18:58+0700\n"
+"PO-Revision-Date: 2026-10-29 18:58+0700\n"
+"Last-Translator: Jyn\n"
 "Language-Team: none\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
@@ -1600,6 +1600,9 @@ msgstr "Нет сертификата CA (ca)"
 
 msgid "No closed connections"
 msgstr "Нет закрытых подключений"
+
+msgid "No connected clients"
+msgstr "Нет подключённых клиентов"
 
 msgid "no connection to the coordination server"
 msgstr "нет связи с сервером координации"

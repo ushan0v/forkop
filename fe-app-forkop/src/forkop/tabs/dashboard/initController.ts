@@ -17,9 +17,16 @@ import {
   renderFlagEmojis,
   renderSections,
   renderSectionsPlaceholder,
+  renderServers,
   renderToolbar,
   renderWidget,
 } from './partials';
+import { describeServers } from './serverActivity';
+import type {
+  ActivityConnection,
+  ConnectionCounters,
+  ServerView,
+} from './serverActivity';
 import { sectionLatencyTarget } from './sectionLatencyTarget';
 import { exitNodeName } from './exitNodeName';
 import type { ExitPanelState } from './partials/renderExitPanel';
@@ -77,6 +84,11 @@ let connectionsSocketLive = false;
 let trafficSocketUrl = '';
 let connectionsSocketUrl = '';
 let lastPolledTotals: { at: number; up: number; down: number } | null = null;
+let serverViews: ServerView[] = [];
+let serverViewsLive = false;
+let serverCounters: ConnectionCounters | null = null;
+let serverCountersAt = 0;
+let renderedServersConfig = '';
 let pageUnloading = false;
 const latencyRequests = new Set<string>();
 const latencySortedSections = new Set<string>();
@@ -153,7 +165,7 @@ async function fetchDashboardSectionsOnce(mountId: number) {
   });
 
   try {
-    const { data, success, hasRemoteLists } =
+    const { data, servers, success, hasRemoteLists } =
       await CustomForkopMethods.getDashboardSections();
 
     if (!dashboardMounted || mountId !== dashboardMountId) {
@@ -172,6 +184,7 @@ async function fetchDashboardSectionsOnce(mountId: number) {
         loading: false,
         failed: false,
         data,
+        servers,
         hasRemoteLists,
       },
     });
@@ -344,11 +357,63 @@ function reportWidgetsFailure() {
   });
 }
 
+// The clients are told apart only by each connection of the snapshot, which the summary leaves out.
+function applyServerConnections(connections: ActivityConnection[] | null) {
+  const servers = store.get().sectionsWidget.servers;
+
+  if (connections) {
+    const at = Date.now();
+    const described = describeServers(
+      servers,
+      connections,
+      serverCounters,
+      (at - serverCountersAt) / 1000,
+    );
+    serverViews = described.servers;
+    serverCounters = described.counters;
+    serverCountersAt = at;
+  } else {
+    serverViews = describeServers(servers, [], null, 0).servers;
+    serverCounters = null;
+  }
+
+  serverViewsLive = Boolean(connections);
+  renderedServersConfig = JSON.stringify(servers);
+  renderServersWidget();
+}
+
+async function pollServerConnections() {
+  if (connectionsSocketLive || !store.get().sectionsWidget.servers.length) {
+    return;
+  }
+
+  const dataUpdatesId = dashboardDataUpdatesId;
+  const response = await CustomForkopMethods.getClashApiConnections().catch(
+    () => null,
+  );
+
+  if (
+    !widgetsPoll.active ||
+    connectionsSocketLive ||
+    dataUpdatesId !== dashboardDataUpdatesId
+  ) {
+    return;
+  }
+
+  const connections = response?.success
+    ? (response.data as { connections?: ActivityConnection[] })?.connections
+    : null;
+  applyServerConnections(connections || (response?.success ? [] : null));
+}
+
 async function pollWidgetsSnapshot(dataUpdatesId: number) {
   const startedAt = Date.now();
 
   try {
-    const response = await CustomForkopMethods.getClashApiConnectionsSummary();
+    const [response] = await Promise.all([
+      CustomForkopMethods.getClashApiConnectionsSummary(),
+      pollServerConnections(),
+    ]);
 
     lastWidgetsPollDurationMs = Date.now() - startedAt;
 
@@ -571,6 +636,8 @@ async function connectToClashSockets(dataUpdatesId: number) {
         stopWidgetsPolling();
       }
 
+      applyServerConnections(parsedMsg.connections || []);
+
       store.set({
         trafficTotalWidget: {
           loading: false,
@@ -656,6 +723,9 @@ function stopDashboardDataUpdates() {
   }
   trafficSocketUrl = '';
   connectionsSocketUrl = '';
+  serverViewsLive = false;
+  serverCounters = null;
+  renderedServersConfig = '';
 }
 
 // The tab asks the Clash API directly rather than first asking whether the core runs. A browser
@@ -1743,6 +1813,33 @@ async function renderSectionsWidget() {
   });
 }
 
+function renderServersWidget() {
+  const container = document.getElementById('dashboard-servers-grid');
+
+  if (!container) {
+    return;
+  }
+
+  const servers = store.get().sectionsWidget.servers;
+  const config = JSON.stringify(servers);
+
+  // A changed configuration is described afresh; the rates wait for the next snapshot.
+  if (config !== renderedServersConfig) {
+    renderedServersConfig = config;
+    serverViews = describeServers(servers, [], null, 0).servers;
+    serverCounters = null;
+    serverViewsLive = false;
+  }
+
+  preserveScrollForPage(() => {
+    container.replaceChildren(
+      ...serverViews.map((server) =>
+        renderServers({ server, live: serverViewsLive }),
+      ),
+    );
+  });
+}
+
 async function renderBandwidthWidget() {
   logger.debug('[DASHBOARD]', 'renderBandwidthWidget');
   const traffic = store.get().bandwidthWidget;
@@ -1903,6 +2000,9 @@ async function onStoreUpdate(
 ) {
   if (diff.sectionsWidget) {
     renderSectionsWidget();
+    if (JSON.stringify(next.sectionsWidget.servers) !== renderedServersConfig) {
+      renderServersWidget();
+    }
   }
 
   if (diff.bandwidthWidget) {
@@ -1939,6 +2039,7 @@ async function onPageMount() {
   document.addEventListener('pointerdown', closeExitPanelOnOutsidePress, true);
   document.addEventListener('keydown', closeExitPanelOnEscape);
   void renderSectionsWidget();
+  renderServersWidget();
   void renderBandwidthWidget();
   void renderTrafficTotalWidget();
   void renderLoadWidget();

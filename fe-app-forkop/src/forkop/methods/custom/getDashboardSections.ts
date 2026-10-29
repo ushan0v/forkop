@@ -11,6 +11,7 @@ import { DEFAULT_LATENCY_TEST_URL } from '../../../constants';
 interface IGetDashboardSectionsResponse {
   success: boolean;
   data: Forkop.OutboundGroup[];
+  servers: Forkop.DashboardServer[];
   hasRemoteLists: boolean;
 }
 
@@ -1040,11 +1041,56 @@ function getSubscriptionMetadata(
   return items.length ? items : undefined;
 }
 
+// The core is given only enabled servers; it reports an OpenVPN client by its certificate, named
+// after the client's section, and a WireGuard client by no user at all, only by its addresses.
+function getDashboardServers(
+  configSections: Forkop.ConfigSection[],
+): Forkop.DashboardServer[] {
+  return configSections
+    .filter(
+      (section) => section['.type'] === 'server' && section.enabled === '1',
+    )
+    .map((server) => {
+      const protocol = server.protocol || '';
+      const byAddress = protocol === 'wireguard' || protocol === 'amneziawg';
+      const clients = configSections
+        .filter(
+          (section) =>
+            section['.type'] === 'server_client' &&
+            section.server === server['.name'],
+        )
+        .map((client) => {
+          const name = client.name?.trim() || client['.name'];
+          return {
+            sectionName: client['.name'],
+            name,
+            users: byAddress
+              ? []
+              : [protocol === 'openvpn' ? client['.name'] : name],
+            addresses: byAddress
+              ? getListValues(client.wireguard_address)
+                  .map((address) => address.split('/')[0].trim())
+                  .filter(Boolean)
+              : [],
+          };
+        });
+
+      return {
+        sectionName: server['.name'],
+        tag: getDisplayName(server),
+        protocol,
+        port: server.listen_port || '',
+        clients,
+      };
+    });
+}
+
 export async function getDashboardSections(): Promise<IGetDashboardSectionsResponse> {
   const configSections = hydrateConfigSections(await getConfigSections());
   setClashApiConfigSections(configSections);
   const hasSubscriptions = configSections.some(hasSubscriptionSources);
   const remoteLists = configSections.some(hasRemoteLists);
+  const servers = getDashboardServers(configSections);
   const [clashProxies, clashProviders] = await Promise.all([
     getClashApiProxies(),
     hasSubscriptions
@@ -1059,6 +1105,7 @@ export async function getDashboardSections(): Promise<IGetDashboardSectionsRespo
     return {
       success: false,
       data: [],
+      servers,
       hasRemoteLists: remoteLists,
     };
   }
@@ -1128,6 +1175,7 @@ export async function getDashboardSections(): Promise<IGetDashboardSectionsRespo
   return {
     success: true,
     data,
+    servers,
     hasRemoteLists: remoteLists,
   };
 }

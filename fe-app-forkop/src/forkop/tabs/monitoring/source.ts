@@ -49,7 +49,7 @@ function isLoopback(ip: string): boolean {
   return ip === '::1' || /^(::ffff:)?127\./.test(ip);
 }
 
-function connectionInboundTag(connection: SourceConnection): string {
+export function connectionInboundTag(connection: SourceConnection): string {
   const type = text(connection.metadata?.type);
   const tag = text(type.split('/').slice(1).join('/') || type);
 

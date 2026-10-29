@@ -174,9 +174,9 @@ function showToast(message2, type, duration = 3e3) {
 }
 
 // src/helpers/copyToClipboard.ts
-function copyToClipboard(text8) {
+function copyToClipboard(text9) {
   const textarea = document.createElement("textarea");
-  textarea.value = text8;
+  textarea.value = text9;
   document.body.appendChild(textarea);
   textarea.select();
   let copied = false;
@@ -1111,7 +1111,7 @@ function renderButton({
   disabled,
   loading: loading3,
   onClick,
-  text: text8,
+  text: text9,
   icon
 }) {
   const hasIcon = !!loading3 || !!icon;
@@ -1153,7 +1153,7 @@ function renderButton({
       disabled: getDisabled(),
       click: onClick
     },
-    [...insertIf(hasIcon, [getWrappedIcon()]), textE("span", {}, text8)]
+    [...insertIf(hasIcon, [getWrappedIcon()]), textE("span", {}, text9)]
   );
 }
 
@@ -1169,13 +1169,13 @@ function downloadFile(content, name, type = "text/plain;charset=utf-8") {
 }
 
 // src/helpers/downloadAsTxt.ts
-function downloadAsTxt(text8, filename) {
-  downloadFile(text8, filename.endsWith(".txt") ? filename : `${filename}.txt`);
+function downloadAsTxt(text9, filename) {
+  downloadFile(text9, filename.endsWith(".txt") ? filename : `${filename}.txt`);
 }
 
 // src/partials/modal/renderModal.ts
-function renderModal(text8, name, options) {
-  let currentText = text8 ?? "";
+function renderModal(text9, name, options) {
+  let currentText = text9 ?? "";
   let latestRequest = 0;
   const codeEl = textE("code", {}, currentText);
   const contentEl = textE(
@@ -1470,6 +1470,7 @@ var initialStore = {
     loading: true,
     failed: false,
     data: [],
+    servers: [],
     hasRemoteLists: false
   },
   ...initialDiagnosticStore
@@ -1742,10 +1743,10 @@ async function readLogs() {
   });
   const reply = served.success ? served.data : null;
   if (typeof reply?.cursor === "number") {
-    const text8 = reply.unchanged ? servedLog?.text : reply.text;
-    if (typeof text8 === "string") {
-      servedLog = { cursor: reply.cursor, text: text8 };
-      return { success: true, data: text8 };
+    const text9 = reply.unchanged ? servedLog?.text : reply.text;
+    if (typeof text9 === "string") {
+      servedLog = { cursor: reply.cursor, text: text9 };
+      return { success: true, data: text9 };
     }
   }
   servedLog = null;
@@ -2916,11 +2917,38 @@ function getSubscriptionMetadata(section2, sourceCount, subscriptionTags, provid
   });
   return items.length ? items : void 0;
 }
+function getDashboardServers(configSections) {
+  return configSections.filter(
+    (section2) => section2[".type"] === "server" && section2.enabled === "1"
+  ).map((server2) => {
+    const protocol = server2.protocol || "";
+    const byAddress = protocol === "wireguard" || protocol === "amneziawg";
+    const clients = configSections.filter(
+      (section2) => section2[".type"] === "server_client" && section2.server === server2[".name"]
+    ).map((client) => {
+      const name = client.name?.trim() || client[".name"];
+      return {
+        sectionName: client[".name"],
+        name,
+        users: byAddress ? [] : [protocol === "openvpn" ? client[".name"] : name],
+        addresses: byAddress ? getListValues(client.wireguard_address).map((address) => address.split("/")[0].trim()).filter(Boolean) : []
+      };
+    });
+    return {
+      sectionName: server2[".name"],
+      tag: getDisplayName(server2),
+      protocol,
+      port: server2.listen_port || "",
+      clients
+    };
+  });
+}
 async function getDashboardSections() {
   const configSections = hydrateConfigSections(await getConfigSections());
   setClashApiConfigSections(configSections);
   const hasSubscriptions = configSections.some(hasSubscriptionSources);
   const remoteLists = configSections.some(hasRemoteLists);
+  const servers2 = getDashboardServers(configSections);
   const [clashProxies, clashProviders] = await Promise.all([
     getClashApiProxies(),
     hasSubscriptions ? getClashApiProxyProviders() : Promise.resolve({
@@ -2932,6 +2960,7 @@ async function getDashboardSections() {
     return {
       success: false,
       data: [],
+      servers: servers2,
       hasRemoteLists: remoteLists
     };
   }
@@ -2992,6 +3021,7 @@ async function getDashboardSections() {
   return {
     success: true,
     data,
+    servers: servers2,
     hasRemoteLists: remoteLists
   };
 }
@@ -3182,17 +3212,17 @@ async function downloadConfig() {
     exportFileName(await routerHostname(), /* @__PURE__ */ new Date())
   );
 }
-function configText(text8) {
-  return (text8.charCodeAt(0) === 65279 ? text8.slice(1) : text8).replace(
+function configText(text9) {
+  return (text9.charCodeAt(0) === 65279 ? text9.slice(1) : text9).replace(
     /\r\n/g,
     "\n"
   );
 }
-async function uploadConfigText(text8) {
+async function uploadConfigText(text9) {
   const data = new FormData();
   data.append("sessionid", L.env?.sessionid ?? "");
   data.append("filename", UPLOAD_PATH);
-  data.append("filedata", new Blob([text8]), "forkop.conf");
+  data.append("filedata", new Blob([text9]), "forkop.conf");
   const response = await fetch(`${L.env?.cgi_base ?? "/cgi-bin"}/cgi-upload`, {
     method: "POST",
     body: data
@@ -3204,8 +3234,8 @@ async function uploadConfigText(text8) {
     );
   }
 }
-async function runImport(stage, text8) {
-  await uploadConfigText(text8);
+async function runImport(stage, text9) {
+  await uploadConfigText(text9);
   try {
     const reply = await callUbus({
       object: "forkop",
@@ -3225,8 +3255,8 @@ async function runImport(stage, text8) {
   }
 }
 var configImportApi = {
-  check: (text8) => runImport(false, text8),
-  stage: (text8) => runImport(true, text8)
+  check: (text9) => runImport(false, text9),
+  stage: (text9) => runImport(true, text9)
 };
 function refusalMessage(refusal) {
   switch (refusal.reason) {
@@ -3310,9 +3340,9 @@ var INSTALLER_OBJECT = "forkop.installer";
 var START_TIMEOUT_MS = 15e3;
 var STATUS_TIMEOUT_MS = 1e4;
 var READ_TIMEOUT_MS = 5e3;
-function parseJson(text8) {
+function parseJson(text9) {
   try {
-    return JSON.parse(text8);
+    return JSON.parse(text9);
   } catch {
     return null;
   }
@@ -4288,13 +4318,13 @@ function part(root, id) {
 }
 function statusOf(state) {
   if (state.starting || state.running) {
-    let text8 = _("in progress");
+    let text9 = _("in progress");
     if (state.lost) {
-      text8 = _("no answer from the router");
+      text9 = _("no answer from the router");
     } else if (state.stopping) {
-      text8 = _("stopping...");
+      text9 = _("stopping...");
     }
-    return { tone: "progress", icon: renderLoaderCircleIcon24, text: text8 };
+    return { tone: "progress", icon: renderLoaderCircleIcon24, text: text9 };
   }
   if (state.exit === 0) {
     return { tone: "success", icon: renderCircleCheckIcon24, text: _("done") };
@@ -4411,8 +4441,8 @@ function initController() {
   async function openLog() {
     logButton.disabled = true;
     try {
-      const text8 = await installerApi.log();
-      ui.showModal(_("Installer log"), renderModal(text8, "forkop-install-log"));
+      const text9 = await installerApi.log();
+      ui.showModal(_("Installer log"), renderModal(text9, "forkop-install-log"));
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : String(error),
@@ -4432,10 +4462,10 @@ function initController() {
       return;
     }
     actionsDrawn = drawn;
-    const button = (action, icon, text8, classNames, onClick) => renderButton({
+    const button = (action, icon, text9, classNames, onClick) => renderButton({
       classNames,
       icon,
-      text: text8,
+      text: text9,
       loading: live && state.action === action,
       disabled: blocked,
       onClick
@@ -4538,8 +4568,8 @@ function initController() {
       setConfigBusy(null);
     }
   }
-  async function stageConfig(text8) {
-    const staged = await configImportApi.stage(text8).catch((error) => ({
+  async function stageConfig(text9) {
+    const staged = await configImportApi.stage(text9).catch((error) => ({
       success: false,
       reason: "staging",
       to: "",
@@ -4563,8 +4593,8 @@ function initController() {
     }
     setConfigBusy("upload");
     try {
-      const text8 = configText(await file.text());
-      const check = await configImportApi.check(text8);
+      const text9 = configText(await file.text());
+      const check = await configImportApi.check(text9);
       if (!check.success) {
         showToast(refusalMessage(check), "error", REFUSAL_TOAST_MS);
       } else if (!check.changed) {
@@ -4575,7 +4605,7 @@ function initController() {
       } else {
         ui.showModal(
           _("Upload the configuration?"),
-          renderImportDialog(file.name, check, () => stageConfig(text8))
+          renderImportDialog(file.name, check, () => stageConfig(text9))
         );
       }
     } catch (error) {
@@ -5834,6 +5864,680 @@ function renderToolbar({
   return actions.length ? [textE("div", { class: "fkp_dashboard-page__toolbar" }, actions)] : [];
 }
 
+// src/forkop/tabs/servers/constants.ts
+var STYLE_ID = "forkop-server-styles";
+var DEFAULT_PROTOCOL = "mixed";
+var CLIENT_TYPE = "server_client";
+var CLIENT_OWNER_OPTION = "server";
+var MAX_CLIENT_NAME_LENGTH = 64;
+var RESERVED_PORTS = [
+  ["53", _("Forkop DNS")],
+  ["1602", _("Forkop transparent proxy")],
+  ["1603", _("Forkop transparent proxy")],
+  ["1604", _("Forkop transparent proxy")],
+  ["1605", _("Forkop transparent proxy")],
+  ["4536", _("Forkop service proxy")],
+  ["9090", _("sing-box Clash API")]
+];
+var CAMOUFLAGE_SITES = [
+  "www.microsoft.com",
+  "www.apple.com",
+  "swdist.apple.com",
+  "www.samsung.com",
+  "www.nvidia.com",
+  "www.amd.com",
+  "www.tesla.com",
+  "dl.google.com",
+  "www.bing.com",
+  "www.wolframalpha.com"
+];
+var SHADOWSOCKS_METHODS = [
+  { id: "2022-blake3-aes-256-gcm", keyBytes: 32 },
+  { id: "2022-blake3-aes-128-gcm", keyBytes: 16 },
+  { id: "2022-blake3-chacha20-poly1305", keyBytes: 32 },
+  { id: "aes-256-gcm", keyBytes: 0 },
+  { id: "aes-128-gcm", keyBytes: 0 },
+  { id: "chacha20-ietf-poly1305", keyBytes: 0 }
+];
+var TRANSPORTS = [
+  ["tcp", "TCP"],
+  ["ws", "WebSocket"],
+  ["grpc", "gRPC"],
+  ["http", "HTTP"],
+  ["httpupgrade", "HTTPUpgrade"],
+  ["xhttp", "XHTTP"]
+];
+var ALPN_PROTOCOLS = ["vless", "vmess", "trojan", "anytls"];
+var DEFAULT_CLIENT_FINGERPRINT = "chrome";
+var CLIENT_FINGERPRINTS = [
+  "chrome",
+  "firefox",
+  "edge",
+  "safari",
+  "ios",
+  "android",
+  "random"
+];
+var CLIENT_KEYS = [
+  "name",
+  "uuid",
+  "password",
+  "flow",
+  "routing_override",
+  "routing_mode",
+  "routing_section"
+];
+var CLIENT_ROUTING_MODES = [
+  ["rules", _("Rules")],
+  ["direct", _("Direct")],
+  ["section", _("Section")]
+];
+var CLIENT_ROUTING_KEYS = [
+  "routing_override",
+  "routing_mode",
+  "routing_section"
+];
+
+// src/forkop/services/coreFeatures.service.ts
+var report = null;
+function setCoreFeatures(value) {
+  if (value === void 0) {
+    return;
+  }
+  report = value && value.known ? value : null;
+}
+function coreHas(feature) {
+  return !report || report.features[feature]?.available !== false;
+}
+function coreFeatureTags(feature) {
+  return report?.features[feature]?.tags || [];
+}
+function coreFeatureOfType(type, kinds = ["outbound", "endpoint"]) {
+  for (const kind of kinds) {
+    const feature = report?.types[kind]?.[type];
+    if (feature) {
+      return feature;
+    }
+  }
+  return "";
+}
+function coreSupportsType(type, kinds) {
+  const feature = coreFeatureOfType(type, kinds);
+  return !feature || coreHas(feature);
+}
+function coreHasAnyEndpoint() {
+  return !report || Object.values(report.types.endpoint || {}).some(
+    (feature) => coreHas(feature)
+  );
+}
+function missingCoreTags(feature) {
+  const present = new Set(report?.tags || []);
+  return coreFeatureTags(feature).filter((tag) => !present.has(tag));
+}
+function missingCoreFeatureNote(feature) {
+  return _("the installed sing-box lacks %s").format(
+    missingCoreTags(feature).join(", ")
+  );
+}
+function validateCoreFeature(feature) {
+  return !feature || coreHas(feature) ? true : _("sing-box is built without %s").format(
+    missingCoreTags(feature).join(", ")
+  );
+}
+var ALWAYS_TLS_TYPES = /* @__PURE__ */ new Set([
+  "trojan",
+  "tuic",
+  "hysteria",
+  "hysteria2",
+  "anytls"
+]);
+function linkQuery(link) {
+  const start = link.indexOf("?");
+  const query = /* @__PURE__ */ new Map();
+  if (start < 0) {
+    return query;
+  }
+  const text9 = link.slice(start + 1).split("#")[0];
+  for (const pair of text9.split("&")) {
+    const equals = pair.indexOf("=");
+    const key = (equals < 0 ? pair : pair.slice(0, equals)).toLowerCase();
+    if (key && !query.has(key)) {
+      query.set(key, equals < 0 ? "" : pair.slice(equals + 1));
+    }
+  }
+  return query;
+}
+function vmessPayload(link) {
+  const body = link.slice(link.indexOf("://") + 3).split("#")[0].replace(/-/g, "+").replace(/_/g, "/");
+  try {
+    const payload = JSON.parse(
+      atob(body.padEnd(body.length + (4 - body.length % 4) % 4, "="))
+    );
+    return payload && typeof payload === "object" && !Array.isArray(payload) ? payload : null;
+  } catch {
+    return null;
+  }
+}
+function linkUsesUtls(type, link) {
+  if (type === "vmess") {
+    const payload = vmessPayload(link);
+    if (payload) {
+      const tls2 = `${payload.tls ?? ""}`.toLowerCase();
+      return (tls2 === "tls" || tls2 === "1" || tls2 === "true" || payload.net === "h2") && `${payload.fp ?? ""}` !== "";
+    }
+  }
+  const query = linkQuery(link);
+  const security = (query.get("security") || "").toLowerCase();
+  if (security === "reality" || query.get("pbk")) {
+    return true;
+  }
+  const tls = ALWAYS_TLS_TYPES.has(type) || security === "tls" || security === "xtls";
+  return tls && Boolean(query.get("fp") || query.get("client-fingerprint"));
+}
+function queryValue(value) {
+  try {
+    return decodeURIComponent(value || "").trim();
+  } catch {
+    return `${value || ""}`.trim();
+  }
+}
+function linkUsesXhttpHttp3(type, link) {
+  if (!["vless", "vmess", "trojan"].includes(type) || type === "vmess" && vmessPayload(link)) {
+    return false;
+  }
+  const query = linkQuery(link);
+  const transport3 = queryValue(query.get("type")) || queryValue(query.get("net"));
+  const security = queryValue(query.get("security")).toLowerCase();
+  const reality = security === "reality" || Boolean(query.get("pbk"));
+  const alpn = queryValue(query.get("alpn")).split(",").map((item) => item.trim()).filter(Boolean);
+  return (transport3 === "xhttp" || transport3 === "splithttp") && (type === "trojan" || ["tls", "xtls"].includes(security)) && !reality && alpn.length === 1 && alpn[0] === "h3";
+}
+function linkCoreFeatures(link) {
+  const value = `${link || ""}`.trim();
+  const separator = value.indexOf("://");
+  const scheme = separator > 0 ? value.slice(0, separator).toLowerCase() : "";
+  const type = report?.links[scheme] || "";
+  const features = [];
+  const feature = coreFeatureOfType(type, ["outbound"]);
+  if (feature) {
+    features.push(feature);
+  }
+  if (linkUsesXhttpHttp3(type, value)) {
+    features.push("quic");
+  }
+  if (report && linkUsesUtls(type, value)) {
+    features.push("utls");
+  }
+  return features;
+}
+async function loadCoreFeatures() {
+  const served = await callUbus({
+    object: FORKOP_SERVICE_OBJECT,
+    method: "state",
+    timeoutMs: FORKOP_CALL_TIMEOUT_MS,
+    retryUnavailable: false
+  });
+  if (served.success && served.data?.capabilities?.core) {
+    setCoreFeatures(served.data.capabilities.core);
+    return;
+  }
+  const answer = await ForkopShellMethods.getCoreFeatures();
+  if (answer.success) {
+    setCoreFeatures(answer.data);
+  }
+}
+
+// src/forkop/tabs/servers/formValues.ts
+function asList(value) {
+  if (!value) {
+    return [];
+  }
+  return Array.isArray(value) ? value.filter(Boolean) : [`${value}`];
+}
+function option(sectionId, name) {
+  return uci.get(FORKOP_UCI_PACKAGE, sectionId, name) || "";
+}
+function optionList(sectionId, name) {
+  return asList(uci.get(FORKOP_UCI_PACKAGE, sectionId, name));
+}
+function widgetNode(sectionId, name) {
+  const id = `cbid.${FORKOP_UCI_PACKAGE}.${sectionId}.${name}`;
+  const modal = document.querySelector("#modal_overlay > .modal");
+  return modal && modal.querySelector(`[id="${id}"]`) || document.getElementById(id);
+}
+function liveElement(sectionId, name) {
+  const node = widgetNode(sectionId, name);
+  const element3 = node ? dom.findClassInstance(node) : null;
+  return element3 && typeof element3.getValue === "function" ? element3 : null;
+}
+function liveOption(sectionId, name) {
+  const element3 = liveElement(sectionId, name);
+  if (!element3) {
+    return option(sectionId, name);
+  }
+  const value = element3.getValue();
+  return value == null ? "" : `${value}`;
+}
+function isEmptyValue(value) {
+  return value == null || value === "" || Array.isArray(value) && value.filter((item) => item != null && item !== "").length === 0;
+}
+function valueList(value) {
+  return (Array.isArray(value) ? value : [value]).filter(
+    (item) => item != null && item !== ""
+  );
+}
+function hasControlCharacters(value) {
+  return Array.from(value).some((char) => {
+    const code = char.codePointAt(0);
+    return code < 32 || code === 127;
+  });
+}
+
+// src/forkop/tabs/servers/protocols.ts
+var PROTOCOLS = [
+  {
+    id: "mixed",
+    label: "Mixed",
+    kind: "inbound",
+    securities: ["none"],
+    login: true,
+    optionalAuth: "mixed_auth_enabled",
+    credentials: ["password"],
+    link: "socks5"
+  },
+  {
+    id: "vless",
+    label: "VLESS",
+    kind: "inbound",
+    securities: ["reality", "tls", "none"],
+    transport: true,
+    multiplex: true,
+    credentials: ["uuid", "flow"],
+    link: "vless"
+  },
+  {
+    id: "vmess",
+    label: "VMess",
+    kind: "inbound",
+    securities: ["tls", "none"],
+    transport: true,
+    multiplex: true,
+    credentials: ["uuid"],
+    link: "vmess"
+  },
+  {
+    id: "trojan",
+    label: "Trojan",
+    kind: "inbound",
+    securities: ["tls"],
+    transport: true,
+    multiplex: true,
+    credentials: ["password"],
+    link: "trojan"
+  },
+  {
+    id: "shadowsocks",
+    label: "Shadowsocks",
+    kind: "inbound",
+    securities: ["none"],
+    multiplex: true,
+    credentials: ["password"],
+    link: "ss"
+  },
+  {
+    id: "hysteria2",
+    label: "Hysteria2",
+    kind: "inbound",
+    securities: ["tls"],
+    credentials: ["password"],
+    link: "hysteria2"
+  },
+  {
+    id: "tuic",
+    label: "TUIC",
+    kind: "inbound",
+    securities: ["tls"],
+    credentials: ["uuid", "password"],
+    link: "tuic"
+  },
+  {
+    id: "anytls",
+    label: "AnyTLS",
+    kind: "inbound",
+    securities: ["tls"],
+    credentials: ["password"],
+    link: "anytls"
+  },
+  {
+    id: "naive",
+    label: "NaiveProxy",
+    kind: "inbound",
+    securities: ["tls"],
+    login: true,
+    credentials: ["password"],
+    link: "naive"
+  },
+  {
+    id: "mieru",
+    label: "Mieru",
+    kind: "inbound",
+    securities: ["none"],
+    login: true,
+    credentials: ["password"],
+    link: "mierus"
+  },
+  {
+    id: "trusttunnel",
+    label: "TrustTunnel",
+    kind: "inbound",
+    securities: ["tls"],
+    login: true,
+    credentials: ["password"],
+    link: "tt"
+  },
+  {
+    id: "tailscale",
+    label: "Tailscale",
+    kind: "endpoint",
+    securities: ["none"],
+    credentials: []
+  },
+  {
+    id: "wireguard",
+    label: "WireGuard",
+    kind: "endpoint",
+    listener: true,
+    anyAddress: true,
+    securities: ["none"],
+    credentials: [],
+    clients: true,
+    profile: true,
+    tunnel: true
+  },
+  {
+    id: "amneziawg",
+    label: "AmneziaWG",
+    kind: "endpoint",
+    listener: true,
+    anyAddress: true,
+    securities: ["none"],
+    credentials: [],
+    clients: true,
+    profile: true,
+    tunnel: true
+  },
+  {
+    id: "openvpn",
+    label: "OpenVPN",
+    kind: "endpoint",
+    coreType: "openvpn-server",
+    listener: true,
+    securities: ["none"],
+    credentials: [],
+    clients: true,
+    profile: true,
+    tunnel: true
+  },
+  {
+    id: "json_inbound",
+    label: _("JSON inbound"),
+    kind: "json",
+    securities: ["none"],
+    credentials: []
+  }
+];
+var PROTOCOL_BY_ID = new Map(
+  PROTOCOLS.map((entry) => [entry.id, entry])
+);
+function protocolSpec(protocol) {
+  return PROTOCOL_BY_ID.get(`${protocol || ""}`) || null;
+}
+function getProtocol(sectionId) {
+  return liveOption(sectionId, "protocol") || DEFAULT_PROTOCOL;
+}
+function protocolLabel(protocol) {
+  const spec = protocolSpec(protocol);
+  return spec ? spec.label : `${protocol || ""}`;
+}
+function protocolsWhere(predicate) {
+  return PROTOCOLS.filter(predicate).map((entry) => entry.id);
+}
+function protocolsWith(flag2) {
+  return protocolsWhere((entry) => !!entry[flag2]);
+}
+function listenerProtocols() {
+  return protocolsWhere(
+    (entry) => entry.kind === "inbound" || !!entry.listener
+  );
+}
+function listenTransports(protocol, network2) {
+  const value = `${network2 || ""}`.toLowerCase();
+  const http = protocol === "naive" || protocol === "trusttunnel";
+  if (protocol === "openvpn") return [value === "tcp" ? "tcp" : "udp"];
+  if (protocol === "hysteria2" || protocol === "tuic" || protocol === "wireguard" || protocol === "amneziawg")
+    return ["udp"];
+  if (protocol === "shadowsocks" || http && value === "tcp_udp")
+    return ["tcp", "udp"];
+  if ((http || protocol === "mieru") && value === "udp") return ["udp"];
+  return ["tcp"];
+}
+function listOf(value) {
+  return (Array.isArray(value) ? value : `${value ?? ""}`.split(/[\s,]+/)).map((item) => `${item}`.trim()).filter(Boolean);
+}
+function servesXhttpHttp3(protocol, value) {
+  const alpn = listOf(value("tls_alpn"));
+  return ["vless", "vmess", "trojan"].includes(protocol) && `${value("transport") || "tcp"}` === "xhttp" && effectiveSecurity(protocol, `${value("security") || ""}`) === "tls" && alpn.length === 1 && alpn[0] === "h3";
+}
+function serverListenTransports(protocol, value) {
+  if (servesXhttpHttp3(protocol, value)) {
+    return ["udp"];
+  }
+  const network2 = transportOption(protocol);
+  return listenTransports(protocol, network2 ? `${value(network2) || ""}` : "");
+}
+var TRANSPORT_OPTIONS = {
+  naive: "naive_network",
+  trusttunnel: "trusttunnel_network",
+  mieru: "mieru_transport",
+  openvpn: "openvpn_network"
+};
+function transportOption(protocol) {
+  return TRANSPORT_OPTIONS[protocol] || "";
+}
+function hasListener(protocol) {
+  const spec = protocolSpec(protocol);
+  return !!spec && (spec.kind === "inbound" || !!spec.listener);
+}
+function credentialFields(protocol) {
+  const spec = protocolSpec(protocol);
+  return spec ? (spec.credentials || []).slice() : [];
+}
+function usesClients(protocol) {
+  return credentialFields(protocol).length > 0 || !!protocolSpec(protocol)?.clients;
+}
+function usesProfile(protocol) {
+  return !!protocolSpec(protocol)?.profile;
+}
+function usesLoginName(protocol) {
+  const spec = protocolSpec(protocol);
+  return !!spec && !!spec.login;
+}
+function linkScheme(protocol) {
+  const spec = protocolSpec(protocol);
+  return spec && spec.link ? spec.link : "";
+}
+function securitiesFor(protocol) {
+  const spec = protocolSpec(protocol);
+  return spec ? spec.securities.slice() : ["none"];
+}
+function securityCoreFeature(security) {
+  return security === "reality" ? "utls" : "";
+}
+function defaultSecurity(protocol) {
+  const allowed = securitiesFor(protocol);
+  return allowed.find((security) => {
+    const feature = securityCoreFeature(security);
+    return !feature || coreHas(feature);
+  }) || allowed[0];
+}
+function securityLabel(security) {
+  if (security === "reality") {
+    return "Reality";
+  }
+  if (security === "tls") {
+    return "TLS";
+  }
+  return _("None");
+}
+function effectiveSecurity(protocol, security) {
+  const allowed = securitiesFor(protocol);
+  return allowed.includes(security) ? security : allowed[0];
+}
+function getEffectiveSecurity(sectionId) {
+  return effectiveSecurity(
+    getProtocol(sectionId),
+    liveOption(sectionId, "security")
+  );
+}
+function authFlagOption(protocol) {
+  const spec = protocolSpec(protocol);
+  return spec && spec.optionalAuth ? spec.optionalAuth : "";
+}
+function isAuthenticationEnabled(sectionId) {
+  const flag2 = authFlagOption(getProtocol(sectionId));
+  if (!flag2) {
+    return true;
+  }
+  const value = liveOption(sectionId, flag2);
+  return value === "" ? true : !["0", "false", "no", "off"].includes(value.toLowerCase());
+}
+function getServerName(sectionId) {
+  return option(sectionId, "label") || sectionId;
+}
+function supportsVisionFlow(sectionId) {
+  if (getProtocol(sectionId) !== "vless") {
+    return false;
+  }
+  if ((liveOption(sectionId, "transport") || "tcp") !== "tcp") {
+    return false;
+  }
+  if (liveOption(sectionId, "multiplex_enabled") === "1") {
+    return false;
+  }
+  return getEffectiveSecurity(sectionId) !== "none";
+}
+function shadowsocksKeyBytes(method) {
+  const entry = SHADOWSOCKS_METHODS.find((item) => item.id === method);
+  return entry ? entry.keyBytes : 0;
+}
+function isShadowsocks2022(method) {
+  return shadowsocksKeyBytes(method) > 0;
+}
+function getShadowsocksMethod(sectionId) {
+  return liveOption(sectionId, "shadowsocks_method") || SHADOWSOCKS_METHODS[0].id;
+}
+function certificateSource(sectionId) {
+  return getProtocol(sectionId) === "naive" || liveOption(sectionId, "tls_certificate_source") === "custom" ? "custom" : "self_signed";
+}
+function usesSelfSignedCertificate(sectionId) {
+  return getEffectiveSecurity(sectionId) === "tls" && certificateSource(sectionId) === "self_signed";
+}
+function protocolCoreFeature(protocol) {
+  const spec = protocolSpec(protocol);
+  if (!spec || spec.kind === "json") {
+    return "";
+  }
+  return coreFeatureOfType(spec.coreType || spec.id, [
+    spec.kind === "endpoint" ? "endpoint" : "inbound"
+  ]);
+}
+function serverMissingCoreFeature(sectionId) {
+  const protocol = getProtocol(sectionId);
+  const needed = [
+    protocolCoreFeature(protocol),
+    securityCoreFeature(getEffectiveSecurity(sectionId)),
+    (protocol === "naive" || protocol === "trusttunnel") && ["udp", "tcp_udp"].includes(
+      liveOption(sectionId, transportOption(protocol))
+    ) || servesXhttpHttp3(protocol, (name) => liveOption(sectionId, name)) ? "quic" : ""
+  ];
+  return needed.find((feature) => feature && !coreHas(feature)) || "";
+}
+
+// src/forkop/tabs/dashboard/partials/renderServers.ts
+function renderClient(client, live) {
+  const online2 = live && client.online;
+  const speed = online2 && client.up !== null && client.down !== null ? `\u2193 ${prettyBytes(client.down)}/s  \u2191 ${prettyBytes(client.up)}/s` : "";
+  return textE(
+    "div",
+    {
+      class: [
+        "fkp_dashboard-page__outbound-grid__item",
+        online2 ? "fkp_dashboard-page__outbound-grid__item--active" : ""
+      ].filter(Boolean).join(" ")
+    },
+    [
+      textE("div", { class: "fkp_dashboard-page__outbound-grid__item__header" }, [
+        textE("b", {}, client.name),
+        textE(
+          "span",
+          {
+            class: `fkp_dashboard-page__server-client__status${online2 ? " fkp_dashboard-page__server-client__status--online" : ""}`
+          },
+          live ? online2 ? _("Online") : _("Offline") : "\u2014"
+        )
+      ]),
+      textE("div", { class: "fkp_dashboard-page__outbound-grid__item__footer" }, [
+        textE(
+          "div",
+          { class: "fkp_dashboard-page__outbound-grid__item__type" },
+          online2 ? client.addresses.join(", ") : ""
+        ),
+        textE("div", { class: "fkp_dashboard-page__server-client__speed" }, speed)
+      ])
+    ]
+  );
+}
+function renderServers({ server: server2, live }) {
+  const online2 = server2.clients.filter((client) => client.online).length;
+  const details = [protocolLabel(server2.protocol), server2.port].filter(Boolean).join(" \xB7 ");
+  return textE("div", { class: "fkp_dashboard-page__outbound-section" }, [
+    textE("div", { class: "fkp_dashboard-page__outbound-section__title-section" }, [
+      textE("div", { class: "fkp_dashboard-page__outbound-section__heading" }, [
+        textE(
+          "div",
+          {
+            class: "fkp_dashboard-page__outbound-section__title-section__title"
+          },
+          server2.tag
+        ),
+        ...details ? [
+          textE(
+            "span",
+            { class: "fkp_dashboard-page__outbound-section__current" },
+            details
+          )
+        ] : []
+      ]),
+      ...live && server2.clients.length ? [
+        textE(
+          "span",
+          { class: "fkp_dashboard-page__server-client__status" },
+          `${_("Online")}: ${online2} / ${server2.clients.length}`
+        )
+      ] : []
+    ]),
+    server2.clients.length ? textE(
+      "div",
+      { class: "fkp_dashboard-page__outbound-grid" },
+      server2.clients.map((client) => renderClient(client, live))
+    ) : textE(
+      "div",
+      { class: "fkp_dashboard-page__server-client__empty" },
+      _("No connected clients")
+    )
+  ]);
+}
+
 // src/forkop/tabs/dashboard/render.ts
 function render2() {
   return textE(
@@ -5886,6 +6590,7 @@ function render2() {
             })
           )
         ]),
+        textE("div", { id: "dashboard-servers-grid" }),
         textE("div", { id: "dashboard-sections-toolbar" }),
         textE(
           "div",
@@ -6228,155 +6933,6 @@ function getLocalActionOverlay() {
   return {
     serviceActions: new Set(serviceActions)
   };
-}
-
-// src/forkop/services/coreFeatures.service.ts
-var report = null;
-function setCoreFeatures(value) {
-  if (value === void 0) {
-    return;
-  }
-  report = value && value.known ? value : null;
-}
-function coreHas(feature) {
-  return !report || report.features[feature]?.available !== false;
-}
-function coreFeatureTags(feature) {
-  return report?.features[feature]?.tags || [];
-}
-function coreFeatureOfType(type, kinds = ["outbound", "endpoint"]) {
-  for (const kind of kinds) {
-    const feature = report?.types[kind]?.[type];
-    if (feature) {
-      return feature;
-    }
-  }
-  return "";
-}
-function coreSupportsType(type, kinds) {
-  const feature = coreFeatureOfType(type, kinds);
-  return !feature || coreHas(feature);
-}
-function coreHasAnyEndpoint() {
-  return !report || Object.values(report.types.endpoint || {}).some(
-    (feature) => coreHas(feature)
-  );
-}
-function missingCoreTags(feature) {
-  const present = new Set(report?.tags || []);
-  return coreFeatureTags(feature).filter((tag) => !present.has(tag));
-}
-function missingCoreFeatureNote(feature) {
-  return _("the installed sing-box lacks %s").format(
-    missingCoreTags(feature).join(", ")
-  );
-}
-function validateCoreFeature(feature) {
-  return !feature || coreHas(feature) ? true : _("sing-box is built without %s").format(
-    missingCoreTags(feature).join(", ")
-  );
-}
-var ALWAYS_TLS_TYPES = /* @__PURE__ */ new Set([
-  "trojan",
-  "tuic",
-  "hysteria",
-  "hysteria2",
-  "anytls"
-]);
-function linkQuery(link) {
-  const start = link.indexOf("?");
-  const query = /* @__PURE__ */ new Map();
-  if (start < 0) {
-    return query;
-  }
-  const text8 = link.slice(start + 1).split("#")[0];
-  for (const pair of text8.split("&")) {
-    const equals = pair.indexOf("=");
-    const key = (equals < 0 ? pair : pair.slice(0, equals)).toLowerCase();
-    if (key && !query.has(key)) {
-      query.set(key, equals < 0 ? "" : pair.slice(equals + 1));
-    }
-  }
-  return query;
-}
-function vmessPayload(link) {
-  const body = link.slice(link.indexOf("://") + 3).split("#")[0].replace(/-/g, "+").replace(/_/g, "/");
-  try {
-    const payload = JSON.parse(
-      atob(body.padEnd(body.length + (4 - body.length % 4) % 4, "="))
-    );
-    return payload && typeof payload === "object" && !Array.isArray(payload) ? payload : null;
-  } catch {
-    return null;
-  }
-}
-function linkUsesUtls(type, link) {
-  if (type === "vmess") {
-    const payload = vmessPayload(link);
-    if (payload) {
-      const tls2 = `${payload.tls ?? ""}`.toLowerCase();
-      return (tls2 === "tls" || tls2 === "1" || tls2 === "true" || payload.net === "h2") && `${payload.fp ?? ""}` !== "";
-    }
-  }
-  const query = linkQuery(link);
-  const security = (query.get("security") || "").toLowerCase();
-  if (security === "reality" || query.get("pbk")) {
-    return true;
-  }
-  const tls = ALWAYS_TLS_TYPES.has(type) || security === "tls" || security === "xtls";
-  return tls && Boolean(query.get("fp") || query.get("client-fingerprint"));
-}
-function queryValue(value) {
-  try {
-    return decodeURIComponent(value || "").trim();
-  } catch {
-    return `${value || ""}`.trim();
-  }
-}
-function linkUsesXhttpHttp3(type, link) {
-  if (!["vless", "vmess", "trojan"].includes(type) || type === "vmess" && vmessPayload(link)) {
-    return false;
-  }
-  const query = linkQuery(link);
-  const transport3 = queryValue(query.get("type")) || queryValue(query.get("net"));
-  const security = queryValue(query.get("security")).toLowerCase();
-  const reality = security === "reality" || Boolean(query.get("pbk"));
-  const alpn = queryValue(query.get("alpn")).split(",").map((item) => item.trim()).filter(Boolean);
-  return (transport3 === "xhttp" || transport3 === "splithttp") && (type === "trojan" || ["tls", "xtls"].includes(security)) && !reality && alpn.length === 1 && alpn[0] === "h3";
-}
-function linkCoreFeatures(link) {
-  const value = `${link || ""}`.trim();
-  const separator = value.indexOf("://");
-  const scheme = separator > 0 ? value.slice(0, separator).toLowerCase() : "";
-  const type = report?.links[scheme] || "";
-  const features = [];
-  const feature = coreFeatureOfType(type, ["outbound"]);
-  if (feature) {
-    features.push(feature);
-  }
-  if (linkUsesXhttpHttp3(type, value)) {
-    features.push("quic");
-  }
-  if (report && linkUsesUtls(type, value)) {
-    features.push("utls");
-  }
-  return features;
-}
-async function loadCoreFeatures() {
-  const served = await callUbus({
-    object: FORKOP_SERVICE_OBJECT,
-    method: "state",
-    timeoutMs: FORKOP_CALL_TIMEOUT_MS,
-    retryUnavailable: false
-  });
-  if (served.success && served.data?.capabilities?.core) {
-    setCoreFeatures(served.data.capabilities.core);
-    return;
-  }
-  const answer = await ForkopShellMethods.getCoreFeatures();
-  if (answer.success) {
-    setCoreFeatures(answer.data);
-  }
 }
 
 // src/forkop/services/uiState.service.ts
@@ -6865,6 +7421,155 @@ var SocketManager = class _SocketManager {
 };
 var socket = SocketManager.getInstance();
 
+// src/forkop/tabs/monitoring/source.ts
+var SYSTEM_SOURCE_KEY = "@system";
+var SYSTEM_INBOUND_TAGS = /* @__PURE__ */ new Set(["system-in", "system6-in"]);
+var KIND_ORDER = ["system", "device", "server"];
+var collator = new Intl.Collator(void 0, {
+  numeric: true,
+  sensitivity: "base"
+});
+function text(value) {
+  return value == null ? "" : String(value).trim();
+}
+function isLoopback(ip) {
+  return ip === "::1" || /^(::ffff:)?127\./.test(ip);
+}
+function connectionInboundTag(connection) {
+  const type = text(connection.metadata?.type);
+  const tag = text(type.split("/").slice(1).join("/") || type);
+  if (tag) {
+    return tag;
+  }
+  return text(text(connection.rule).match(/(?:^|\s)inbound=([^\s]+)/)?.[1]);
+}
+function sourceLabel(name, detail) {
+  return [name, detail].filter(Boolean).join(" \xB7 ");
+}
+function describeSource(connection, names) {
+  const ip = text(connection.metadata?.sourceIP);
+  const tag = connectionInboundTag(connection);
+  const search = (...values) => [...values, ip, tag].filter(Boolean).join(" ");
+  if (SYSTEM_INBOUND_TAGS.has(tag) || !names.servers.has(tag) && isLoopback(ip)) {
+    const name2 = _("System");
+    return {
+      key: SYSTEM_SOURCE_KEY,
+      kind: "system",
+      name: name2,
+      detail: "",
+      server: "",
+      search: search(name2)
+    };
+  }
+  if (names.servers.has(tag)) {
+    const user = text(connection.metadata?.user);
+    const byAddress = user ? "" : text(names.clients[tag]?.[ip]);
+    const name2 = text(names.clients[tag]?.[user]) || user || byAddress || tag;
+    const detail = user || byAddress ? tag : ip;
+    return {
+      key: JSON.stringify([tag, user, user ? "" : ip]),
+      kind: "server",
+      name: name2,
+      detail,
+      server: tag,
+      search: search(sourceLabel(name2, detail))
+    };
+  }
+  const name = text(names.devices[ip]);
+  return {
+    key: ip,
+    kind: "device",
+    name,
+    detail: ip,
+    server: "",
+    search: search(name)
+  };
+}
+function compareSources(a, b) {
+  return KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || collator.compare(a.server, b.server) || Number(!a.name) - Number(!b.name) || collator.compare(a.name, b.name) || collator.compare(a.detail, b.detail) || a.key.localeCompare(b.key);
+}
+
+// src/forkop/tabs/dashboard/serverActivity.ts
+function text2(value) {
+  return value == null ? "" : String(value).trim();
+}
+function describeServers(servers2, connections, previous, seconds3) {
+  const counters = /* @__PURE__ */ new Map();
+  const byTag = new Map(servers2.map((server2) => [server2.tag, server2]));
+  const views = new Map(
+    servers2.map((server2) => [
+      server2.tag,
+      new Map(
+        server2.clients.map((client) => [
+          client.sectionName,
+          {
+            key: client.sectionName,
+            name: client.name,
+            online: false,
+            addresses: [],
+            up: previous ? 0 : null,
+            down: previous ? 0 : null
+          }
+        ])
+      )
+    ])
+  );
+  for (const connection of connections) {
+    const server2 = byTag.get(connectionInboundTag(connection));
+    if (!server2) {
+      continue;
+    }
+    const user = text2(connection.metadata?.user);
+    const ip = text2(connection.metadata?.sourceIP);
+    const client = server2.clients.find(
+      (item) => user ? item.users.includes(user) : item.addresses.includes(ip)
+    );
+    const key = client?.sectionName || `@${user || ip}`;
+    const clients = views.get(server2.tag);
+    let view = clients.get(key);
+    if (!view) {
+      view = {
+        key,
+        name: user || ip,
+        online: false,
+        addresses: [],
+        up: previous ? 0 : null,
+        down: previous ? 0 : null
+      };
+      clients.set(key, view);
+    }
+    view.online = true;
+    if (ip && !view.addresses.includes(ip)) {
+      view.addresses.push(ip);
+    }
+    const up = Number(connection.upload) || 0;
+    const down = Number(connection.download) || 0;
+    const id = text2(connection.id);
+    if (id) {
+      counters.set(id, { up, down });
+    }
+    if (previous && seconds3 > 0) {
+      const before = previous.get(id) || { up: 0, down: 0 };
+      view.up += Math.max(0, up - before.up) / seconds3;
+      view.down += Math.max(0, down - before.down) / seconds3;
+    }
+  }
+  return {
+    servers: servers2.map((server2) => ({
+      sectionName: server2.sectionName,
+      tag: server2.tag,
+      protocol: server2.protocol,
+      port: server2.port,
+      clients: [...views.get(server2.tag).values()].map((view) => ({
+        ...view,
+        up: view.up === null ? null : Math.round(view.up),
+        down: view.down === null ? null : Math.round(view.down)
+      }))
+    })),
+    counters
+  };
+}
+
 // src/forkop/tabs/dashboard/exitNodeName.ts
 function exitNodeName(section2, tag) {
   if (!tag) {
@@ -6994,86 +7699,12 @@ async function resolveOutboundProxyLink(outbound, fetchProxyLink) {
   return isCopyableProxyLink(runtimeLink) ? runtimeLink : "";
 }
 
-// src/forkop/tabs/servers/constants.ts
-var STYLE_ID = "forkop-server-styles";
-var DEFAULT_PROTOCOL = "mixed";
-var CLIENT_TYPE = "server_client";
-var CLIENT_OWNER_OPTION = "server";
-var MAX_CLIENT_NAME_LENGTH = 64;
-var RESERVED_PORTS = [
-  ["53", _("Forkop DNS")],
-  ["1602", _("Forkop transparent proxy")],
-  ["1603", _("Forkop transparent proxy")],
-  ["1604", _("Forkop transparent proxy")],
-  ["1605", _("Forkop transparent proxy")],
-  ["4536", _("Forkop service proxy")],
-  ["9090", _("sing-box Clash API")]
-];
-var CAMOUFLAGE_SITES = [
-  "www.microsoft.com",
-  "www.apple.com",
-  "swdist.apple.com",
-  "www.samsung.com",
-  "www.nvidia.com",
-  "www.amd.com",
-  "www.tesla.com",
-  "dl.google.com",
-  "www.bing.com",
-  "www.wolframalpha.com"
-];
-var SHADOWSOCKS_METHODS = [
-  { id: "2022-blake3-aes-256-gcm", keyBytes: 32 },
-  { id: "2022-blake3-aes-128-gcm", keyBytes: 16 },
-  { id: "2022-blake3-chacha20-poly1305", keyBytes: 32 },
-  { id: "aes-256-gcm", keyBytes: 0 },
-  { id: "aes-128-gcm", keyBytes: 0 },
-  { id: "chacha20-ietf-poly1305", keyBytes: 0 }
-];
-var TRANSPORTS = [
-  ["tcp", "TCP"],
-  ["ws", "WebSocket"],
-  ["grpc", "gRPC"],
-  ["http", "HTTP"],
-  ["httpupgrade", "HTTPUpgrade"],
-  ["xhttp", "XHTTP"]
-];
-var ALPN_PROTOCOLS = ["vless", "vmess", "trojan", "anytls"];
-var DEFAULT_CLIENT_FINGERPRINT = "chrome";
-var CLIENT_FINGERPRINTS = [
-  "chrome",
-  "firefox",
-  "edge",
-  "safari",
-  "ios",
-  "android",
-  "random"
-];
-var CLIENT_KEYS = [
-  "name",
-  "uuid",
-  "password",
-  "flow",
-  "routing_override",
-  "routing_mode",
-  "routing_section"
-];
-var CLIENT_ROUTING_MODES = [
-  ["rules", _("Rules")],
-  ["direct", _("Direct")],
-  ["section", _("Section")]
-];
-var CLIENT_ROUTING_KEYS = [
-  "routing_override",
-  "routing_mode",
-  "routing_section"
-];
-
 // src/helpers/pem.ts
 var BEGIN = /^-----BEGIN ([A-Za-z0-9 #-]+)-----$/;
-function pemBlocks(text8) {
+function pemBlocks(text9) {
   const blocks = [];
   let current = null;
-  for (const raw of `${text8 || ""}`.split(/\r?\n/)) {
+  for (const raw of `${text9 || ""}`.split(/\r?\n/)) {
     const line = raw.trim();
     if (!current) {
       const begin = BEGIN.exec(line);
@@ -7092,12 +7723,12 @@ function pemBlocks(text8) {
   return blocks;
 }
 function decodeBase64(body) {
-  const text8 = `${body || ""}`.replace(/\s+/g, "");
-  if (!text8 || !/^[A-Za-z0-9+/]+={0,2}$/.test(text8) || text8.length % 4 !== 0) {
+  const text9 = `${body || ""}`.replace(/\s+/g, "");
+  if (!text9 || !/^[A-Za-z0-9+/]+={0,2}$/.test(text9) || text9.length % 4 !== 0) {
     return null;
   }
   try {
-    const binary = atob(text8);
+    const binary = atob(text9);
     return Uint8Array.from(binary, (char) => char.charCodeAt(0));
   } catch (_error) {
     return null;
@@ -7218,21 +7849,21 @@ function field(tag, value) {
     ...Array.from(value)
   ];
 }
-function text(value) {
+function text3(value) {
   return new TextEncoder().encode(value);
 }
 function encodeTrustTunnelLink(link) {
   const payload = [
     ...field(FIELD.version, writeVarint(FORMAT_VERSION)),
-    ...field(FIELD.hostname, text(link.hostname)),
-    ...field(FIELD.username, text(link.username)),
-    ...field(FIELD.password, text(link.password)),
-    ...field(FIELD.address, text(link.address)),
-    ...link.customSni ? field(FIELD.customSni, text(link.customSni)) : [],
+    ...field(FIELD.hostname, text3(link.hostname)),
+    ...field(FIELD.username, text3(link.username)),
+    ...field(FIELD.password, text3(link.password)),
+    ...field(FIELD.address, text3(link.address)),
+    ...link.customSni ? field(FIELD.customSni, text3(link.customSni)) : [],
     ...link.skipVerification ? field(FIELD.skipVerification, [1]) : [],
     ...link.certificate ? field(FIELD.certificate, link.certificate) : [],
     ...link.http3 ? field(FIELD.upstreamProtocol, writeVarint(HTTP3)) : [],
-    ...link.name ? field(FIELD.name, text(link.name)) : []
+    ...link.name ? field(FIELD.name, text3(link.name)) : []
   ];
   const encoded = btoa(String.fromCharCode(...payload)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   return `tt://?${encoded}`;
@@ -7263,382 +7894,6 @@ function trustTunnelLinkName(source) {
     offset = size.next + size.value;
   }
   return name;
-}
-
-// src/forkop/tabs/servers/formValues.ts
-function asList(value) {
-  if (!value) {
-    return [];
-  }
-  return Array.isArray(value) ? value.filter(Boolean) : [`${value}`];
-}
-function option(sectionId, name) {
-  return uci.get(FORKOP_UCI_PACKAGE, sectionId, name) || "";
-}
-function optionList(sectionId, name) {
-  return asList(uci.get(FORKOP_UCI_PACKAGE, sectionId, name));
-}
-function widgetNode(sectionId, name) {
-  const id = `cbid.${FORKOP_UCI_PACKAGE}.${sectionId}.${name}`;
-  const modal = document.querySelector("#modal_overlay > .modal");
-  return modal && modal.querySelector(`[id="${id}"]`) || document.getElementById(id);
-}
-function liveElement(sectionId, name) {
-  const node = widgetNode(sectionId, name);
-  const element3 = node ? dom.findClassInstance(node) : null;
-  return element3 && typeof element3.getValue === "function" ? element3 : null;
-}
-function liveOption(sectionId, name) {
-  const element3 = liveElement(sectionId, name);
-  if (!element3) {
-    return option(sectionId, name);
-  }
-  const value = element3.getValue();
-  return value == null ? "" : `${value}`;
-}
-function isEmptyValue(value) {
-  return value == null || value === "" || Array.isArray(value) && value.filter((item) => item != null && item !== "").length === 0;
-}
-function valueList(value) {
-  return (Array.isArray(value) ? value : [value]).filter(
-    (item) => item != null && item !== ""
-  );
-}
-function hasControlCharacters(value) {
-  return Array.from(value).some((char) => {
-    const code = char.codePointAt(0);
-    return code < 32 || code === 127;
-  });
-}
-
-// src/forkop/tabs/servers/protocols.ts
-var PROTOCOLS = [
-  {
-    id: "mixed",
-    label: "Mixed",
-    kind: "inbound",
-    securities: ["none"],
-    login: true,
-    optionalAuth: "mixed_auth_enabled",
-    credentials: ["password"],
-    link: "socks5"
-  },
-  {
-    id: "vless",
-    label: "VLESS",
-    kind: "inbound",
-    securities: ["reality", "tls", "none"],
-    transport: true,
-    multiplex: true,
-    credentials: ["uuid", "flow"],
-    link: "vless"
-  },
-  {
-    id: "vmess",
-    label: "VMess",
-    kind: "inbound",
-    securities: ["tls", "none"],
-    transport: true,
-    multiplex: true,
-    credentials: ["uuid"],
-    link: "vmess"
-  },
-  {
-    id: "trojan",
-    label: "Trojan",
-    kind: "inbound",
-    securities: ["tls"],
-    transport: true,
-    multiplex: true,
-    credentials: ["password"],
-    link: "trojan"
-  },
-  {
-    id: "shadowsocks",
-    label: "Shadowsocks",
-    kind: "inbound",
-    securities: ["none"],
-    multiplex: true,
-    credentials: ["password"],
-    link: "ss"
-  },
-  {
-    id: "hysteria2",
-    label: "Hysteria2",
-    kind: "inbound",
-    securities: ["tls"],
-    credentials: ["password"],
-    link: "hysteria2"
-  },
-  {
-    id: "tuic",
-    label: "TUIC",
-    kind: "inbound",
-    securities: ["tls"],
-    credentials: ["uuid", "password"],
-    link: "tuic"
-  },
-  {
-    id: "anytls",
-    label: "AnyTLS",
-    kind: "inbound",
-    securities: ["tls"],
-    credentials: ["password"],
-    link: "anytls"
-  },
-  {
-    id: "naive",
-    label: "NaiveProxy",
-    kind: "inbound",
-    securities: ["tls"],
-    login: true,
-    credentials: ["password"],
-    link: "naive"
-  },
-  {
-    id: "mieru",
-    label: "Mieru",
-    kind: "inbound",
-    securities: ["none"],
-    login: true,
-    credentials: ["password"],
-    link: "mierus"
-  },
-  {
-    id: "trusttunnel",
-    label: "TrustTunnel",
-    kind: "inbound",
-    securities: ["tls"],
-    login: true,
-    credentials: ["password"],
-    link: "tt"
-  },
-  {
-    id: "tailscale",
-    label: "Tailscale",
-    kind: "endpoint",
-    securities: ["none"],
-    credentials: []
-  },
-  {
-    id: "wireguard",
-    label: "WireGuard",
-    kind: "endpoint",
-    listener: true,
-    anyAddress: true,
-    securities: ["none"],
-    credentials: [],
-    clients: true,
-    profile: true,
-    tunnel: true
-  },
-  {
-    id: "amneziawg",
-    label: "AmneziaWG",
-    kind: "endpoint",
-    listener: true,
-    anyAddress: true,
-    securities: ["none"],
-    credentials: [],
-    clients: true,
-    profile: true,
-    tunnel: true
-  },
-  {
-    id: "openvpn",
-    label: "OpenVPN",
-    kind: "endpoint",
-    coreType: "openvpn-server",
-    listener: true,
-    securities: ["none"],
-    credentials: [],
-    clients: true,
-    profile: true,
-    tunnel: true
-  },
-  {
-    id: "json_inbound",
-    label: _("JSON inbound"),
-    kind: "json",
-    securities: ["none"],
-    credentials: []
-  }
-];
-var PROTOCOL_BY_ID = new Map(
-  PROTOCOLS.map((entry) => [entry.id, entry])
-);
-function protocolSpec(protocol) {
-  return PROTOCOL_BY_ID.get(`${protocol || ""}`) || null;
-}
-function getProtocol(sectionId) {
-  return liveOption(sectionId, "protocol") || DEFAULT_PROTOCOL;
-}
-function protocolLabel(protocol) {
-  const spec = protocolSpec(protocol);
-  return spec ? spec.label : `${protocol || ""}`;
-}
-function protocolsWhere(predicate) {
-  return PROTOCOLS.filter(predicate).map((entry) => entry.id);
-}
-function protocolsWith(flag2) {
-  return protocolsWhere((entry) => !!entry[flag2]);
-}
-function listenerProtocols() {
-  return protocolsWhere(
-    (entry) => entry.kind === "inbound" || !!entry.listener
-  );
-}
-function listenTransports(protocol, network2) {
-  const value = `${network2 || ""}`.toLowerCase();
-  const http = protocol === "naive" || protocol === "trusttunnel";
-  if (protocol === "openvpn") return [value === "tcp" ? "tcp" : "udp"];
-  if (protocol === "hysteria2" || protocol === "tuic" || protocol === "wireguard" || protocol === "amneziawg")
-    return ["udp"];
-  if (protocol === "shadowsocks" || http && value === "tcp_udp")
-    return ["tcp", "udp"];
-  if ((http || protocol === "mieru") && value === "udp") return ["udp"];
-  return ["tcp"];
-}
-function listOf(value) {
-  return (Array.isArray(value) ? value : `${value ?? ""}`.split(/[\s,]+/)).map((item) => `${item}`.trim()).filter(Boolean);
-}
-function servesXhttpHttp3(protocol, value) {
-  const alpn = listOf(value("tls_alpn"));
-  return ["vless", "vmess", "trojan"].includes(protocol) && `${value("transport") || "tcp"}` === "xhttp" && effectiveSecurity(protocol, `${value("security") || ""}`) === "tls" && alpn.length === 1 && alpn[0] === "h3";
-}
-function serverListenTransports(protocol, value) {
-  if (servesXhttpHttp3(protocol, value)) {
-    return ["udp"];
-  }
-  const network2 = transportOption(protocol);
-  return listenTransports(protocol, network2 ? `${value(network2) || ""}` : "");
-}
-var TRANSPORT_OPTIONS = {
-  naive: "naive_network",
-  trusttunnel: "trusttunnel_network",
-  mieru: "mieru_transport",
-  openvpn: "openvpn_network"
-};
-function transportOption(protocol) {
-  return TRANSPORT_OPTIONS[protocol] || "";
-}
-function hasListener(protocol) {
-  const spec = protocolSpec(protocol);
-  return !!spec && (spec.kind === "inbound" || !!spec.listener);
-}
-function credentialFields(protocol) {
-  const spec = protocolSpec(protocol);
-  return spec ? (spec.credentials || []).slice() : [];
-}
-function usesClients(protocol) {
-  return credentialFields(protocol).length > 0 || !!protocolSpec(protocol)?.clients;
-}
-function usesProfile(protocol) {
-  return !!protocolSpec(protocol)?.profile;
-}
-function usesLoginName(protocol) {
-  const spec = protocolSpec(protocol);
-  return !!spec && !!spec.login;
-}
-function linkScheme(protocol) {
-  const spec = protocolSpec(protocol);
-  return spec && spec.link ? spec.link : "";
-}
-function securitiesFor(protocol) {
-  const spec = protocolSpec(protocol);
-  return spec ? spec.securities.slice() : ["none"];
-}
-function securityCoreFeature(security) {
-  return security === "reality" ? "utls" : "";
-}
-function defaultSecurity(protocol) {
-  const allowed = securitiesFor(protocol);
-  return allowed.find((security) => {
-    const feature = securityCoreFeature(security);
-    return !feature || coreHas(feature);
-  }) || allowed[0];
-}
-function securityLabel(security) {
-  if (security === "reality") {
-    return "Reality";
-  }
-  if (security === "tls") {
-    return "TLS";
-  }
-  return _("None");
-}
-function effectiveSecurity(protocol, security) {
-  const allowed = securitiesFor(protocol);
-  return allowed.includes(security) ? security : allowed[0];
-}
-function getEffectiveSecurity(sectionId) {
-  return effectiveSecurity(
-    getProtocol(sectionId),
-    liveOption(sectionId, "security")
-  );
-}
-function authFlagOption(protocol) {
-  const spec = protocolSpec(protocol);
-  return spec && spec.optionalAuth ? spec.optionalAuth : "";
-}
-function isAuthenticationEnabled(sectionId) {
-  const flag2 = authFlagOption(getProtocol(sectionId));
-  if (!flag2) {
-    return true;
-  }
-  const value = liveOption(sectionId, flag2);
-  return value === "" ? true : !["0", "false", "no", "off"].includes(value.toLowerCase());
-}
-function getServerName(sectionId) {
-  return option(sectionId, "label") || sectionId;
-}
-function supportsVisionFlow(sectionId) {
-  if (getProtocol(sectionId) !== "vless") {
-    return false;
-  }
-  if ((liveOption(sectionId, "transport") || "tcp") !== "tcp") {
-    return false;
-  }
-  if (liveOption(sectionId, "multiplex_enabled") === "1") {
-    return false;
-  }
-  return getEffectiveSecurity(sectionId) !== "none";
-}
-function shadowsocksKeyBytes(method) {
-  const entry = SHADOWSOCKS_METHODS.find((item) => item.id === method);
-  return entry ? entry.keyBytes : 0;
-}
-function isShadowsocks2022(method) {
-  return shadowsocksKeyBytes(method) > 0;
-}
-function getShadowsocksMethod(sectionId) {
-  return liveOption(sectionId, "shadowsocks_method") || SHADOWSOCKS_METHODS[0].id;
-}
-function certificateSource(sectionId) {
-  return getProtocol(sectionId) === "naive" || liveOption(sectionId, "tls_certificate_source") === "custom" ? "custom" : "self_signed";
-}
-function usesSelfSignedCertificate(sectionId) {
-  return getEffectiveSecurity(sectionId) === "tls" && certificateSource(sectionId) === "self_signed";
-}
-function protocolCoreFeature(protocol) {
-  const spec = protocolSpec(protocol);
-  if (!spec || spec.kind === "json") {
-    return "";
-  }
-  return coreFeatureOfType(spec.coreType || spec.id, [
-    spec.kind === "endpoint" ? "endpoint" : "inbound"
-  ]);
-}
-function serverMissingCoreFeature(sectionId) {
-  const protocol = getProtocol(sectionId);
-  const needed = [
-    protocolCoreFeature(protocol),
-    securityCoreFeature(getEffectiveSecurity(sectionId)),
-    (protocol === "naive" || protocol === "trusttunnel") && ["udp", "tcp_udp"].includes(
-      liveOption(sectionId, transportOption(protocol))
-    ) || servesXhttpHttp3(protocol, (name) => liveOption(sectionId, name)) ? "quic" : ""
-  ];
-  return needed.find((feature) => feature && !coreHas(feature)) || "";
 }
 
 // src/forkop/tabs/servers/credentials.ts
@@ -7831,12 +8086,12 @@ var systemPortsCache = null;
 function occupiedPorts(currentSectionId) {
   const owners = /* @__PURE__ */ new Map();
   const claim = (port2, transports, owner) => {
-    const text8 = `${port2 || ""}`.trim();
-    if (!/^[0-9]+$/.test(text8)) {
+    const text9 = `${port2 || ""}`.trim();
+    if (!/^[0-9]+$/.test(text9)) {
       return;
     }
     transports.forEach((transport3) => {
-      const key = `${transport3}/${Number(text8)}`;
+      const key = `${transport3}/${Number(text9)}`;
       if (!owners.has(key)) owners.set(key, owner);
     });
   };
@@ -8470,22 +8725,22 @@ function validateAmneziaSignature(value) {
   return tags > 0;
 }
 function validateAmneziaValue(key, value) {
-  const text8 = `${value ?? ""}`.trim();
+  const text9 = `${value ?? ""}`.trim();
   const entry = amneziaParameter(key);
-  if (!text8 || !entry) return true;
+  if (!text9 || !entry) return true;
   switch (entry.kind) {
     case "count":
-      return parseUnsigned(text8, UINT32_MAX) !== void 0 ? true : message.wholeNumber(0, UINT32_MAX);
+      return parseUnsigned(text9, UINT32_MAX) !== void 0 ? true : message.wholeNumber(0, UINT32_MAX);
     case "padding":
-      return parseUnsigned(text8, UINT16_MAX) !== void 0 ? true : message.wholeNumber(0, UINT16_MAX);
+      return parseUnsigned(text9, UINT16_MAX) !== void 0 ? true : message.wholeNumber(0, UINT16_MAX);
     case "range":
-      return validateRange(text8);
+      return validateRange(text9);
     case "signature":
-      return validateAmneziaSignature(text8) ? true : _("Format: <b 0xdeadbeef><r 4>");
+      return validateAmneziaSignature(text9) ? true : _("Format: <b 0xdeadbeef><r 4>");
     case "key":
-      return validateWireGuardKey(text8) ? true : message.invalidKey();
+      return validateWireGuardKey(text9) ? true : message.invalidKey();
     default:
-      return text8 === "0" || text8 === "1" ? true : _("Only 0 or 1");
+      return text9 === "0" || text9 === "1" ? true : _("Only 0 or 1");
   }
 }
 function rangeBounds(value) {
@@ -8493,38 +8748,38 @@ function rangeBounds(value) {
   return [parts[0], parts[parts.length - 1]];
 }
 function validateAmneziaSet(values) {
-  const text8 = (key) => `${values[key] ?? ""}`.trim();
-  const protectionKey = text8("header_protection_key");
-  if (protectionKey && !/^A{43}=$/u.test(protectionKey) && ["s1", "s2", "s3", "s4"].some((key) => Number(text8(key) || 0) < 12)) {
+  const text9 = (key) => `${values[key] ?? ""}`.trim();
+  const protectionKey = text9("header_protection_key");
+  if (protectionKey && !/^A{43}=$/u.test(protectionKey) && ["s1", "s2", "s3", "s4"].some((key) => Number(text9(key) || 0) < 12)) {
     return _("HeaderProtectionKey needs S1-S4 of at least 12");
   }
   const headers = ["h1", "h2", "h3", "h4"];
-  if (headers.some((key) => text8(key))) {
+  if (headers.some((key) => text9(key))) {
     const bounds = headers.map(
-      (key, index) => rangeBounds(text8(key) || `${index + 1}`)
+      (key, index) => rangeBounds(text9(key) || `${index + 1}`)
     );
     const overlap = bounds.some(
       ([from, to], index) => bounds.slice(index + 1).some(([otherFrom, otherTo]) => from <= otherTo && otherFrom <= to)
     );
     if (overlap) return _("H1-H4 must not overlap");
   }
-  if (Number(text8("jmin") || 0) > Number(text8("jmax") || 0)) {
+  if (Number(text9("jmin") || 0) > Number(text9("jmax") || 0)) {
     return _("Jmin is greater than Jmax");
   }
   return true;
 }
 function amneziaJsonValue(key, value) {
-  const text8 = `${value ?? ""}`.trim();
+  const text9 = `${value ?? ""}`.trim();
   switch (amneziaParameter(key)?.kind) {
     case "flag":
-      return text8 === "1";
+      return text9 === "1";
     case "signature":
     case "key":
-      return text8;
+      return text9;
     case "range":
-      return text8.includes("-") ? text8 : Number(text8);
+      return text9.includes("-") ? text9 : Number(text9);
     default:
-      return Number(text8);
+      return Number(text9);
   }
 }
 var CONF_TRUE = ["on", "true", "1", "yes"];
@@ -8536,8 +8791,8 @@ function amneziaTextFromConf(key, value) {
 }
 function amneziaConfLine(key, value) {
   const entry = amneziaParameter(key);
-  const text8 = `${value ?? ""}`.trim();
-  return `${entry.conf} = ${entry.kind === "flag" ? text8 === "1" ? "on" : "off" : text8}`;
+  const text9 = `${value ?? ""}`.trim();
+  return `${entry.conf} = ${entry.kind === "flag" ? text9 === "1" ? "on" : "off" : text9}`;
 }
 
 // src/forkop/tabs/servers/controls.ts
@@ -8886,7 +9141,7 @@ function addTunnelOptions(section2) {
 }
 
 // src/forkop/tabs/servers/profile.ts
-function text2(value) {
+function text4(value) {
   return `${value ?? ""}`.trim();
 }
 function fileName(value) {
@@ -8898,10 +9153,10 @@ function buildOpenVPNProfile(sectionId, client, material5) {
   if (!host || !port2) return { missing: "address" };
   const server2 = material5[sectionId] || {};
   const own = material5[client.id] || {};
-  const ca = text2(server2.openvpn_certificate);
-  const tlsCrypt = text2(server2.openvpn_tls_crypt_key);
-  const certificate = text2(own.openvpn_certificate);
-  const key = text2(own.openvpn_key);
+  const ca = text4(server2.openvpn_certificate);
+  const tlsCrypt = text4(server2.openvpn_tls_crypt_key);
+  const certificate = text4(own.openvpn_certificate);
+  const key = text4(own.openvpn_key);
   if (!ca || !tlsCrypt || !certificate || !key) {
     return { missing: "certificate" };
   }
@@ -8952,7 +9207,7 @@ function tunnelName(serverName, clientName, protocol) {
 }
 function amneziaLines(server2) {
   return AMNEZIA_KEYS.filter((key) => {
-    const value = text2(server2[`amnezia_${key}`]);
+    const value = text4(server2[`amnezia_${key}`]);
     return amneziaParameter(key).kind === "flag" ? value === "1" : !!value;
   }).map((key) => amneziaConfLine(key, server2[`amnezia_${key}`]));
 }
@@ -8964,11 +9219,11 @@ function buildWireGuardProfile(sectionId, client, material5) {
   const amnezia = protocol === "amneziawg";
   const server2 = material5[sectionId] || {};
   const own = material5[client.id] || {};
-  const serverKey = text2(server2.wireguard_public_key);
-  const privateKey = text2(own.wireguard_private_key);
-  const preSharedKey = text2(own.wireguard_pre_shared_key);
+  const serverKey = text4(server2.wireguard_public_key);
+  const privateKey = text4(own.wireguard_private_key);
+  const preSharedKey = text4(own.wireguard_pre_shared_key);
   const subnets = optionList(sectionId, "tunnel_address");
-  const addresses = asList(own.wireguard_address).map(text2);
+  const addresses = asList(own.wireguard_address).map(text4);
   const current = addresses.length === subnets.length && subnets.every(
     (subnet) => addresses.some((address) => subnetContains(subnet, address))
   );
@@ -9115,8 +9370,8 @@ function qrRawCodewords(version) {
 function qrDataCodewords(version) {
   return qrRawCodewords(version) - QR_EC_CODEWORDS_PER_BLOCK_LOW[version] * QR_NUM_ERROR_CORRECTION_BLOCKS_LOW[version];
 }
-function qrEncodeText(text8) {
-  return Array.from(new TextEncoder().encode(text8));
+function qrEncodeText(text9) {
+  return Array.from(new TextEncoder().encode(text9));
 }
 function qrBuildDataCodewords(bytes, version) {
   const capacity = qrDataCodewords(version);
@@ -9341,8 +9596,8 @@ function qrMakeMatrix(version, dataCodewords) {
   drawFormatBits(0);
   return modules;
 }
-function qrCode(text8) {
-  const bytes = qrEncodeText(text8);
+function qrCode(text9) {
+  const bytes = qrEncodeText(text9);
   let version = 1;
   for (; version <= 40; version += 1) {
     const countBits = version <= 9 ? 8 : 16;
@@ -9441,9 +9696,9 @@ function iconSvg(name) {
     ICON_PATHS[name].map(([tag, attrs]) => svgEl2(tag, attrs))
   );
 }
-function copyText(text8) {
+function copyText(text9) {
   const textarea = document.createElement("textarea");
-  textarea.value = text8;
+  textarea.value = text9;
   textarea.style.position = "fixed";
   textarea.style.top = "0";
   textarea.style.left = "0";
@@ -9836,7 +10091,7 @@ function formatDate2(seconds3) {
     year: "numeric"
   });
 }
-function text3(tone, value, title) {
+function text5(tone, value, title) {
   return textE(
     "span",
     title ? { class: `fkp-ts--${tone}`, title } : { class: `fkp-ts--${tone}` },
@@ -9849,10 +10104,10 @@ function online() {
 function renderStatus2(endpoint) {
   switch (endpoint.state) {
     case "Running":
-      return endpoint.connected ? [online()] : [text3("error", _("No connection to the coordination server"))];
+      return endpoint.connected ? [online()] : [text5("error", _("No connection to the coordination server"))];
     case "NeedsLogin":
       return [
-        text3("warn", _("Waiting for sign-in")),
+        text5("warn", _("Waiting for sign-in")),
         ...endpoint.authURL ? [
           textE(
             "a",
@@ -9866,15 +10121,15 @@ function renderStatus2(endpoint) {
         ] : []
       ];
     case "NeedsMachineAuth":
-      return [text3("warn", _("Waiting for approval in the console"))];
+      return [text5("warn", _("Waiting for approval in the console"))];
     case "Stopped":
-      return [text3("muted", _("Stopped"))];
+      return [text5("muted", _("Stopped"))];
     default:
-      return [text3("muted", _("Starting"))];
+      return [text5("muted", _("Starting"))];
   }
 }
 function approval(approved) {
-  return approved ? text3("ok", _("Approved")) : textE(
+  return approved ? text5("ok", _("Approved")) : textE(
     "span",
     { class: "fkp-ts--warn fkp-ts__pending" },
     _("Waiting for approval in the console")
@@ -9899,20 +10154,20 @@ function renderExitNodeInUse(endpoint) {
   if (exitNode) {
     return [
       renderDevice(exitNode.name, exitNode.online),
-      ...exitNode.online ? [] : [text3("error", _("Offline"))]
+      ...exitNode.online ? [] : [text5("error", _("Offline"))]
     ];
   }
-  return endpoint.exitNode ? [renderDevice(endpoint.exitNode), text3("warn", _("Not in use"))] : [text3("warn", _("Not set"))];
+  return endpoint.exitNode ? [renderDevice(endpoint.exitNode), text5("warn", _("Not in use"))] : [text5("warn", _("Not set"))];
 }
 function renderKeyExpiry(keyExpiry) {
   if (!keyExpiry) {
-    return text3("muted", _("Does not expire"));
+    return text5("muted", _("Does not expire"));
   }
-  return keyExpiry * 1e3 < Date.now() ? text3("error", _("Expired %s").format(formatDate2(keyExpiry))) : textE("span", {}, _("Expires %s").format(formatDate2(keyExpiry)));
+  return keyExpiry * 1e3 < Date.now() ? text5("error", _("Expired %s").format(formatDate2(keyExpiry))) : textE("span", {}, _("Expires %s").format(formatDate2(keyExpiry)));
 }
 function renderCopyable(values) {
   return values.flatMap((value, index) => [
-    ...index ? [text3("muted", "\xB7")] : [],
+    ...index ? [text5("muted", "\xB7")] : [],
     textE(
       "a",
       {
@@ -10008,7 +10263,7 @@ function renderPing(address, pings) {
   );
 }
 function renderLastSeen(lastSeen) {
-  return text3(
+  return text5(
     "muted",
     relativeTime(lastSeen, "short"),
     _("Last online %s").format(
@@ -10022,7 +10277,7 @@ function renderLastSeen(lastSeen) {
 function renderPeerMeta(peer, pings) {
   if (!peer.online) {
     return [
-      peer.lastSeen ? renderLastSeen(peer.lastSeen) : text3("muted", _("Offline"))
+      peer.lastSeen ? renderLastSeen(peer.lastSeen) : text5("muted", _("Offline"))
     ];
   }
   return peer.addresses[0] ? [renderPing(peer.addresses[0], pings)] : [];
@@ -10033,7 +10288,7 @@ function renderPeer(peer, pings) {
       iconSvg("user"),
       textE("b", {}, peer.name),
       ...peer.online ? [onlineDot()] : [],
-      ...peer.addresses[0] ? [text3("muted", peer.addresses[0])] : [],
+      ...peer.addresses[0] ? [text5("muted", peer.addresses[0])] : [],
       ...peer.exitNodeOption || peer.exitNode ? [
         textE(
           "span",
@@ -10043,7 +10298,7 @@ function renderPeer(peer, pings) {
           _("Exit node")
         )
       ] : [],
-      ...peer.subnets?.length ? [text3("muted", peer.subnets.join(", "), _("Subnets"))] : []
+      ...peer.subnets?.length ? [text5("muted", peer.subnets.join(", "), _("Subnets"))] : []
     ]),
     textE("div", { class: "fkp-ts__device-meta" }, renderPeerMeta(peer, pings))
   ]);
@@ -10176,6 +10431,11 @@ var connectionsSocketLive = false;
 var trafficSocketUrl = "";
 var connectionsSocketUrl = "";
 var lastPolledTotals = null;
+var serverViews = [];
+var serverViewsLive = false;
+var serverCounters = null;
+var serverCountersAt = 0;
+var renderedServersConfig = "";
 var pageUnloading = false;
 var latencyRequests = /* @__PURE__ */ new Set();
 var latencySortedSections = /* @__PURE__ */ new Set();
@@ -10235,7 +10495,7 @@ async function fetchDashboardSectionsOnce(mountId) {
     }
   });
   try {
-    const { data, success, hasRemoteLists: hasRemoteLists2 } = await CustomForkopMethods.getDashboardSections();
+    const { data, servers: servers2, success, hasRemoteLists: hasRemoteLists2 } = await CustomForkopMethods.getDashboardSections();
     if (!dashboardMounted || mountId !== dashboardMountId) {
       return false;
     }
@@ -10249,6 +10509,7 @@ async function fetchDashboardSectionsOnce(mountId) {
         loading: false,
         failed: false,
         data,
+        servers: servers2,
         hasRemoteLists: hasRemoteLists2
       }
     });
@@ -10378,10 +10639,48 @@ function reportWidgetsFailure() {
     }
   });
 }
+function applyServerConnections(connections) {
+  const servers2 = store.get().sectionsWidget.servers;
+  if (connections) {
+    const at = Date.now();
+    const described = describeServers(
+      servers2,
+      connections,
+      serverCounters,
+      (at - serverCountersAt) / 1e3
+    );
+    serverViews = described.servers;
+    serverCounters = described.counters;
+    serverCountersAt = at;
+  } else {
+    serverViews = describeServers(servers2, [], null, 0).servers;
+    serverCounters = null;
+  }
+  serverViewsLive = Boolean(connections);
+  renderedServersConfig = JSON.stringify(servers2);
+  renderServersWidget();
+}
+async function pollServerConnections() {
+  if (connectionsSocketLive || !store.get().sectionsWidget.servers.length) {
+    return;
+  }
+  const dataUpdatesId = dashboardDataUpdatesId;
+  const response = await CustomForkopMethods.getClashApiConnections().catch(
+    () => null
+  );
+  if (!widgetsPoll.active || connectionsSocketLive || dataUpdatesId !== dashboardDataUpdatesId) {
+    return;
+  }
+  const connections = response?.success ? response.data?.connections : null;
+  applyServerConnections(connections || (response?.success ? [] : null));
+}
 async function pollWidgetsSnapshot(dataUpdatesId) {
   const startedAt = Date.now();
   try {
-    const response = await CustomForkopMethods.getClashApiConnectionsSummary();
+    const [response] = await Promise.all([
+      CustomForkopMethods.getClashApiConnectionsSummary(),
+      pollServerConnections()
+    ]);
     lastWidgetsPollDurationMs = Date.now() - startedAt;
     if (!widgetsPoll.active || dataUpdatesId !== dashboardDataUpdatesId) {
       return;
@@ -10554,6 +10853,7 @@ async function connectToClashSockets(dataUpdatesId) {
       if (widgetsAreLive()) {
         stopWidgetsPolling();
       }
+      applyServerConnections(parsedMsg.connections || []);
       store.set({
         trafficTotalWidget: {
           loading: false,
@@ -10628,6 +10928,9 @@ function stopDashboardDataUpdates() {
   }
   trafficSocketUrl = "";
   connectionsSocketUrl = "";
+  serverViewsLive = false;
+  serverCounters = null;
+  renderedServersConfig = "";
 }
 function startDashboardDataUpdates() {
   if (dashboardDataUpdatesStarted || !dashboardMounted) {
@@ -10840,8 +11143,8 @@ function formatUrlTestModalValue(value) {
   if (typeof value === "boolean") {
     return value ? _("Yes") : _("No");
   }
-  const text8 = `${value ?? ""}`.trim();
-  return text8 || _("No");
+  const text9 = `${value ?? ""}`.trim();
+  return text9 || _("No");
 }
 function formatUrlTestLatency(latency) {
   return latency ? `${latency}ms` : _("N/A");
@@ -11473,6 +11776,27 @@ async function renderSectionsWidget() {
     container.replaceChildren(...renderedWidgets);
   });
 }
+function renderServersWidget() {
+  const container = document.getElementById("dashboard-servers-grid");
+  if (!container) {
+    return;
+  }
+  const servers2 = store.get().sectionsWidget.servers;
+  const config = JSON.stringify(servers2);
+  if (config !== renderedServersConfig) {
+    renderedServersConfig = config;
+    serverViews = describeServers(servers2, [], null, 0).servers;
+    serverCounters = null;
+    serverViewsLive = false;
+  }
+  preserveScrollForPage(() => {
+    container.replaceChildren(
+      ...serverViews.map(
+        (server2) => renderServers({ server: server2, live: serverViewsLive })
+      )
+    );
+  });
+}
 async function renderBandwidthWidget() {
   logger.debug("[DASHBOARD]", "renderBandwidthWidget");
   const traffic = store.get().bandwidthWidget;
@@ -11598,6 +11922,9 @@ function renderAges() {
 async function onStoreUpdate(next, prev, diff) {
   if (diff.sectionsWidget) {
     renderSectionsWidget();
+    if (JSON.stringify(next.sectionsWidget.servers) !== renderedServersConfig) {
+      renderServersWidget();
+    }
   }
   if (diff.bandwidthWidget) {
     renderBandwidthWidget();
@@ -11624,6 +11951,7 @@ async function onPageMount() {
   document.addEventListener("pointerdown", closeExitPanelOnOutsidePress, true);
   document.addEventListener("keydown", closeExitPanelOnEscape);
   void renderSectionsWidget();
+  renderServersWidget();
   void renderBandwidthWidget();
   void renderTrafficTotalWidget();
   void renderLoadWidget();
@@ -12632,6 +12960,27 @@ its own name's length. */
 }
 
 /* Too narrow for the two-column parameter list. */
+.fkp_dashboard-page__server-client__status {
+    flex: 0 0 auto;
+    color: var(--text-color-medium, inherit);
+    white-space: nowrap;
+}
+
+.fkp_dashboard-page__server-client__status--online {
+    color: var(--success-color-medium, green);
+}
+
+.fkp_dashboard-page__server-client__speed {
+    justify-self: end;
+    text-align: right;
+    white-space: pre;
+}
+
+.fkp_dashboard-page__server-client__empty {
+    padding: 10px;
+    color: var(--text-color-medium, inherit);
+}
+
 @media (max-width: 560px) {
     .fkp_dashboard-page__urltest-details__params {
         grid-template-columns: 1fr;
@@ -12943,7 +13292,7 @@ function target(section2) {
 }
 function presentSection(section2, node, probe) {
   const key = section2.displayName;
-  const on = (text8) => node ? `${node}: ${text8}` : text8;
+  const on = (text9) => node ? `${node}: ${text9}` : text9;
   if ("delay" in probe) {
     return finding(
       "success",
@@ -13044,7 +13393,7 @@ function tailscaleItems(server2) {
       )
     ] : []
   ];
-  return pending.length ? pending.map((text8) => finding("warning", key, text8)) : [finding("success", key, _("online \xB7 %s").format(server2.name))];
+  return pending.length ? pending.map((text9) => finding("warning", key, text9)) : [finding("success", key, _("online \xB7 %s").format(server2.name))];
 }
 function facesInternet(server2) {
   return !isTailscale(server2) && server2.exposed && (server2.open_firewall || server2.firewall_open);
@@ -13164,9 +13513,9 @@ function timestamp(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 function section(title, body) {
-  const text8 = body.trim();
+  const text9 = body.trim();
   return `== ${title} ==
-${text8 ? `${text8}
+${text9 ? `${text9}
 ` : `${_("empty")}
 `}`;
 }
@@ -13787,10 +14136,10 @@ async function handleReport() {
   setDiagnosticActionLoading("report", true);
   try {
     const getText = ({ maskValues }) => buildReport(maskValues);
-    const text8 = await getText({ maskValues: true });
+    const text9 = await getText({ maskValues: true });
     ui.showModal(
       _("Diagnostic report"),
-      renderModal(text8, "forkop-report", {
+      renderModal(text9, "forkop-report", {
         getText,
         showMaskValuesToggle: true
       })
@@ -14683,74 +15032,6 @@ function createLocalDeviceDynamicListWidget(option2, section_id, cfgvalue) {
   });
 }
 
-// src/forkop/tabs/monitoring/source.ts
-var SYSTEM_SOURCE_KEY = "@system";
-var SYSTEM_INBOUND_TAGS = /* @__PURE__ */ new Set(["system-in", "system6-in"]);
-var KIND_ORDER = ["system", "device", "server"];
-var collator = new Intl.Collator(void 0, {
-  numeric: true,
-  sensitivity: "base"
-});
-function text4(value) {
-  return value == null ? "" : String(value).trim();
-}
-function isLoopback(ip) {
-  return ip === "::1" || /^(::ffff:)?127\./.test(ip);
-}
-function connectionInboundTag(connection) {
-  const type = text4(connection.metadata?.type);
-  const tag = text4(type.split("/").slice(1).join("/") || type);
-  if (tag) {
-    return tag;
-  }
-  return text4(text4(connection.rule).match(/(?:^|\s)inbound=([^\s]+)/)?.[1]);
-}
-function sourceLabel(name, detail) {
-  return [name, detail].filter(Boolean).join(" \xB7 ");
-}
-function describeSource(connection, names) {
-  const ip = text4(connection.metadata?.sourceIP);
-  const tag = connectionInboundTag(connection);
-  const search = (...values) => [...values, ip, tag].filter(Boolean).join(" ");
-  if (SYSTEM_INBOUND_TAGS.has(tag) || !names.servers.has(tag) && isLoopback(ip)) {
-    const name2 = _("System");
-    return {
-      key: SYSTEM_SOURCE_KEY,
-      kind: "system",
-      name: name2,
-      detail: "",
-      server: "",
-      search: search(name2)
-    };
-  }
-  if (names.servers.has(tag)) {
-    const user = text4(connection.metadata?.user);
-    const byAddress = user ? "" : text4(names.clients[tag]?.[ip]);
-    const name2 = text4(names.clients[tag]?.[user]) || user || byAddress || tag;
-    const detail = user || byAddress ? tag : ip;
-    return {
-      key: JSON.stringify([tag, user, user ? "" : ip]),
-      kind: "server",
-      name: name2,
-      detail,
-      server: tag,
-      search: search(sourceLabel(name2, detail))
-    };
-  }
-  const name = text4(names.devices[ip]);
-  return {
-    key: ip,
-    kind: "device",
-    name,
-    detail: ip,
-    server: "",
-    search: search(name)
-  };
-}
-function compareSources(a, b) {
-  return KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || collator.compare(a.server, b.server) || Number(!a.name) - Number(!b.name) || collator.compare(a.name, b.name) || collator.compare(a.detail, b.detail) || a.key.localeCompare(b.key);
-}
-
 // src/forkop/tabs/monitoring/connectionList.ts
 function renderList(rows, { closable, sort }) {
   return textE(
@@ -14793,10 +15074,10 @@ function renderList(rows, { closable, sort }) {
 function cellClass(column) {
   return `fkp_monitoring-page__cell fkp_monitoring-page__cell--${column}`;
 }
-function renderHeading(column, text8) {
-  return textE("div", { class: cellClass(column), role: "columnheader" }, text8);
+function renderHeading(column, text9) {
+  return textE("div", { class: cellClass(column), role: "columnheader" }, text9);
 }
-function renderSortHeading(column, text8, sort) {
+function renderSortHeading(column, text9, sort) {
   const order = sort?.column === column ? sort.descending ? "descending" : "ascending" : "";
   return textE(
     "div",
@@ -14809,7 +15090,7 @@ function renderSortHeading(column, text8, sort) {
       textE(
         "button",
         { class: "fkp_monitoring-page__sort", type: "button", value: column },
-        [text8, renderChevronUpIcon24()]
+        [text9, renderChevronUpIcon24()]
       )
     ]
   );
@@ -14817,8 +15098,8 @@ function renderSortHeading(column, text8, sort) {
 function renderCell(column, children2) {
   return textE("div", { class: cellClass(column), role: "cell" }, children2);
 }
-function renderValue(text8, className = "") {
-  const value = text8 || "-";
+function renderValue(text9, className = "") {
+  const value = text9 || "-";
   return textE(
     "span",
     {
@@ -14829,15 +15110,15 @@ function renderValue(text8, className = "") {
     value
   );
 }
-function renderBuiltin(text8, title) {
+function renderBuiltin(text9, title) {
   return textE(
     "span",
     {
       class: "fkp_monitoring-page__value fkp_monitoring-page__tag fkp_monitoring-page__tag--builtin",
       title,
-      "data-copy-value": text8
+      "data-copy-value": text9
     },
-    text8
+    text9
   );
 }
 function renderSource({
@@ -14852,7 +15133,7 @@ function renderSource({
     );
   }
   const shown2 = [name, detail].filter(Boolean).join(" ") || "-";
-  const muted = (text8) => textE("span", { class: "fkp_monitoring-page__muted" }, text8);
+  const muted = (text9) => textE("span", { class: "fkp_monitoring-page__muted" }, text9);
   return textE(
     "span",
     {
@@ -14913,7 +15194,7 @@ function renderConnectionList(items, options) {
     options
   );
 }
-function renderConnectionListState(text8, options) {
+function renderConnectionListState(text9, options) {
   return renderList(
     [
       textE(
@@ -14929,7 +15210,7 @@ function renderConnectionListState(text8, options) {
               class: ["fkp_monitoring-page__state", options.className].filter(Boolean).join(" "),
               role: "cell"
             },
-            text8
+            text9
           )
         ]
       )
@@ -16607,9 +16888,9 @@ function render5() {
 }
 
 // src/forkop/tabs/logs/filterLogs.ts
-function filterLogText(text8, query) {
+function filterLogText(text9, query) {
   const normalizedQuery = query.trim().toLowerCase();
-  return text8.split(/\r?\n/).filter((line) => {
+  return text9.split(/\r?\n/).filter((line) => {
     if (!line) {
       return false;
     }
@@ -17163,7 +17444,7 @@ function updateDynamicListItemLabel(item, label) {
     labelNode.textContent = `${label || ""}`;
   }
 }
-function addDynamicListItem(widget, value, text8) {
+function addDynamicListItem(widget, value, text9) {
   if (!widget || !widget.node) {
     return null;
   }
@@ -17176,7 +17457,7 @@ function addDynamicListItem(widget, value, text8) {
     widget.dispatchCbiDynlistChange(widget.node, normalized);
     return null;
   }
-  widget.addItem(widget.node, normalized, text8 || null, false);
+  widget.addItem(widget.node, normalized, text9 || null, false);
   widget.dispatchCbiDynlistChange(widget.node, normalized);
   updateButtonAddDynamicListLayout(widget.node, options.addButtonLabel);
   return findDynamicListItemByValue(widget.node, normalized);
@@ -17983,15 +18264,15 @@ var SettingsUIDynamicList = ui.DynamicList.extend({
       }
     });
   },
-  addItem(dl, value, text8, flash) {
+  addItem(dl, value, text9, flash) {
     if (flash && typeof this.options.createItem === "function") {
       value = this.options.createItem(value);
-      text8 = null;
+      text9 = null;
     } else if (flash && typeof this.options.hasEquivalentValue === "function" && this.options.hasEquivalentValue(value, dl)) {
       this.dispatchCbiDynlistChange(dl, value);
       return;
     }
-    const itemText = typeof this.options.itemLabel === "function" ? this.options.itemLabel(value, text8) : text8;
+    const itemText = typeof this.options.itemLabel === "function" ? this.options.itemLabel(value, text9) : text9;
     ui.DynamicList.prototype.addItem.call(this, dl, value, itemText, flash);
     const item = findDynamicListItemByValue(dl, value);
     const hasSettings = typeof this.options.hasSettings === "function" ? this.options.hasSettings(value) : true;
@@ -18205,15 +18486,15 @@ var SettingsDynamicList = form.DynamicList.extend({
           );
         }
       },
-      itemLabel: (itemValue, text8) => {
+      itemLabel: (itemValue, text9) => {
         if (typeof this.renderListItemLabel === "function") {
           return this.renderListItemLabel(
             this.childOwner(section_id),
             `${itemValue}`,
-            text8
+            text9
           );
         }
-        return text8;
+        return text9;
       },
       hasSettings: (itemValue) => this.hasItemSettings(this.childOwner(section_id), `${itemValue}`),
       createItem: this.entriesAreSections && !this.buttonAdd ? (inputValue) => this.createTypedItem(section_id, inputValue) : null,
@@ -18463,13 +18744,13 @@ function syncAnnotatedTextareaOverlay(textarea, wrapper, overlay) {
   overlay.scrollLeft = textarea.scrollLeft;
 }
 function renderAnnotatedTextareaOverlay(value, annotations) {
-  const text8 = value ? `${value}` : "";
+  const text9 = value ? `${value}` : "";
   const normalizedAnnotations = Array.isArray(annotations) ? annotations : [];
-  if (!text8.length) {
+  if (!text9.length) {
     return "&#8203;";
   }
   if (!normalizedAnnotations.length) {
-    return `${escapeHtml(text8)}${text8.endsWith("\n") ? "\n " : ""}`;
+    return `${escapeHtml(text9)}${text9.endsWith("\n") ? "\n " : ""}`;
   }
   let cursor2 = 0;
   let html = "";
@@ -18477,14 +18758,14 @@ function renderAnnotatedTextareaOverlay(value, annotations) {
     if (annotation.start < cursor2 || annotation.start >= annotation.end || annotation.start < 0) {
       return;
     }
-    html += escapeHtml(text8.slice(cursor2, annotation.start));
+    html += escapeHtml(text9.slice(cursor2, annotation.start));
     html += `<span class="fkp-annotated-textarea__invalid">${escapeHtml(
-      text8.slice(annotation.start, annotation.end)
+      text9.slice(annotation.start, annotation.end)
     )}</span>`;
     cursor2 = annotation.end;
   });
-  html += escapeHtml(text8.slice(cursor2));
-  if (text8.endsWith("\n")) {
+  html += escapeHtml(text9.slice(cursor2));
+  if (text9.endsWith("\n")) {
     html += "\n ";
   }
   return html;
@@ -18538,10 +18819,10 @@ function attachAnnotatedTextarea(textarea, analyzer) {
   controller.update();
 }
 function parseCommentAwareListTokens(value) {
-  const text8 = value ? `${value}` : "";
+  const text9 = value ? `${value}` : "";
   const tokens = [];
-  const lines3 = text8.split(/\r\n|\r|\n/);
-  const newlines = text8.match(/\r\n|\r|\n/g) || [];
+  const lines3 = text9.split(/\r\n|\r|\n/);
+  const newlines = text9.match(/\r\n|\r|\n/g) || [];
   let offset = 0;
   lines3.forEach((line, index) => {
     const hashIndex = line.indexOf("#");
@@ -19401,9 +19682,9 @@ var PRIVATE_KEY_LABELS = ["PRIVATE KEY", "RSA PRIVATE KEY", "EC PRIVATE KEY"];
 function isRouterPath(value) {
   return /^\/[^\n]*$/.test(value.trim());
 }
-function splitCertificateAndKey(text8) {
+function splitCertificateAndKey(text9) {
   const blocks = Array.from(
-    `${text8 || ""}`.matchAll(
+    `${text9 || ""}`.matchAll(
       /-----BEGIN ([A-Z0-9 ]+)-----[\s\S]*?-----END \1-----/g
     )
   );
@@ -19413,8 +19694,8 @@ function splitCertificateAndKey(text8) {
   ).map((block) => block[0].replace(/\r/g, ""));
   return certificates.length && keys.length === 1 ? { certificate: certificates.join("\n"), key: keys[0] } : null;
 }
-function certificatesCheck(text8) {
-  const blocks = pemBlocks(text8).filter(
+function certificatesCheck(text9) {
+  const blocks = pemBlocks(text9).filter(
     (block) => block.label === "CERTIFICATE"
   );
   return blocks.length && blocks.every((block) => {
@@ -19428,8 +19709,8 @@ function isEncrypted(block) {
 function isEncryptedKey(value) {
   return pemBlocks(`${value ?? ""}`).some(isEncrypted);
 }
-function keyCheck(text8, passphrase) {
-  const blocks = pemBlocks(text8);
+function keyCheck(text9, passphrase) {
+  const blocks = pemBlocks(text9);
   if (!passphrase && blocks.some(isEncrypted)) {
     return _(
       "Remove the key passphrase: openssl pkey -in key.pem -out plain.pem"
@@ -19439,32 +19720,32 @@ function keyCheck(text8, passphrase) {
   const keys = blocks.filter((block) => labels.includes(block.label));
   return keys.length === 1 && decodeBase64(keys[0].body) ? true : _("Invalid PEM private key");
 }
-function staticKeyCheck(text8) {
-  const block = pemBlocks(text8).find(
+function staticKeyCheck(text9) {
+  const block = pemBlocks(text9).find(
     (item) => item.label === "OpenVPN Static key V1"
   );
   return block && /^[0-9a-fA-F]{512}$/.test(block.body) ? true : _("Invalid OpenVPN static key");
 }
-function cryptV2Check(text8) {
-  const block = pemBlocks(text8).find(
+function cryptV2Check(text9) {
+  const block = pemBlocks(text9).find(
     (item) => item.label === "OpenVPN tls-crypt-v2 client key"
   );
   return block && decodeBase64(block.body) ? true : _("Invalid tls-crypt-v2 key");
 }
 function checkMaterial(kind, value) {
-  const text8 = `${value ?? ""}`.trim();
-  if (!text8 || isRouterPath(text8)) return true;
+  const text9 = `${value ?? ""}`.trim();
+  if (!text9 || isRouterPath(text9)) return true;
   switch (kind) {
     case "ca":
     case "certificate":
-      return certificatesCheck(text8);
+      return certificatesCheck(text9);
     case "key":
     case "passphrase-key":
-      return keyCheck(text8, kind === "passphrase-key");
+      return keyCheck(text9, kind === "passphrase-key");
     case "static":
-      return staticKeyCheck(text8);
+      return staticKeyCheck(text9);
     default:
-      return cryptV2Check(text8);
+      return cryptV2Check(text9);
   }
 }
 
@@ -20307,14 +20588,14 @@ var ADVANCED_DEFAULTS = {
   openvpn_ping_restart: "",
   openvpn_renegotiate: ""
 };
-function text5(value) {
+function text6(value) {
   return `${value ?? ""}`;
 }
 function trimmed(value) {
-  return text5(value).trim();
+  return text6(value).trim();
 }
 function list(value) {
-  return value == null ? [] : Array.isArray(value) ? value.map(text5) : [text5(value)];
+  return value == null ? [] : Array.isArray(value) ? value.map(text6) : [text6(value)];
 }
 function material2(object, key) {
   const content = list(object[key]).join("\n").trim();
@@ -20412,8 +20693,8 @@ function openVPNInitialSettings(endpoint) {
     openvpn_network: network2,
     openvpn_mode: staticMode ? "static_key" : "tls",
     openvpn_login: endpoint.username != null || endpoint.password != null ? "1" : "0",
-    openvpn_username: text5(endpoint.username),
-    openvpn_password: text5(endpoint.password),
+    openvpn_username: text6(endpoint.username),
+    openvpn_password: text6(endpoint.password),
     openvpn_ca: material2(tls, "certificate"),
     openvpn_cert: material2(tls, "client_certificate"),
     openvpn_key: material2(tls, "client_key"),
@@ -20453,7 +20734,7 @@ function openVPNInitialSettings(endpoint) {
 function mergePreserved(endpoint, settings) {
   let preserved = {};
   try {
-    preserved = JSON.parse(text5(settings.openvpn_preserved) || "{}");
+    preserved = JSON.parse(text6(settings.openvpn_preserved) || "{}");
   } catch (_error) {
     preserved = {};
   }
@@ -20499,7 +20780,7 @@ function applyAdvanced(endpoint, tls, settings) {
   else if (restart) endpoint.ping_restart = `${restart}s`;
   Object.assign(
     endpoint,
-    COMPRESSIONS[text5(settings.openvpn_compression)] || {}
+    COMPRESSIONS[text6(settings.openvpn_compression)] || {}
   );
   if (!tlsMode) return;
   const serverName = trimmed(settings.openvpn_server_name);
@@ -20563,9 +20844,9 @@ function openVPNEndpoint(settings) {
     applyAdvanced(endpoint, tls, settings);
     return mergePreserved(endpoint, settings);
   }
-  if (settings.openvpn_login === "1" || text5(settings.openvpn_username) || text5(settings.openvpn_password)) {
-    endpoint.username = text5(settings.openvpn_username);
-    endpoint.password = text5(settings.openvpn_password);
+  if (settings.openvpn_login === "1" || text6(settings.openvpn_username) || text6(settings.openvpn_password)) {
+    endpoint.username = text6(settings.openvpn_username);
+    endpoint.password = text6(settings.openvpn_password);
   }
   setMaterial(tls, "certificate", settings.openvpn_ca);
   setMaterial(tls, "client_certificate", settings.openvpn_cert);
@@ -20627,7 +20908,7 @@ var ImportError2 = class extends Error {
 function fail2(message2) {
   throw new ImportError2(message2);
 }
-function text6(value) {
+function text7(value) {
   return `${value ?? ""}`.trim();
 }
 function lines2(value) {
@@ -20637,7 +20918,7 @@ function basename2(path) {
   return path.split(/[\\/]/).pop().toLowerCase();
 }
 function normalizeOpenConnectServer(value) {
-  let rest = text6(value);
+  let rest = text7(value);
   const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(rest);
   if (scheme) {
     if (scheme[1].toLowerCase() !== "https") {
@@ -20681,7 +20962,7 @@ function server(value) {
 var HEX = /^[0-9a-f]+$/i;
 var BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 function normalizeOpenConnectFingerprint(value) {
-  const input = text6(value);
+  const input = text7(value);
   const prefixed = /^(pin-sha256|sha256|sha1):(.*)$/i.exec(input);
   if (prefixed) {
     const prefix = prefixed[1].toLowerCase();
@@ -20700,7 +20981,7 @@ function normalizeOpenConnectFingerprint(value) {
 }
 function fingerprint(value) {
   const result = normalizeOpenConnectFingerprint(value);
-  return "fingerprint" in result ? result.fingerprint : fail2(`${text6(value)}: ${result.message}`);
+  return "fingerprint" in result ? result.fingerprint : fail2(`${text7(value)}: ${result.message}`);
 }
 var BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 function base32(bytes) {
@@ -20719,7 +21000,7 @@ function base32(bytes) {
   return result;
 }
 function isBase32Secret(value) {
-  const body = text6(value).replace(/^base32:/i, "").replace(/[\s=]/g, "");
+  const body = text7(value).replace(/^base32:/i, "").replace(/[\s=]/g, "");
   return body !== "" && /^[A-Z2-7]+$/i.test(body);
 }
 function totpSecret(value) {
@@ -21261,7 +21542,7 @@ function isYes(value) {
   return /^(yes|true|1)$/i.test(`${value || ""}`);
 }
 function nmFile(value) {
-  const path = text6(value).replace(/^file:\/\//, "");
+  const path = text7(value).replace(/^file:\/\//, "");
   return path && path !== "(null)" ? path : "";
 }
 var NM_TOKEN_MODES = {
@@ -21290,7 +21571,7 @@ function readNetworkManager(state, input) {
   } : sections.vpn || {};
   const secrets = sections["vpn-secrets"] || {};
   const { endpoint, tls } = state;
-  state.host = text6(data.gateway);
+  state.host = text7(data.gateway);
   if (!state.host) fail2(_("No gateway"));
   const xml = secrets.xmlconfig ? decodeBase64(secrets.xmlconfig) : null;
   if (xml && !/[.:/]/.test(state.host)) {
@@ -21321,15 +21602,15 @@ function readNetworkManager(state, input) {
     }
     endpoint.reported_os = data.reported_os;
   }
-  if (/^\d+$/.test(text6(data.mtu))) endpoint.mtu = Number(data.mtu);
+  if (/^\d+$/.test(text7(data.mtu))) endpoint.mtu = Number(data.mtu);
   if (isYes(data.disable_udp)) endpoint.no_udp = true;
   if (data.proxy) state.skipped.add("proxy");
   if (data.csd_wrapper) state.skipped.add("csd_wrapper");
   if (isYes(data.pem_passphrase_fsid)) state.skipped.add("pem_passphrase_fsid");
-  const source = text6(data.stoken_source);
+  const source = text7(data.stoken_source);
   if (NM_TOKEN_MODES[source]) {
     state.tokenMode = NM_TOKEN_MODES[source];
-    state.tokenSecret = text6(secrets.stoken_string || data.stoken_string);
+    state.tokenSecret = text7(secrets.stoken_string || data.stoken_string);
   } else if (source && source !== "disabled") {
     state.skipped.add(`stoken_source ${source}`);
   }
@@ -21413,12 +21694,12 @@ function readAnyConnectLink(state, input) {
   if (/^ipsec$/i.test(query.get("protocol") || "")) {
     fail2(_("The link connects over IPsec, which OpenConnect does not speak"));
   }
-  state.host = text6(query.get("host"));
+  state.host = text7(query.get("host"));
   if (!state.host) fail2(_("No host"));
   state.endpoint.flavor = "anyconnect";
-  const username = text6(query.get("prefill_username"));
+  const username = text7(query.get("prefill_username"));
   const password = query.get("prefill_password") ?? "";
-  const group = text6(query.get("prefill_group_list"));
+  const group = text7(query.get("prefill_group_list"));
   if (username) state.endpoint.username = username;
   if (password) state.endpoint.password = password;
   if (group) state.endpoint.auth_group = group;
@@ -21511,7 +21792,7 @@ function readJson(state, input) {
   }
   state.endpoint = endpoint;
   state.tls = { ...endpoint.tls || {} };
-  state.host = text6(endpoint.server);
+  state.host = text7(endpoint.server);
   state.browser = endpoint.external_auth_disabled !== true;
 }
 function format(input) {
@@ -21689,14 +21970,14 @@ var ADVANCED_DEFAULTS2 = {
   openconnect_form_entries: [],
   openconnect_browser: "0"
 };
-function text7(value) {
+function text8(value) {
   return `${value ?? ""}`;
 }
 function trimmed2(value) {
-  return text7(value).trim();
+  return text8(value).trim();
 }
 function list2(value) {
-  return value == null ? [] : Array.isArray(value) ? value.map(text7) : [text7(value)];
+  return value == null ? [] : Array.isArray(value) ? value.map(text8) : [text8(value)];
 }
 function flag(value) {
   return value === true ? "1" : "0";
@@ -21724,7 +22005,7 @@ function number3(value) {
   return /^\d+$/.test(trimmed2(value)) ? Number(trimmed2(value)) : null;
 }
 function isFormEntryLine(entry) {
-  return !!trimmed2(entry.form_id) && !!trimmed2(entry.name) && !entry.submission_key && !entry.promote && !/[:=]/.test(text7(entry.form_id)) && !text7(entry.name).includes("=");
+  return !!trimmed2(entry.form_id) && !!trimmed2(entry.name) && !entry.submission_key && !entry.promote && !/[:=]/.test(text8(entry.form_id)) && !text8(entry.name).includes("=");
 }
 function parseFormEntry(value) {
   const match = /^([^:=]+):([^=]+)=(.*)$/.exec(trimmed2(value));
@@ -21754,7 +22035,7 @@ function preservedFields2(endpoint) {
   });
   if (Object.keys(preservedTls).length) preserved.tls = preservedTls;
   const token = endpoint.token;
-  if (token && !TOKEN_MODES2.includes(text7(token.mode))) {
+  if (token && !TOKEN_MODES2.includes(text8(token.mode))) {
     preserved.token = token;
   }
   const entries = formEntries(endpoint).filter(
@@ -21766,22 +22047,22 @@ function preservedFields2(endpoint) {
 function openConnectInitialSettings(endpoint) {
   const tls = endpoint.tls || {};
   const token = endpoint.token || {};
-  const tokenMode = TOKEN_MODES2.includes(text7(token.mode)) ? text7(token.mode) : "";
+  const tokenMode = TOKEN_MODES2.includes(text8(token.mode)) ? text8(token.mode) : "";
   const settings = {
     openconnect_server: trimmed2(endpoint.server),
     openconnect_flavor: trimmed2(endpoint.flavor) || "anyconnect",
-    openconnect_username: text7(endpoint.username),
-    openconnect_password: text7(endpoint.password),
-    openconnect_auth_group: text7(endpoint.auth_group),
+    openconnect_username: text8(endpoint.username),
+    openconnect_password: text8(endpoint.password),
+    openconnect_auth_group: text8(endpoint.auth_group),
     openconnect_certificate_enabled: material4(tls, "client_certificate") || material4(tls, "client_key") ? "1" : "0",
     openconnect_cert: material4(tls, "client_certificate"),
     openconnect_key: material4(tls, "client_key"),
-    openconnect_key_password: text7(tls.client_key_password),
+    openconnect_key_password: text8(tls.client_key_password),
     openconnect_token_mode: tokenMode,
-    openconnect_token_secret: tokenMode ? text7(token.secret) : "",
-    openconnect_token_pin: tokenMode ? text7(token.pin) : "",
-    openconnect_token_password: tokenMode ? text7(token.password) : "",
-    openconnect_token_device_id: tokenMode ? text7(token.device_id) : "",
+    openconnect_token_secret: tokenMode ? text8(token.secret) : "",
+    openconnect_token_pin: tokenMode ? text8(token.pin) : "",
+    openconnect_token_password: tokenMode ? text8(token.password) : "",
+    openconnect_token_device_id: tokenMode ? text8(token.device_id) : "",
     openconnect_ca: material4(tls, "certificate_authority"),
     openconnect_fingerprints: list2(tls.peer_fingerprint),
     openconnect_insecure: flag(tls.insecure),
@@ -21789,7 +22070,7 @@ function openConnectInitialSettings(endpoint) {
     openconnect_no_system_trust: flag(tls.system_trust_disabled),
     openconnect_no_udp: flag(endpoint.no_udp),
     openconnect_reported_os: trimmed2(endpoint.reported_os),
-    openconnect_user_agent: text7(endpoint.user_agent),
+    openconnect_user_agent: text8(endpoint.user_agent),
     openconnect_version: trimmed2(endpoint.version),
     openconnect_local_hostname: trimmed2(endpoint.local_hostname),
     openconnect_compression: compressionValue2(endpoint),
@@ -21799,9 +22080,9 @@ function openConnectInitialSettings(endpoint) {
     openconnect_dpd: secondsValue2(endpoint.dpd_interval),
     openconnect_insecure_crypto: flag(endpoint.allow_insecure_crypto),
     openconnect_pfs: flag(endpoint.pfs),
-    openconnect_cookie: text7(endpoint.cookie),
+    openconnect_cookie: text8(endpoint.cookie),
     openconnect_form_entries: formEntries(endpoint).filter(isFormEntryLine).map(
-      (entry) => `${trimmed2(entry.form_id)}:${trimmed2(entry.name)}=${text7(entry.value)}`
+      (entry) => `${trimmed2(entry.form_id)}:${trimmed2(entry.name)}=${text8(entry.value)}`
     ),
     openconnect_browser: endpoint.external_auth_disabled === true ? "0" : "1",
     openconnect_preserved: JSON.stringify(preservedFields2(endpoint))
@@ -21812,7 +22093,7 @@ function openConnectInitialSettings(endpoint) {
 function mergePreserved2(endpoint, settings) {
   let preserved = {};
   try {
-    preserved = JSON.parse(text7(settings.openconnect_preserved) || "{}");
+    preserved = JSON.parse(text8(settings.openconnect_preserved) || "{}");
   } catch (_error) {
     preserved = {};
   }
@@ -21856,7 +22137,7 @@ function applyAdvanced2(endpoint, tls, settings) {
     if (trimmed2(settings[field2])) endpoint[key] = trimmed2(settings[field2]);
   }
   if (trimmed2(settings.openconnect_user_agent)) {
-    endpoint.user_agent = text7(settings.openconnect_user_agent);
+    endpoint.user_agent = text8(settings.openconnect_user_agent);
   }
   if (settings.openconnect_compression === "off") {
     endpoint.compression_disabled = true;
@@ -21874,8 +22155,8 @@ function applyAdvanced2(endpoint, tls, settings) {
     endpoint.allow_insecure_crypto = true;
   }
   if (settings.openconnect_pfs === "1") endpoint.pfs = true;
-  if (text7(settings.openconnect_cookie)) {
-    endpoint.cookie = text7(settings.openconnect_cookie).trim();
+  if (text8(settings.openconnect_cookie)) {
+    endpoint.cookie = text8(settings.openconnect_cookie).trim();
   }
   const entries = normalizeOptionValues(settings.openconnect_form_entries).map(parseFormEntry).filter(Boolean);
   if (entries.length) endpoint.form_entries = entries;
@@ -21895,8 +22176,8 @@ function openConnectEndpoint(settings) {
   if (trimmed2(settings.openconnect_username)) {
     endpoint.username = trimmed2(settings.openconnect_username);
   }
-  if (text7(settings.openconnect_password)) {
-    endpoint.password = text7(settings.openconnect_password);
+  if (text8(settings.openconnect_password)) {
+    endpoint.password = text8(settings.openconnect_password);
   }
   if (trimmed2(settings.openconnect_auth_group)) {
     endpoint.auth_group = trimmed2(settings.openconnect_auth_group);
@@ -21921,8 +22202,8 @@ function openConnectEndpoint(settings) {
   if (settings.openconnect_certificate_enabled === "1") {
     setMaterial2(tls, "client_certificate", settings.openconnect_cert);
     setMaterial2(tls, "client_key", settings.openconnect_key);
-    if (text7(settings.openconnect_key_password)) {
-      tls.client_key_password = text7(settings.openconnect_key_password);
+    if (text8(settings.openconnect_key_password)) {
+      tls.client_key_password = text8(settings.openconnect_key_password);
     }
   }
   setMaterial2(tls, "certificate_authority", settings.openconnect_ca);
@@ -21961,7 +22242,7 @@ function validateOpenConnectSettings(settings) {
   const mode = trimmed2(settings.openconnect_token_mode);
   const certificate = settings.openconnect_certificate_enabled === "1";
   const advanced = settings.openconnect_advanced === "1";
-  const complete = validateOpenConnectServer(settings.openconnect_server) === true && (!mode || validateTokenSecret(mode, settings.openconnect_token_secret) === true) && (!certificate || !!trimmed2(settings.openconnect_cert) && !!trimmed2(settings.openconnect_key) && (!isEncryptedKey(settings.openconnect_key) || !!text7(settings.openconnect_key_password))) && normalizeOptionValues(settings.openconnect_fingerprints).every(
+  const complete = validateOpenConnectServer(settings.openconnect_server) === true && (!mode || validateTokenSecret(mode, settings.openconnect_token_secret) === true) && (!certificate || !!trimmed2(settings.openconnect_cert) && !!trimmed2(settings.openconnect_key) && (!isEncryptedKey(settings.openconnect_key) || !!text8(settings.openconnect_key_password))) && normalizeOptionValues(settings.openconnect_fingerprints).every(
     (value) => validateOpenConnectFingerprint(value) === true
   ) && (!advanced || normalizeOptionValues(settings.openconnect_form_entries).every(
     (value) => validateFormEntry(value) === true
@@ -22126,8 +22407,8 @@ function tunnelSettingsKeys() {
   ];
 }
 function setsAmneziaParameter(key, value) {
-  const text8 = `${value ?? ""}`.trim();
-  return amneziaParameter(key)?.kind === "flag" ? text8 === "1" : text8 !== "";
+  const text9 = `${value ?? ""}`.trim();
+  return amneziaParameter(key)?.kind === "flag" ? text9 === "1" : text9 !== "";
 }
 function oneSidedAmneziaEnabled(kind, settings) {
   return (kind === "wireguard" || kind === "warp") && `${settings.amnezia_enabled || ""}` === "1";
@@ -23421,11 +23702,11 @@ var UNIT_SECONDS = {
   d: 86400
 };
 function singBoxDurationSeconds(value) {
-  const text8 = `${value ?? ""}`.trim();
-  if (!isSingBoxDuration(text8)) {
+  const text9 = `${value ?? ""}`.trim();
+  if (!isSingBoxDuration(text9)) {
     return null;
   }
-  return [...text8.matchAll(/([0-9]+(?:\.[0-9]+)?)(ns|us|ms|s|m|h|d)/g)].reduce(
+  return [...text9.matchAll(/([0-9]+(?:\.[0-9]+)?)(ns|us|ms|s|m|h|d)/g)].reduce(
     (total, [, amount, unit]) => total + Number(amount) * UNIT_SECONDS[unit],
     0
   );
@@ -23836,7 +24117,7 @@ var InterfaceSettingsDynamicList = SettingsDynamicList.extend({
       }, this)
     );
   },
-  renderListItemLabel(section_id, value, text8) {
+  renderListItemLabel(section_id, value, text9) {
     const name = childItemInputValue(
       section_id,
       value,
@@ -23845,7 +24126,7 @@ var InterfaceSettingsDynamicList = SettingsDynamicList.extend({
     );
     return renderNetworkInterfaceListItem(
       this.interfaceDeviceMap ? this.interfaceDeviceMap[name] : null,
-      name || `${text8 ?? ""}`
+      name || `${text9 ?? ""}`
     );
   }
 });
@@ -24751,15 +25032,15 @@ function parseAmnezia(iface) {
   for (const { key, conf, kind } of AMNEZIA_PARAMETERS) {
     const value = firstValue(iface, conf.toLowerCase());
     if (!value) continue;
-    const text8 = amneziaTextFromConf(key, value);
-    if (text8 === null)
+    const text9 = amneziaTextFromConf(key, value);
+    if (text9 === null)
       return { valid: false, message: _("Invalid AmneziaWG parameters") };
-    const validation = validateAmneziaValue(key, text8);
+    const validation = validateAmneziaValue(key, text9);
     if (validation !== true)
       return { valid: false, message: `${conf}: ${validation}` };
-    texts[key] = text8;
-    if (kind !== "flag" || text8 === "1")
-      amnezia[key] = amneziaJsonValue(key, text8);
+    texts[key] = text9;
+    if (kind !== "flag" || text9 === "1")
+      amnezia[key] = amneziaJsonValue(key, text9);
   }
   const combination = validateAmneziaSet(texts);
   if (combination !== true) return { valid: false, message: combination };
@@ -24936,10 +25217,10 @@ async function parseWireGuardInput(input) {
     if (!isAmneziaLink) return importAmneziaProfile(JSON.parse(value));
     const packed = decodeBase64Url(value.slice("vpn://".length));
     const decoded = await uncompressQtData(packed);
-    const text8 = new TextDecoder("utf-8", { fatal: true }).decode(decoded);
-    if (/^\s*\[Interface\](?:\r?\n|$)/u.test(text8))
-      return parseWireGuardConfig(text8);
-    return importAmneziaProfile(JSON.parse(text8));
+    const text9 = new TextDecoder("utf-8", { fatal: true }).decode(decoded);
+    if (/^\s*\[Interface\](?:\r?\n|$)/u.test(text9))
+      return parseWireGuardConfig(text9);
+    return importAmneziaProfile(JSON.parse(text9));
   } catch {
     return {
       valid: false,
@@ -25001,8 +25282,8 @@ function fileIcon() {
   return svg;
 }
 function readMaterialFile(bytes) {
-  const text8 = new TextDecoder().decode(bytes);
-  if (text8.includes("-----BEGIN") || !isCertificate(bytes)) return text8;
+  const text9 = new TextDecoder().decode(bytes);
+  if (text9.includes("-----BEGIN") || !isCertificate(bytes)) return text9;
   let binary = "";
   bytes.forEach((byte) => binary += String.fromCharCode(byte));
   const body = btoa(binary).replace(/.{64}/g, "$&\n").trim();
@@ -25032,9 +25313,9 @@ function setFieldValue(widget, value) {
   widget?.triggerValidation();
   widget?.node?.querySelector("textarea")?.dispatchEvent(new Event("change", { bubbles: true }));
 }
-function loadedMaterial(text8, kind, paired) {
-  const both = paired ? splitCertificateAndKey(text8) : null;
-  if (!both) return { own: text8, pair: null };
+function loadedMaterial(text9, kind, paired) {
+  const both = paired ? splitCertificateAndKey(text9) : null;
+  if (!both) return { own: text9, pair: null };
   return kind === "key" || kind === "passphrase-key" ? { own: both.key, pair: both.certificate } : { own: both.certificate, pair: both.key };
 }
 function configureMaterialOption(option2, kind, required2, pair) {
@@ -25077,10 +25358,10 @@ function configureMaterialOption(option2, kind, required2, pair) {
       },
       fileIcon()
     );
-    const fill = (text8) => {
+    const fill = (text9) => {
       const other = pairWidget();
       const loaded = loadedMaterial(
-        text8,
+        text9,
         typeof kind === "function" ? kind(formValueOf(this, sectionId)) : kind,
         !!other
       );
@@ -25100,10 +25381,10 @@ function configureMaterialOption(option2, kind, required2, pair) {
       });
     });
     frame.querySelector("textarea")?.addEventListener("paste", (ev) => {
-      const text8 = ev.clipboardData?.getData("text") ?? "";
-      if (!pair || !splitCertificateAndKey(text8)) return;
+      const text9 = ev.clipboardData?.getData("text") ?? "";
+      if (!pair || !splitCertificateAndKey(text9)) return;
       ev.preventDefault();
-      fill(text8.trim());
+      fill(text9.trim());
     });
     return textE("div", { class: "fkp-material" }, [frame, load]);
   };
@@ -25112,9 +25393,9 @@ function configureMaterialOption(option2, kind, required2, pair) {
 // src/validators/fields.ts
 function wholeNumberField(min, max = Infinity) {
   return (_sectionId, value) => {
-    const text8 = `${value ?? ""}`.trim();
-    const number4 = Number(text8);
-    return !text8 || /^[0-9]+$/.test(text8) && number4 >= min && number4 <= max ? true : max === Infinity ? _("Whole number from %d").format(min) : message.wholeNumber(min, max);
+    const text9 = `${value ?? ""}`.trim();
+    const number4 = Number(text9);
+    return !text9 || /^[0-9]+$/.test(text9) && number4 >= min && number4 <= max ? true : max === Infinity ? _("Whole number from %d").format(min) : message.wholeNumber(min, max);
   };
 }
 function portField(_sectionId, value) {
@@ -25124,21 +25405,21 @@ function anyPortField(_sectionId, value) {
   return wholeNumberField(0, 65535)(_sectionId, value) === true ? true : message.invalidPort();
 }
 function domainField(_sectionId, value) {
-  const text8 = `${value ?? ""}`.trim();
-  const ascii = asciiHostname(text8.toLowerCase());
-  return !text8 || ascii && validAsciiDomain(ascii, false) ? true : message.invalidDomain();
+  const text9 = `${value ?? ""}`.trim();
+  const ascii = asciiHostname(text9.toLowerCase());
+  return !text9 || ascii && validAsciiDomain(ascii, false) ? true : message.invalidDomain();
 }
 function hostField(_sectionId, value) {
-  const text8 = `${value ?? ""}`.trim();
-  return !text8 || isIPv4(text8) || isIPv6(text8) || domainField(_sectionId, text8) === true ? true : message.invalidHost();
+  const text9 = `${value ?? ""}`.trim();
+  return !text9 || isIPv4(text9) || isIPv6(text9) || domainField(_sectionId, text9) === true ? true : message.invalidHost();
 }
 function ipv4Field(_sectionId, value) {
-  const text8 = `${value ?? ""}`.trim();
-  return !text8 || isIPv4(text8) ? true : message.invalidIp();
+  const text9 = `${value ?? ""}`.trim();
+  return !text9 || isIPv4(text9) ? true : message.invalidIp();
 }
 function ipv6Field(_sectionId, value) {
-  const text8 = `${value ?? ""}`.trim();
-  return !text8 || isIPv6(text8) ? true : message.invalidIp();
+  const text9 = `${value ?? ""}`.trim();
+  return !text9 || isIPv6(text9) ? true : message.invalidIp();
 }
 
 // src/forkop/tabs/sections/tunnels/openvpnForm.ts
@@ -26248,9 +26529,9 @@ function validateWireGuardPeers(values, tunnelId, option2) {
   return true;
 }
 function isOptionalUint16(value, minimum) {
-  const text8 = `${value ?? ""}`.trim();
-  const parsed = parseUnsigned(text8, 65535);
-  return !text8 || parsed !== void 0 && parsed >= minimum;
+  const text9 = `${value ?? ""}`.trim();
+  const parsed = parseUnsigned(text9, 65535);
+  return !text9 || parsed !== void 0 && parsed >= minimum;
 }
 function amneziaProblem(kind, settings) {
   if (kind !== "amneziawg" && !oneSidedAmneziaEnabled(kind, settings)) {
@@ -29148,8 +29429,8 @@ function lineFields(line, offset) {
   }
   return fields;
 }
-function analyzeStaticHosts(text8) {
-  const value = `${text8 || ""}`;
+function analyzeStaticHosts(text9) {
+  const value = `${text9 || ""}`;
   const annotations = [];
   const errors = [];
   let offset = 0;
