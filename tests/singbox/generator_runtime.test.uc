@@ -518,7 +518,7 @@ t.test("a section's own destinations and its rule sets each select traffic on th
     t.ok(has(listed.rules[1].port, 443), "the section's ports still narrow the rule set");
 });
 
-t.test("a FakeIP answer reads only the domains of a rule set, a real answer the whole set", () => {
+t.test("DNS request matchers read only the domains of a rule set for both real and FakeIP answers", () => {
     let d = build({ settings: settings(), section: [
         { ".name": "proxy", enabled: "1", action: "connection", outbound_jsons: [ "{\"type\":\"direct\"}" ], rule_set: [ "https://example.com/ports.srs" ] },
         { ".name": "deny", enabled: "1", action: "block", community_lists: [ "discord" ] },
@@ -528,8 +528,8 @@ t.test("a FakeIP answer reads only the domains of a rule set, a real answer the 
     let denied = q.dns_rule(d, (r) => has(r.rule_set, "deny-discord-community-ruleset"));
     t.eq([ denied.server, denied.rule_set_domain_only ], [ "fakeip-server", true ]);
     let direct = q.dns_rule(d, (r) => has(r.rule_set, q.ruleset_url(d, "https://example.com/direct.srs").tag));
-    t.eq([ direct.server, direct.rule_set_domain_only ], [ "dns-server", null ],
-        "a bypass answer is checked against the set's subnets, which keeps a domain resolving into one direct");
+    t.eq([ direct.server, direct.rule_set_domain_only ], [ "dns-server", true ],
+        "address-based bypasses use explicit response rules when subnet extraction is enabled");
 });
 
 t.test("ports on their own select traffic in one rule", () => {

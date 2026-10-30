@@ -1338,14 +1338,40 @@ function add_section_dns_matcher_rule(config, section, matchers, rewrite_ttl) {
         apply_matchers(rule, device_matchers);
         rule.action = "route";
         rule.server = section_dns_server(section);
-        if (rule.server == runtime_constants.FAKEIP_DNS_SERVER_TAG) {
+        if (rule.server == runtime_constants.FAKEIP_DNS_SERVER_TAG)
             rule.query_type = FAKEIP_QUERY_TYPES;
-            // A query has no destination port, and a FakeIP answer is in no subnet of a set.
-            if (rule.rule_set != null)
-                rule.rule_set_domain_only = true;
-        }
+        // Requests have no destination address. Subnets are matched against an evaluated
+        // response separately, never through the deprecated DNS address-filter path.
+        if (rule.rule_set != null)
+            rule.rule_set_domain_only = true;
         rule.rewrite_ttl = rewrite_ttl;
         push_dns_matcher_rule(config, rule);
+    }
+}
+
+// Keep an address-based bypass ahead of later FakeIP rules without evaluating domain-only
+// lists or sending a second query for a matching answer.
+function add_section_dns_response_rules(config, section, rule_set_tags, rewrite_ttl) {
+    if (length(rule_set_tags) == 0 || section_dns_server(section) == runtime_constants.FAKEIP_DNS_SERVER_TAG)
+        return;
+
+    let response_tag = runtime_constants.tag(section[".name"], "subnet-dns-response");
+    for (let device_matchers in device_matcher_variants(section, "source_ip_cidr", true)) {
+        push_dns_matcher_rule(config, {
+            ...device_matchers,
+            query_type: FAKEIP_QUERY_TYPES,
+            action: "evaluate",
+            server: runtime_constants.DNS_SERVER_TAG,
+            tag: response_tag,
+            rewrite_ttl
+        });
+        push_dns_matcher_rule(config, {
+            ...device_matchers,
+            query_type: FAKEIP_QUERY_TYPES,
+            match_response: response_tag,
+            rule_set: single_or_array(rule_set_tags),
+            action: "respond"
+        });
     }
 }
 
@@ -1581,16 +1607,24 @@ function add_combined_route_for_section(config, section) {
     let domain_regex = destinations.domain_regex;
     let ip_cidr = destinations.ip_cidr;
     let rule_set_tags = [];
+    let subnet_rule_set_tags = [];
     let section_name = section[".name"];
 
     add_fully_routed_ips_rules(config, section);
 
-    for (let community in connections.community_lists(section))
-        push(rule_set_tags, ensure_community_ruleset(config, section_name, as_string(community)).tag);
+    for (let community in connections.community_lists(section)) {
+        let tag = ensure_community_ruleset(config, section_name, as_string(community)).tag;
+        push(rule_set_tags, tag);
+        if (runtime_rulesets.community_has_subnets(community))
+            push(subnet_rule_set_tags, tag);
+    }
     for (let reference in connections.rule_sets(section))
         push(rule_set_tags, ensure_custom_ruleset(config, as_string(reference)));
-    for (let reference in connections.rule_sets_with_subnets(section))
-        push(rule_set_tags, ensure_custom_ruleset(config, as_string(reference)));
+    for (let reference in connections.rule_sets_with_subnets(section)) {
+        let tag = ensure_custom_ruleset(config, as_string(reference));
+        push(rule_set_tags, tag);
+        push(subnet_rule_set_tags, tag);
+    }
 
     let target = runtime_route.target(section, outbound_tag(section_name));
     if (target.unsupported)
@@ -1639,6 +1673,7 @@ function add_combined_route_for_section(config, section) {
             rule_set: single_or_array(rule_set_tags)
         }, rewrite_ttl);
     }
+    add_section_dns_response_rules(config, section, subnet_rule_set_tags, rewrite_ttl);
 }
 
 function add_outbound_for_section(config, section) {
