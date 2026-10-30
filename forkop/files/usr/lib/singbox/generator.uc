@@ -1683,6 +1683,14 @@ function add_service_route_rules(config, sections) {
         domain: runtime_constants.FAKEIP_TEST_DOMAIN,
         override_port: 8443
     });
+    // Diagnostics uses this router request as the direct-IP baseline. Keep it out of
+    // catch-all sections while leaving client requests subject to their own routes.
+    push(config.route.rules, {
+        action: "route",
+        inbound: system_tproxy_inbound_matcher(),
+        outbound: runtime_constants.DIRECT_OUTBOUND_TAG,
+        domain: runtime_constants.FAKEIP_TEST_DOMAIN
+    });
 }
 
 function enabled_sections() {
