@@ -35,7 +35,7 @@ const OUTBOUND_MARK = hex(require("core.constants").NFT_OUTBOUND_MARK);
 // The cache file keeps a name for every address until the range wraps, about 170 bytes each in
 // tmpfs, hence 65536 addresses a family.
 const FAKEIP_INET4_RANGE = "198.18.0.0/16";
-const FAKEIP_INET6_RANGE = "fc00::/112";
+const FAKEIP_INET6_RANGE = "2001:2::/48";
 
 const URLTEST_DEFAULT_IDLE_TIMEOUT = "30m";
 const CHECK_PROXY_IP_DOMAIN = "ip.podkop.fyi";
