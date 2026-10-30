@@ -5,8 +5,12 @@ let common = require("core.common");
 let exec = require("core.exec");
 let constants = require("core.constants");
 let bytecode = require("core.bytecode");
+let uci = require("core.uci");
+let singbox_constants = require("singbox.constants");
 
 const FIREWALL_INPUT_MARKER = "forkop: TPROXY traffic";
+// sing-box keeps the lists of its rule sets and subscriptions in the cache path plus this suffix.
+const CORE_CACHE_LISTS_SUFFIX = ".rule-sets";
 
 let paths = {
     init: constants.FORKOP_SERVICE_INIT,
@@ -16,7 +20,10 @@ let paths = {
     firewall_input_include: "/usr/share/nftables.d/chain-pre/input/forkop.nft",
     rpcd_init: "/etc/init.d/rpcd",
     luci_index_cache: [ "/var/luci-indexcache*", "/tmp/luci-indexcache*" ],
-    runtime: [ "/var/run/forkop", "/var/run/forkop.internal-config-change" ]
+    runtime: [ "/var/run/forkop", "/var/run/forkop.internal-config-change" ],
+    cache: singbox_constants.TMP_SING_BOX_FOLDER + "/cache.db",
+    // the default of the core's service, /etc/init.d/sing-box
+    core_workdir: "/usr/share/sing-box"
 };
 
 function exists(path) {
@@ -43,9 +50,21 @@ function restart_state_service() {
     exec.ok([ paths.state_service_init, "restart" ]);
 }
 
+// What the core kept for Forkop: the cache file with its lists, and the dashboard it downloaded.
+function remove_core_files() {
+    let cache = common.option(uci.get_all("forkop", "settings"), "cache_path", "") || paths.cache;
+    let workdir = uci.get("sing-box.main.workdir") || paths.core_workdir;
+    if (substr(cache, 0, 1) == "/") {
+        fs.unlink(cache);
+        common.remove_tree(cache + CORE_CACHE_LISTS_SUFFIX);
+    }
+    if (substr(workdir, 0, 1) == "/")
+        common.remove_tree(workdir + "/" + singbox_constants.CLASH_API_UI_DIRECTORY);
+}
+
 // A removal takes autostart away first: while /etc/rc.d/S99forkop exists, a WAN-up trigger can
 // start the service mid-removal. The routing table name goes after the stop that needs it, and
-// what the service kept in RAM, its precompiled library included, goes last.
+// what the service and the core kept, its precompiled library included, goes last.
 function prerm(action) {
     let upgrade = action == "upgrade";
     fs.unlink(paths.was_running);
@@ -65,6 +84,7 @@ function prerm(action) {
     let name_removed = require("nft.apply").remove_rt_table_entry();
     for (let path in paths.runtime)
         common.remove_tree(path);
+    remove_core_files();
     return name_removed ? 0 : 1;
 }
 

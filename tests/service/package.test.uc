@@ -5,6 +5,8 @@ let repo = require("repo");
 let pkg = require("service.package");
 let nft = require("nft.apply");
 let constants = require("core.constants");
+let fixture = require("fixture");
+let uci = require("uci");
 
 let dir = stub.tmpdir();
 let init = dir + "/forkop-init";
@@ -20,6 +22,8 @@ pkg.paths.firewall_input_include = include;
 pkg.paths.rpcd_init = dir + "/rpcd";
 pkg.paths.luci_index_cache = [ dir + "/luci-indexcache*" ];
 pkg.paths.runtime = [ dir + "/run", dir + "/internal-change" ];
+pkg.paths.cache = dir + "/default/cache.db";
+pkg.paths.core_workdir = dir + "/default-core";
 nft.paths.rt_tables = dir + "/rt_tables";
 for (let path in [ state_init, firewall_init, include, pkg.paths.rpcd_init ])
     fs.writefile(path, "");
@@ -70,6 +74,34 @@ t.test("an upgrade keeps autostart, the table name and the runtime files and rem
 
     run(() => pkg.prerm("upgrade"), [ [ init + " status", { status: 3 } ] ]);
     t.eq(fs.stat(pkg.paths.was_running), null, "a stopped service is not started after the upgrade");
+});
+
+t.test("a removal takes what the core kept for Forkop, an upgrade keeps it", () => {
+    let cache = dir + "/cache/cache.db";
+    let workdir = dir + "/core";
+    fixture.seed({ settings: { cache_path: cache } });
+    uci.__seed("sing-box", [ { ".type": "sing-box", ".name": "main", workdir } ]);
+    for (let path in [ dir + "/cache", cache + ".rule-sets", workdir, workdir + "/ui", workdir + "/Taildrop" ])
+        fs.mkdir(path);
+    fs.writefile(cache, "bbolt");
+    fs.writefile(cache + ".rule-sets/sub-0a1b2c3d", "vless://secret@203.0.113.1:443#one\n");
+    fs.writefile(workdir + "/ui/index.html", "");
+    fs.writefile(workdir + "/Taildrop/photo.jpg", "");
+    let kept = () => map([ cache, cache + ".rule-sets", workdir + "/ui" ], (path) => fs.stat(path) != null);
+
+    run(() => pkg.prerm("upgrade"), [ [ init + " status", { status: 3 } ] ]);
+    t.eq(kept(), [ true, true, true ]);
+
+    fs.writefile(nft.paths.rt_tables, RT_TABLES);
+    run(() => pkg.prerm("remove"));
+    t.eq(kept(), [ false, false, false ]);
+    t.ok(fs.stat(workdir + "/Taildrop/photo.jpg") != null, "the files Taildrop received stay");
+
+    fixture.seed({});
+    fs.mkdir(dir + "/default");
+    fs.writefile(pkg.paths.cache, "bbolt");
+    run(() => pkg.prerm("remove"));
+    t.eq(fs.stat(pkg.paths.cache), null, "without settings the cache file is where the core puts it by default");
 });
 
 t.test("postinst starts again only what the upgrade stopped", () => {

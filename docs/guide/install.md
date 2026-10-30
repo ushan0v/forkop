@@ -51,4 +51,4 @@ sh <(wget -O - https://raw.githubusercontent.com/ushan0v/forkop/main/install.sh)
 sh <(wget -O - https://raw.githubusercontent.com/ushan0v/forkop/main/install.sh) --uninstall
 ```
 
-Команда удаляет `forkop`, `luci-app-forkop`, `luci-i18n-forkop-ru`, ядро `sing-box-forkop` и зависимости, которые больше ничему не нужны.
+Команда удаляет `forkop`, `luci-app-forkop`, `luci-i18n-forkop-ru`, ядро `sing-box-forkop` и зависимости, которые больше ничему не нужны, а вместе с ними кеш ядра и скачанный дашборд YACD.

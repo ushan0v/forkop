@@ -167,7 +167,7 @@ function clash_api_config(settings, service_address) {
     if (secret != "")
         result.secret = secret;
     if (bool_option(settings, "enable_yacd", false)) {
-        result.external_ui = "ui";
+        result.external_ui = runtime_constants.CLASH_API_UI_DIRECTORY;
         result.external_ui_download_detour = runtime_constants.DIRECT_OUTBOUND_TAG;
     }
     return result;
