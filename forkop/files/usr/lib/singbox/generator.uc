@@ -950,7 +950,8 @@ function build_urltest_outbound(section, item, urltest_candidate_tags, candidate
         url: connections.urltest_testing_url(section, urltest_id),
         expected_status: connections.urltest_expected_status(section, urltest_id),
         interval: urltest_check_interval(section, urltest_id),
-        tolerance: int(connections.urltest_tolerance(section, urltest_id), 10),
+        // The core reads 0 as its default of 50 ms.
+        tolerance: max(1, int(connections.urltest_tolerance(section, urltest_id), 10)),
         interrupt_exist_connections: connections.urltest_interrupt_exist_connections(section, urltest_id)
     };
     let providers = provider_tags(provider_refs);

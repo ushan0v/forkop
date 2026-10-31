@@ -93,6 +93,16 @@ t.test("each URLTest group carries its own settings, in list order in the select
     t.eq(slice(selector.outbounds, 0, 2), [ "proxy/Fast URLTest", "proxy/Stable URLTest" ]);
 });
 
+t.test("a latency difference of 0 reaches the core as the smallest it honours", () => {
+    let config = build({
+        settings: { log_level: "warn" },
+        section: [ { ".name": "proxy", enabled: "1", action: "connection" } ],
+        connection_link: fixture.links("proxy", LINKS),
+        urltest: [ { ".name": "fast", section: "proxy", name: "Fast", tolerance: "0" } ]
+    });
+    t.eq(q.outbound(config, "proxy/Fast").tolerance, 1);
+});
+
 function fallback_fixture() {
     return {
         settings: { dns_server: [ "77.88.8.8" ], bootstrap_dns_server: [ "77.88.8.8" ] },
