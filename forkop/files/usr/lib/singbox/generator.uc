@@ -1693,8 +1693,11 @@ function add_service_route_rules(config, sections) {
             domain: runtime_constants.CHECK_PROXY_IP_DOMAIN
         });
     }
+    // The check service answers on 8443 that a request came through Forkop. Diagnostics shows
+    // the router's address there as the direct one, so no section may take the request.
     push(config.route.rules, {
-        action: "route-options",
+        action: "route",
+        outbound: runtime_constants.DIRECT_OUTBOUND_TAG,
         domain: runtime_constants.FAKEIP_TEST_DOMAIN,
         override_port: 8443
     });

@@ -541,6 +541,18 @@ t.test("a section's DNS rule reads only the domains of its rule sets, its route 
     t.eq([ route.outbound, route.rule_set_domain_only ], [ "direct-out", null ], "the subnets still select traffic");
 });
 
+t.test("the FakeIP check goes direct ahead of every section, so its address is the direct one", () => {
+    for (let section in [ { ports: [ "1-65535" ] }, { fully_routed_ips: [ "@system" ] } ]) {
+        let d = build({ settings: settings(), section: [ { ".name": "proxy", enabled: "1", action: "connection",
+            outbound_jsons: [ "{\"type\":\"direct\"}" ], ...section } ] });
+        let check_at = q.route_rule_index(d, (r) => r.domain == "fakeip.podkop.fyi");
+        let check = d.route.rules[check_at];
+        t.eq([ check.action, check.outbound, check.override_port, check.inbound ], [ "route", "direct-out", 8443, null ]);
+        t.ok(check_at < q.route_rule_index(d, (r) => r.outbound == "proxy" && r.domain == null), sprintf("%J", section));
+        t.eq(q.route_rule(d, (r) => r.domain == "ip.podkop.fyi").outbound, "proxy", "the exit check still takes the section");
+    }
+});
+
 t.test("ports on their own select traffic in one rule", () => {
     let d = build({ settings: settings(), section: [
         { ".name": "proxy", enabled: "1", action: "connection", outbound_jsons: [ "{\"type\":\"direct\"}" ], ports: [ "22", "6000-7000" ] },
