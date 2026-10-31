@@ -46,6 +46,8 @@ import { E } from '../../../helpers/element';
 
 const SECTIONS_REFRESH_INTERVAL_MS = 10000;
 const COLLAPSED_SECTIONS_STORAGE_KEY = 'forkop:dashboard-collapsed-sections:v1';
+const LATENCY_SORTED_SECTIONS_STORAGE_KEY =
+  'forkop:dashboard-latency-sorted-sections:v1';
 // While a latency test runs the router fills its delay records one at a time, so the sections
 // refresh keeps up with it; the duty ceiling still applies.
 const SECTIONS_LATENCY_REFRESH_INTERVAL_MS = 2000;
@@ -79,8 +81,10 @@ let connectionsSocketUrl = '';
 let lastPolledTotals: { at: number; up: number; down: number } | null = null;
 let pageUnloading = false;
 const latencyRequests = new Set<string>();
-const latencySortedSections = new Set<string>();
-const collapsedSections = readCollapsedSections();
+const latencySortedSections = readSectionNames(
+  LATENCY_SORTED_SECTIONS_STORAGE_KEY,
+);
+const collapsedSections = readSectionNames(COLLAPSED_SECTIONS_STORAGE_KEY);
 const selectorRequests = new Set<string>();
 const toolbarActions = new Set<'testAll' | 'subscriptions' | 'lists'>();
 const fallbackPinRequests = new Set<string>();
@@ -92,12 +96,10 @@ let activeDetailsModal: {
 let exitPanel: (ExitPanelState & { sectionName: string }) | null = null;
 let exitLookupId = 0;
 
-// Folded sections stay folded across visits.
-function readCollapsedSections() {
+// Folded and latency-sorted sections stay so across visits.
+function readSectionNames(storageKey: string) {
   try {
-    const stored = JSON.parse(
-      getLocalStorage()?.getItem(COLLAPSED_SECTIONS_STORAGE_KEY) || '[]',
-    );
+    const stored = JSON.parse(getLocalStorage()?.getItem(storageKey) || '[]');
     return new Set<string>(
       Array.isArray(stored)
         ? stored.filter((name): name is string => typeof name === 'string')
@@ -109,17 +111,17 @@ function readCollapsedSections() {
 }
 
 // Only sections still shown are written back, so removed ones do not linger.
-function writeCollapsedSections() {
+function writeSectionNames(storageKey: string, names: Set<string>) {
   const shown = new Set(
     store.get().sectionsWidget.data.map((section) => section.sectionName),
   );
   try {
     getLocalStorage()?.setItem(
-      COLLAPSED_SECTIONS_STORAGE_KEY,
-      JSON.stringify([...collapsedSections].filter((name) => shown.has(name))),
+      storageKey,
+      JSON.stringify([...names].filter((name) => shown.has(name))),
     );
   } catch {
-    // Folding still works for this visit when the browser refuses to store it.
+    // The choice still holds for this visit when the browser refuses to store it.
   }
 }
 
@@ -241,6 +243,7 @@ function handleSortByLatency(sectionName: string, enabled: boolean) {
   } else {
     latencySortedSections.delete(sectionName);
   }
+  writeSectionNames(LATENCY_SORTED_SECTIONS_STORAGE_KEY, latencySortedSections);
 
   void renderSectionsWidget();
 }
@@ -251,7 +254,7 @@ function handleCollapsedChange(sectionName: string, collapsed: boolean) {
   } else {
     collapsedSections.delete(sectionName);
   }
-  writeCollapsedSections();
+  writeSectionNames(COLLAPSED_SECTIONS_STORAGE_KEY, collapsedSections);
 
   void renderSectionsWidget();
 }

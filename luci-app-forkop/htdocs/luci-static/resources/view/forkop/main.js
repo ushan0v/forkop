@@ -10156,6 +10156,7 @@ function showTailscaleServerDetailsModal(sectionId) {
 // src/forkop/tabs/dashboard/initController.ts
 var SECTIONS_REFRESH_INTERVAL_MS = 1e4;
 var COLLAPSED_SECTIONS_STORAGE_KEY = "forkop:dashboard-collapsed-sections:v1";
+var LATENCY_SORTED_SECTIONS_STORAGE_KEY = "forkop:dashboard-latency-sorted-sections:v1";
 var SECTIONS_LATENCY_REFRESH_INTERVAL_MS = 2e3;
 var SECTIONS_REFRESH_BACKOFF_MAX_MS = 6e4;
 var SECTIONS_REFRESH_DUTY_MAX_MS = 3e4;
@@ -10181,19 +10182,19 @@ var connectionsSocketUrl = "";
 var lastPolledTotals = null;
 var pageUnloading = false;
 var latencyRequests = /* @__PURE__ */ new Set();
-var latencySortedSections = /* @__PURE__ */ new Set();
-var collapsedSections = readCollapsedSections();
+var latencySortedSections = readSectionNames(
+  LATENCY_SORTED_SECTIONS_STORAGE_KEY
+);
+var collapsedSections = readSectionNames(COLLAPSED_SECTIONS_STORAGE_KEY);
 var selectorRequests = /* @__PURE__ */ new Set();
 var toolbarActions = /* @__PURE__ */ new Set();
 var fallbackPinRequests = /* @__PURE__ */ new Set();
 var activeDetailsModal = null;
 var exitPanel = null;
 var exitLookupId = 0;
-function readCollapsedSections() {
+function readSectionNames(storageKey) {
   try {
-    const stored = JSON.parse(
-      getLocalStorage()?.getItem(COLLAPSED_SECTIONS_STORAGE_KEY) || "[]"
-    );
+    const stored = JSON.parse(getLocalStorage()?.getItem(storageKey) || "[]");
     return new Set(
       Array.isArray(stored) ? stored.filter((name) => typeof name === "string") : []
     );
@@ -10201,14 +10202,14 @@ function readCollapsedSections() {
     return /* @__PURE__ */ new Set();
   }
 }
-function writeCollapsedSections() {
+function writeSectionNames(storageKey, names) {
   const shown2 = new Set(
     store.get().sectionsWidget.data.map((section2) => section2.sectionName)
   );
   try {
     getLocalStorage()?.setItem(
-      COLLAPSED_SECTIONS_STORAGE_KEY,
-      JSON.stringify([...collapsedSections].filter((name) => shown2.has(name)))
+      storageKey,
+      JSON.stringify([...names].filter((name) => shown2.has(name)))
     );
   } catch {
   }
@@ -10304,6 +10305,7 @@ function handleSortByLatency(sectionName, enabled) {
   } else {
     latencySortedSections.delete(sectionName);
   }
+  writeSectionNames(LATENCY_SORTED_SECTIONS_STORAGE_KEY, latencySortedSections);
   void renderSectionsWidget();
 }
 function handleCollapsedChange(sectionName, collapsed) {
@@ -10312,7 +10314,7 @@ function handleCollapsedChange(sectionName, collapsed) {
   } else {
     collapsedSections.delete(sectionName);
   }
-  writeCollapsedSections();
+  writeSectionNames(COLLAPSED_SECTIONS_STORAGE_KEY, collapsedSections);
   void renderSectionsWidget();
 }
 function widgetsAreLive() {
