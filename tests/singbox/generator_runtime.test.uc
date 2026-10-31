@@ -518,18 +518,27 @@ t.test("a section's own destinations and its rule sets each select traffic on th
     t.ok(has(listed.rules[1].port, 443), "the section's ports still narrow the rule set");
 });
 
-t.test("a FakeIP answer reads only the domains of a rule set, a real answer the whole set", () => {
+// The core refuses a set of subnets alone in a DNS rule reading the whole set once it loads the set.
+t.test("a section's DNS rule reads only the domains of its rule sets, its route rule the whole sets", () => {
     let d = build({ settings: settings(), section: [
         { ".name": "proxy", enabled: "1", action: "connection", outbound_jsons: [ "{\"type\":\"direct\"}" ], rule_set: [ "https://example.com/ports.srs" ] },
         { ".name": "deny", enabled: "1", action: "block", community_lists: [ "discord" ] },
-        { ".name": "direct", enabled: "1", action: "bypass", rule_set: [ "https://example.com/direct.srs" ] } ] });
+        { ".name": "direct", enabled: "1", action: "bypass", rule_set: [ "https://example.com/direct.srs" ] },
+        { ".name": "ru_ip", enabled: "1", action: "bypass", community_lists: [ "telegram" ], rule_set_with_subnets: [ "https://example.com/geoip-ru.srs" ] } ] });
     let proxied = q.dns_rule(d, (r) => has(r.rule_set, q.ruleset_url(d, "https://example.com/ports.srs").tag));
     t.eq([ proxied.server, proxied.rule_set_domain_only ], [ "fakeip-server", true ]);
     let denied = q.dns_rule(d, (r) => has(r.rule_set, "deny-discord-community-ruleset"));
     t.eq([ denied.server, denied.rule_set_domain_only ], [ "fakeip-server", true ]);
     let direct = q.dns_rule(d, (r) => has(r.rule_set, q.ruleset_url(d, "https://example.com/direct.srs").tag));
-    t.eq([ direct.server, direct.rule_set_domain_only ], [ "dns-server", null ],
-        "a bypass answer is checked against the set's subnets, which keeps a domain resolving into one direct");
+    t.eq([ direct.server, direct.rule_set_domain_only ], [ "dns-server", true ]);
+    let geoip = q.ruleset_url(d, "https://example.com/geoip-ru.srs").tag;
+    let subnets = q.dns_rule(d, (r) => has(r.rule_set, geoip));
+    t.eq([ subnets.server, subnets.rule_set_domain_only ], [ "dns-server", true ]);
+    for (let rule in d.dns.rules)
+        if (rule.rule_set != null)
+            t.eq(rule.rule_set_domain_only, true, sprintf("%J", rule));
+    let route = q.route_rule(d, (r) => has(r.rule_set, geoip));
+    t.eq([ route.outbound, route.rule_set_domain_only ], [ "direct-out", null ], "the subnets still select traffic");
 });
 
 t.test("ports on their own select traffic in one rule", () => {
