@@ -7965,7 +7965,7 @@ function getListenPort(sectionId) {
 function clientLabel(sectionId, client) {
   return `${client?.name || ""}`.trim() || getServerName(sectionId);
 }
-function transportQuery(sectionId, params, grpcKey) {
+function transportQuery(sectionId, params) {
   const transport3 = option(sectionId, "transport") || "tcp";
   params.type = transport3 === "raw" ? "tcp" : transport3;
   if (transport3 === "ws" || transport3 === "httpupgrade") {
@@ -7976,7 +7976,7 @@ function transportQuery(sectionId, params, grpcKey) {
     params.host = option(sectionId, "transport_host");
     params.mode = option(sectionId, "transport_xhttp_mode") || "auto";
   } else if (transport3 === "grpc") {
-    params[grpcKey] = option(sectionId, "transport_service_name");
+    params.serviceName = option(sectionId, "transport_service_name");
   } else if (transport3 === "http") {
     params.path = option(sectionId, "transport_path");
     params.host = option(sectionId, "transport_host");
@@ -8039,7 +8039,7 @@ function buildVlessLink(sectionId, client, context) {
     return "";
   }
   xrayCertificatePin(params, context);
-  transportQuery(sectionId, params, "serviceName");
+  transportQuery(sectionId, params);
   params.encryption = "none";
   if (client.flow && client.flow !== "none") {
     params.flow = client.flow;
@@ -8056,7 +8056,7 @@ function buildTrojanLink(sectionId, client, context) {
   const params = {};
   tlsQuery(sectionId, params, true);
   xrayCertificatePin(params, context);
-  transportQuery(sectionId, params, "grpc-service-name");
+  transportQuery(sectionId, params);
   return shareUrl(
     "trojan",
     sectionId,
@@ -8070,7 +8070,7 @@ function buildVmessLink(sectionId, client, context) {
   const security = tlsQuery(sectionId, params, false);
   xrayCertificatePin(params, context);
   const transportParams = {};
-  transportQuery(sectionId, transportParams, "serviceName");
+  transportQuery(sectionId, transportParams);
   const payload = {
     v: "2",
     ps: clientLabel(sectionId, client),
@@ -8081,13 +8081,17 @@ function buildVmessLink(sectionId, client, context) {
     scy: "auto",
     // As the query spells it, so the raw-to-tcp mapping stays in one place.
     net: transportParams.type,
-    type: "none",
+    // v2rayN keeps the XHTTP mode in the field of the TCP header, the core's parser reads "mode".
+    type: transportParams.mode || "none",
     host: transportParams.host || "",
     path: transportParams.path || transportParams.serviceName || "",
     tls: security === "tls" ? "tls" : "",
     sni: security === "tls" ? params.sni || "" : "",
     alpn: security === "tls" ? params.alpn || "" : ""
   };
+  if (transportParams.mode) {
+    payload.mode = transportParams.mode;
+  }
   if (params.insecure) {
     payload.insecure = "1";
   }

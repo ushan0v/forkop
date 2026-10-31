@@ -34,11 +34,7 @@ function clientLabel(sectionId: string, client: ServerClient) {
   return `${client?.name || ''}`.trim() || getServerName(sectionId);
 }
 
-function transportQuery(
-  sectionId: string,
-  params: Record<string, string>,
-  grpcKey: string,
-) {
+function transportQuery(sectionId: string, params: Record<string, string>) {
   const transport = option(sectionId, 'transport') || 'tcp';
   params.type = transport === 'raw' ? 'tcp' : transport;
 
@@ -50,7 +46,7 @@ function transportQuery(
     params.host = option(sectionId, 'transport_host');
     params.mode = option(sectionId, 'transport_xhttp_mode') || 'auto';
   } else if (transport === 'grpc') {
-    params[grpcKey] = option(sectionId, 'transport_service_name');
+    params.serviceName = option(sectionId, 'transport_service_name');
   } else if (transport === 'http') {
     params.path = option(sectionId, 'transport_path');
     params.host = option(sectionId, 'transport_host');
@@ -147,7 +143,7 @@ function buildVlessLink(
 
   xrayCertificatePin(params, context);
 
-  transportQuery(sectionId, params, 'serviceName');
+  transportQuery(sectionId, params);
   params.encryption = 'none';
   if (client.flow && client.flow !== 'none') {
     params.flow = client.flow;
@@ -170,7 +166,7 @@ function buildTrojanLink(
   const params: Record<string, string> = {};
   tlsQuery(sectionId, params, true);
   xrayCertificatePin(params, context);
-  transportQuery(sectionId, params, 'grpc-service-name');
+  transportQuery(sectionId, params);
 
   return shareUrl(
     'trojan',
@@ -190,7 +186,7 @@ function buildVmessLink(
   const security = tlsQuery(sectionId, params, false);
   xrayCertificatePin(params, context);
   const transportParams: Record<string, string> = {};
-  transportQuery(sectionId, transportParams, 'serviceName');
+  transportQuery(sectionId, transportParams);
   const payload: Record<string, string> = {
     v: '2',
     ps: clientLabel(sectionId, client),
@@ -201,7 +197,8 @@ function buildVmessLink(
     scy: 'auto',
     // As the query spells it, so the raw-to-tcp mapping stays in one place.
     net: transportParams.type,
-    type: 'none',
+    // v2rayN keeps the XHTTP mode in the field of the TCP header, the core's parser reads "mode".
+    type: transportParams.mode || 'none',
     host: transportParams.host || '',
     path: transportParams.path || transportParams.serviceName || '',
     tls: security === 'tls' ? 'tls' : '',
@@ -209,6 +206,9 @@ function buildVmessLink(
     alpn: security === 'tls' ? params.alpn || '' : '',
   };
 
+  if (transportParams.mode) {
+    payload.mode = transportParams.mode;
+  }
   if (params.insecure) {
     payload.insecure = '1';
   }

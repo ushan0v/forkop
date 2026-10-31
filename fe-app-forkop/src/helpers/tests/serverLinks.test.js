@@ -146,7 +146,7 @@ describe('VLESS links', () => {
 });
 
 describe('Trojan links', () => {
-  it('uses the gRPC service name key Trojan clients expect', () => {
+  it('names the gRPC service as v2rayN, v2rayNG and mihomo read it', () => {
     const { link, client } = load(
       {
         protocol: 'trojan',
@@ -163,7 +163,8 @@ describe('Trojan links', () => {
     expect(url.startsWith('trojan://secret-password@203.0.113.9:30000?')).toBe(
       true,
     );
-    expect(query(url)['grpc-service-name']).toBe('grpc-service');
+    expect(query(url).serviceName).toBe('grpc-service');
+    expect(query(url)['grpc-service-name']).toBeUndefined();
   });
 
   it('serves a server stored without TLS over TLS', () => {
@@ -208,6 +209,35 @@ describe('VMess links', () => {
       tls: 'tls',
       sni: 'example.org',
       insecure: '1',
+    });
+    expect(payload.type).toBe('none');
+    expect(payload.mode).toBeUndefined();
+  });
+
+  // A client left on auto speaks packet-up to a VMess server, which a stream-one or
+  // stream-up one refuses.
+  it('carries the XHTTP mode where v2rayN and the core read it', () => {
+    const { link, client } = load(
+      {
+        protocol: 'vmess',
+        security: 'tls',
+        tls_server_name: 'example.org',
+        transport: 'xhttp',
+        transport_path: '/x',
+        transport_xhttp_mode: 'stream-one',
+      },
+      { uuid: UUID },
+    );
+
+    const [{ link: url }] = link.buildClientLinks('srv', client);
+    const payload = JSON.parse(
+      Buffer.from(url.slice('vmess://'.length), 'base64').toString('utf8'),
+    );
+    expect(payload).toMatchObject({
+      net: 'xhttp',
+      path: '/x',
+      type: 'stream-one',
+      mode: 'stream-one',
     });
   });
 });
