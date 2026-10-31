@@ -7031,6 +7031,11 @@ var SHADOWSOCKS_METHODS = [
   { id: "aes-128-gcm", keyBytes: 0 },
   { id: "chacha20-ietf-poly1305", keyBytes: 0 }
 ];
+var VLESS_ENCRYPTION_MODES = ["native", "xorpub", "random"];
+var VLESS_ENCRYPTION_KEY_LENGTHS = {
+  x25519: { private: 43, public: 43 },
+  mlkem768: { private: 86, public: 1579 }
+};
 var TRANSPORTS = [
   ["tcp", "TCP"],
   ["ws", "WebSocket"],
@@ -7594,14 +7599,24 @@ function isAuthenticationEnabled(sectionId) {
 function getServerName(sectionId) {
   return option(sectionId, "label") || sectionId;
 }
+function vlessEncryptionMode(sectionId) {
+  const mode = liveOption(sectionId, "vless_encryption");
+  return getProtocol(sectionId) === "vless" && VLESS_ENCRYPTION_MODES.includes(mode) ? mode : "";
+}
+function vlessEncryptionAuth(sectionId) {
+  return liveOption(sectionId, "vless_encryption_auth") || "x25519";
+}
 function supportsVisionFlow(sectionId) {
   if (getProtocol(sectionId) !== "vless") {
     return false;
   }
-  if ((liveOption(sectionId, "transport") || "tcp") !== "tcp") {
+  if (liveOption(sectionId, "multiplex_enabled") === "1") {
     return false;
   }
-  if (liveOption(sectionId, "multiplex_enabled") === "1") {
+  if (vlessEncryptionMode(sectionId)) {
+    return true;
+  }
+  if ((liveOption(sectionId, "transport") || "tcp") !== "tcp") {
     return false;
   }
   return getEffectiveSecurity(sectionId) !== "none";
@@ -8039,7 +8054,12 @@ function buildVlessLink(sectionId, client, context) {
   }
   xrayCertificatePin(params, context);
   transportQuery(sectionId, params);
-  params.encryption = "none";
+  const encryption = vlessEncryptionMode(sectionId);
+  const encryptionKey = option(sectionId, "vless_encryption_public_key");
+  if (encryption && !encryptionKey) {
+    return "";
+  }
+  params.encryption = encryption ? `mlkem768x25519plus.${encryption}.0rtt.${encryptionKey}` : "none";
   if (client.flow && client.flow !== "none") {
     params.flow = client.flow;
   }
@@ -8708,7 +8728,13 @@ function realityKeypair(sectionId) {
   return pendingKeypairs.get(sectionId);
 }
 function generateRealityKeypair(_sectionId) {
-  return fs.exec("/usr/bin/forkop", ["generate_reality_keypair"]).then((response) => {
+  return requestKeypair(
+    ["generate_reality_keypair"],
+    _("Could not generate a Reality key pair")
+  );
+}
+function requestKeypair(args, failure) {
+  return fs.exec("/usr/bin/forkop", args).then((response) => {
     if ((response.code ?? 0) !== 0 || !response.stdout) {
       throw new Error(response.stderr || response.stdout || "");
     }
@@ -8718,10 +8744,31 @@ function generateRealityKeypair(_sectionId) {
     }
     return data;
   }).catch((error) => {
-    console.warn(error?.message || "Failed to generate a Reality key pair");
-    showToast(_("Could not generate a Reality key pair"), "error");
+    console.warn(error?.message || `Failed to run ${args[0]}`);
+    showToast(failure, "error");
     return null;
   });
+}
+function applyVlessEncryptionKeypair(sectionId, kind) {
+  return requestKeypair(
+    ["generate_vless_encryption_keypair", kind],
+    _("Could not generate a VLESS Encryption key pair")
+  ).then((pair) => {
+    if (!pair) {
+      return;
+    }
+    [
+      ["vless_encryption_private_key", pair.private_key],
+      ["vless_encryption_public_key", pair.public_key]
+    ].forEach(([name, value]) => applyFieldValue(sectionId, name, value));
+  });
+}
+function addVlessEncryptionKeypairButton(optionRef) {
+  addIssueButton(
+    optionRef,
+    _("Generate a key pair"),
+    (sectionId) => applyVlessEncryptionKeypair(sectionId, vlessEncryptionAuth(sectionId))
+  );
 }
 function addIssueButton(optionRef, label, request) {
   const renderWidget2 = optionRef.renderWidget;
@@ -27959,6 +28006,13 @@ function validateRealityKey(_sectionId, value) {
   }
   return /^[A-Za-z0-9_-]{43}$/.test(`${value}`.trim()) ? true : message.invalidKey();
 }
+function validateVlessEncryptionKey(sectionId, value, half) {
+  if (isEmptyValue(value)) {
+    return message.required();
+  }
+  const key = `${value}`.trim();
+  return /^[A-Za-z0-9_-]+$/.test(key) && key.length === VLESS_ENCRYPTION_KEY_LENGTHS[vlessEncryptionAuth(sectionId)]?.[half] ? true : message.invalidKey();
+}
 function validateSecurity(sectionId, value) {
   const protocol = getProtocol(sectionId);
   const selected = value || defaultSecurity(protocol);
@@ -28916,6 +28970,58 @@ function addSecurityOptions(section2) {
   o.modalonly = true;
   onReality(o);
 }
+function addVlessEncryptionOptions(section2) {
+  const onEncryption = (o2) => VLESS_ENCRYPTION_MODES.forEach(
+    (mode) => o2.depends({ protocol: "vless", vless_encryption: mode })
+  );
+  let o = section2.option(
+    form.ListValue,
+    "vless_encryption",
+    _("VLESS Encryption")
+  );
+  o.value("", _("Off"));
+  VLESS_ENCRYPTION_MODES.forEach((mode) => o.value(mode, mode));
+  o.rmempty = true;
+  o.modalonly = true;
+  o.depends("protocol", "vless");
+  o.onchange = function(_ev, sectionId, value) {
+    if (value && !liveOption(sectionId, "vless_encryption_private_key")) {
+      applyVlessEncryptionKeypair(sectionId, vlessEncryptionAuth(sectionId));
+    }
+  };
+  o = section2.option(
+    form.ListValue,
+    "vless_encryption_auth",
+    _("Authentication")
+  );
+  o.value("x25519", "X25519");
+  o.value("mlkem768", "ML-KEM-768");
+  o.default = "x25519";
+  o.rmempty = false;
+  o.modalonly = true;
+  onEncryption(o);
+  o.onchange = function(_ev, sectionId, value) {
+    applyVlessEncryptionKeypair(sectionId, `${value || "x25519"}`);
+  };
+  o = section2.option(
+    form.Value,
+    "vless_encryption_private_key",
+    _("VLESS Encryption private key")
+  );
+  o.modalonly = true;
+  o.password = true;
+  o.validate = (sectionId, value) => validateVlessEncryptionKey(sectionId, value, "private");
+  onEncryption(o);
+  addVlessEncryptionKeypairButton(o);
+  o = section2.option(
+    form.Value,
+    "vless_encryption_public_key",
+    _("VLESS Encryption public key")
+  );
+  o.modalonly = true;
+  o.validate = (sectionId, value) => validateVlessEncryptionKey(sectionId, value, "public");
+  onEncryption(o);
+}
 function addTransportOptions(section2) {
   const streamProtocols = protocolsWith("transport");
   const onTransport = (o2, transport3) => streamProtocols.forEach(
@@ -29072,6 +29178,7 @@ function createServerContent(section2) {
   addRoutingOptions(section2);
   addAmneziaServerOptions(section2);
   addSecurityOptions(section2);
+  addVlessEncryptionOptions(section2);
   addTransportOptions(section2);
   addMultiplexOptions(section2);
   addHysteria2Options(section2);

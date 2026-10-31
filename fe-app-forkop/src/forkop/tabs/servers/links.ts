@@ -28,6 +28,7 @@ import {
   isShadowsocks2022,
   linkScheme,
   usesSelfSignedCertificate,
+  vlessEncryptionMode,
 } from './protocols';
 
 function clientLabel(sectionId: string, client: ServerClient) {
@@ -144,7 +145,15 @@ function buildVlessLink(
   xrayCertificatePin(params, context);
 
   transportQuery(sectionId, params);
-  params.encryption = 'none';
+  // Xray's client form: 0-RTT, which the server allows for ten minutes.
+  const encryption = vlessEncryptionMode(sectionId);
+  const encryptionKey = option(sectionId, 'vless_encryption_public_key');
+  if (encryption && !encryptionKey) {
+    return '';
+  }
+  params.encryption = encryption
+    ? `mlkem768x25519plus.${encryption}.0rtt.${encryptionKey}`
+    : 'none';
   if (client.flow && client.flow !== 'none') {
     params.flow = client.flow;
   }

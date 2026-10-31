@@ -56,6 +56,21 @@ const SHADOWSOCKS_2022_KEY_BYTES = {
     "2022-blake3-aes-256-gcm": 32
 };
 
+// VLESS Encryption of Xray. The server keeps the keys of a handshake ten minutes for the next
+// connection of the same client (0-RTT), as Xray's vlessenc writes it, and its links ask for that.
+const VLESS_ENCRYPTION_PREFIX = "mlkem768x25519plus";
+const VLESS_ENCRYPTION_MODES = { native: true, xorpub: true, random: true };
+// base64url without padding: a private and a public key of each kind
+const VLESS_ENCRYPTION_KEY_LENGTHS = {
+    x25519: { private: 43, public: 43 },
+    mlkem768: { private: 86, public: 1579 }
+};
+
+function vless_encryption_mode(section) {
+    let mode = option(section, "vless_encryption", "");
+    return option(section, "protocol", "vless") == "vless" && VLESS_ENCRYPTION_MODES[mode] ? mode : "";
+}
+
 function shadowsocks_2022_method(method) {
     return SHADOWSOCKS_2022_KEY_BYTES[as_string(method)] != null;
 }
@@ -337,6 +352,12 @@ function add_standard_inbound(config, section, protocol, tag_name) {
         inbound.users = users(section, protocol);
         maybe_string(inbound, "congestion_control", option(section, "tuic_congestion_control", "cubic"));
     }
+    else if (protocol == "vless") {
+        inbound.users = users(section, protocol);
+        let mode = vless_encryption_mode(section);
+        if (mode != "")
+            inbound.decryption = join(".", [ VLESS_ENCRYPTION_PREFIX, mode, "600s", option(section, "vless_encryption_private_key", "") ]);
+    }
     else {
         inbound.users = users(section, protocol);
     }
@@ -577,6 +598,8 @@ return {
     CLIENT_FIELDS,
     LOGIN_NAME_PROTOCOLS,
     SHADOWSOCKS_2022_KEY_BYTES,
+    VLESS_ENCRYPTION_KEY_LENGTHS,
+    vless_encryption_mode,
     add_server,
     add_sniff_rule,
     clone_rules_for_inbound,

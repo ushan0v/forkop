@@ -35,6 +35,18 @@ t.test("a key material command answers the page with success and its fields, or 
     t.eq([ bad.result, json(bad.stdout) ], [ 1, { success: false, message: "Failed to generate Reality key pair" } ]);
 });
 
+t.test("a VLESS Encryption key pair comes in the kind the page asks for, and no other", () => {
+    stub.commands([ [ "sing-box generate vless-encryption-keypair mlkem768", { stdout: "PrivateKey: a-b_c\nPublicKey: d_e-f\n" } ] ]);
+    let good = stub.capture(() => cli.main([ "generate_vless_encryption_keypair", "mlkem768" ], "/lib"));
+    let asked = stub.command_lines();
+    let unknown = stub.capture(() => cli.main([ "generate_vless_encryption_keypair", "rsa" ], "/lib"));
+    let asked_again = stub.command_lines();
+    stub.restore();
+    t.eq([ good.result, json(good.stdout) ], [ 0, { success: true, private_key: "a-b_c", public_key: "d_e-f" } ]);
+    t.eq([ unknown.result, json(unknown.stdout).success ], [ 1, false ]);
+    t.eq(asked_again, asked, "the core is not asked for another kind");
+});
+
 t.test("autostart answers the page whether the switch moved or not", () => {
     let lifecycle = require("service.lifecycle");
     let dir = stub.tmpdir();

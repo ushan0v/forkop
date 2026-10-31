@@ -1,4 +1,8 @@
-import { DEFAULT_PROTOCOL, SHADOWSOCKS_METHODS } from './constants';
+import {
+  DEFAULT_PROTOCOL,
+  SHADOWSOCKS_METHODS,
+  VLESS_ENCRYPTION_MODES,
+} from './constants';
 import {
   coreFeatureOfType,
   coreHas,
@@ -361,16 +365,33 @@ export function getServerName(sectionId: string) {
   return option(sectionId, 'label') || sectionId;
 }
 
-// XTLS Vision needs the raw TLS stream: a transport wraps it, and a multiplexed client drops the
-// flow, after which the listener refuses the account.
+// The mode of VLESS Encryption a VLESS server runs, or '' without it.
+export function vlessEncryptionMode(sectionId: string) {
+  const mode = liveOption(sectionId, 'vless_encryption');
+  return getProtocol(sectionId) === 'vless' &&
+    VLESS_ENCRYPTION_MODES.includes(mode)
+    ? mode
+    : '';
+}
+
+export function vlessEncryptionAuth(sectionId: string) {
+  return liveOption(sectionId, 'vless_encryption_auth') || 'x25519';
+}
+
+// XTLS Vision needs the raw TLS stream, which a transport wraps, or VLESS Encryption, which carries
+// it over any transport and without TLS, as Xray does; a multiplexed client drops the flow, after
+// which the listener refuses the account.
 export function supportsVisionFlow(sectionId: string) {
   if (getProtocol(sectionId) !== 'vless') {
     return false;
   }
-  if ((liveOption(sectionId, 'transport') || 'tcp') !== 'tcp') {
+  if (liveOption(sectionId, 'multiplex_enabled') === '1') {
     return false;
   }
-  if (liveOption(sectionId, 'multiplex_enabled') === '1') {
+  if (vlessEncryptionMode(sectionId)) {
+    return true;
+  }
+  if ((liveOption(sectionId, 'transport') || 'tcp') !== 'tcp') {
     return false;
   }
 

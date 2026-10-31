@@ -489,4 +489,16 @@ function reality_keypair() {
     return { private_key: private_key[2], public_key: public_key[2] };
 }
 
-return { paths, prepare, remove_orphans, sync_firewall, reality_keypair };
+// X25519 or ML-KEM-768; the core prints the private key the server's setting takes.
+function vless_encryption_keypair(kind) {
+    if (kind != "x25519" && kind != "mlkem768")
+        die("Unknown VLESS Encryption key type '" + kind + "': x25519 or mlkem768 is expected");
+    let output = exec.output([ "sing-box", "generate", "vless-encryption-keypair", kind ]) ?? "";
+    let private_key = match(output, /(^|\n)PrivateKey:[ \t]*([A-Za-z0-9_-]+)/);
+    let public_key = match(output, /(^|\n)PublicKey:[ \t]*([A-Za-z0-9_-]+)/);
+    if (private_key == null || public_key == null)
+        die("Failed to generate VLESS Encryption key pair");
+    return { private_key: private_key[2], public_key: public_key[2] };
+}
+
+return { paths, prepare, remove_orphans, sync_firewall, reality_keypair, vless_encryption_keypair };

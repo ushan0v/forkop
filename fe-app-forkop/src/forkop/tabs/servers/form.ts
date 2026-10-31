@@ -17,6 +17,7 @@ import {
   addMultiplexOptions,
   addSecurityOptions,
   addTransportOptions,
+  addVlessEncryptionOptions,
 } from './form/security';
 import { addOpenVPNServerOptions } from './form/openvpn';
 import { addTunnelOptions } from './form/tunnel';
@@ -39,6 +40,7 @@ export function createServerContent(section: CBISection) {
   addRoutingOptions(section);
   addAmneziaServerOptions(section);
   addSecurityOptions(section);
+  addVlessEncryptionOptions(section);
   addTransportOptions(section);
   addMultiplexOptions(section);
   addHysteria2Options(section);

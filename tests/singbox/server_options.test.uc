@@ -67,6 +67,12 @@ const SERVERS = {
             transport_service_name: "grpc", routing_mode: "direct"
         },
         {
+            ".name": "vless_enc", ".type": "server", enabled: "1", label: "vless enc", protocol: "vless",
+            listen: "0.0.0.0", listen_port: "20017", security: "none", transport: "xhttp", transport_path: "/x",
+            vless_encryption: "xorpub", vless_encryption_private_key: "jzVX7WGd0p1WWCLo5zilIcA_cLTfouNEFqG6F1WUnCI",
+            vless_encryption_public_key: "PUD2tXF0WUfi5DvDc5gKXGrvefeB7obg9_UG-SAM-xM", routing_mode: "direct"
+        },
+        {
             ".name": "vless_http", ".type": "server", enabled: "1", label: "vless http", protocol: "vless",
             listen: "0.0.0.0", listen_port: "20015", security: "none", transport: "http", transport_path: "/h",
             transport_host: "h.example.com", routing_mode: "direct"
@@ -154,6 +160,10 @@ const SERVERS = {
         {
             ".name": "c_vless", ".type": "server_client", server: "vless_srv", name: "phone",
             uuid: "11111111-1111-4111-8111-111111111111"
+        },
+        {
+            ".name": "c_vless_enc", ".type": "server_client", server: "vless_enc", name: "phone",
+            uuid: "11111111-1111-4111-8111-111111111113", flow: "xtls-rprx-vision"
         },
         {
             ".name": "c_vless_http", ".type": "server_client", server: "vless_http", name: "phone",
@@ -287,6 +297,13 @@ t.test("an HTTP/2 and HTTP/3 listener serves the transports the firewall opens f
         [ [ "tcp", "udp" ], "tcp", [ "tcp", "udp" ] ]);
     t.eq(served("trusttunnel").users, [ { username: "phone", password: "tt-pass" } ]);
     t.eq(served("trusttunnel").tls.server_name, "www.microsoft.com");
+});
+
+t.test("a VLESS server with VLESS Encryption takes its private key in Xray's form, and only it", () => {
+    let served = (tag) => filter(listeners, (item) => item.tag == tag)[0];
+    t.eq(served("vless enc").decryption, "mlkem768x25519plus.xorpub.600s.jzVX7WGd0p1WWCLo5zilIcA_cLTfouNEFqG6F1WUnCI");
+    t.eq(served("vless enc").users, [ { name: "phone", uuid: "11111111-1111-4111-8111-111111111113", flow: "xtls-rprx-vision" } ]);
+    t.eq(served("vless").decryption, null);
 });
 
 t.test("a user carries only the fields of its protocol's user struct", () => {

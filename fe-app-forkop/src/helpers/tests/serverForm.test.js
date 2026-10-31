@@ -51,6 +51,45 @@ describe('server form', () => {
     expect(uci.get('forkop', 'srv', 'amnezia_random_trailers')).toBe('1');
   });
 
+  it('draws a VLESS Encryption key pair of the chosen kind when it is turned on or the kind changes', async () => {
+    const { section, uci } = build({ protocol: 'vless' });
+    const asked = [];
+    globalThis.fs.exec = (_command, args) => {
+      asked.push(args);
+      return Promise.resolve({
+        code: 0,
+        stdout: JSON.stringify({
+          success: true,
+          private_key: `${args[1]}-private`,
+          public_key: `${args[1]}-public`,
+        }),
+      });
+    };
+    const find = (name) =>
+      section.options.find((option) => option.name === name);
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    find('vless_encryption').onchange(null, 'srv', 'native');
+    await settle();
+    expect(uci.get('forkop', 'srv', 'vless_encryption_private_key')).toBe(
+      'x25519-private',
+    );
+    expect(uci.get('forkop', 'srv', 'vless_encryption_public_key')).toBe(
+      'x25519-public',
+    );
+
+    find('vless_encryption').onchange(null, 'srv', 'random');
+    find('vless_encryption_auth').onchange(null, 'srv', 'mlkem768');
+    await settle();
+    expect(asked).toEqual([
+      ['generate_vless_encryption_keypair', 'x25519'],
+      ['generate_vless_encryption_keypair', 'mlkem768'],
+    ]);
+    expect(uci.get('forkop', 'srv', 'vless_encryption_public_key')).toBe(
+      'mlkem768-public',
+    );
+  });
+
   it('declares the whole tab without throwing', () => {
     const { section } = build();
 

@@ -145,6 +145,40 @@ describe('VLESS links', () => {
   });
 });
 
+describe('VLESS Encryption links', () => {
+  const PUBLIC_KEY = 'PUD2tXF0WUfi5DvDc5gKXGrvefeB7obg9_UG-SAM-xM';
+
+  it('names the server key in Xray client form and carries Vision over XHTTP', () => {
+    const { link, client } = load(
+      {
+        protocol: 'vless',
+        security: 'none',
+        transport: 'xhttp',
+        transport_path: '/x',
+        vless_encryption: 'xorpub',
+        vless_encryption_public_key: PUBLIC_KEY,
+      },
+      { uuid: UUID, flow: 'xtls-rprx-vision' },
+    );
+
+    const [{ link: url }] = link.buildClientLinks('srv', client);
+    expect(query(url)).toMatchObject({
+      type: 'xhttp',
+      encryption: `mlkem768x25519plus.xorpub.0rtt.${PUBLIC_KEY}`,
+      flow: 'xtls-rprx-vision',
+    });
+  });
+
+  it('gives no link while the server has no public key', () => {
+    const { link, client } = load(
+      { protocol: 'vless', security: 'none', vless_encryption: 'native' },
+      { uuid: UUID },
+    );
+
+    expect(link.buildClientLinks('srv', client)).toEqual([]);
+  });
+});
+
 describe('Trojan links', () => {
   it('names the gRPC service as v2rayN, v2rayNG and mihomo read it', () => {
     const { link, client } = load(

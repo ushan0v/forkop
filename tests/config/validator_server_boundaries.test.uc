@@ -41,6 +41,11 @@ const reality = {
     reality_public_key: "kP1C4vzQnlzyKRo3DORq6f_v3n9u7nGY8dl0AKbx11A",
     reality_short_id: "4aee2254"
 };
+const encryption = {
+    vless_encryption: "native",
+    vless_encryption_private_key: "jzVX7WGd0p1WWCLo5zilIcA_cLTfouNEFqG6F1WUnCI",
+    vless_encryption_public_key: "PUD2tXF0WUfi5DvDc5gKXGrvefeB7obg9_UG-SAM-xM"
+};
 const uuid = "11111111-1111-4111-8111-111111111111";
 function without(object, name) {
     let result = { ...object };
@@ -83,6 +88,15 @@ const amneziawg = {
 const cases = [
     [ "listen address", "which is not an IP address", server({ protocol: "vless", ...reality, listen: "nonsense" }), [ client("v", { uuid }) ] ],
     [ "listen wildcard v6", null, server({ protocol: "vless", ...reality, listen: "::" }), [ client("v", { uuid }) ] ],
+
+    [ "vless encryption with vision over xhttp", null,
+        server({ protocol: "vless", ...reality, ...encryption, transport: "xhttp" }), [ client("v", { uuid, flow: "xtls-rprx-vision" }) ] ],
+    [ "vless encryption mode", "'VLESS Encryption' of server",
+        server({ protocol: "vless", ...reality, ...encryption, vless_encryption: "plain" }), [ client("v", { uuid }) ] ],
+    [ "vless encryption without its key", "is empty. Generate a key pair",
+        server({ protocol: "vless", ...reality, ...without(encryption, "vless_encryption_private_key") }), [ client("v", { uuid }) ] ],
+    [ "vless encryption with a key of the other kind", "is not a ML-KEM-768 key",
+        server({ protocol: "vless", ...reality, ...encryption, vless_encryption_auth: "mlkem768" }), [ client("v", { uuid }) ] ],
 
     [ "transport name", "'Transport' of server", server({ protocol: "vless", ...reality, transport: "quic" }), [ client("v", { uuid }) ] ],
     [ "transport raw", null, server({ protocol: "vless", ...reality, transport: "raw" }), [ client("v", { uuid }) ] ],

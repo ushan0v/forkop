@@ -158,6 +158,7 @@ const COMMANDS = {
     installer_run: { args: 1, run: (args) => installer().run(args[0]) },
     installer_log: { help: "Print the log of install.sh's last run", run: installer_log },
     generate_reality_keypair: { help: "Generate a sing-box Reality key pair in JSON format", run: reply(() => require("server.service").reality_keypair()) },
+    generate_vless_encryption_keypair: { args: 1, usage: "<x25519|mlkem768>", help: "Generate a VLESS Encryption key pair in JSON format", run: reply((kind) => require("server.service").vless_encryption_keypair(kind)) },
     generate_warp_profile: { help: "Generate a Cloudflare WARP profile in JSON format", run: warp_profile },
     package_prerm: { args: 1, run: (args) => require("service.package").prerm(args[0]) },
     package_postinst: { run: () => require("service.package").postinst() },

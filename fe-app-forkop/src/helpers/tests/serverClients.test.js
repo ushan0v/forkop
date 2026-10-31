@@ -193,6 +193,32 @@ describe('server client sections', () => {
     expect(uci.get('forkop', 'one', 'flow')).toBe(null);
   });
 
+  it('offers the flow where Vision runs: right over TLS, or over VLESS Encryption on any transport', () => {
+    const fields = (srv) =>
+      load({ srv: { protocol: 'vless', ...srv } }).clients.visibleClientFields(
+        'srv',
+      );
+
+    expect(fields({ security: 'reality', transport: 'tcp' })).toContain('flow');
+    expect(fields({ security: 'reality', transport: 'xhttp' })).toEqual([
+      'uuid',
+    ]);
+    expect(fields({ security: 'none', transport: 'tcp' })).toEqual(['uuid']);
+    for (const security of ['reality', 'tls', 'none']) {
+      expect(
+        fields({ security, transport: 'xhttp', vless_encryption: 'native' }),
+      ).toContain('flow');
+    }
+    expect(
+      fields({
+        security: 'reality',
+        transport: 'tcp',
+        vless_encryption: 'random',
+        multiplex_enabled: '1',
+      }),
+    ).toEqual(['uuid']);
+  });
+
   it('hides the password while mixed authentication is disabled', () => {
     const { clients } = load({
       srv: { protocol: 'mixed', mixed_auth_enabled: '0' },

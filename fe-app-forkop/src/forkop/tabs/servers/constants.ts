@@ -45,6 +45,18 @@ export const SHADOWSOCKS_METHODS = [
   { id: 'chacha20-ietf-poly1305', keyBytes: 0 },
 ];
 
+// VLESS Encryption of Xray: how its handshake looks on the wire, and the base64url length of each
+// kind's private and public key, as singbox/servers.uc reads them.
+export const VLESS_ENCRYPTION_MODES = ['native', 'xorpub', 'random'];
+
+export const VLESS_ENCRYPTION_KEY_LENGTHS: Record<
+  string,
+  Record<string, number>
+> = {
+  x25519: { private: 43, public: 43 },
+  mlkem768: { private: 86, public: 1579 },
+};
+
 export const TRANSPORTS = [
   ['tcp', 'TCP'],
   ['ws', 'WebSocket'],

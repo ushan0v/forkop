@@ -1359,6 +1359,20 @@ function validate_server_security(server, protocol, name) {
         }
     }
 
+    // A key of the other kind or a cut one makes the core refuse the listener, or the clients the server.
+    if (runtime_servers.vless_encryption_mode(server) != "") {
+        let kind = option(server, "vless_encryption_auth", "x25519");
+        let lengths = runtime_servers.VLESS_ENCRYPTION_KEY_LENGTHS[kind];
+        for (let field in [ [ "private", "VLESS Encryption private key" ], [ "public", "VLESS Encryption public key" ] ]) {
+            let key = option(server, "vless_encryption_" + field[0] + "_key", "");
+            if (key == "")
+                fail_validation("'" + field[1] + "' of server '" + server_label(name) + "' is empty. Generate a key pair");
+            if (lengths != null && (length(key) != lengths[field[0]] || match(key, /^[A-Za-z0-9_-]+$/) == null))
+                fail_validation("'" + field[1] + "' of server '" + server_label(name) + "' is not a " +
+                    (kind == "mlkem768" ? "ML-KEM-768" : "X25519") + " key. Generate a key pair");
+        }
+    }
+
     if (protocol == "hysteria2" && option(server, "hysteria2_obfs_type", "") != "" &&
         option(server, "hysteria2_obfs_password", "") == "")
         fail_validation("Server '" + server_label(name) + "' enables obfuscation and needs an obfuscation password");
@@ -1379,6 +1393,8 @@ function validate_server_security(server, protocol, name) {
 const SERVER_ENUMS = [
     [ "listen", "transport", [ "", "tcp", "raw", "ws", "grpc", "http", "httpupgrade", "xhttp" ], "Transport" ],
     [ "xhttp", "transport_xhttp_mode", [ "", "auto", "packet-up", "stream-up", "stream-one" ], "XHTTP mode" ],
+    [ "vless", "vless_encryption", [ "", "native", "xorpub", "random" ], "VLESS Encryption" ],
+    [ "vless", "vless_encryption_auth", [ "", "x25519", "mlkem768" ], "Authentication" ],
     [ "shadowsocks", "shadowsocks_method", [ "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm",
         "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
         "chacha20-ietf-poly1305", "xchacha20-ietf-poly1305" ], "Method" ],

@@ -139,6 +139,7 @@
     "tailscale_auth_key": "tailscale_auth_key",
     "uri": "uri",
     "url": "url",
+    "vless_encryption_private_key": "vless_encryption_private_key",
     "warp_auth_token": "warp_profile_auth_token",
     "warp_license_key": "warp_profile_license_key",
     "warp_private_key": "warp_profile_private_key"

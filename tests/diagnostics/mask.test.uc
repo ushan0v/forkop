@@ -172,6 +172,20 @@ t.test("the credentials of a native endpoint are masked in the sing-box dump wit
     }
 });
 
+t.test("a VLESS server loses its VLESS Encryption keys in both dumps", () => {
+    let forkop = mask.forkop_config("config server 'srv'\n        option vless_encryption 'native'\n" +
+        "        option vless_encryption_private_key 'enc-private-secret'\n        option vless_encryption_public_key 'enc-public-secret'\n");
+    t.excludes(forkop, "enc-private-secret");
+    t.excludes(forkop, "enc-public-secret");
+    t.contains(forkop, "option vless_encryption 'native'");
+    let core = sprintf("%J", mask.sing_box_config({
+        inbounds: [ { type: "vless", decryption: "mlkem768x25519plus.native.600s.enc-private-secret" } ],
+        outbounds: [ { type: "vless", encryption: "mlkem768x25519plus.native.0rtt.enc-public-secret" } ]
+    }));
+    t.excludes(core, "enc-private-secret");
+    t.excludes(core, "enc-public-secret");
+});
+
 t.test("an AmneziaWG server keeps its obfuscation settings and loses its header protection key", () => {
     let masked = mask.sing_box_config({ endpoints: [ { type: "amneziawg", tag: "Server", private_key: "server-private=",
         amnezia: { jc: 6, h1: 335028323, header_protection_key: "header-secret=" } } ] });

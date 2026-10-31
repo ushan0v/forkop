@@ -1057,7 +1057,8 @@
           "utls": {
             "enabled": true,
             "fingerprint": true
-          }
+          },
+          "verify_server_name": true
         },
         "trusted_x_forwarded_for": true,
         "uplink_chunk_size": true,
@@ -1375,6 +1376,7 @@
   },
   "vless": {
     "bind_interface": true,
+    "decryption": true,
     "detour": true,
     "disable_tcp_keep_alive": true,
     "domain_strategy": true,
@@ -1559,7 +1561,8 @@
           "utls": {
             "enabled": true,
             "fingerprint": true
-          }
+          },
+          "verify_server_name": true
         },
         "trusted_x_forwarded_for": true,
         "uplink_chunk_size": true,
@@ -1821,7 +1824,8 @@
           "utls": {
             "enabled": true,
             "fingerprint": true
-          }
+          },
+          "verify_server_name": true
         },
         "trusted_x_forwarded_for": true,
         "uplink_chunk_size": true,

@@ -2,6 +2,7 @@
 
 import { isRouterPath } from '../../../helpers/material';
 import { decodeBase64 } from '../../../helpers/pem';
+import { VLESS_ENCRYPTION_KEY_LENGTHS } from './constants';
 import { validateCoreFeature } from '../../services/coreFeatures.service';
 import { message } from '../../../validators/messages';
 import { wholeNumberField } from '../../../validators/fields';
@@ -28,6 +29,7 @@ import {
   serverListenTransports,
   servesXhttpHttp3,
   shadowsocksKeyBytes,
+  vlessEncryptionAuth,
 } from './protocols';
 
 export function validateRequired(_sectionId: string, value: string) {
@@ -188,6 +190,25 @@ export function validateRealityKey(_sectionId: string, value: string) {
   }
 
   return /^[A-Za-z0-9_-]{43}$/.test(`${value}`.trim())
+    ? true
+    : message.invalidKey();
+}
+
+// A key of the kind the server authenticates with, whole: the core refuses a cut private key and
+// clients a cut public one.
+export function validateVlessEncryptionKey(
+  sectionId: string,
+  value: string,
+  half: 'private' | 'public',
+) {
+  if (isEmptyValue(value)) {
+    return message.required();
+  }
+
+  const key = `${value}`.trim();
+  return /^[A-Za-z0-9_-]+$/.test(key) &&
+    key.length ===
+      VLESS_ENCRYPTION_KEY_LENGTHS[vlessEncryptionAuth(sectionId)]?.[half]
     ? true
     : message.invalidKey();
 }

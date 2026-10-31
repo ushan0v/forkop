@@ -10,6 +10,7 @@ import {
   securitiesFor,
   securityCoreFeature,
   securityLabel,
+  vlessEncryptionAuth,
 } from './protocols';
 import { E } from '../../../helpers/element';
 import {
@@ -240,8 +241,15 @@ export function realityKeypair(sectionId: string) {
 }
 
 function generateRealityKeypair(_sectionId: string) {
+  return requestKeypair(
+    ['generate_reality_keypair'],
+    _('Could not generate a Reality key pair'),
+  );
+}
+
+function requestKeypair(args: string[], failure: string) {
   return fs
-    .exec('/usr/bin/forkop', ['generate_reality_keypair'])
+    .exec('/usr/bin/forkop', args)
     .then((response) => {
       if ((response.code ?? 0) !== 0 || !response.stdout) {
         throw new Error(response.stderr || response.stdout || '');
@@ -255,10 +263,32 @@ function generateRealityKeypair(_sectionId: string) {
       return data;
     })
     .catch((error) => {
-      console.warn(error?.message || 'Failed to generate a Reality key pair');
-      showToast(_('Could not generate a Reality key pair'), 'error');
+      console.warn(error?.message || `Failed to run ${args[0]}`);
+      showToast(failure, 'error');
       return null;
     });
+}
+
+// Writes both halves of a pair of the given kind: a key of the other kind is refused.
+export function applyVlessEncryptionKeypair(sectionId: string, kind: string) {
+  return requestKeypair(
+    ['generate_vless_encryption_keypair', kind],
+    _('Could not generate a VLESS Encryption key pair'),
+  ).then((pair) => {
+    if (!pair) {
+      return;
+    }
+    [
+      ['vless_encryption_private_key', pair.private_key],
+      ['vless_encryption_public_key', pair.public_key],
+    ].forEach(([name, value]) => applyFieldValue(sectionId, name, value));
+  });
+}
+
+export function addVlessEncryptionKeypairButton(optionRef: CBIOption) {
+  addIssueButton(optionRef, _('Generate a key pair'), (sectionId: string) =>
+    applyVlessEncryptionKeypair(sectionId, vlessEncryptionAuth(sectionId)),
+  );
 }
 
 function addIssueButton(

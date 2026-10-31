@@ -113,6 +113,8 @@ function forkop_config_line(line) {
     line = mask_after_token(line, "option reality_public_key");
     line = mask_after_token(line, "option reality_short_id");
     line = mask_after_token(line, "list reality_short_id");
+    line = mask_after_token(line, "option vless_encryption_private_key");
+    line = mask_after_token(line, "option vless_encryption_public_key");
     line = mask_after_token_space(line, "option mixed_proxy_username");
     line = mask_after_token_space(line, "option mixed_proxy_password");
     line = mask_after_token_space(line, "option private_key");
@@ -178,6 +180,9 @@ const SING_BOX_MASKED_KEYS = {
     secret: true,
     password: true,
     private_key: true,
+    // VLESS Encryption: the server's private key and the clients' setting with its public one
+    decryption: true,
+    encryption: true,
     psk: true,
     userkey: true,
     static_key: true,

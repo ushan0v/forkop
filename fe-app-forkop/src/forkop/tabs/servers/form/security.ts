@@ -3,24 +3,28 @@ import {
   CLIENT_FINGERPRINTS,
   DEFAULT_CLIENT_FINGERPRINT,
   TRANSPORTS,
+  VLESS_ENCRYPTION_MODES,
 } from '../constants';
 import { configureMaterialOption } from '../../../cbi/material';
 import { message } from '../../../../validators/messages';
 import {
   addGenerateButton,
   addRealityKeypairButton,
+  addVlessEncryptionKeypairButton,
+  applyVlessEncryptionKeypair,
   autofill,
   camouflageSite,
   realityKeypair,
   syncSecurityChoices,
 } from '../controls';
 import { randomHex } from '../credentials';
-import { isEmptyValue, option, optionList } from '../formValues';
+import { isEmptyValue, liveOption, option, optionList } from '../formValues';
 import {
   getEffectiveSecurity,
   protocolSpec,
   protocolsWhere,
   protocolsWith,
+  vlessEncryptionAuth,
 } from '../protocols';
 import {
   validateGrpcServiceName,
@@ -32,6 +36,7 @@ import {
   validateShortId,
   validateTransport,
   validateTransportPath,
+  validateVlessEncryptionKey,
 } from '../validators';
 
 export function addSecurityOptions(section: CBISection) {
@@ -229,6 +234,68 @@ export function addSecurityOptions(section: CBISection) {
   o.rmempty = true;
   o.modalonly = true;
   onReality(o);
+}
+
+// VLESS Encryption of Xray, a layer of its own under VLESS that carries the flow over any
+// transport. Turning it on, or picking another kind of key, draws a pair of that kind.
+export function addVlessEncryptionOptions(section: CBISection) {
+  const onEncryption = (o: CBIOption) =>
+    VLESS_ENCRYPTION_MODES.forEach((mode: string) =>
+      o.depends({ protocol: 'vless', vless_encryption: mode }),
+    );
+
+  let o = section.option(
+    form.ListValue,
+    'vless_encryption',
+    _('VLESS Encryption'),
+  );
+  o.value('', _('Off'));
+  VLESS_ENCRYPTION_MODES.forEach((mode: string) => o.value(mode, mode));
+  o.rmempty = true;
+  o.modalonly = true;
+  o.depends('protocol', 'vless');
+  o.onchange = function (_ev, sectionId: string, value: unknown) {
+    if (value && !liveOption(sectionId, 'vless_encryption_private_key')) {
+      applyVlessEncryptionKeypair(sectionId, vlessEncryptionAuth(sectionId));
+    }
+  };
+
+  o = section.option(
+    form.ListValue,
+    'vless_encryption_auth',
+    _('Authentication'),
+  );
+  o.value('x25519', 'X25519');
+  o.value('mlkem768', 'ML-KEM-768');
+  o.default = 'x25519';
+  o.rmempty = false;
+  o.modalonly = true;
+  onEncryption(o);
+  o.onchange = function (_ev, sectionId: string, value: unknown) {
+    applyVlessEncryptionKeypair(sectionId, `${value || 'x25519'}`);
+  };
+
+  o = section.option(
+    form.Value,
+    'vless_encryption_private_key',
+    _('VLESS Encryption private key'),
+  );
+  o.modalonly = true;
+  o.password = true;
+  o.validate = (sectionId: string, value: string) =>
+    validateVlessEncryptionKey(sectionId, value, 'private');
+  onEncryption(o);
+  addVlessEncryptionKeypairButton(o);
+
+  o = section.option(
+    form.Value,
+    'vless_encryption_public_key',
+    _('VLESS Encryption public key'),
+  );
+  o.modalonly = true;
+  o.validate = (sectionId: string, value: string) =>
+    validateVlessEncryptionKey(sectionId, value, 'public');
+  onEncryption(o);
 }
 
 export function addTransportOptions(section: CBISection) {

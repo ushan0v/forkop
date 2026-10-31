@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: FORKOP\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 14:47+0300\n"
-"PO-Revision-Date: 2026-10-28 14:47+0300\n"
+"POT-Creation-Date: 2026-10-31 14:20+0300\n"
+"PO-Revision-Date: 2026-10-31 14:20+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -643,6 +643,9 @@ msgstr "Не удалось включить автостарт"
 
 msgid "Could not generate a Reality key pair"
 msgstr "Не удалось сгенерировать пару ключей Reality"
+
+msgid "Could not generate a VLESS Encryption key pair"
+msgstr "Не удалось сгенерировать пару ключей VLESS Encryption"
 
 msgid "Could not get the check results"
 msgstr "Не удалось получить результаты проверки"
@@ -2815,6 +2818,15 @@ msgstr "verify-x509-name: не указано имя"
 
 msgid "verify-x509-name: unsupported type %s"
 msgstr "verify-x509-name: тип %s не поддерживается"
+
+msgid "VLESS Encryption"
+msgstr "VLESS Encryption"
+
+msgid "VLESS Encryption private key"
+msgstr "Приватный ключ VLESS Encryption"
+
+msgid "VLESS Encryption public key"
+msgstr "Публичный ключ VLESS Encryption"
 
 msgid "VPN server"
 msgstr "VPN-сервер"
