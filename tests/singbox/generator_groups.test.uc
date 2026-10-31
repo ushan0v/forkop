@@ -157,4 +157,25 @@ t.test("a Fallback group is one native outbound whose levels claim each node onc
     t.eq(q.outbound(config, "proxy").default, group.tag, "the selector defaults to its first Fallback group");
 });
 
+t.test("the selector defaults to the Fallback that holds a URLTest, not to the URLTest alone", () => {
+    let data = {
+        settings: { log_level: "warn" },
+        section: [ { ".name": "proxy", enabled: "1", action: "connection" } ],
+        connection_link: fixture.links("proxy", LINKS),
+        urltest: [ { ".name": "fast", section: "proxy", name: "Fast", server_filter_mode: "all" } ],
+        fallback_group: [ { ".name": "backup", section: "proxy", name: "Backup" } ],
+        fallback_level: [ { ".name": "level", group: "backup", name: "Primary", server_filter_mode: "include", include_groups: [ "Fast" ] } ]
+    };
+    let selector = q.outbound(build(data), "proxy");
+    t.eq(selector.default, "proxy/Backup");
+    t.eq(selector.outbounds[0], "proxy/Fast", "the order of the groups stays");
+
+    data.fallback_level[0].include_outbounds = [ "first" ];
+    t.eq(q.outbound(build(data), "proxy/Backup").groups[0].outbounds, [ "proxy/Fast", "proxy/first" ],
+        "a level puts its URLTest before its own servers");
+
+    data.fallback_level[0].include_groups = null;
+    t.eq(q.outbound(build(data), "proxy").default, "proxy/Fast", "a URLTest no Fallback holds stays the default");
+});
+
 t.done();

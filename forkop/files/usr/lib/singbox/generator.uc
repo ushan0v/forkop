@@ -926,6 +926,20 @@ function usable_group_descriptors(descriptors, group_tags) {
     return result;
 }
 
+// A URLTest a Fallback includes is one of its members, so the section goes through the Fallback.
+function default_group_tag(descriptors) {
+    let members = {};
+    for (let descriptor in descriptors)
+        if (descriptor.kind == "fallback")
+            for (let level in array_or_empty(descriptor.outbound.groups))
+                for (let tag_name in array_or_empty(level.outbounds))
+                    members[tag_name] = true;
+    for (let descriptor in descriptors)
+        if (!members[descriptor.tag])
+            return descriptor.tag;
+    return null;
+}
+
 function build_urltest_outbound(section, item, urltest_candidate_tags, candidate_types, provider_refs) {
     let urltest_id = item.id;
     let urltest_outbounds = urltest_filtered_outbounds(section, urltest_id, urltest_candidate_tags, candidate_types);
@@ -965,9 +979,9 @@ function build_fallback_group_outbound(section, item, urltest_candidate_tags, ca
             outbounds: level.outbounds
         };
         if (level.mode != "direct") {
-            append_unique_tags(native_level.outbounds, included_group_tags(
+            native_level.outbounds = append_unique_tags(included_group_tags(
                 connections.fallback_level_include_groups(group_id, level.id), group_tags_by_name, item.tag
-            ));
+            ), level.outbounds);
             if (length(providers) > 0)
                 native_level.providers = providers;
             merge_object(native_level, fallback_level_provider_filter(group_id, level.id));
@@ -1009,7 +1023,8 @@ function add_proxy_selector(config, section, selector_tags, urltest_candidate_ta
         push(descriptors, { kind: item.kind, tag: item.tag, outbound });
     }
 
-    for (let descriptor in usable_group_descriptors(descriptors, group_tags)) {
+    let groups = usable_group_descriptors(descriptors, group_tags);
+    for (let descriptor in groups) {
         push(config.outbounds, descriptor.outbound);
         push(descriptor.kind == "urltest" ? urltest_tags : fallback_tags, descriptor.tag);
     }
@@ -1021,10 +1036,9 @@ function add_proxy_selector(config, section, selector_tags, urltest_candidate_ta
     for (let tag in selector_tags)
         push(selector_outbounds, tag);
 
-    if (length(urltest_tags) > 0 || length(fallback_tags) > 0) {
-        selector_default = length(urltest_tags) > 0 ? urltest_tags[0]
-            : fallback_tags[0];
-    }
+    let group_default = default_group_tag(groups);
+    if (group_default != null)
+        selector_default = group_default;
 
     let selector = {
         type: "selector",
