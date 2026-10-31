@@ -1,1 +1,5 @@
 * text=auto eol=lf
+
+# The LuCI bundle, built from fe-app-forkop/src: GitHub folds it in pull requests and git diff
+# prints one line for it (git diff -a shows the text)
+luci-app-forkop/htdocs/luci-static/resources/view/forkop/main.js linguist-generated=true -diff
