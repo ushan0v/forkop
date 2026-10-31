@@ -7027,7 +7027,6 @@ var CAMOUFLAGE_SITES = [
 var SHADOWSOCKS_METHODS = [
   { id: "2022-blake3-aes-256-gcm", keyBytes: 32 },
   { id: "2022-blake3-aes-128-gcm", keyBytes: 16 },
-  { id: "2022-blake3-chacha20-poly1305", keyBytes: 32 },
   { id: "aes-256-gcm", keyBytes: 0 },
   { id: "aes-128-gcm", keyBytes: 0 },
   { id: "chacha20-ietf-poly1305", keyBytes: 0 }

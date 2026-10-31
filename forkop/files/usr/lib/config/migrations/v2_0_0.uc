@@ -1016,6 +1016,13 @@ function migrate_servers(config, ctx) {
         if (protocol == "shadowsocks") {
             if (model.value(server, "shadowsocks_method") == "")
                 server.shadowsocks_method = "aes-128-gcm";
+            // Every 2.0.0 client has a key of its own, which 2022-blake3-chacha20-poly1305 cannot carry;
+            // the AES method takes a key of the same length.
+            if (server.shadowsocks_method == "2022-blake3-chacha20-poly1305") {
+                server.shadowsocks_method = "2022-blake3-aes-256-gcm";
+                push(ctx.warnings, what + " uses 2022-blake3-aes-256-gcm instead of 2022-blake3-chacha20-poly1305, " +
+                    "which gives clients no keys of their own");
+            }
             // A 2022 method kept its key in the password: it becomes the listener key, and the
             // client keeps it too. The core then wants both keys from a client, as 1.0.5's link
             // never gave them.

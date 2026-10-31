@@ -832,6 +832,18 @@ t.test("a Shadowsocks server keeps its method, and a 2022 key moves to the liste
     ], "a 1.0.5 link held the one key, which the core refuses from a client of a server with keys of its clients");
 });
 
+t.test("a Shadowsocks 2022 ChaCha20 server moves to AES-256 with its key, since its clients get keys of their own", () => {
+    let key = "ajXWye37k0IsLRrpEhB3pAajXWye37k0IsLRrpEhB3o=";
+    let result = servers([
+        { ".name": "cha", label: "Cha", protocol: "shadowsocks", shadowsocks_method: "2022-blake3-chacha20-poly1305",
+            server_password: key }
+    ]);
+    t.eq([ result.server.cha.shadowsocks_method, result.server.cha.shadowsocks_psk ], [ "2022-blake3-aes-256-gcm", key ]);
+    t.eq(map(filter(result.clients, (client) => client.server == "cha"), (client) => client.password), [ key ]);
+    t.contains(result.warnings, "Server 'Cha' uses 2022-blake3-aes-256-gcm instead of 2022-blake3-chacha20-poly1305, " +
+        "which gives clients no keys of their own");
+});
+
 t.test("a Reality server takes its handshake target as the SNI and says when the target moves", () => {
     let result = servers([
         { ".name": "same", label: "Same", protocol: "vless", security: "reality", server_uuid: "u",

@@ -1374,13 +1374,14 @@ function validate_server_security(server, protocol, name) {
 }
 
 // Closed sets the core refuses while it builds the listener, which takes the whole service
-// down; each checked against `sing-box check`.
+// down; each checked against `sing-box check`. A Shadowsocks server always has users, which
+// neither 2022-blake3-chacha20-poly1305 nor "none" can carry.
 const SERVER_ENUMS = [
     [ "listen", "transport", [ "", "tcp", "raw", "ws", "grpc", "http", "httpupgrade", "xhttp" ], "Transport" ],
     [ "xhttp", "transport_xhttp_mode", [ "", "auto", "packet-up", "stream-up", "stream-one" ], "XHTTP mode" ],
     [ "shadowsocks", "shadowsocks_method", [ "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm",
-        "2022-blake3-chacha20-poly1305", "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
-        "chacha20-ietf-poly1305", "xchacha20-ietf-poly1305", "none" ], "Method" ],
+        "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
+        "chacha20-ietf-poly1305", "xchacha20-ietf-poly1305" ], "Method" ],
     [ "mieru", "mieru_transport", [ "TCP", "UDP" ], "Transport" ],
     [ "naive", "naive_network", [ "", "tcp", "udp", "tcp_udp" ], "Network" ],
     [ "trusttunnel", "trusttunnel_network", [ "", "tcp", "udp", "tcp_udp" ], "Network" ],

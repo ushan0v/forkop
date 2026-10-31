@@ -49,10 +49,11 @@ const AMNEZIA_SERVER_KEYS = filter(amnezia.KEYS, (key) => match(key, /^i[1-5]$/)
 const OPENVPN_PING_INTERVAL = "10s";
 const OPENVPN_CLIENT_PING_RESTART = "120s";
 const OPENVPN_SERVER_PING_RESTART = "240s";
+// The 2022 methods a server with clients can serve: a client's key of its own rides in an identity
+// header, which SIP022 defines for AES only.
 const SHADOWSOCKS_2022_KEY_BYTES = {
     "2022-blake3-aes-128-gcm": 16,
-    "2022-blake3-aes-256-gcm": 32,
-    "2022-blake3-chacha20-poly1305": 32
+    "2022-blake3-aes-256-gcm": 32
 };
 
 function shadowsocks_2022_method(method) {

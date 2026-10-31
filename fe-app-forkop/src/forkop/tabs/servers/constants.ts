@@ -34,11 +34,12 @@ export const CAMOUFLAGE_SITES = [
 ];
 
 // Best first. 2022 methods take a base64 key of an exact length; older AEAD ones derive it from any
-// password. The default matches what panels hand out.
+// password. The default matches what panels hand out. 2022-blake3-chacha20-poly1305 has no identity
+// header for a client key of its own (SIP022 defines it for AES only), so the core refuses it on a
+// server with clients.
 export const SHADOWSOCKS_METHODS = [
   { id: '2022-blake3-aes-256-gcm', keyBytes: 32 },
   { id: '2022-blake3-aes-128-gcm', keyBytes: 16 },
-  { id: '2022-blake3-chacha20-poly1305', keyBytes: 32 },
   { id: 'aes-256-gcm', keyBytes: 0 },
   { id: 'aes-128-gcm', keyBytes: 0 },
   { id: 'chacha20-ietf-poly1305', keyBytes: 0 },
