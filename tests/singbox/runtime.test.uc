@@ -225,7 +225,7 @@ t.test("a WARP registration that cannot reach its section says so, and never goe
 });
 
 t.test("a WARP registration the core gave up on is logged with the core's reason and the way it went", () => {
-    let reason = "FATAL[0010] Post \"https://api.cloudflareclient.com/v0a4471/reg\": net/http: TLS handshake timeout";
+    let reason = "FATAL[0010] Post \"https://api.devices.cloudflare.com/v0a4471/reg\": net/http: TLS handshake timeout";
     warp_settings(false);
     tools([ [ WARP_COMMAND, { status: 1, stdout: reason + "\n" } ] ]);
     let direct = generate();
