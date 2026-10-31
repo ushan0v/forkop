@@ -1,5 +1,6 @@
-// Regenerates the catalogs in luci-app-forkop/po from the `_()` calls in the bundle, keeping
-// translations by msgid.
+// Regenerates the catalogs in luci-app-forkop/po from the `_()` calls in src, keeping
+// translations by msgid. References name files without lines and the header dates move only
+// with the entries, so a catalog changes only when its strings do.
 
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
@@ -61,26 +62,12 @@ function timestamp(now) {
   return `${date}${sign}${hours}${minutes}`;
 }
 
-// A LuCI view ends in a bare `return view.extend(...)`, which is a syntax error
-// for a module parse. Dropping that final statement keeps the call sites intact.
-function stripTrailingReturn(code) {
-  return code.replace(/^\s*return\s+[^;]+;\s*$/gm, (match, offset, input) =>
-    input.slice(offset + match.length).trim() === '' ? '' : match,
-  );
-}
-
 async function collectCalls() {
-  const files = await glob(
-    [
-      'src/**/*.ts',
-      '../luci-app-forkop/htdocs/luci-static/resources/view/forkop/**/*.js',
-    ],
-    {
-      cwd: projectRoot,
-      ignore: ['**/*.d.ts', '**/*.test.ts', '**/main.js'],
-      absolute: true,
-    },
-  );
+  const files = await glob('src/**/*.ts', {
+    cwd: projectRoot,
+    ignore: ['**/*.d.ts', '**/*.test.ts'],
+    absolute: true,
+  });
 
   const entries = new Map();
 
@@ -88,9 +75,9 @@ async function collectCalls() {
     const relativePath = path.relative(repoRoot, file).replaceAll('\\', '/');
     let ast;
     try {
-      ast = parse(stripTrailingReturn(await fs.readFile(file, 'utf8')), {
+      ast = parse(await fs.readFile(file, 'utf8'), {
         sourceType: 'module',
-        plugins: file.endsWith('.ts') ? ['typescript'] : [],
+        plugins: ['typescript'],
       });
     } catch {
       console.warn(`Parse error in ${relativePath}, skipping`);
@@ -106,15 +93,15 @@ async function collectCalls() {
         const key = argument.value.trim();
         if (!key) return;
 
-        if (!entries.has(key)) entries.set(key, []);
-        entries.get(key).push(`${relativePath}:${node.loc?.start.line ?? '?'}`);
+        if (!entries.has(key)) entries.set(key, new Set());
+        entries.get(key).add(relativePath);
       },
     });
   }
 
   return [...entries.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, places]) => ({ key, places }));
+    .map(([key, places]) => ({ key, places: [...places] }));
 }
 
 function escapePoString(value) {
@@ -136,13 +123,19 @@ function parseTranslations(content) {
   return translations;
 }
 
-function renderPot(entries, { name, email }, now) {
-  const stamp = timestamp(now);
+function stamped(previous, now, render) {
+  const kept = previous.match(/^"PO-Revision-Date: (.+)\\n"$/m)?.[1];
+  if (kept && render(kept) === previous) return previous;
+  return render(timestamp(now));
+}
+
+function renderPot(entries, { name, email }, stamp) {
+  const year = stamp.slice(0, 4);
   const header = [
     '# SOME DESCRIPTIVE TITLE.',
-    `# Copyright (C) ${now.getFullYear()} THE PACKAGE'S COPYRIGHT HOLDER`,
+    `# Copyright (C) ${year} THE PACKAGE'S COPYRIGHT HOLDER`,
     `# This file is distributed under the same license as the ${PROJECT_ID} package.`,
-    `# ${name} <${email}>, ${now.getFullYear()}.`,
+    `# ${name} <${email}>, ${year}.`,
     '#, fuzzy',
     'msgid ""',
     'msgstr ""',
@@ -173,13 +166,13 @@ function renderPot(entries, { name, email }, now) {
   return `${header}\n${body}`;
 }
 
-function renderPo(entries, translations, language, { name }, now) {
-  const stamp = timestamp(now);
+function renderPo(entries, translations, language, { name }, stamp) {
+  const year = stamp.slice(0, 4);
   const header = [
     `# ${language.toUpperCase()} translations for ${PROJECT_ID} package.`,
-    `# Copyright (C) ${now.getFullYear()} THE ${PROJECT_ID} COPYRIGHT HOLDER`,
+    `# Copyright (C) ${year} THE ${PROJECT_ID} COPYRIGHT HOLDER`,
     `# This file is distributed under the same license as the ${PROJECT_ID} package.`,
-    `# ${name}, ${now.getFullYear()}.`,
+    `# ${name}, ${year}.`,
     '#',
     'msgid ""',
     'msgstr ""',
@@ -218,7 +211,11 @@ const identity =
 const now = new Date();
 
 await fs.mkdir(path.dirname(potPath), { recursive: true });
-await fs.writeFile(potPath, renderPot(entries, identity, now), 'utf8');
+await fs.writeFile(
+  potPath,
+  stamped(previousPot, now, (stamp) => renderPot(entries, identity, stamp)),
+  'utf8',
+);
 console.log(`${entries.length} strings -> ${path.relative(repoRoot, potPath)}`);
 
 for (const language of LANGUAGES) {
@@ -228,7 +225,9 @@ for (const language of LANGUAGES) {
   await fs.mkdir(path.dirname(poPath), { recursive: true });
   await fs.writeFile(
     poPath,
-    renderPo(entries, translations, language, identity, now),
+    stamped(previous, now, (stamp) =>
+      renderPo(entries, translations, language, identity, stamp),
+    ),
     'utf8',
   );
 
