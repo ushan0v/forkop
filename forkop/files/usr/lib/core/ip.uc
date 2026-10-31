@@ -114,6 +114,24 @@ function ip_family(value) {
     return valid_ipv4(value) || valid_ipv4_cidr(value) ? 4 : (valid_ipv6(value) || valid_ipv6_cidr(value) ? 6 : 0);
 }
 
+function network_bytes(bytes, bits) {
+    return map(bytes, (byte, i) => {
+        let kept = bits - i * 8;
+        return kept >= 8 ? byte : kept <= 0 ? 0 : byte & ((0xff << (8 - kept)) & 0xff);
+    });
+}
+
+function prefix_contains(prefix, address) {
+    if (!valid_ip_cidr(prefix) || !valid_ip(address))
+        return false;
+    let parts = split(prefix, "/");
+    let network = iptoarr(parts[0]);
+    let bytes = iptoarr(address);
+    let bits = int(parts[1]);
+    return length(network) == length(bytes) &&
+        join(".", network_bytes(network, bits)) == join(".", network_bytes(bytes, bits));
+}
+
 function valid_public_ipv4(value) {
     value = as_string(value);
     if (!valid_ipv4(value))
@@ -151,31 +169,13 @@ function valid_public_ipv6(value) {
         return false;
     if (substr(value, 0, 2) == "fc" || substr(value, 0, 2) == "fd")
         return false;
-    if (index(value, "2001:db8") == 0)
+    if (index(value, "2001:db8") == 0 || prefix_contains("2001:2::/48", value))
         return false;
     return true;
 }
 
 function valid_public_ip(value) {
     return valid_public_ipv4(value) || valid_public_ipv6(value);
-}
-
-function network_bytes(bytes, bits) {
-    return map(bytes, (byte, i) => {
-        let kept = bits - i * 8;
-        return kept >= 8 ? byte : kept <= 0 ? 0 : byte & ((0xff << (8 - kept)) & 0xff);
-    });
-}
-
-function prefix_contains(prefix, address) {
-    if (!valid_ip_cidr(prefix) || !valid_ip(address))
-        return false;
-    let parts = split(prefix, "/");
-    let network = iptoarr(parts[0]);
-    let bytes = iptoarr(address);
-    let bits = int(parts[1]);
-    return length(network) == length(bytes) &&
-        join(".", network_bytes(network, bits)) == join(".", network_bytes(bytes, bits));
 }
 
 function format_ipv6_tproxy_target(address, port) {

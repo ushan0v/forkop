@@ -347,7 +347,7 @@ function matcher_fixture() {
 t.test("inbounds, DNS servers and base routing of a matcher-heavy configuration", () => {
     let m = matcher_fixture();
     t.eq(m.dns.strategy, "prefer_ipv6");
-    t.ok(q.dns_server(m, (r) => r.tag == "fakeip-server" && r.inet6_range == "fc00::/112") != null);
+    t.ok(q.dns_server(m, (r) => r.tag == "fakeip-server" && r.inet6_range == "2001:2::/112") != null);
     t.eq(q.inbound(m, "tproxy6-in").listen, "::1");
     t.eq([ q.inbound(m, "system-in").listen_port, q.inbound(m, "system6-in").listen_port ], [ 1604, 1604 ]);
     t.eq(q.route_rule(m, (r) => r.action == "reject" && r.ip_version == 6), null, "IPv6 traffic is not rejected globally");

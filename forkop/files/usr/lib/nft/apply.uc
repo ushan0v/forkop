@@ -171,7 +171,7 @@ function add_base(settings, excluded_router, excluded) {
     // section marked here would reach the TProxy inbound instead of the DNS one.
     add_rule("mangle", [ "iifname", "@" + INTERFACES, "meta", "l4proto", "{ tcp, udp }", "th", "dport", "53", "return" ]);
     add_rule("mangle", [ "iifname", "@" + INTERFACES, "ip", "daddr", "@" + LOCAL4, "return" ]);
-    add_rule("mangle", [ "iifname", "@" + INTERFACES, "ip6", "daddr", "@" + LOCAL6, "ip6", "daddr", "!=", FAKEIP6, "return" ]);
+    add_rule("mangle", [ "iifname", "@" + INTERFACES, "ip6", "daddr", "@" + LOCAL6, "return" ]);
     add_rule("mangle", [ "jump", "priority_rules" ]);
     for (let pair in [ [ "ip", FAKEIP4 ], [ "ip6", FAKEIP6 ] ])
         for (let proto in [ "tcp", "udp" ])
@@ -194,7 +194,7 @@ function add_base(settings, excluded_router, excluded) {
         add_rule("mangle_output", [ "counter", "return" ]);
     add_rule("mangle_output", REPLY_RETURN);
     add_rule("mangle_output", [ "ip", "daddr", "@" + LOCAL4, "return" ]);
-    add_rule("mangle_output", [ "ip6", "daddr", "@" + LOCAL6, "ip6", "daddr", "!=", FAKEIP6, "return" ]);
+    add_rule("mangle_output", [ "ip6", "daddr", "@" + LOCAL6, "return" ]);
     // Under its mask: mwan3 adds its own bits to the mark of what the router sends.
     add_rule("mangle_output", [ "meta", "mark", "&", OUTBOUND_MARK, "==", OUTBOUND_MARK, "counter", "return" ]);
     // The resolver's own upstream queries never go through a section.

@@ -180,8 +180,8 @@ t.test("an AmneziaWG server keeps its obfuscation settings and loses its header 
 });
 
 t.test("a public address keeps what tells it apart, and a local one stays as it is", () => {
-    t.eq(map([ "194.76.146.236", "2a02:6b8:c0e:500:1:2:3:4", "2a00:1450::1", "192.168.1.1", "127.0.0.42", "198.18.0.7", "fc00::7", "::1" ], mask.address),
-        [ "X.X.X.236", "2a02:6b8:c0e:XXXX:XXXX:XXXX:XXXX:XXXX", "2a00:1450:0:XXXX:XXXX:XXXX:XXXX:XXXX", "192.168.1.1", "127.0.0.42", "198.18.0.7", "fc00::7", "::1" ]);
+    t.eq(map([ "194.76.146.236", "2a02:6b8:c0e:500:1:2:3:4", "2a00:1450::1", "192.168.1.1", "127.0.0.42", "198.18.0.7", "2001:2::7", "fc00::7", "::1" ], mask.address),
+        [ "X.X.X.236", "2a02:6b8:c0e:XXXX:XXXX:XXXX:XXXX:XXXX", "2a00:1450:0:XXXX:XXXX:XXXX:XXXX:XXXX", "192.168.1.1", "127.0.0.42", "198.18.0.7", "2001:2::7", "fc00::7", "::1" ]);
 });
 
 t.test("the server addresses come from every place the generated configuration dials", () => {

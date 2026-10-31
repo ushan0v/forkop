@@ -18,7 +18,7 @@ t.test("a leading zero, a trailing dot or a prefix past the family is not an add
 t.test("a public address is one outside every reserved range", () => {
     for (let value in [ "8.8.8.8", "2606:4700::1111" ])
         t.ok(ip.valid_public_ip(value), value);
-    for (let value in [ "10.1.2.3", "192.168.1.1", "100.64.0.1", "172.16.0.1", "198.18.0.1", "2001:db8::1", "fd00::1", "fe80::1", "08.8.8.8" ])
+    for (let value in [ "10.1.2.3", "192.168.1.1", "100.64.0.1", "172.16.0.1", "198.18.0.1", "2001:db8::1", "2001:2::1", "fd00::1", "fe80::1", "08.8.8.8" ])
         t.ok(!ip.valid_public_ip(value), value);
 });
 
