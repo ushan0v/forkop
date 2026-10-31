@@ -228,7 +228,26 @@ export function realityKeypair(sectionId: string) {
   if (getEffectiveSecurity(sectionId) !== 'reality') {
     return Promise.resolve(null);
   }
+  return sharedRealityKeypair(sectionId);
+}
 
+// A server that turns to Reality in the dialog gets its pair as one opened on it does, through
+// the same request when both happen at once.
+export function applyRealityKeypair(sectionId: string) {
+  return sharedRealityKeypair(sectionId).then(
+    (pair: { private_key: string; public_key: string } | null) => {
+      if (!pair) {
+        return;
+      }
+      [
+        ['reality_private_key', pair.private_key],
+        ['reality_public_key', pair.public_key],
+      ].forEach(([name, value]) => applyFieldValue(sectionId, name, value));
+    },
+  );
+}
+
+function sharedRealityKeypair(sectionId: string) {
   if (!pendingKeypairs.has(sectionId)) {
     pendingKeypairs.set(
       sectionId,

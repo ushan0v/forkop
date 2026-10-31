@@ -90,6 +90,43 @@ describe('server form', () => {
     );
   });
 
+  it('draws the Reality key pair once the server turns to Reality, and only while it has none', async () => {
+    const { section, uci } = build({ protocol: 'mixed' });
+    const asked = [];
+    globalThis.fs.exec = (_command, args) => {
+      asked.push(args);
+      return Promise.resolve({
+        code: 0,
+        stdout: JSON.stringify({
+          success: true,
+          private_key: 'reality-private',
+          public_key: 'reality-public',
+        }),
+      });
+    };
+    const security = section.options.find(
+      (option) => option.name === 'security',
+    );
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    security.onchange(null, 'srv', 'tls');
+    await settle();
+    expect(asked).toEqual([]);
+
+    security.onchange(null, 'srv', 'reality');
+    await settle();
+    expect(uci.get('forkop', 'srv', 'reality_private_key')).toBe(
+      'reality-private',
+    );
+    expect(uci.get('forkop', 'srv', 'reality_public_key')).toBe(
+      'reality-public',
+    );
+
+    security.onchange(null, 'srv', 'reality');
+    await settle();
+    expect(asked).toEqual([['generate_reality_keypair']]);
+  });
+
   it('declares the whole tab without throwing', () => {
     const { section } = build();
 

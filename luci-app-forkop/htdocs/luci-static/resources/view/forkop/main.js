@@ -8717,6 +8717,22 @@ function realityKeypair(sectionId) {
   if (getEffectiveSecurity(sectionId) !== "reality") {
     return Promise.resolve(null);
   }
+  return sharedRealityKeypair(sectionId);
+}
+function applyRealityKeypair(sectionId) {
+  return sharedRealityKeypair(sectionId).then(
+    (pair) => {
+      if (!pair) {
+        return;
+      }
+      [
+        ["reality_private_key", pair.private_key],
+        ["reality_public_key", pair.public_key]
+      ].forEach(([name, value]) => applyFieldValue(sectionId, name, value));
+    }
+  );
+}
+function sharedRealityKeypair(sectionId) {
   if (!pendingKeypairs.has(sectionId)) {
     pendingKeypairs.set(
       sectionId,
@@ -28834,6 +28850,11 @@ function addSecurityOptions(section2) {
     (protocol) => o.depends("protocol", protocol)
   );
   o.validate = validateSecurity;
+  o.onchange = function(_ev, sectionId, value) {
+    if (value === "reality" && !liveOption(sectionId, "reality_private_key")) {
+      applyRealityKeypair(sectionId);
+    }
+  };
   {
     const renderWidget2 = o.renderWidget;
     o.renderWidget = function(sectionId, optionIndex, cfgvalue) {

@@ -11,6 +11,7 @@ import {
   addGenerateButton,
   addRealityKeypairButton,
   addVlessEncryptionKeypairButton,
+  applyRealityKeypair,
   applyVlessEncryptionKeypair,
   autofill,
   camouflageSite,
@@ -66,6 +67,12 @@ export function addSecurityOptions(section: CBISection) {
     o.depends('protocol', protocol),
   );
   o.validate = validateSecurity;
+  // Turning to Reality, by hand or with the protocol, draws the key pair the server needs.
+  o.onchange = function (_ev, sectionId: string, value: unknown) {
+    if (value === 'reality' && !liveOption(sectionId, 'reality_private_key')) {
+      applyRealityKeypair(sectionId);
+    }
+  };
   {
     const renderWidget = o.renderWidget;
     o.renderWidget = function (
