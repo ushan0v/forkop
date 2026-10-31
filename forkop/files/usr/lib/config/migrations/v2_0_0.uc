@@ -266,12 +266,13 @@ function migrate_settings(config, ctx) {
 const KEPT_LISTS = {
     geoblock: "ru_blocked_geo", ukraine_inside: "ua_blocked", google_ai: "gemini", twitter: "x",
     ads_hagezi_pro: "ads", telegram: "telegram", youtube: "youtube", discord: "discord", tiktok: "tiktok",
-    github: "github", google_play: "google_play", roblox: "roblox", supercell: "supercell", cloudflare: "cloudflare"
+    github: "github", google_play: "google_play", roblox: "roblox", supercell: "supercell", cloudflare: "cloudflare",
+    hetzner: "hetzner", ovh: "ovh", digitalocean: "digitalocean"
 };
 // Whether 1.0.x applied the subnets of a dropped list.
 const DROPPED_LISTS = {
     russia_inside: false, russia_outside: false, block: false, porn: false, news: false, anime: false,
-    hdrezka: false, hodca: false, meta: true, hetzner: true, ovh: true, digitalocean: true, cloudfront: true
+    hdrezka: false, hodca: false, meta: true, cloudfront: true
 };
 const DROPPED_LISTS_URL = "https://github.com/itdoginfo/allow-domains/releases/latest/download/";
 

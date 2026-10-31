@@ -19,8 +19,8 @@ t.test("a list downloads the file forkop-lists releases under its name", () => {
 
 t.test("only the lists that carry addresses export subnets", () => {
     t.eq(filter(sort(keys(rulesets.COMMUNITY_SERVICES)), rulesets.community_has_subnets),
-        [ "ai", "claude", "cloudflare", "discord", "roblox", "ru_blocked_all", "ru_blocked_geo", "ru_blocked_rkn",
-          "telegram", "whatsapp", "x" ]);
+        [ "ai", "claude", "cloudflare", "digitalocean", "discord", "hetzner", "ovh", "roblox", "ru_blocked_all",
+          "ru_blocked_geo", "ru_blocked_rkn", "telegram", "whatsapp", "x" ]);
     t.ok(!rulesets.community_has_subnets("unknown_service"));
 });
 

@@ -28,7 +28,7 @@ RU Only ставьте в секцию **Bypass**, если роутер в Ро
 
 В одной секции с RU Blocked их выбрать нельзя, они там уже есть. Отдельно их берут, чтобы пустить другим путём секцией выше.
 
-GitHub, Twitch, Cloudflare и Google Play в RU Blocked не входят целиком, только их отдельные заблокированные домены. Из списка AI в Geo входят только нейросети, закрытые для России.
+GitHub, Twitch, Cloudflare, Google Play, DigitalOcean, Hetzner и OVH в RU Blocked не входят целиком, только их отдельные заблокированные домены. Из списка AI в Geo входят только нейросети, закрытые для России.
 
 ## Сервисы
 
@@ -38,12 +38,15 @@ GitHub, Twitch, Cloudflare и Google Play в RU Blocked не входят цел
 | **ChatGPT** | | |
 | **Claude** | ✓ | |
 | **Cloudflare** | ✓ | все адреса Cloudflare, а с ними и все сайты за Cloudflare, российские тоже |
+| **DigitalOcean** | ✓ | |
 | **Discord** | ✓ | вместе с голосовыми серверами |
 | **Facebook** | | Facebook и Messenger |
 | **Gemini** | | Gemini, AI Studio, NotebookLM, Jules |
 | **GitHub** | | |
 | **Google Play** | | |
+| **Hetzner** | ✓ | |
 | **Instagram** | | Instagram и Threads |
+| **OVH** | ✓ | |
 | **Roblox** | ✓ | |
 | **Spotify** | | |
 | **Supercell** | | Brawl Stars, Clash of Clans, Clash Royale и другие игры Supercell |
