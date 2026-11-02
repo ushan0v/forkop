@@ -44,7 +44,7 @@ function settings() {
 }
 
 function runtime_config() {
-    return common.read_json_file(common.option(settings(), "config_path", ""));
+    return common.read_json_file(singbox_constants.config_path(settings()));
 }
 
 function output(argv) {

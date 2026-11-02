@@ -8,6 +8,7 @@ let fixture = require("fixture");
 let constants = require("singbox.constants");
 let rulesets = require("singbox.rulesets");
 let connections = require("config.connections");
+let generator = require("singbox.generator");
 let mask = require("diagnostics.mask");
 let state_service = require("service.state_service");
 let features = require("singbox.features");
@@ -76,6 +77,54 @@ t.test("an unset group option means what the dashboard says it means", () => {
     t.eq(connections.fallback_group_expected_status(section, "safe"), fallback.expected_status);
     t.eq(connections.fallback_group_idle_timeout(section, "safe"), fallback.idle_timeout);
     t.eq(connections.fallback_group_interrupt_exist_connections(section, "safe"), fallback.interrupt_exist_connections);
+});
+
+// LuCI's forms since 2026-05 (not 25.12) delete a field saved at its default, so UCI holds nothing for it.
+t.test("an option LuCI dropped at its form default generates what the default generates", () => {
+    let generated = (data) => {
+        fixture.seed({
+            section: [ { ".name": "proxy", enabled: "1", action: "connection" } ],
+            connection_link: fixture.links("proxy", [ "socks5://socks.example:1080#Node" ]),
+            ...data
+        });
+        return sprintf("%J", generator.build({ service_address: "192.168.1.1" }));
+    };
+    let shapes = {
+        settings: (values) => ({ settings: fixture.settings({ list_update_enabled: "1", ...values }) }),
+        urltest: (values) => ({
+            settings: fixture.settings(),
+            urltest: [ { ".name": "fast", section: "proxy", name: "Fast", server_filter_mode: "all", ...values } ]
+        }),
+        fallback_group: (values) => ({
+            settings: fixture.settings(),
+            fallback_group: [ { ".name": "safe", section: "proxy", name: "Safe", ...values } ],
+            fallback_level: [ { ".name": "level", group: "safe", name: "Level", server_filter_mode: "all" } ]
+        })
+    };
+    for (let kind, shape in shapes)
+        for (let name, value in contract.defaults_dropped_on_save[kind])
+            if (kind != "urltest" || name != "idle_timeout")
+                t.eq(generated(shape({ [name]: value })), generated(shape({})), kind + "." + name);
+    t.eq(contract.defaults_dropped_on_save.urltest.idle_timeout, constants.URLTEST_DEFAULT_IDLE_TIMEOUT, "left to sing-box, which applies the same");
+
+    let server = contract.defaults_dropped_on_save.server;
+    t.eq(generated({ settings: fixture.settings(), server: [
+        { ".name": "open", enabled: "1", protocol: "mixed", listen_port: "18081", mixed_auth_enabled: "0", routing_mode: "direct", listen: server.listen } ] }),
+        generated({ settings: fixture.settings(), server: [
+        { ".name": "open", enabled: "1", protocol: "mixed", listen_port: "18081", mixed_auth_enabled: "0", routing_mode: "direct" } ] }), "server.listen");
+    t.eq(generated({ settings: fixture.settings(), server: [
+        { ".name": "tail", enabled: "1", protocol: "tailscale", tailscale_auth_key: "tskey-auth-test", routing_mode: "direct", tailscale_control_url: server.tailscale_control_url } ] }),
+        generated({ settings: fixture.settings(), server: [
+        { ".name": "tail", enabled: "1", protocol: "tailscale", tailscale_auth_key: "tskey-auth-test", routing_mode: "direct" } ] }), "server.tailscale_control_url");
+
+    let tunnel = (values) => ({ settings: fixture.settings(), tunnel: [
+        { ".name": "tailnet", section: "proxy", order: "0", kind: "tailscale", name: "Tailnet", tailscale_auth_key: "tskey-auth-test", ...values } ] });
+    t.eq(generated(tunnel({ tailscale_control_url: contract.defaults_dropped_on_save.tunnel.tailscale_control_url })), generated(tunnel({})), "tunnel.tailscale_control_url");
+});
+
+t.test("an unset path of the core's configuration is the page's default", () => {
+    t.eq(constants.config_path({}), contract.defaults_dropped_on_save.settings.config_path);
+    t.eq(constants.config_path({ config_path: "/tmp/sing-box/config.json" }), "/tmp/sing-box/config.json");
 });
 
 t.test("the state service parks a request as long as the page expects", () => {

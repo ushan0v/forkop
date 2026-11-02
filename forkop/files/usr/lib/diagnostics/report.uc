@@ -5,6 +5,7 @@ let constants = require("core.constants");
 let core_ip = require("core.ip");
 let core_url = require("core.url");
 let uci = require("core.uci");
+let singbox_constants = require("singbox.constants");
 let mask = require("diagnostics.mask");
 
 const LOG_LINES = 50;
@@ -60,7 +61,7 @@ function resolver_addresses(settings) {
 function report(visibility, checks) {
     let masked = visibility != "raw";
     let settings = uci.get_all(constants.FORKOP_CONFIG_NAME, "settings") ?? {};
-    let sing_box = masked ? common.read_json_file(common.option(settings, "config_path", "")) : null;
+    let sing_box = masked ? common.read_json_file(singbox_constants.config_path(settings)) : null;
     let hosts = masked ? sort(uniq([ ...mask.hosts(sing_box), ...server_hosts() ]), (a, b) => length(b) - length(a)) : [];
     let resolvers = resolver_addresses(settings);
     let text = (value) => masked ? mask.text(value, hosts, resolvers) : value;

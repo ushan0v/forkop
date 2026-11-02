@@ -26,7 +26,7 @@ function endpoint(address) {
 // A wildcard bind is reached over loopback.
 function controller() {
     let settings = uci.get_all(CONFIG_NAME, "settings") ?? {};
-    let clash_api = common.read_json_file(common.option(settings, "config_path", ""))?.experimental?.clash_api;
+    let clash_api = common.read_json_file(singbox_constants.config_path(settings))?.experimental?.clash_api;
     return { endpoint: endpoint(common.as_string(clash_api?.external_controller)), secret: common.as_string(clash_api?.secret) };
 }
 

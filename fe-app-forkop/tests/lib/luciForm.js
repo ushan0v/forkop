@@ -3,6 +3,8 @@
 // step with LuCI:
 //
 //   AbstractValue.parse   active and empty      -> remove when rmempty/optional
+//                         active, value=default -> the same, in LuCI since 2026-05 (not in 24.10
+//                                                  or 25.12): createHarness's dropDefaults
 //                         active and changed    -> write
 //                         hidden                -> remove unless retain
 //   FlagValue.parse       active, value=default -> remove when rmempty/optional
@@ -214,7 +216,12 @@ class JSONConfig {
 
 /* -------------------------------------------------------------------- forms */
 
-function buildForm(uciData) {
+function buildForm(uciData, dropDefaults) {
+  const droppedAtDefault = (option, fval) =>
+    dropDefaults &&
+    fval == option.default &&
+    (option.optional || option.rmempty);
+
   const AbstractValue = makeClass(
     'CBI.AbstractValue',
     function (map, section, option, ...rest) {
@@ -301,7 +308,7 @@ function buildForm(uciData) {
       if (this.isActive(sid)) {
         const cval = this.cfgvalue(sid);
         const fval = this.formvalue(sid);
-        if (fval == null || fval === '') {
+        if (fval == null || fval === '' || droppedAtDefault(this, fval)) {
           if (this.rmempty || this.optional)
             return Promise.resolve(this.remove(sid));
           return Promise.reject(
@@ -344,7 +351,7 @@ function buildForm(uciData) {
       if (this.isActive(sid)) {
         const cval = this.cfgvalue(sid);
         const fval = this.formvalue(sid);
-        if (fval == null || fval.length === 0) {
+        if (fval == null || fval.length === 0 || droppedAtDefault(this, fval)) {
           if (this.rmempty || this.optional)
             return Promise.resolve(this.remove(sid));
           return Promise.reject(
@@ -553,7 +560,10 @@ function buildForm(uciData) {
 
 /* ----------------------------------------------------------------- harness */
 
-export function createHarness(packageName = 'forkop') {
+export function createHarness(
+  packageName = 'forkop',
+  { dropDefaults = false } = {},
+) {
   const messages = [];
 
   const store = new Map();
@@ -623,7 +633,7 @@ export function createHarness(packageName = 'forkop') {
     },
   };
 
-  const form = buildForm(uciData);
+  const form = buildForm(uciData, dropDefaults);
 
   const modal = new FakeNode('div');
   const activeMap = new FakeNode('div');

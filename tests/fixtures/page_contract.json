@@ -1,4 +1,42 @@
 {
+  "defaults_dropped_on_save": {
+    "settings": {
+      "badwan_reload_delay": "2000",
+      "cache_path": "/tmp/sing-box/cache.db",
+      "config_path": "/etc/sing-box/config.json",
+      "dns_rewrite_ttl": "60",
+      "dns_timeout": "10s",
+      "latency_test_url": "https://www.gstatic.com/generate_204",
+      "source_network_interfaces": "br-lan",
+      "update_interval": "1d"
+    },
+    "urltest": {
+      "check_interval": "3m",
+      "expected_status": "*",
+      "idle_timeout": "30m",
+      "testing_url": "https://www.gstatic.com/generate_204",
+      "tolerance": "50"
+    },
+    "fallback_group": {
+      "attempt_timeout": "5s",
+      "expected_status": "*",
+      "health_check_interval": "5m",
+      "health_check_timeout": "5s",
+      "health_check_url": "https://www.gstatic.com/generate_204",
+      "idle_timeout": "5m"
+    },
+    "server": {
+      "client_fingerprint": "chrome",
+      "listen": "::",
+      "tailscale_control_url": "https://controlplane.tailscale.com"
+    },
+    "tunnel": {
+      "openvpn_key_direction": "1",
+      "openvpn_server_name_type": "name",
+      "openvpn_verify_purpose": "server",
+      "tailscale_control_url": "https://controlplane.tailscale.com"
+    }
+  },
   "reserved_ports": [53, 1602, 1603, 1604, 1605, 4536, 9090],
   "reserved_tags": [
     "bootstrap-dns-server",

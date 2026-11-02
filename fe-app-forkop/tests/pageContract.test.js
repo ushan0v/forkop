@@ -84,6 +84,79 @@ describe('the tables the page carries', () => {
     expect(FALLBACK_DEFAULTS).toEqual(contract.fallback_defaults);
   });
 
+  it('leave LuCI to drop only the defaults the backend reads the same', async () => {
+    const harness = createHarness();
+    const found = {};
+    const opened = new Set();
+    const walk = async (kind, options, ownerId) => {
+      for (const option of options) {
+        if (
+          option.default != null &&
+          option.default !== '' &&
+          option.__name__ !== 'CBI.FlagValue' &&
+          (option.optional || option.rmempty)
+        ) {
+          (found[kind] ??= {})[option.option] = option.default;
+        }
+        const type = option.childType;
+        if (
+          !type ||
+          opened.has(type) ||
+          typeof option.renderItemSettingsModal !== 'function'
+        ) {
+          continue;
+        }
+        opened.add(type);
+        harness.uci.add('forkop', type, `${type}_probe`);
+        harness.uci.set(
+          'forkop',
+          `${type}_probe`,
+          option.ownerOption || 'section',
+          ownerId,
+        );
+        const dialog = await harness.openDialog(
+          option,
+          ownerId,
+          `${type}_probe`,
+        );
+        for (const section of dialog.map.children) {
+          await walk(type, section.children, `${type}_probe`);
+        }
+      }
+    };
+    const page = (kind, sectionClass, sid, values, render) => {
+      harness.uci.add('forkop', kind, sid);
+      Object.assign(harness.store.get(sid), values);
+      const section = new harness.form.Map('forkop').section(sectionClass, sid);
+      render(section);
+      return walk(kind, section.children, sid);
+    };
+
+    await page(
+      'settings',
+      harness.form.NamedSection,
+      'settings',
+      {},
+      harness.bundle.createSettingsContent,
+    );
+    await page(
+      'section',
+      harness.form.GridSection,
+      'section_probe',
+      { action: 'connection' },
+      harness.bundle.createSectionContent,
+    );
+    await page(
+      'server',
+      harness.form.GridSection,
+      'server_probe',
+      { protocol: 'vless' },
+      harness.bundle.createServerContent,
+    );
+
+    expect(found).toEqual(contract.defaults_dropped_on_save);
+  });
+
   it('wait for a parked request longer than the state service holds it', () => {
     expect(FORKOP_WAIT_TIMEOUT_MS).toBeGreaterThan(contract.state_wait_ms);
   });

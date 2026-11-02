@@ -21,6 +21,17 @@ function configuration(dir, extra) {
     };
 }
 
+t.test("the service is set up on the default path while UCI holds none", () => {
+    let dir = stub.tmpdir();
+    let data = configuration(dir);
+    delete data.settings.config_path;
+    fixture.seed(data);
+    uci.__seed("sing-box", []);
+    stub.commands([ stub.logger([]) ]);
+    runtime.configure_service();
+    t.eq(core_uci.get("sing-box.main.conffile"), "/etc/sing-box/config.json");
+});
+
 let logs = [];
 
 function tools(extra) {

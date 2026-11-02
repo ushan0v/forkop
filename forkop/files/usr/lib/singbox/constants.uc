@@ -43,6 +43,7 @@ const URLTEST_DEFAULT_IDLE_TIMEOUT = "30m";
 const CHECK_PROXY_IP_DOMAIN = "ip.podkop.fyi";
 const FAKEIP_TEST_DOMAIN = "fakeip.podkop.fyi";
 const TMP_SING_BOX_FOLDER = "/tmp/sing-box";
+const DEFAULT_CONFIG_PATH = "/etc/sing-box/config.json";
 // Marks the Servers tab's nft rules, an nftables.d include that never appears in
 // `uci show firewall`; the inbound check looks for it in the loaded chain.
 const SERVER_FIREWALL_COMMENT = "forkop: server ports";
@@ -130,6 +131,11 @@ function child_tag(section_name, display_name) {
     return as_string(section_name) + "/" + as_string(display_name);
 }
 
+// LuCI's forms since 2026-05 (not 25.12) delete an option saved at its form default.
+function config_path(settings) {
+    return settings?.config_path ?? DEFAULT_CONFIG_PATH;
+}
+
 function domain_resolver_tag(section_name) {
     return tag(section_name, "domain-resolver");
 }
@@ -185,6 +191,7 @@ return {
     tag,
     outbound_tag,
     child_tag,
+    config_path,
     domain_resolver_tag,
     server_inbound_tag
 };

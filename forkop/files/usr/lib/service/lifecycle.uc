@@ -11,6 +11,7 @@ let validator = require("config.validator");
 let server = require("server.service");
 let tailscale = require("singbox.tailscale");
 let generator = require("singbox.generator");
+let singbox_constants = require("singbox.constants");
 let runtime = require("singbox.runtime");
 let nft = require("nft.apply");
 let nft_state = require("nft.state");
@@ -156,7 +157,7 @@ function wait_stopped() {
 
 function clash_controller_free() {
     let settings = uci.get_all(CONFIG_NAME, "settings") ?? {};
-    let config = common.read_json_file(common.option(settings, "config_path", ""));
+    let config = common.read_json_file(singbox_constants.config_path(settings));
     let controller = common.as_string(config?.experimental?.clash_api?.external_controller);
     if (controller == "" || !netstat.tcp_endpoint_in_use(exec.output([ "netstat", "-lnt" ]) ?? "", controller))
         return true;

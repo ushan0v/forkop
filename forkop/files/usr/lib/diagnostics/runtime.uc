@@ -4,6 +4,7 @@ let exec = require("core.exec");
 let constants = require("core.constants");
 let uci = require("core.uci");
 let packages = require("core.packages");
+let singbox_constants = require("singbox.constants");
 let singbox_runtime = require("singbox.runtime");
 let health = require("service.health");
 let mask = require("diagnostics.mask");
@@ -68,7 +69,7 @@ function system_info() {
 }
 
 function sing_box_config_path() {
-    return common.option(settings(), "config_path", "");
+    return singbox_constants.config_path(settings());
 }
 
 function show_config(visibility) {

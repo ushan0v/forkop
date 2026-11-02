@@ -297,7 +297,7 @@ describe.each([
   );
 });
 
-it('the Settings page writes nothing when the shipped config is saved', async () => {
+function loadShippedConfig() {
   let current = null;
   const source = fs.readFileSync(
     `${ROOT}/forkop/files/etc/config/forkop`,
@@ -330,10 +330,41 @@ it('the Settings page writes nothing when the shipped config is saved', async ()
   const map = new harness.form.Map('forkop');
   const section = map.section(harness.form.NamedSection, 'settings');
   harness.bundle.createSettingsContent(section);
+  return section;
+}
+
+it('the Settings page writes nothing when the shipped config is saved', async () => {
+  const section = loadShippedConfig();
   await section.load();
   harness.operations.length = 0;
   await section.parse();
 
+  expect(harness.operations.join(', ')).toBe('');
+});
+
+it('a LuCI that drops defaults takes from the shipped config only what the backend reads the same', async () => {
+  harness = createHarness('forkop', { dropDefaults: true });
+  const section = loadShippedConfig();
+  await section.load();
+  harness.operations.length = 0;
+  await section.parse();
+
+  const dropped = harness.operations.map((operation) =>
+    operation.replace(/^del settings\./, ''),
+  );
+  expect(dropped.sort()).toEqual([
+    'cache_path',
+    'config_path',
+    'dns_rewrite_ttl',
+    'dns_timeout',
+    'latency_test_url',
+    'source_network_interfaces',
+    'update_interval',
+  ]);
+
+  await section.load();
+  harness.operations.length = 0;
+  await section.parse();
   expect(harness.operations.join(', ')).toBe('');
 });
 
