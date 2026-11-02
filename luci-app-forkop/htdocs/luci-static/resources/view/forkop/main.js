@@ -20431,10 +20431,10 @@ function verifyPurpose(tls) {
   return trimmed(tls.ns_certificate_type) === "server" ? "ns" : "none";
 }
 function keyDirectionValue(value) {
-  return value === "client" ? "1" : value === "server" ? "0" : "";
+  return value === "client" ? "1" : value === "server" ? "0" : "both";
 }
 function keyDirectionName2(value) {
-  return value === "1" ? "client" : value === "0" ? "server" : "";
+  return value === "0" ? "server" : value === "both" ? "" : "client";
 }
 function advancedInUse(settings) {
   return Object.entries(ADVANCED_DEFAULTS).some(
@@ -25462,7 +25462,7 @@ function addOpenVPNOptions(section2) {
   );
   o.value("1", "1");
   o.value("0", "0");
-  o.value("", _("Both directions"));
+  o.value("both", _("Both directions"));
   o.default = "1";
   o.rmempty = true;
   onKind(o, { ...tls, openvpn_control_wrap: "tls_auth" });

@@ -222,7 +222,7 @@ export function addOpenVPNOptions(section: CBISection) {
   );
   o.value('1', '1');
   o.value('0', '0');
-  o.value('', _('Both directions'));
+  o.value('both', _('Both directions'));
   o.default = '1';
   o.rmempty = true;
   onKind(o, { ...tls, openvpn_control_wrap: 'tls_auth' });

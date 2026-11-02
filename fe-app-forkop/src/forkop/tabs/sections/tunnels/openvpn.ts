@@ -222,11 +222,12 @@ function verifyPurpose(tls: Tls) {
 }
 
 function keyDirectionValue(value: unknown) {
-  return value === 'client' ? '1' : value === 'server' ? '0' : '';
+  return value === 'client' ? '1' : value === 'server' ? '0' : 'both';
 }
 
+// LuCI's forms since 2026-05 (not 25.12) delete a field saved at its default, so no value means it.
 function keyDirectionName(value: unknown) {
-  return value === '1' ? 'client' : value === '0' ? 'server' : '';
+  return value === '0' ? 'server' : value === 'both' ? '' : 'client';
 }
 
 function advancedInUse(settings: ChildSettings) {

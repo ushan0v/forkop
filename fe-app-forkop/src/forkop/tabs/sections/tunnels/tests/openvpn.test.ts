@@ -74,6 +74,50 @@ ${STATIC_KEY}
     expect(validateOpenVPNSettings(settings)).toBe(true);
   });
 
+  it('builds the same endpoint when LuCI dropped the fields at their defaults', () => {
+    const endpoint = openVPNEndpoint(
+      openVPNInitialSettings({
+        type: 'openvpn-client',
+        server: 'vpn.example.com',
+        server_port: 1194,
+        network: 'udp',
+        tls: {
+          certificate: ['ca'],
+          control_wrap: { type: 'tls_auth', key: ['key'], direction: 'client' },
+        },
+      }),
+    );
+    const settings = openVPNInitialSettings(endpoint);
+    expect(settings.openvpn_key_direction).toBe('1');
+    expect(settings.openvpn_server_name_type).toBe('name');
+    expect(settings.openvpn_verify_purpose).toBe('server');
+
+    delete settings.openvpn_key_direction;
+    delete settings.openvpn_server_name_type;
+    delete settings.openvpn_verify_purpose;
+    expect(openVPNEndpoint(settings)).toEqual(endpoint);
+  });
+
+  it('tells both key directions from the default one', () => {
+    const endpoint = openVPNEndpoint(
+      openVPNInitialSettings({
+        type: 'openvpn-client',
+        server: 'vpn.example.com',
+        server_port: 1194,
+        network: 'udp',
+        tls: {
+          certificate: ['ca'],
+          control_wrap: { type: 'tls_auth', key: ['key'] },
+        },
+      }),
+    );
+    const settings = openVPNInitialSettings(endpoint);
+    expect(settings.openvpn_key_direction).toBe('both');
+    expect(JSON.stringify(openVPNEndpoint(settings))).not.toContain(
+      '"direction"',
+    );
+  });
+
   it('keeps what a stored endpoint holds beyond the form', () => {
     const endpoint = {
       type: 'openvpn-client',
