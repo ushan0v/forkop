@@ -764,8 +764,8 @@ msgstr "Тайм-аут DNS"
 msgid "Intercept client DNS"
 msgstr "Перехватывать DNS клиентов"
 
-msgid "Redirect client TCP and UDP DNS on port 53 to Forkop. Disable to let AdGuard Home or another resolver receive the original client addresses. The router's own DNS is unaffected"
-msgstr "Перенаправлять TCP/UDP-запросы DNS клиентов на порт 53 в Forkop. Отключите, чтобы AdGuard Home или другой DNS-сервис получал исходные IP клиентов. На DNS самого роутера не влияет"
+msgid "Redirect client TCP and UDP DNS on port 53 to Forkop. Disable to let your own resolver receive the original client addresses."
+msgstr "Перенаправлять DNS-запросы клиентов на TCP/UDP 53 в Forkop. Отключите, чтобы ваш DNS-сервер получал исходные IP клиентов."
 
 msgid "dnsmasq does not answer"
 msgstr "dnsmasq не отвечает"

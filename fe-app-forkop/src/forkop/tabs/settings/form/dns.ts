@@ -103,7 +103,7 @@ export function addDnsOptions(section: CBISection) {
     'intercept_client_dns',
     _('Intercept client DNS'),
     _(
-      "Redirect client TCP and UDP DNS on port 53 to Forkop. Disable to let AdGuard Home or another resolver receive the original client addresses. The router's own DNS is unaffected",
+      'Redirect client TCP and UDP DNS on port 53 to Forkop. Disable to let your own resolver receive the original client addresses.',
     ),
   );
   o.default = '1';
