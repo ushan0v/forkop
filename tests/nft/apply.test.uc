@@ -70,6 +70,33 @@ t.test("the base table captures the source interfaces, FakeIP and the TProxy inb
         lacks(lines, absent);
 });
 
+t.test("client DNS capture defaults to enabled", () => {
+    t.eq(built({ settings: {} }), built({ settings: { intercept_client_dns: "1" } }));
+});
+
+t.test("disabling client DNS capture changes only the client DNS chain", () => {
+    for (let excluded in [ "", "192.168.1.50 2001:db8::5/128", "@system 192.168.1.50" ]) {
+        let settings = { source_network_interfaces: [ "br-lan", "tun0" ], routing_excluded_ips: excluded };
+        let section = [ {
+            ".name": "all_clients", action: "connection", ports: [ "53" ],
+            fully_routed_ips: [ "192.168.1.20", "2001:db8::20", "@system" ]
+        } ];
+        let enabled = script_lines({ settings: { ...settings, intercept_client_dns: "1" }, section });
+        let disabled = script_lines({ settings: { ...settings, intercept_client_dns: "0" }, section });
+        has(disabled, "add chain inet ForkopTable dns_redirect { type nat hook prerouting priority -101; policy accept; }");
+        lacks(disabled, T + "dns_redirect ", "no redirect, exclusion or pause rules for client DNS");
+        t.eq(disabled, filter(enabled, (line) => index(line, T + "dns_redirect ") != 0),
+            "system DNS, IPv4/IPv6 routing and device exclusions are unchanged");
+        before(disabled, T + "mangle iifname @forkop_interfaces meta l4proto { tcp, udp } th dport 53 return",
+            T + "mangle jump priority_rules", "DNS passes before port and fully routed device rules");
+        for (let address in [ "ip daddr 127.0.0.1", "ip6 daddr ::1" ])
+            for (let proto in [ "tcp", "udp" ])
+                has(disabled, T + "system_dns_redirect " + address + " " + proto + " dport 53 counter redirect to :1605");
+        t.eq(script_lines({ settings: { ...settings, intercept_client_dns: "1" }, section }), enabled,
+            "capture can be enabled again");
+    }
+});
+
 t.test("a flow handed to sing-box stays captured whatever the sets hold, and a pause holds back what goes to it", () => {
     let lines = script_lines({ settings: { routing_excluded_ips: "192.168.1.50 @system" } });
     let held = (mark) => "ct direction original ct mark & " + mark + " == " + mark + " meta mark set " + mark + " counter accept";

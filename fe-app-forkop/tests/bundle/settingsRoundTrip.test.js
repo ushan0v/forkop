@@ -223,6 +223,35 @@ function buildSettings() {
   return { section: settings, sid: 'settings' };
 }
 
+describe('client DNS interception', () => {
+  it.each([undefined, '0', '1'])(
+    'loads %s and preserves both switch positions when saved again',
+    async (stored) => {
+      const { section, sid } = buildSettings();
+      section.cfgsections = () => [sid];
+      if (stored !== undefined) {
+        harness.uci.set('forkop', sid, 'intercept_client_dns', stored);
+      }
+      await section.load();
+      const option = section.children.find(
+        (child) => child.option === 'intercept_client_dns',
+      );
+      expect(option.formvalue(sid)).toBe(stored ?? '1');
+      for (const value of ['0', '1', '0']) {
+        option.formvalue = () => value;
+        await option.parse(sid);
+        expect(harness.uci.get('forkop', sid, option.option)).toBe(value);
+        delete option.formvalue;
+        await section.load();
+        expect(option.formvalue(sid)).toBe(value);
+        harness.operations.length = 0;
+        await option.parse(sid);
+        expect(harness.operations).toEqual([]);
+      }
+    },
+  );
+});
+
 async function roundTrip(build, state, selector) {
   const { section, sid } = build(state);
   section.cfgsections = () => [sid];

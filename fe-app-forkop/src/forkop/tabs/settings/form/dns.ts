@@ -99,6 +99,17 @@ export function addDnsOptions(section: CBISection) {
   createStaticHostsOption(section);
 
   o = section.option(
+    form.Flag,
+    'intercept_client_dns',
+    _('Intercept client DNS'),
+    _(
+      'Redirect client TCP and UDP DNS on port 53 to Forkop. Disable to let your own resolver receive the original client addresses.',
+    ),
+  );
+  o.default = '1';
+  o.rmempty = false;
+
+  o = section.option(
     form.Value,
     'dns_timeout',
     _('DNS timeout'),
