@@ -29600,6 +29600,16 @@ function addDnsOptions(section2) {
   configureDownloadSectionOption(o, "dns_detour_section");
   createStaticHostsOption(section2);
   o = section2.option(
+    form.Flag,
+    "intercept_client_dns",
+    _("Intercept client DNS"),
+    _(
+      "Redirect client TCP and UDP DNS on port 53 to Forkop. Disable to let AdGuard Home or another resolver receive the original client addresses. The router's own DNS is unaffected"
+    )
+  );
+  o.default = "1";
+  o.rmempty = false;
+  o = section2.option(
     form.Value,
     "dns_timeout",
     _("DNS timeout"),

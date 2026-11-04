@@ -158,10 +158,12 @@ function add_base(settings, excluded_router, excluded) {
     add_chain(PAUSE_CHAIN, "{ }");
 
     add_chain("dns_redirect", "{ type nat hook prerouting priority " + constants.NFT_DNS_REDIRECT_PRIORITY + "; policy accept; }");
-    add_rule("dns_redirect", [ "jump", PAUSE_CHAIN ]);
-    add_excluded_returns("dns_redirect", excluded);
-    for (let proto in [ "tcp", "udp" ])
-        add_rule("dns_redirect", [ "iifname", "@" + INTERFACES, proto, "dport", "53", "counter", "redirect", "to", ":" + singbox_constants.SOURCE_DNS_INBOUND_PORT ]);
+    if (common.bool_option(settings, "intercept_client_dns", true)) {
+        add_rule("dns_redirect", [ "jump", PAUSE_CHAIN ]);
+        add_excluded_returns("dns_redirect", excluded);
+        for (let proto in [ "tcp", "udp" ])
+            add_rule("dns_redirect", [ "iifname", "@" + INTERFACES, proto, "dport", "53", "counter", "redirect", "to", ":" + singbox_constants.SOURCE_DNS_INBOUND_PORT ]);
+    }
 
     add_held_flow_rule("mangle", FAKEIP_MARK);
     add_excluded_returns("mangle", excluded);
@@ -169,6 +171,7 @@ function add_base(settings, excluded_router, excluded) {
     add_rule("mangle", REPLY_RETURN);
     // nft runs every nat chain at the NAT hook, after this chain, so a query a
     // section marked here would reach the TProxy inbound instead of the DNS one.
+    // With DNS capture disabled, leave it to the client's chosen resolver instead.
     add_rule("mangle", [ "iifname", "@" + INTERFACES, "meta", "l4proto", "{ tcp, udp }", "th", "dport", "53", "return" ]);
     add_rule("mangle", [ "iifname", "@" + INTERFACES, "ip", "daddr", "@" + LOCAL4, "return" ]);
     add_rule("mangle", [ "iifname", "@" + INTERFACES, "ip6", "daddr", "@" + LOCAL6, "return" ]);

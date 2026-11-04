@@ -19,6 +19,21 @@ t.test("a single DNS server is used directly", () => {
     t.eq(length(single.inbounds), 7);
 });
 
+t.test("an external resolver can still use the DNS listener and domain rules with client capture disabled", () => {
+    let data = {
+        settings: { intercept_client_dns: "0", dns_server: [ "192.168.1.2" ] },
+        section: [ { ".name": "secure_dns", action: "dns", destinations: "example.org", dns_server: [ "https://dns.google/dns-query" ] } ]
+    };
+    let config = build(data);
+    t.eq(q.inbound(config, "dns-in"), { type: "direct", tag: "dns-in", listen: "127.0.0.42", listen_port: 53 });
+    t.eq(q.dns_server_tag(config, "dns-server").server, "192.168.1.2");
+    t.ok(q.dns_rule(config, (rule) => q.has(rule.domain_suffix, "example.org") && rule.inbound == null) != null,
+        "domain rules without device restrictions also match queries forwarded by a resolver");
+    t.eq(q.dns_server(config, (server) => server.server == "dns.google").type, "https");
+    data.settings.intercept_client_dns = "1";
+    t.eq(build(data), config, "the switch does not alter listeners, DNS rules or FakeIP");
+});
+
 t.test("the router asks the bootstrap servers for its NTP servers, whatever the main DNS needs a clock for", () => {
     let ntp = (system_ntp) => filter(build({
         settings: { dns_server: [ "https://dns.google/dns-query" ] },
