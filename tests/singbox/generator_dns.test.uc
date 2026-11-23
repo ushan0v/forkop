@@ -226,4 +226,14 @@ t.test("DNS timeout reaches the core as configured", () => {
     t.eq(config.experimental.cache_file.store_subscriptions, true);
 });
 
+t.test("HTTPS lookups are answered with an empty NOERROR instead of REFUSED", () => {
+    let config = build({
+        settings: { dns_server: [ "77.88.8.8" ], bootstrap_dns_server: [ "77.88.8.8" ] },
+        section: [ { ".name": "direct", enabled: "1", action: "bypass", destinations: "example.org" } ]
+    });
+    let rule = q.dns_rule(config, (r) => r.query_type == "HTTPS");
+    t.eq([ rule.action, rule.rcode ], [ "predefined", "NOERROR" ], "a REFUSED lookup is retried for seconds");
+    t.eq(rule.answer, null, "and carries no addresses that would route around FakeIP");
+});
+
 t.done();

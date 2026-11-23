@@ -241,7 +241,7 @@ function base_config(settings, service_address) {
         runtime_generate_unsupported(dns_config.unsupported);
 
     let dns_rules = [
-        { action: "reject", query_type: "HTTPS" },
+        { action: "predefined", rcode: "NOERROR", query_type: "HTTPS" },
         { action: "reject", domain_suffix: "use-application-dns.net" },
         {
             action: "route",
